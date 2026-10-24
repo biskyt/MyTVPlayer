@@ -81,4 +81,5 @@
     <string name="player_error_http_gone">Le flux n\'est plus à cette adresse (erreur %1$d). La liste des chaînes n\'est peut-être plus à jour.</string>
     <string name="player_error_http_server">Le serveur du flux rencontre un problème (erreur %1$d). Il est peut-être hors service pour le moment.</string>
     <string name="player_error_http_other">Le serveur du flux a répondu avec l\'erreur %1$d.</string>
+    <string name="player_about_programme">À propos de ce programme</string>
 </resources>

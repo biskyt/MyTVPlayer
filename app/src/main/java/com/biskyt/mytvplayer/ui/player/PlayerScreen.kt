@@ -73,6 +73,7 @@ import com.biskyt.mytvplayer.ui.common.FlashLabel
 import com.biskyt.mytvplayer.ui.common.LocalTouch
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.PillButton
+import com.biskyt.mytvplayer.ui.common.ProgrammeAbout
 import com.biskyt.mytvplayer.ui.common.ProgressLine
 import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.digit
@@ -256,6 +257,7 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
     val ch = vm.channel ?: return
     LaunchedEffect(ch.streamId) { vm.nowNext.request(ch.streamId) }
     val nn = vm.nowNext.entries[ch.streamId]
+    val details = vm.nowDetails
     val accent = LocalAccent.current
     val now by rememberMinuteClock()
     ControlsPanel {
@@ -269,6 +271,7 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                details?.let { ProgrammeAbout(it, maxLines = 2) }
             }
             nn?.next?.let { next ->
                 Column(Modifier.width(320.dp), horizontalAlignment = Alignment.End) {
@@ -289,6 +292,9 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
         nn?.now?.let { current -> Timeline(formatTime(current.startMs), nn.progress(now), formatTime(current.stopMs)) }
         ControlsBar(vm, buttons, root) {
             PillButton(stringResource(R.string.player_channel_guide), vm::openGuide)
+            if (details?.description != null || details?.subtitle != null) {
+                PillButton(stringResource(R.string.player_about_programme), { vm.sheet = PlaybackViewModel.Sheet.ABOUT })
+            }
             if (ch.archiveDays > 0) {
                 val nav = LocalNavigator.current
                 PillButton(

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -41,6 +40,7 @@ import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.AppIcons
+import com.biskyt.mytvplayer.ui.common.ChannelCard
 import com.biskyt.mytvplayer.ui.common.ChannelLogo
 import com.biskyt.mytvplayer.ui.common.ItemAction
 import com.biskyt.mytvplayer.ui.common.ItemActionsPanel
@@ -55,8 +55,8 @@ import com.biskyt.mytvplayer.ui.common.TvTextField
 import com.biskyt.mytvplayer.ui.common.channelActions
 import com.biskyt.mytvplayer.ui.common.collectIds
 import com.biskyt.mytvplayer.ui.common.formatDayTime
+import com.biskyt.mytvplayer.ui.common.guideNowNext
 import com.biskyt.mytvplayer.ui.common.isLive
-import com.biskyt.mytvplayer.ui.common.numberLabel
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.common.titledRow
 import com.biskyt.mytvplayer.ui.common.vodActions
@@ -71,6 +71,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -99,6 +100,15 @@ class SearchViewModel(private val c: AppContainer, initialQuery: String = "") : 
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Found())
 
+    private val playlistId = c.settings.activePlaylistId.stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
+
+    /** What's on the channels found; read again for another playlist (switched to while Search waited behind). */
+    val nowNext = guideNowNext(viewModelScope, c) { playlistId.value }
+
+    init {
+        viewModelScope.launch { playlistId.drop(1).collect { nowNext.refreshAll() } }
+    }
+
     /** The active playlist's favourites: marked on the results, and for the options panel (null until read). */
     val favourites = c.favourites
 
@@ -122,6 +132,7 @@ private sealed interface Picked {
 @Composable
 fun SearchScreen(initialQuery: String = "") {
     val vm = appViewModel { SearchViewModel(it, initialQuery) }
+    vm.nowNext.PauseWhenHidden()
     val nav = LocalNavigator.current
     val query by vm.query.collectAsState()
     val found = vm.found.collectAsState().value
@@ -159,7 +170,14 @@ fun SearchScreen(initialQuery: String = "") {
                     // Channels, series, films, then TV programmes. Holding OK (or the remote's Menu button) on a result
                     // opens its options.
                     titledRow(R.string.common_channels, results.channels, { it.streamId }, SECTION_GAP) {
-                        ChannelCard(it, it.streamId in favouriteChannels, { picked = Picked.Channel(it.streamId, it.name) }) {
+                        ChannelCard(
+                            it,
+                            vm.nowNext,
+                            now,
+                            { picked = Picked.Channel(it.streamId, it.name) },
+                            favourite =
+                            it.streamId in favouriteChannels
+                        ) {
                             nav.push(Screen.Player(pid, it.streamId, ChannelFilter.All))
                         }
                     }
@@ -211,20 +229,6 @@ private fun ResultOptions(item: Picked, pid: Long, vm: SearchViewModel, onDismis
         }
     }
     ItemActionsPanel(title, actions, onDismiss)
-}
-
-/** Long channel names are common ("UK: CHANNEL ONE HD FHD (backup)"): they scroll while the card is focused. */
-@Composable
-private fun ChannelCard(ch: ChannelEntity, favourite: Boolean, onLongClick: () -> Unit, onClick: () -> Unit) {
-    TvCard(onClick = onClick, onLongClick = onLongClick, modifier = Modifier.width(340.dp)) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ChannelLogo(ch.logoUrl, ch.name, 48.dp, 30.dp, favourite)
-            Column {
-                Muted(ch.numberLabel)
-                OneLine(ch.name, MaterialTheme.typography.labelLarge)
-            }
-        }
-    }
 }
 
 @Composable

@@ -1,9 +1,11 @@
 package com.biskyt.mytvplayer.ui.player
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
@@ -12,15 +14,19 @@ import com.biskyt.mytvplayer.core.player.OverlayState
 import com.biskyt.mytvplayer.core.xtream.XtreamClient
 import com.biskyt.mytvplayer.data.StreamFormat
 import com.biskyt.mytvplayer.data.db.ChannelEntity
+import com.biskyt.mytvplayer.data.db.ChannelProgramme
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.common.ItemAction
-import com.biskyt.mytvplayer.ui.common.NowNextLoader
 import com.biskyt.mytvplayer.ui.common.NumberEntry
 import com.biskyt.mytvplayer.ui.common.channelActions
 import com.biskyt.mytvplayer.ui.common.cycle
 import com.biskyt.mytvplayer.ui.common.favouriteFlash
+import com.biskyt.mytvplayer.ui.common.guideNowNext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /** Live TV: zapping through the list it was started from, number entry, now/next and the channel guide panel. */
@@ -38,10 +44,35 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
     val filter get() = screen.filter
     override val failureMessage = R.string.player_failure_live
 
-    val nowNext =
-        NowNextLoader(viewModelScope, c.epg.changes) { ids, from, to ->
-            c.epg.programmes(screen.playlistId, ids, from, to, details = false)
+    val nowNext = guideNowNext(viewModelScope, c) { screen.playlistId }
+
+    /** What's on now, with its description once read (for the controls and About); read again as the programme changes. */
+    var nowDetails by mutableStateOf<ChannelProgramme?>(null)
+        private set
+    override val about: ChannelProgramme? get() = nowDetails
+
+    init {
+        viewModelScope.launch {
+            // Read again after a guide update too (a description may be new).
+            combine(snapshotFlow { channel?.let { nowNext.entries[it.streamId]?.now } }, c.epg.changes) { p, _ -> p }.collectLatest { p ->
+                // In one step, so the About button doesn't go and come back meanwhile.
+                nowDetails = p?.let { details(it) }
+                // Nothing on (a gap in the guide): nothing to tell of.
+                if (p == null && sheet == Sheet.ABOUT) sheet = null
+            }
         }
+    }
+
+    /** [p] with its description, or as it is if that can't be read (e.g. the guide being replaced just then). */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun details(p: ChannelProgramme) = try {
+        c.epg.withDetails(screen.playlistId, p)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.w("Player", "Programme details", e)
+        p
+    }
 
     /** This playlist's favourite channels, for the More menu's "Add to / Remove from favourites". */
     private var favouriteIds by mutableStateOf(emptySet<Long>())

@@ -20,6 +20,7 @@ import com.biskyt.mytvplayer.core.player.PlayerAction
 import com.biskyt.mytvplayer.core.player.RemoteKey
 import com.biskyt.mytvplayer.core.player.scrubTarget
 import com.biskyt.mytvplayer.data.Settings
+import com.biskyt.mytvplayer.data.db.ChannelProgramme
 import com.biskyt.mytvplayer.player.PlaybackEngine
 import com.biskyt.mytvplayer.player.PlaybackError
 import com.biskyt.mytvplayer.player.failureReason
@@ -63,11 +64,14 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     /** Which side sheet is open over the video (null = none). */
     var sheet by mutableStateOf<Sheet?>(null)
 
+    /** The programme the About sheet tells of (live TV's, on now). */
+    open val about: ChannelProgramme? get() = null
+
     /** Set when playback should end and the screen close. */
     var exit by mutableStateOf(false)
         private set
 
-    enum class Sheet { AUDIO, SUBTITLES, MORE }
+    enum class Sheet { AUDIO, SUBTITLES, MORE, ABOUT }
 
     /**
      * What can be done with what's playing, at the top of the More menu; read while drawing it, so labels follow state
