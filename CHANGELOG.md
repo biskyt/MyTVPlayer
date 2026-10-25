@@ -2,10 +2,15 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
-## 1.2.5
+## 1.2.6
 - **Clearer text:** secondary text across the app (channel names and programme descriptions while watching, times in
   the TV guide, what's on next, counts and hints) is much brighter. While watching, the shading behind the controls is
   darker, so they read over a bright picture too.
+
+## 1.2.5
+- **Dolby Vision films that also carry HDR10+ now play in Dolby Vision** on TVs that showed them as HDR10 (such as
+  some Philips TVs). On a screen without Dolby Vision, they still play in HDR10+.
+- Hiding a category from the column now always leaves the remote on the category shown next.
 
 ## 1.2.4
 - **Menu closes the menu:** while watching, pressing the remote's Menu button again closes the menu it opened, as

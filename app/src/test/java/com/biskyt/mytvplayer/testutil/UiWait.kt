@@ -31,11 +31,11 @@ fun ComposeTestRule.waitAdvancingClock(stepMs: Long = 0, condition: () -> Boolea
 fun ComposeTestRule.waitForText(text: String, stepMs: Long = 0) = try {
     waitAdvancingClock(stepMs) { onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty() }
 } catch (e: ComposeTimeoutException) {
-    // Every window: a side panel is one of its own.
-    val screen = onAllNodes(isRoot(), useUnmergedTree = true).fetchSemanticsNodes().indices
-        .joinToString("\n") { onAllNodes(isRoot(), useUnmergedTree = true)[it].printToString() }
-    throw AssertionError("'$text' not shown. Screen:\n$screen", e)
+    throw AssertionError("'$text' not shown. Screen:\n${screen()}", e)
 }
+
+/** What's on screen, for a wait that timed out: every window, as a side panel is one of its own. */
+fun ComposeTestRule.screen(): String = onAllNodes(isRoot(), useUnmergedTree = true).printToString()
 
 /** What every other thread is doing (the top of its stack), for a wait that timed out. */
 fun otherThreads(): String = Thread.getAllStackTraces().filterKeys { it.isAlive && it != Thread.currentThread() }.entries
