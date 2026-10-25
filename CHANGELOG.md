@@ -2,6 +2,11 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.3.0
+- **Mark an episode watched or unwatched:** on a series' page, hold OK on an episode (or press the remote's Menu
+  button) and choose **Mark as watched**, or **Mark as unwatched** to start one again. Marking an earlier episode
+  keeps your place in the series.
+
 ## 1.2.8
 - Fixes to the dimmed paused screen: it dims again after the picture is lost and comes back, an error isn't left
   dimmed, and a button never needs pressing twice.

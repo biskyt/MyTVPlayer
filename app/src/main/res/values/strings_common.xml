@@ -77,6 +77,9 @@
     <string name="common_favourite_added">Added to favourites</string>
     <!-- Brief notice after removing a channel or film from favourites -->
     <string name="common_favourite_removed">Removed from favourites</string>
+    <!-- An episode's menu: count it as watched, or forget how far it got -->
+    <string name="common_mark_watched">Mark as watched</string>
+    <string name="common_mark_unwatched">Mark as unwatched</string>
     <!-- Help under the Catch-up menu entry. %1$d is a number of days. -->
     <plurals name="common_catchup_days">
         <item quantity="one">Programmes from the last %1$d day</item>

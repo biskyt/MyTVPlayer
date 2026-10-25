@@ -704,6 +704,9 @@ interface VodDao {
     suspend fun progress(pid: Long, kind: String, id: Long): WatchProgressEntity?
 
     @Query("SELECT * FROM watch_progress WHERE playlistId = :pid AND kind = 'episode' AND seriesId = :seriesId")
+    suspend fun seriesProgress(pid: Long, seriesId: Long): List<WatchProgressEntity>
+
+    @Query("SELECT * FROM watch_progress WHERE playlistId = :pid AND kind = 'episode' AND seriesId = :seriesId")
     fun observeSeriesProgress(pid: Long, seriesId: Long): Flow<List<WatchProgressEntity>>
 
     @Query("SELECT * FROM watch_progress WHERE playlistId = :pid AND kind = 'movie' AND itemId = :id")
@@ -731,6 +734,9 @@ interface VodDao {
 
     @Query("DELETE FROM watch_progress WHERE playlistId = :pid AND kind = 'episode' AND seriesId = :seriesId")
     suspend fun deleteSeriesProgress(pid: Long, seriesId: Long)
+
+    @Query("DELETE FROM watch_progress WHERE playlistId = :pid AND kind = 'episode' AND itemId = :id")
+    suspend fun deleteEpisodeProgress(pid: Long, id: Long)
 }
 
 /** Everything a backup holds (see BackupRepository), read and replaced as a whole. */
