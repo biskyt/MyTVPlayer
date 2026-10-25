@@ -129,7 +129,7 @@ private class FocusTarget(private val screen: ScreenFocus) {
 }
 
 private val DpPerMinute = 6.dp
-private val ChannelColumn = 250.dp
+private val ChannelColumn = 288.dp
 
 /**
  * The full TV guide grid. Rows come from the same paged channel list; programmes are fetched only for rows on
@@ -312,10 +312,11 @@ private fun GuideRow(
         Row(Modifier.width(ChannelColumn).padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(ch.numberLabel, style = MaterialTheme.typography.bodyMedium, color = Palette.textDim, modifier = Modifier.width(44.dp))
             ChannelLogo(ch.logoUrl, ch.name, 56.dp, 34.dp, favourite)
+            // A size down from the list's, on two lines: most channel names fit in full.
             Text(
                 ch.name,
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 1,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 10.dp).weight(1f, fill = false)
             )
