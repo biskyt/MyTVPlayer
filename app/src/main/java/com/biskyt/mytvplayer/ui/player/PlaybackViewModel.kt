@@ -235,9 +235,10 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     /** A remote key; [repeat] counts the repeats while it's held. */
     fun onKey(key: RemoteKey, digit: Int = 0, repeat: Int = 0): Boolean {
         if (!::mapper.isInitialized) return false
-        // A held OK or Menu does it once (its repeats would toggle the controls, the pause or the menu back and forth).
-        if ((key == RemoteKey.OK || key == RemoteKey.MENU) && repeat > 0) return true
-        val action = mapper.map(key, overlay, isLive, digit, menuOpen = sheet == Sheet.MORE)
+        // A held OK, Menu or Guide does it once (its repeats would toggle the controls, the pause, a menu or the guide);
+        // one the player doesn't act on is the TV's, repeats and all.
+        if (repeat > 0 && (key == RemoteKey.OK || (key == RemoteKey.MENU || key == RemoteKey.GUIDE) && actsOn(key))) return true
+        val action = actionFor(key, digit)
         if (overlay != OverlayState.NONE) showControls(keepOverlay = true)
         return perform(action, repeat)
     }
@@ -269,15 +270,21 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
                 openGuide()
             }
             PlayerAction.CloseGuide -> closeGuide()
-            PlayerAction.OpenMenu -> sheet = Sheet.MORE
+            PlayerAction.OpenMenu -> {
+                // From the Menu button with the channel guide open: the menu takes its place.
+                if (overlay == OverlayState.GUIDE) closeGuide()
+                sheet = Sheet.MORE
+            }
             PlayerAction.CloseMenu -> sheet = null
             PlayerAction.None -> return false
         }
         return true
     }
 
-    /** Whether the Guide button opens the channel guide now (live TV, guide not open); else it's the TV's. */
-    fun guideOpens(): Boolean = ::mapper.isInitialized && mapper.map(RemoteKey.GUIDE, overlay, isLive) == PlayerAction.OpenGuide
+    /** Whether the player acts on [key] now (else it's left to the TV: Guide on a film opens the TV's own guide). */
+    fun actsOn(key: RemoteKey): Boolean = ::mapper.isInitialized && actionFor(key) != PlayerAction.None
+
+    private fun actionFor(key: RemoteKey, digit: Int = 0) = mapper.map(key, overlay, isLive, digit, menuOpen = sheet == Sheet.MORE)
 
     /** Back closes the topmost overlay, otherwise stops playback (also safe while the player is still starting). */
     fun back() {

@@ -64,6 +64,7 @@ import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.core.player.OverlayState
 import com.biskyt.mytvplayer.core.player.RemoteKey
 import com.biskyt.mytvplayer.core.player.isMedia
+import com.biskyt.mytvplayer.core.player.passedOnByPanels
 import com.biskyt.mytvplayer.data.programmeTitle
 import com.biskyt.mytvplayer.player.PlaybackError
 import com.biskyt.mytvplayer.ui.LocalNavigator
@@ -84,8 +85,6 @@ import com.biskyt.mytvplayer.ui.common.formatTime
 import com.biskyt.mytvplayer.ui.common.ignoreHeldSelect
 import com.biskyt.mytvplayer.ui.common.numberLabel
 import com.biskyt.mytvplayer.ui.common.onAnyTouch
-import com.biskyt.mytvplayer.ui.common.onGuideKey
-import com.biskyt.mytvplayer.ui.common.onMenuKey
 import com.biskyt.mytvplayer.ui.common.onPlainTap
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
@@ -288,19 +287,25 @@ private fun remoteKey(key: Key): RemoteKey? = when (key) {
 }
 
 /**
- * The remote's media buttons inside a panel over the video (a window of its own, so they'd never reach the player);
- * Guide, which opens the channel guide in the panel's place, as it does with no panel open (else the TV's own); and
- * Menu, which opens the More menu in another panel's place, or closes it (not over the channel guide).
+ * The remote's buttons inside a panel over the video (a window of its own, so they'd never reach the player) that it
+ * passes on to the player ([passedOnByPanels]): the media buttons, Guide and Menu, which open their panel in this one's
+ * place or close it. A button the player doesn't act on when pressed is left to the TV (Guide on a film: the TV's
+ * own), the whole press; one it acts on is kept, the whole press, ahead of the panel's own buttons.
  */
 @Composable
-internal fun Modifier.mediaKeys(vm: PlaybackViewModel): Modifier = onAnyTouch(vm::wake).onPreviewKeyEvent { e ->
-    if (e.type == KeyEventType.KeyDown) vm.wake() // any key or touch puts off dimming the paused screen
-    false
-}.onKeyEvent { e ->
-    val key = remoteKey(e.key)?.takeIf { it.isMedia } ?: return@onKeyEvent false
-    if (e.type == KeyEventType.KeyDown) vm.onKey(key, repeat = e.nativeKeyEvent.repeatCount)
-    true
-}.onGuideKey(vm::guideOpens) { vm.onKey(RemoteKey.GUIDE) }.onMenuKey { vm.onKey(RemoteKey.MENU) }
+internal fun Modifier.panelKeys(vm: PlaybackViewModel): Modifier {
+    val kept = remember { mutableSetOf<Key>() }
+    return onAnyTouch(vm::wake).onPreviewKeyEvent { e ->
+        if (e.type == KeyEventType.KeyDown) vm.wake() // any key or touch puts off dimming the paused screen
+        val key = remoteKey(e.key)?.takeIf { it.passedOnByPanels } ?: return@onPreviewKeyEvent false
+        val repeat = e.nativeKeyEvent.repeatCount
+        // Decided as it's pressed (what it does may change what the player acts on, e.g. close this panel).
+        if (e.type == KeyEventType.KeyDown && repeat == 0) if (vm.actsOn(key)) kept += e.key else kept -= e.key
+        if (e.key !in kept) return@onPreviewKeyEvent false
+        if (e.type == KeyEventType.KeyDown) vm.onKey(key, repeat = repeat) else kept -= e.key
+        true
+    }
+}
 
 @Composable
 private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: FocusRequester) {
