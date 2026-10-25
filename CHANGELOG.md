@@ -2,6 +2,11 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.2.3
+- **Long channel names show in full:** they take two lines in the TV guide, the channel list and the channel cards
+  on Home and in Search, instead of being cut short. The guide's channel column is a little wider for them, with
+  slightly smaller names.
+
 ## 1.2.2
 - **Read what a programme is about:** while watching, the controls show the episode and the start of its description,
   and **About this programme** shows it all. In the TV guide, the description shows above the grid (on two lines),
