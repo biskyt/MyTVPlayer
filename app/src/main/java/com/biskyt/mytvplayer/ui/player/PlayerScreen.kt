@@ -152,6 +152,7 @@ internal fun PlayerFrame(
         Modifier.fillMaxSize().background(Color.Black)
             .focusRequester(root)
             .onFocusChanged { videoFocused = it.isFocused }
+            .wakeKeys(vm)
             // While a control button has focus the D-pad and OK belong to it; every other key (channel, digits, media)
             // still works.
             .onKeyEvent { e ->
@@ -165,7 +166,10 @@ internal fun PlayerFrame(
             }
             .focusable()
             // Touch: any touch keeps the controls up; a tap on the video itself shows or hides them.
-            .onAnyTouch { if (vm.overlay == OverlayState.CONTROLS) vm.showControls(keepOverlay = true) }
+            .onAnyTouch {
+                vm.wake()
+                if (vm.overlay == OverlayState.CONTROLS) vm.showControls(keepOverlay = true)
+            }
             .onPlainTap(vm::tapVideo)
     ) {
         vm.engine?.let { engine ->
@@ -201,9 +205,44 @@ internal fun PlayerFrame(
         }
         vm.message?.let { FlashLabel(it, Modifier.align(Alignment.TopCenter)) }
         extras()
+        // Over everything, and a tap on it only lights the screen again.
+        if (vm.dimmed) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = DIM_ALPHA)).onPlainTap {})
     }
     vm.sheet?.let { PlayerSheet(it, vm) }
     FocusFollowsOverlay(vm, root)
+}
+
+/** How dark the paused screen goes when it dims. */
+private const val DIM_ALPHA = 0.85f
+
+private val volumeKeys = setOf(Key.VolumeUp, Key.VolumeDown, Key.VolumeMute)
+
+/**
+ * Every key pressed on the player puts off dimming the paused screen. On a dimmed screen, the whole press (down to up,
+ * so its release doesn't press a button either) only lights it again; the media and volume buttons also do their
+ * job, so play plays straight away.
+ */
+@Composable
+private fun Modifier.wakeKeys(vm: PlaybackViewModel): Modifier {
+    val swallowing = remember { arrayOfNulls<Key>(1) }
+    return onPreviewKeyEvent { e ->
+        when {
+            e.key == swallowing[0] -> {
+                if (e.type == KeyEventType.KeyUp) swallowing[0] = null
+                true
+            }
+            e.type != KeyEventType.KeyDown -> false
+            vm.dimmed && remoteKey(e.key)?.isMedia != true && e.key !in volumeKeys -> {
+                swallowing[0] = e.key
+                vm.wake()
+                true
+            }
+            else -> {
+                vm.wake()
+                false
+            }
+        }
+    }
 }
 
 /** Focus goes back to the video when nothing's over it (play/pause is the controls' own: see [ControlsBar]). */
@@ -251,7 +290,11 @@ private fun remoteKey(key: Key): RemoteKey? = when (key) {
  * Guide, which opens the channel guide in the panel's place, as it does with no panel open (else the TV's own); and
  * Menu, which opens the More menu in another panel's place, or closes it (not over the channel guide).
  */
-internal fun Modifier.mediaKeys(vm: PlaybackViewModel): Modifier = onKeyEvent { e ->
+@Composable
+internal fun Modifier.mediaKeys(vm: PlaybackViewModel): Modifier = onAnyTouch(vm::wake).onPreviewKeyEvent { e ->
+    if (e.type == KeyEventType.KeyDown) vm.wake() // any key or touch puts off dimming the paused screen
+    false
+}.onKeyEvent { e ->
     val key = remoteKey(e.key)?.takeIf { it.isMedia } ?: return@onKeyEvent false
     if (e.type == KeyEventType.KeyDown) vm.onKey(key, repeat = e.nativeKeyEvent.repeatCount)
     true

@@ -89,6 +89,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     protected lateinit var settings: Settings
     private lateinit var mapper: KeyActionMapper
     private var hideJob: Job? = null
+    private var dimJob: Job? = null
     private var retryJob: Job? = null
     private var messageJob: Job? = null
     private var sleepJob: Job? = null
@@ -109,6 +110,12 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     @get:StringRes protected abstract val failureMessage: Int
 
     private val listener = object : Player.Listener {
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            // Paused, the controls stay up; playing again, they go after the usual while.
+            if (!playWhenReady || overlay == OverlayState.CONTROLS) showControls(keepOverlay = true)
+            wake()
+        }
+
         override fun onIsPlayingChanged(playing: Boolean) {
             isPlaying = playing
             val now = System.currentTimeMillis()
@@ -372,6 +379,43 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     var focusPlayPause by mutableStateOf(true) // the controls are up as playback starts
         private set
 
+    /**
+     * Whether a stream is paused (not just waiting for data), with the app in view and no error showing: the controls
+     * stay up meanwhile.
+     */
+    private val paused: Boolean
+        get() {
+            val player = engine?.player ?: return false
+            return !player.playWhenReady && player.playbackState != Player.STATE_IDLE && error == null && !hidden
+        }
+
+    /** Paused and left alone a while: the screen is dimmed, against burn-in on OLED screens. */
+    var dimmed by mutableStateOf(false)
+        private set
+
+    /** Any button pressed or touch: lights a dimmed screen again, and puts off dimming it. */
+    fun wake() {
+        dimmed = false
+        stayLit()
+    }
+
+    /** While paused, dims the screen once nothing has been pressed for a while. */
+    private fun stayLit() {
+        dimJob?.cancel()
+        if (!paused) return
+        dimJob = viewModelScope.launch {
+            delay(DIM_AFTER_MS)
+            if (!paused) return@launch // stopped meanwhile: left the app, or an error
+            // The panels are windows of their own, over the dimming: they close.
+            sheet = null
+            if (overlay == OverlayState.GUIDE) {
+                closeGuide()
+                showControls()
+            }
+            dimmed = true
+        }
+    }
+
     /** Shows the controls (and keeps them up a while longer); [forSkip] when skipping brings them up. */
     fun showControls(keepOverlay: Boolean = false, forSkip: Boolean = false) {
         if (overlay != OverlayState.CONTROLS && (!keepOverlay || overlay == OverlayState.NONE)) {
@@ -381,7 +425,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         hideJob?.cancel()
         hideJob = viewModelScope.launch {
             delay(OVERLAY_TIMEOUT_MS)
-            if (overlay == OverlayState.CONTROLS && sheet == null) overlay = OverlayState.NONE
+            if (overlay == OverlayState.CONTROLS && sheet == null && !paused) overlay = OverlayState.NONE
         }
     }
 
@@ -469,6 +513,9 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         /** Having played this long (in all) since the last failure counts as working: later failures get fresh retries. */
         const val STEADY_MS = 20_000L
         const val OVERLAY_TIMEOUT_MS = 5_000L
+
+        /** How long the paused screen is left alone before it dims. */
+        const val DIM_AFTER_MS = 120_000L
 
         /** How long ◀ ▶ rest before playback jumps to where they scrubbed to. */
         const val SCRUB_SETTLE_MS = 700L
