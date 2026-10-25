@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -129,7 +130,7 @@ fun PlaylistsScreen() {
                 ) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            Modifier.size(40.dp).clip(CircleShape).background(if (isActive) accent.color else Palette.textDim),
+                            Modifier.size(40.dp).clip(CircleShape).background(if (isActive) accent.color else INACTIVE_DISC),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(p.name.take(1).uppercase(), style = MaterialTheme.typography.titleMedium, color = Palette.background)
@@ -479,3 +480,6 @@ private fun Field(label: String, modifier: Modifier, content: @Composable () -> 
         content()
     }
 }
+
+/** An inactive playlist's initial: a mid grey, darker than the text, so the active one's accent stands out. */
+private val INACTIVE_DISC = Color(0xFF868E9A)
