@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +45,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,6 +72,7 @@ import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.AppIcons
 import com.biskyt.mytvplayer.ui.common.ChannelLogo
 import com.biskyt.mytvplayer.ui.common.FlashLabel
+import com.biskyt.mytvplayer.ui.common.LocalOverVideo
 import com.biskyt.mytvplayer.ui.common.LocalTouch
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.PillButton
@@ -313,17 +316,24 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
     }
 }
 
+private val PANEL_FADE = 80.dp
+
 /** The shaded panel at the bottom of the video that holds the controls. */
 @Composable
 internal fun ControlsPanel(content: @Composable ColumnScope.() -> Unit) {
+    val fadePx = with(LocalDensity.current) { PANEL_FADE.toPx() }
     Box(Modifier.fillMaxSize()) {
         Box(
             Modifier.fillMaxWidth().align(Alignment.BottomCenter)
                 .onPlainTap {} // a tap beside a button keeps the controls up, rather than hiding them
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xF2080A0D), Color(0xF5080A0D))))
-                .padding(start = 56.dp, end = 56.dp, top = 80.dp, bottom = 36.dp)
+                // Fades in above the top line, then dark behind every line however tall the controls are, so the text
+                // reads over a bright picture too.
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6080A0D)), endY = fadePx))
+                .padding(start = 56.dp, end = 56.dp, top = PANEL_FADE, bottom = 36.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp), content = content)
+            CompositionLocalProvider(LocalOverVideo provides true) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp), content = content)
+            }
         }
     }
 }

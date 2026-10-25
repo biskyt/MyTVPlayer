@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +39,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -328,11 +330,18 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     Text(text, style = MaterialTheme.typography.headlineSmall, modifier = modifier.padding(bottom = 12.dp))
 }
 
+/** Whether text is drawn over the video, where a faint shadow keeps small text clear of a bright picture. */
+val LocalOverVideo = staticCompositionLocalOf { false }
+
+private val videoTextShadow = Shadow(Color.Black.copy(alpha = 0.8f), Offset(0f, 1.5f), blurRadius = 4f)
+
 @Composable
 fun Muted(text: String, modifier: Modifier = Modifier, maxLines: Int = 1) {
+    val plain = MaterialTheme.typography.bodyMedium
+    val style = if (LocalOverVideo.current) remember(plain) { plain.copy(shadow = videoTextShadow) } else plain
     Text(
         text,
-        style = MaterialTheme.typography.bodyMedium,
+        style = style,
         color = Palette.textMuted,
         modifier = modifier,
         maxLines = maxLines,

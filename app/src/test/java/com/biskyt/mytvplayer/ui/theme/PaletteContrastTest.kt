@@ -12,18 +12,23 @@ class PaletteContrastTest {
     }
 
     @Test
-    fun `every text colour is readable on every surface text sits on (at least 4,5 to 1)`() {
-        val texts = mapOf("text" to Palette.text, "textMuted" to Palette.textMuted, "textDim" to Palette.textDim)
+    fun `every text colour is clear on every surface text sits on`() {
+        // Each with the least contrast it needs: secondary text has to read from across the room too.
+        val texts = listOf(
+            Triple("text", Palette.text, 12f),
+            Triple("textMuted", Palette.textMuted, 12f),
+            Triple("textDim", Palette.textDim, 8f)
+        )
         val surfaces = mapOf(
             "background" to Palette.background,
             "surface" to Palette.surface,
             "surfaceHigh" to Palette.surfaceHigh,
             "surfaceLow" to Palette.surfaceLow
         )
-        for ((t, fg) in texts) {
+        for ((t, fg, least) in texts) {
             for ((s, bg) in surfaces) {
                 val ratio = contrast(fg, bg)
-                assertTrue("$t on $s is only $ratio to 1", ratio >= 4.5f)
+                assertTrue("$t on $s is only $ratio to 1", ratio >= least)
             }
         }
     }
