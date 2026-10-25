@@ -73,11 +73,15 @@ class PausedScreenUiTest {
     /** Lets [ms] of (simulated) time pass. */
     private fun pass(ms: Long) = repeat((ms / 1_000).toInt()) { compose.waitAdvancingClock(1_000) { true } }
 
+    /** One key event, down or up. */
+    private fun key(action: Int, code: Int) {
+        compose.topRoot().performKeyPress(KeyEvent(NativeKeyEvent(action, code)))
+        compose.idleFrames()
+    }
+
     private fun press(code: Int) {
-        for (action in listOf(NativeKeyEvent.ACTION_DOWN, NativeKeyEvent.ACTION_UP)) {
-            compose.topRoot().performKeyPress(KeyEvent(NativeKeyEvent(action, code)))
-            compose.idleFrames()
-        }
+        key(NativeKeyEvent.ACTION_DOWN, code)
+        key(NativeKeyEvent.ACTION_UP, code)
     }
 
     @Test
@@ -137,5 +141,40 @@ class PausedScreenUiTest {
         pass(40_000)
         assertTrue(vm.dimmed)
         assertNull("the panel closed", vm.sheet)
+    }
+
+    @Test
+    fun `paused again after a stop, the screen still dims`() {
+        paused()
+        pass(60_000)
+        compose.runOnIdle { vm.engine!!.player.stop() } // as a failure and a retry do
+        pass(70_000)
+        compose.runOnIdle { vm.engine!!.player.prepare() }
+        pass(115_000)
+        assertFalse("dimmed too soon", vm.dimmed)
+        pass(10_000)
+        assertTrue("dimmed", vm.dimmed)
+    }
+
+    @Test
+    fun `a button whose release went elsewhere works on its next press`() {
+        paused()
+        pass(125_000)
+        // OK with focus on play/pause: its press only lights the screen, and its release never comes here.
+        key(NativeKeyEvent.ACTION_DOWN, NativeKeyEvent.KEYCODE_DPAD_CENTER)
+        assertFalse(vm.dimmed)
+        press(NativeKeyEvent.KEYCODE_DPAD_CENTER) // the button acts on its release
+        assertTrue("playing", playWhenReady)
+    }
+
+    @Test
+    fun `a paused stream that keeps stopping and starting still dims`() {
+        paused()
+        repeat(3) {
+            pass(40_000)
+            compose.runOnIdle { vm.engine!!.player.stop() } // as a failure and a retry do
+            compose.runOnIdle { vm.engine!!.player.prepare() }
+        }
+        assertTrue("dimmed", vm.dimmed)
     }
 }

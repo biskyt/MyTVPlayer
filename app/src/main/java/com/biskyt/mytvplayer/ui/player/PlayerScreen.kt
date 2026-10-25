@@ -226,8 +226,10 @@ private val volumeKeys = setOf(Key.VolumeUp, Key.VolumeDown, Key.VolumeMute)
 private fun Modifier.wakeKeys(vm: PlaybackViewModel): Modifier {
     val swallowing = remember { arrayOfNulls<Key>(1) }
     return onPreviewKeyEvent { e ->
+        // A fresh press is a press of its own, even if the last swallowed one's release went to another window.
+        if (e.type == KeyEventType.KeyDown && e.nativeKeyEvent.repeatCount == 0) swallowing[0] = null
         when {
-            e.key == swallowing[0] -> {
+            e.key == swallowing[0] -> { // its release, or held
                 if (e.type == KeyEventType.KeyUp) swallowing[0] = null
                 true
             }
