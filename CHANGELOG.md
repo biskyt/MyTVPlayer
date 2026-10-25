@@ -2,6 +2,10 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.2.8
+- Fixes to the dimmed paused screen: it dims again after the picture is lost and comes back, an error isn't left
+  dimmed, and a button never needs pressing twice.
+
 ## 1.2.7
 - **Paused, the controls stay on screen.** Left paused for two minutes, the screen dims, to spare OLED screens from
   burn-in. Any button lights it again, and the remote's play button plays straight away.

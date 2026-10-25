@@ -50,6 +50,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     /** Shows the error [message] ([failureMessage] when there's none to tell), and why: [reason]. */
     protected fun fail(message: String? = null, reason: String? = null) {
         error = PlaybackError(message ?: appString(failureMessage), reason)
+        wake() // an error isn't left under the dimming
     }
     var message by mutableStateOf<String?>(null)
         private set
@@ -139,6 +140,9 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             buffering = state == Player.STATE_BUFFERING
             if (state == Player.STATE_READY) error = null
             if (state == Player.STATE_ENDED) onEnded()
+            // Paused again after a retry or a stop (which ended the countdown): the dimming counts from now. A
+            // countdown already running carries on, so a stream that keeps changing state still dims.
+            if (!dimmed && dimJob?.isActive != true) stayLit()
         }
 
         override fun onTracksChanged(t: Tracks) {
