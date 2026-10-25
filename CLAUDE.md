@@ -143,6 +143,8 @@ See also:
 - **Android TV stand-in pickers:** some TVs (e.g. a Philips 48OLED806 on Android TV 10) ship stand-in "pickers" that only say "no application can handle this request".
   - The backup screen opens a picker directly only if it's Android's own (`…documentsui`). Otherwise it offers the installed file managers.
   - MyTVPlayer also accepts backup files via Open with / Share (JSON).
+- **Dolby Vision with HDR10+** (1.2.5, ported from MyPlexPlayer 0.3.2): a Dolby Vision decoder gets no HDR10+ while
+  the screen shows Dolby Vision, or some TVs show HDR10; see `player/DolbyVisionCodec.kt` and `core`'s `Hdr10PlusOff`.
 - **User-Agent:** every stream and download sends `MyTVPlayer/<version> (+https://github.com/biskyt/MyTVPlayer)`. Wikimedia requires an identifying UA. A per-entry `http-user-agent` in an M3U overrides it for live channels.
   - Films and episodes from M3U feeds don't store a per-entry UA yet. That was offered and isn't done.
 

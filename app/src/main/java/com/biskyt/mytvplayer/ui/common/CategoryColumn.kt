@@ -11,17 +11,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,7 +51,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * The selected entry of a [CategoryColumn]. Focusing an entry switches after a short pause, so moving through
@@ -176,20 +179,11 @@ fun <F> CategoryColumn(
     val state = rememberLazyListState()
     val selectedIndex = entries.indexOfFirst { it.filter == selected }
     val currentIndex by rememberUpdatedState(selectedIndex)
-    fun selectedShown() = state.layoutInfo.visibleItemsInfo.any { it.index == currentIndex }
+    fun selectedShown() = state.shows(currentIndex)
     // Picked some other way (remembered, or the one shown was hidden): the column shows it, ready for focus.
     LaunchedEffect(selectedIndex) { if (selectedIndex >= 0 && !selectedShown()) state.scrollToItem(selectedIndex) }
-    var refocus by remember { mutableIntStateOf(0) }
-    LaunchedEffect(refocus) {
-        if (refocus == 0) return@LaunchedEffect
-        // A slow box may take a few frames to lay out the entry it scrolls to: focus goes there once it's shown.
-        repeat(REFOCUS_FRAMES) {
-            val index = currentIndex
-            if (index >= 0 && !selectedShown()) state.scrollToItem(index)
-            withFrameNanos { }
-            if (selectedShown() && runCatching { selectedEntry.requestFocus() }.isSuccess) return@LaunchedEffect
-        }
-    }
+    var refocus by remember { mutableStateOf<Refocus<F>?>(null) }
+    RefocusEffect(refocus, selected, { currentIndex }, state, selectedEntry)
     LazyColumn(
         Modifier.width(CATEGORY_WIDTH)
             // Coming in, focus goes to the selected entry; if it isn't in view yet (a slow box still scrolling to it),
@@ -200,7 +194,7 @@ fun <F> CategoryColumn(
                         selectedShown() -> runCatching { selectedEntry.requestFocus(requestedFocusDirection) }
                         selectedIndex >= 0 -> {
                             cancelFocusChange()
-                            refocus++
+                            refocus = Refocus(selected)
                         }
                     }
                 }
@@ -250,9 +244,11 @@ fun <F> CategoryColumn(
     }
     options?.let { cat ->
         HidePanel(cat, { options = null }) {
-            entries.shownAfterHiding(cat)?.let(onSelect)
+            val next = entries.shownAfterHiding(cat)
+            next?.let(onSelect)
             onHide?.invoke(cat)
-            refocus++ // its entry goes, and focus goes to the one now selected
+            // Its entry goes, and focus goes to the one now selected (none, if it was the only one).
+            next?.let { refocus = Refocus(it) }
         }
     }
 }
@@ -265,6 +261,31 @@ private fun <F> List<CategoryEntry<F>>.shownAfterHiding(cat: CategoryEntity): F?
     // By id: the entry may have been read again (a new count) while its options were open.
     val i = indexOfFirst { it.category?.categoryId == cat.categoryId }
     return if (i < 0) null else (getOrNull(i + 1) ?: getOrNull(i - 1))?.filter
+}
+
+/** A [CategoryColumn]'s request to focus its selected entry once that is [to]: a new one each time, so it always runs. */
+private class Refocus<F>(val to: F)
+
+private fun LazyListState.shows(index: Int) = layoutInfo.visibleItemsInfo.any { it.index == index }
+
+/**
+ * Carries out [request]: focus goes to the selected entry ([entry], at [index] in [state]) once it's [Refocus.to] and
+ * shown. A screen may take a moment to select [Refocus.to] (a flow it collects): until then focus would go to the entry
+ * still selected, which may be one being hidden. Then a slow box may take a few frames to lay out the entry it scrolls to.
+ */
+@Composable
+private fun <F> RefocusEffect(request: Refocus<F>?, selected: F, index: () -> Int, state: LazyListState, entry: FocusRequester) {
+    val currentSelected by rememberUpdatedState(selected)
+    LaunchedEffect(request) {
+        val to = request?.to ?: return@LaunchedEffect
+        withTimeoutOrNull(SELECT_WAIT_MS) { snapshotFlow { currentSelected }.first { it == to } } ?: return@LaunchedEffect
+        repeat(REFOCUS_FRAMES) {
+            val i = index()
+            if (i >= 0 && !state.shows(i)) state.scrollToItem(i)
+            withFrameNanos { }
+            if (state.shows(index()) && runCatching { entry.requestFocus() }.isSuccess) return@LaunchedEffect
+        }
+    }
 }
 
 /** A category's options in the column: hiding it. */
@@ -359,6 +380,9 @@ private val CATEGORY_WIDTH = 250.dp
 
 /** How many frames focus waits for the selected entry to be laid out after scrolling to it. */
 private const val REFOCUS_FRAMES = 10
+
+/** How long a refocus waits for the screen to select the entry it's for. */
+private const val SELECT_WAIT_MS = 2_000L
 
 /** Right from here goes to [target]; unchanged (the usual search) when it's the default. */
 private fun Modifier.rightTo(target: FocusRequester): Modifier =
