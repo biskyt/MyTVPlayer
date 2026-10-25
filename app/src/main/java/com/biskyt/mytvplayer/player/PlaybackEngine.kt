@@ -21,6 +21,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.mediacodec.MediaCodecAdapter
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
@@ -232,6 +233,10 @@ class PlaybackEngine(private val context: Context, private val settings: Setting
     }
 
     private fun renderersFactory() = object : DefaultRenderersFactory(context) {
+        override fun getCodecAdapterFactory(): MediaCodecAdapter.Factory = dolbyVisionWithoutHdr10Plus(super.getCodecAdapterFactory()) {
+            dolbyVisionScreen(context)
+        }
+
         override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink? =
             if (settings.audioPassthrough) {
                 super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams)
