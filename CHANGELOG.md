@@ -2,6 +2,10 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.2.7
+- **Paused, the controls stay on screen.** Left paused for two minutes, the screen dims, to spare OLED screens from
+  burn-in. Any button lights it again, and the remote's play button plays straight away.
+
 ## 1.2.6
 - **Clearer text:** secondary text across the app (channel names and programme descriptions while watching, times in
   the TV guide, what's on next, counts and hints) is much brighter. While watching, the shading behind the controls is
