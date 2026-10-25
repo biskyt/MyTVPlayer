@@ -89,7 +89,7 @@ class LiveViewModel(
     val catchupCategories: StateFlow<List<CategoryCount>> = activePlaylist.flatMapLatest { c.channels.observeCatchupCategories(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Hides a category (from its options in the column); if it's the one shown, All channels shows instead. */
+    /** Hides a category (from its options in the column, which shows the one beside it); if still shown, All channels. */
     fun hideCategory(cat: CategoryEntity) = viewModelScope.launch {
         if (filter.value == ChannelFilter.Category(cat.categoryId)) filters.select(ChannelFilter.All)
         c.playlists.hideCategory(cat)

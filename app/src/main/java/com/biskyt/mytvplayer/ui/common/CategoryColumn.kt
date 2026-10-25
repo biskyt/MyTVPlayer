@@ -156,7 +156,7 @@ fun <T, E> distinctLabels(items: List<T>, label: (T) -> String, lang: (T) -> Str
 /**
  * The column of categories on the left of Live TV, Movies and Series. Moving up or down to an entry calls [onFocus]
  * (screens switch the list after a short pause); OK calls [onSelect]. Holding OK (or Menu) on a provider category
- * offers to hide it ([onHide]).
+ * offers to hide it ([onHide]); the entry after it (or before, for the last) is then shown, with focus.
  *
  * The list follows the remote's up/down keys, not focus: focus arriving any other way (e.g. thrown out of a list that
  * changed under it) never switches it. Coming into the column, focus goes to the selected entry. [right]: where right
@@ -249,14 +249,32 @@ fun <F> CategoryColumn(
         }
     }
     options?.let { cat ->
-        val close = { options = null }
-        val hide = ItemAction.Run(stringResource(R.string.common_hide_category), stringResource(R.string.common_hide_category_help)) {
-            close()
+        HidePanel(cat, { options = null }) {
+            entries.shownAfterHiding(cat)?.let(onSelect)
             onHide?.invoke(cat)
-            refocus++ // its entry goes, and focus with it
+            refocus++ // its entry goes, and focus goes to the one now selected
         }
-        ItemActionsPanel(cat.label, listOf(hide), close)
     }
+}
+
+/**
+ * The entry to show once [cat] is hidden (on a TV, the entry with focus): where it was, not back to the top, so the entry
+ * after it, or the one before for the last. Chosen at once, it also stands in for a switch to [cat] still pending.
+ */
+private fun <F> List<CategoryEntry<F>>.shownAfterHiding(cat: CategoryEntity): F? {
+    // By id: the entry may have been read again (a new count) while its options were open.
+    val i = indexOfFirst { it.category?.categoryId == cat.categoryId }
+    return if (i < 0) null else (getOrNull(i + 1) ?: getOrNull(i - 1))?.filter
+}
+
+/** A category's options in the column: hiding it. */
+@Composable
+private fun HidePanel(cat: CategoryEntity, close: () -> Unit, hide: () -> Unit) {
+    val action = ItemAction.Run(stringResource(R.string.common_hide_category), stringResource(R.string.common_hide_category_help)) {
+        close()
+        hide()
+    }
+    ItemActionsPanel(cat.label, listOf(action), close)
 }
 
 /**
