@@ -3,6 +3,10 @@
 MyTVPlayer is an Android TV IPTV player that also runs on phones and tablets by touch. It's written in Kotlin with Compose for TV, Media3/ExoPlayer and Room.
 - Modules: `app` (Android) and `core` (pure Kotlin: parsers, key mapping, Xtream client).
 - The repo is `biskyt/MyTVPlayer` on GitHub. It moved from `biskyt/tvapp`, which still redirects.
+- **Its sister app, MyPlexPlayer** (`biskyt/MyPlexPlayer`, a Plex client), started as a copy of this one with its
+  history. A feature or fix both apps need (the player, remote keys, menus, the guide's screens) is made here first
+  (the owner, 2026-10-25), then cherry-picked into MyPlexPlayer, so the shared code stays the same and ports apply
+  cleanly. Plex-only work is made there only; a fix found there is ported here by hand.
 
 See also:
 - `RELEASING.md`: signing and how releases work.
