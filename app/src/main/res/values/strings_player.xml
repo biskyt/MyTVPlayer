@@ -121,4 +121,5 @@
     <string name="player_error_http_server">The stream\'s server has a problem (error %1$d). It may be down for now.</string>
     <!-- %1$d: the HTTP error code -->
     <string name="player_error_http_other">The stream\'s server answered with error %1$d.</string>
+    <string name="player_about_programme">About this programme</string>
 </resources>

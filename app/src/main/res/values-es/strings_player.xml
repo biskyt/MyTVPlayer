@@ -81,4 +81,5 @@
     <string name="player_error_http_gone">La transmisión ya no está en su dirección (error %1$d). Puede que la lista de canales esté desactualizada.</string>
     <string name="player_error_http_server">El servidor de la transmisión tiene un problema (error %1$d). Puede que esté caído por ahora.</string>
     <string name="player_error_http_other">El servidor de la transmisión respondió con el error %1$d.</string>
+    <string name="player_about_programme">Sobre este programa</string>
 </resources>

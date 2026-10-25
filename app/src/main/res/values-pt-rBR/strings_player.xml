@@ -81,4 +81,5 @@
     <string name="player_error_http_gone">O stream não está mais nesse endereço (erro %1$d). A lista de canais pode estar desatualizada.</string>
     <string name="player_error_http_server">O servidor do stream está com um problema (erro %1$d). Ele pode estar fora do ar no momento.</string>
     <string name="player_error_http_other">O servidor do stream respondeu com o erro %1$d.</string>
+    <string name="player_about_programme">Sobre este programa</string>
 </resources>

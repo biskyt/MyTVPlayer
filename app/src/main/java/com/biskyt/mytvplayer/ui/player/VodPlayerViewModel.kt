@@ -259,6 +259,3 @@ fun episodeLabel(e: EpisodeInfo): String = providerTitle(e)?.takeUnless { it.equ
 
 /** How [e] is shown: the provider's title, or the app's "Episode 2" (in its language) when it gave none. Never saved. */
 fun episodeName(e: EpisodeInfo): String = providerTitle(e) ?: appString(R.string.vod_episode, e.number)
-
-/** "S1 E2". */
-fun shortEpisodeLabel(season: Int?, episode: Int?) = appString(R.string.player_short_episode_label, season.toString(), episode.toString())

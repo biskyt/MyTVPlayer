@@ -46,8 +46,8 @@ import com.biskyt.mytvplayer.ui.common.favouriteLabel
 import com.biskyt.mytvplayer.ui.common.formatRuntime
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
+import com.biskyt.mytvplayer.ui.common.shortEpisodeLabel
 import com.biskyt.mytvplayer.ui.player.episodeName
-import com.biskyt.mytvplayer.ui.player.shortEpisodeLabel
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
 import kotlinx.coroutines.flow.SharingStarted

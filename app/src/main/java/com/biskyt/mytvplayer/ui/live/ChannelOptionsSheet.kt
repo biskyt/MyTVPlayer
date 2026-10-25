@@ -27,12 +27,14 @@ import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.common.ChannelLogo
 import com.biskyt.mytvplayer.ui.common.MenuOption
 import com.biskyt.mytvplayer.ui.common.Muted
+import com.biskyt.mytvplayer.ui.common.ProgrammeAbout
 import com.biskyt.mytvplayer.ui.common.ScheduleList
 import com.biskyt.mytvplayer.ui.common.SidePanel
 import com.biskyt.mytvplayer.ui.common.collectIds
 import com.biskyt.mytvplayer.ui.common.favouriteLabel
 import com.biskyt.mytvplayer.ui.common.formatTime
 import com.biskyt.mytvplayer.ui.common.numberLabel
+import com.biskyt.mytvplayer.ui.common.rememberDetails
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberSchedule
 
@@ -57,6 +59,8 @@ fun ChannelOptionsSheet(ch: ChannelEntity, vm: LiveViewModel, play: (ChannelEnti
             if (programme != null) {
                 Text(programmeTitle(programme.title), style = MaterialTheme.typography.titleMedium, maxLines = 2)
                 Muted("${formatTime(programme.startMs)} – ${formatTime(programme.stopMs)}", Modifier.padding(bottom = 4.dp))
+                // What the guide says about it, in full (as far as the panel has room, above its options).
+                rememberDetails(ch.playlistId, programme).value?.let { ProgrammeAbout(it, maxLines = 5, Modifier.padding(bottom = 4.dp)) }
             }
             if (showGuide) {
                 ScheduleList(rememberSchedule(ch.playlistId, ch.streamId), onSelect = {

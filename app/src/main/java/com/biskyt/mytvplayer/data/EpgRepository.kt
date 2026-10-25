@@ -444,6 +444,15 @@ class EpgRepository(
         return streamIds.chunked(MAX_SQL_ARGS).flatMap { epg.programmes(playlistId, it, from, to, details) }.groupBy { it.streamId }
     }
 
+    /**
+     * [p] with its description (lists of programmes are read without it: descriptions are large), as the guide has
+     * it; [p] itself if it has one already or the guide no longer has [p].
+     */
+    suspend fun withDetails(playlistId: Long, p: ChannelProgramme): ChannelProgramme {
+        if (p.description != null) return p
+        return programmes(playlistId, listOf(p.streamId), p.startMs, p.stopMs)[p.streamId]?.firstOrNull { it.startMs == p.startMs } ?: p
+    }
+
     /** Deletes cached guide files whose source no longer exists. */
     suspend fun deleteOrphanFiles() = withContext(Dispatchers.IO) {
         val valid = epg.allSourceIds().flatMap { listOf(sourceFile(it).name, interleavedMarker(it).name, metaFile(it).name) }.toSet()

@@ -66,6 +66,7 @@ import com.biskyt.mytvplayer.ui.common.formatRange
 import com.biskyt.mytvplayer.ui.common.formatTime
 import com.biskyt.mytvplayer.ui.common.isLive
 import com.biskyt.mytvplayer.ui.common.numberLabel
+import com.biskyt.mytvplayer.ui.common.rememberDetails
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
@@ -73,7 +74,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val HALF_HOUR = 30 * 60_000L
@@ -183,12 +183,7 @@ fun GuideGrid(vm: LiveViewModel, items: LazyPagingItems<ChannelEntity>, play: (C
         window.move(dir, p) { focusTarget.set(GuideFocus(ch.streamId, it)) }
 
     Column(Modifier.fillMaxSize().onFocusChanged { focusTarget.gridFocusChanged(it.hasFocus) }) {
-        FocusedInfo(focused) { ch, p ->
-            // Descriptions aren't kept for the whole grid (they're large); the focused one is fetched when focus rests.
-            delay(300)
-            epg.programmes(vm.playlistId.value, listOf(ch.streamId), p.startMs, p.stopMs)[ch.streamId]
-                ?.firstOrNull { it.startMs == p.startMs }?.description
-        }
+        FocusedInfo(focused)
         TimeHeader(windowStart) { dir -> window.move(dir, null) }
         val nowLine = (now - windowStart) / 60_000f
         Box(Modifier.fillMaxSize()) {
@@ -260,17 +255,15 @@ private fun rowProgrammes(loaded: List<ChannelProgramme>?): Pair<List<ChannelPro
 }
 
 @Composable
-private fun FocusedInfo(
-    focused: State<Pair<ChannelEntity, ChannelProgramme?>?>,
-    description: suspend (ChannelEntity, ChannelProgramme) -> String?
-) {
-    Column(Modifier.fillMaxWidth().height(64.dp)) {
+private fun FocusedInfo(focused: State<Pair<ChannelEntity, ChannelProgramme?>?>) {
+    // Two lines for the channel, time and description: most descriptions can be read just by moving around.
+    Column(Modifier.fillMaxWidth().height(86.dp)) {
         val (ch, p) = focused.value ?: return@Column
         if (p != null) {
-            var about by remember(ch.streamId, p.startMs) { mutableStateOf<String?>(null) }
-            LaunchedEffect(ch.streamId, p.startMs) { about = description(ch, p) }
+            // Descriptions aren't kept for the whole grid (they're large); the focused one is read when focus rests.
+            val about = rememberDetails(ch.playlistId, p, delayMs = 300).value?.description
             Text(programmeTitle(p.title), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Muted("${ch.name} · ${formatRange(p.startMs, p.stopMs)}" + (about?.let { " · $it" } ?: ""))
+            Muted("${ch.name} · ${formatRange(p.startMs, p.stopMs)}" + (about?.let { " · $it" } ?: ""), maxLines = 2)
         } else {
             Text(ch.name, style = MaterialTheme.typography.titleMedium)
             Muted(stringResource(R.string.common_no_guide))

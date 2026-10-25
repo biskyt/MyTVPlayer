@@ -94,3 +94,6 @@ fun <T> List<T>.cycle(current: T, step: Int = 1): T {
     val i = indexOf(current)
     return if (i < 0) first() else this[(i + step).mod(size)]
 }
+
+/** "S1 E2". */
+fun shortEpisodeLabel(season: Int?, episode: Int?) = appString(R.string.player_short_episode_label, season.toString(), episode.toString())

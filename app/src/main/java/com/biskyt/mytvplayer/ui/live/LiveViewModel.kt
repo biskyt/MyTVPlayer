@@ -23,8 +23,8 @@ import com.biskyt.mytvplayer.ui.PickedLists
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.common.CategoryFilter
 import com.biskyt.mytvplayer.ui.common.FavouriteMover
-import com.biskyt.mytvplayer.ui.common.NowNextLoader
 import com.biskyt.mytvplayer.ui.common.NumberEntry
+import com.biskyt.mytvplayer.ui.common.guideNowNext
 import com.biskyt.mytvplayer.ui.common.openOnShown
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -89,7 +89,7 @@ class LiveViewModel(
     val catchupCategories: StateFlow<List<CategoryCount>> = activePlaylist.flatMapLatest { c.channels.observeCatchupCategories(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Hides a category (from its options in the column); if it's the one shown, All channels shows instead. */
+    /** Hides a category (from its options in the column, which shows the one beside it); if still shown, All channels. */
     fun hideCategory(cat: CategoryEntity) = viewModelScope.launch {
         if (filter.value == ChannelFilter.Category(cat.categoryId)) filters.select(ChannelFilter.All)
         c.playlists.hideCategory(cat)
@@ -108,7 +108,7 @@ class LiveViewModel(
             .cachedIn(viewModelScope)
 
     val nowNext =
-        NowNextLoader(viewModelScope, c.epg.changes) { ids, from, to -> c.epg.programmes(playlistId.value, ids, from, to, details = false) }
+        guideNowNext(viewModelScope, c) { playlistId.value }
 
     /** Channel whose options sheet is open. */
     var optionsFor by mutableStateOf<ChannelEntity?>(null)

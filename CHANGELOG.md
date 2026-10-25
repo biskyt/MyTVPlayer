@@ -2,6 +2,14 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.2.2
+- **Read what a programme is about:** while watching, the controls show the episode and the start of its description,
+  and **About this programme** shows it all. In the TV guide, the description shows above the grid (on two lines),
+  and in full when you hold OK on a programme.
+- **Channels found in Search show what's on**, until when and what's next, on the same cards as Home.
+- Hiding a category (hold OK on it) keeps your place: the category after it is chosen, or the one before for the
+  last, instead of going back to the top.
+
 ## 1.2.1
 - **Live TV (and the TV guide), Movies and Series open on your favourites** each time the app starts (or on
   everything, until you have some). The list you pick is kept while the app is open, and forgotten when it's closed.

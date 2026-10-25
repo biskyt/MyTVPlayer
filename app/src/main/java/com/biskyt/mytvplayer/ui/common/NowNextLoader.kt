@@ -6,6 +6,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.produceState
 import androidx.lifecycle.compose.LifecycleStartEffect
+import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -81,6 +82,10 @@ data class NowNext(val now: ChannelProgramme?, val next: ChannelProgramme?) {
     /** True once the shown programme has ended or a gap before the next one has passed. */
     fun isStale(nowMs: Long) = (now != null && now.stopMs <= nowMs) || (now == null && next != null && next.startMs <= nowMs)
 }
+
+/** Now/next from the guide for channels of the playlist [playlistId] gives (titles only), for [scope]'s screen. */
+fun guideNowNext(scope: CoroutineScope, c: AppContainer, playlistId: () -> Long) =
+    NowNextLoader(scope, c.epg.changes) { ids, from, to -> c.epg.programmes(playlistId(), ids, from, to, details = false) }
 
 /**
  * Now/next for visible channels. Every minute, rows whose programme has ended are refreshed, and everything is

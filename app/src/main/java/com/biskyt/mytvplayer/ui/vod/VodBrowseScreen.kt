@@ -150,7 +150,7 @@ class VodBrowseViewModel(
         c.sync.refreshVod(playlist.value?.id ?: return)
     }
 
-    /** Hides a category (from its options in the column); if it's the one shown, all titles show instead. */
+    /** Hides a category (from its options in the column, which shows the one beside it); if still shown, all titles. */
     fun hideCategory(cat: CategoryEntity) = viewModelScope.launch {
         if (filters.value.value == VodFilter.Category(cat.categoryId)) filters.select(VodFilter.All)
         c.playlists.hideCategory(cat)
