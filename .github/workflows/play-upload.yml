@@ -1,0 +1,64 @@
+name: Play upload
+
+# Uploads a published release's app bundle to Google Play's closed testing track again: for when the Release run's own
+# upload failed (e.g. "The service is currently unavailable" from Play) after the GitHub release was published, which
+# the Release workflow won't redo. Start it from the Actions tab with the release's tag (e.g. v1.2.2). It uploads the
+# bundle that release built and signed (its run's artifact, kept 90 days), not a new build.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The release's tag, e.g. v1.2.2"
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+# One at a time (its own group: sharing the Release workflow's would let one cancel a queued run of the other).
+concurrency:
+  group: play-upload
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # main: for the upload action and CHANGELOG.md (which still has the release's section).
+      - uses: actions/checkout@v5
+
+      - name: Find the release's bundle
+        id: bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          HAS_PLAY_ACCOUNT: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        run: |
+          fail() { echo "::error::$1"; exit 1; }
+          [ "$GITHUB_REF" = refs/heads/main ] || fail "Run it on main, not $GITHUB_REF"
+          [ "$HAS_PLAY_ACCOUNT" = true ] || fail "No PLAY_SERVICE_ACCOUNT_JSON secret (see RELEASING.md)"
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "'$TAG' isn't a release tag like v1.2.2"
+          v=${TAG#v}
+          # As the Release workflow: full releases only (a pre-release may be signed with the development key).
+          prerelease=$(gh release view "$TAG" --json isPrerelease --jq .isPrerelease) || fail "No published release $TAG"
+          [ "$prerelease" = false ] || fail "$TAG is a pre-release: not for Google Play"
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha)
+          # The bundle that release built (in its run, a failed one too: it's kept before the Play upload).
+          artifact="MyTVPlayer-$v-play-bundle"
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$artifact" \
+            --jq "[.artifacts[] | select((.expired | not) and .workflow_run.head_sha == \"$sha\")][0].workflow_run.id // empty")
+          [ -n "$run" ] || fail "No bundle for $TAG: its Release run's artifact has gone (kept 90 days)"
+          gh run download "$run" --name "$artifact" --dir play
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - uses: ./.github/actions/play-upload
+        with:
+          service-account-json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          version: ${{ steps.bundle.outputs.version }}
+          bundle: play/MyTVPlayer-${{ steps.bundle.outputs.version }}.aab
+          # None for releases before the bundle's artifact kept it (1.2.2 and earlier).
+          mapping: play/mapping.txt
+          status: ${{ vars.PLAY_RELEASE_STATUS || 'completed' }}
+          notes-language: ${{ vars.PLAY_NOTES_LANGUAGE || 'en-GB' }}
