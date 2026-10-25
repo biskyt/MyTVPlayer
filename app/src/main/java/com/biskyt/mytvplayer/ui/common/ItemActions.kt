@@ -51,6 +51,10 @@ fun ItemAction.perform(nav: Navigator, close: () -> Unit, beforeReplace: () -> U
 
 fun favouriteLabel(favourite: Boolean) = appString(if (favourite) R.string.common_favourite_remove else R.string.common_favourite_add)
 
+/** Marks something [watched] as unwatched, or the other way round. */
+fun markWatched(watched: Boolean, set: (Boolean) -> Unit): ItemAction =
+    ItemAction.Run(appString(if (watched) R.string.common_mark_unwatched else R.string.common_mark_watched)) { set(!watched) }
+
 fun favouriteFlash(added: Boolean) = appString(if (added) R.string.common_favourite_added else R.string.common_favourite_removed)
 
 /** What every channel menu offers (search, the player): favourites, catch-up where the provider has it, its guide. */

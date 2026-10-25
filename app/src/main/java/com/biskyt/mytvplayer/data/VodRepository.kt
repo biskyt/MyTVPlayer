@@ -6,6 +6,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.room.withTransaction
 import com.biskyt.mytvplayer.core.vod.VodTitles
+import com.biskyt.mytvplayer.core.xtream.EpisodeInfo
 import com.biskyt.mytvplayer.core.xtream.SeriesDetails
 import com.biskyt.mytvplayer.core.xtream.VodDetails
 import com.biskyt.mytvplayer.core.xtream.XtreamCategory
@@ -17,6 +18,7 @@ import com.biskyt.mytvplayer.data.db.CAT_SERIES
 import com.biskyt.mytvplayer.data.db.MovieEntity
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import com.biskyt.mytvplayer.data.db.SeriesEntity
+import com.biskyt.mytvplayer.data.db.VOD_EPISODE
 import com.biskyt.mytvplayer.data.db.VodCard
 import com.biskyt.mytvplayer.data.db.VodFavouriteEntity
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
@@ -147,6 +149,42 @@ class VodRepository(private val db: AppDatabase, private val playlists: Playlist
         val series = p.seriesId
         if (series == null) vod.deleteMovieProgress(p.playlistId, p.itemId) else vod.deleteSeriesProgress(p.playlistId, series)
     }
+
+    /**
+     * Saves episode [e] of [seriesId] ([show], when known; [episodes] in order) as watched, as the player saves one
+     * played to the end. Where to carry on moves past it, unless a later episode was watched more recently: an earlier
+     * one marked watched doesn't take the place of the one being watched.
+     */
+    suspend fun markEpisodeWatched(playlistId: Long, seriesId: Long, show: SeriesEntity?, episodes: List<EpisodeInfo>, e: EpisodeInfo) {
+        val index = episodes.indexOfFirst { it.id == e.id }
+        val rows = vod.seriesProgress(playlistId, seriesId)
+        val latest = rows.filter { it.itemId != e.id }.maxByOrNull { it.updatedAt }
+        val latestIndex = latest?.let { l -> episodes.indexOfFirst { it.id == l.itemId } } ?: -1
+        val now = System.currentTimeMillis()
+        // Its running time if known (else any: only the share played counts).
+        val duration = rows.firstOrNull { it.itemId == e.id }?.durationMs?.takeIf { it > 0 }
+            ?: e.durationSec?.takeIf { it > 0 }?.times(1_000L) ?: 1L
+        val row = WatchProgressEntity(
+            playlistId = playlistId,
+            kind = VOD_EPISODE,
+            itemId = e.id,
+            positionMs = duration,
+            durationMs = duration,
+            updatedAt = if (latest != null && latestIndex > index) latest.updatedAt - 1 else now,
+            // The provider's words only, as the player saves them.
+            title = show?.title ?: e.title,
+            imageUrl = show?.coverUrl ?: e.imageUrl,
+            seriesId = seriesId,
+            season = e.season,
+            episode = e.number,
+            episodeTitle = e.title.ifBlank { null },
+            hasNext = index in 0 until episodes.lastIndex
+        )
+        saveProgress(row, trim = true)
+    }
+
+    /** Forgets how far one episode got: it shows as unwatched. */
+    suspend fun forgetEpisode(playlistId: Long, episodeId: Long) = vod.deleteEpisodeProgress(playlistId, episodeId)
 
     // --- details (fetched when opened) ---
 

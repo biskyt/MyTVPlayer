@@ -48,6 +48,8 @@
     <string name="common_favourite_remove">Retirer des favoris</string>
     <string name="common_favourite_added">Ajouté aux favoris</string>
     <string name="common_favourite_removed">Retiré des favoris</string>
+    <string name="common_mark_watched">Marquer comme vu</string>
+    <string name="common_mark_unwatched">Marquer comme non vu</string>
     <plurals name="common_catchup_days">
         <item quantity="one">Programmes sur %1$d jour</item>
         <item quantity="many">Programmes des %1$d derniers jours</item>
