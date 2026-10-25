@@ -82,6 +82,7 @@ import com.biskyt.mytvplayer.ui.common.ignoreHeldSelect
 import com.biskyt.mytvplayer.ui.common.numberLabel
 import com.biskyt.mytvplayer.ui.common.onAnyTouch
 import com.biskyt.mytvplayer.ui.common.onGuideKey
+import com.biskyt.mytvplayer.ui.common.onMenuKey
 import com.biskyt.mytvplayer.ui.common.onPlainTap
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
@@ -244,13 +245,14 @@ private fun remoteKey(key: Key): RemoteKey? = when (key) {
 
 /**
  * The remote's media buttons inside a panel over the video (a window of its own, so they'd never reach the player);
- * and Guide, which opens the channel guide in the panel's place, as it does with no panel open (else the TV's own).
+ * Guide, which opens the channel guide in the panel's place, as it does with no panel open (else the TV's own); and
+ * Menu, which opens the More menu in another panel's place, or closes it (not over the channel guide).
  */
 internal fun Modifier.mediaKeys(vm: PlaybackViewModel): Modifier = onKeyEvent { e ->
     val key = remoteKey(e.key)?.takeIf { it.isMedia } ?: return@onKeyEvent false
     if (e.type == KeyEventType.KeyDown) vm.onKey(key, repeat = e.nativeKeyEvent.repeatCount)
     true
-}.onGuideKey(vm::guideOpens) { vm.onKey(RemoteKey.GUIDE) }
+}.onGuideKey(vm::guideOpens) { vm.onKey(RemoteKey.GUIDE) }.onMenuKey { vm.onKey(RemoteKey.MENU) }
 
 @Composable
 private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: FocusRequester) {

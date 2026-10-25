@@ -2,6 +2,10 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.2.4
+- **Menu closes the menu:** while watching, pressing the remote's Menu button again closes the menu it opened, as
+  Back does.
+
 ## 1.2.3
 - **Long channel names show in full:** they take two lines in the TV guide, the channel list and the channel cards
   on Home and in Search, instead of being cut short. The guide's channel column is a little wider for them, with

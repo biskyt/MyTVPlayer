@@ -64,6 +64,13 @@ class PlayerLogicTest {
     }
 
     @Test
+    fun `menu opens the more menu, and closes it when open`() {
+        assertEquals(PlayerAction.OpenMenu, mapper.map(RemoteKey.MENU, NONE, isLive = true))
+        assertEquals(PlayerAction.OpenMenu, mapper.map(RemoteKey.MENU, CONTROLS, isLive = true))
+        assertEquals(PlayerAction.CloseMenu, mapper.map(RemoteKey.MENU, CONTROLS, isLive = false, menuOpen = true))
+    }
+
+    @Test
     fun `ok pauses and shows the controls, unless up and down zap live tv`() {
         // Up and down show the controls without pausing.
         assertEquals(PlayerAction.PauseAndShowControls, mapper.map(RemoteKey.OK, NONE, isLive = true))

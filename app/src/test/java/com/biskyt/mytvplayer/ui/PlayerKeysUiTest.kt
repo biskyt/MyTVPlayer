@@ -63,6 +63,9 @@ class PlayerKeysUiTest {
 
     private fun waitFor(text: String) = compose.waitForText(text)
 
+    private fun waitGone(text: String) =
+        compose.waitAdvancingClock { compose.onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isEmpty() }
+
     /** The text and descriptions of what has focus. */
     private fun focused(): String = compose.onAllNodes(isFocused()).fetchSemanticsNodes().joinToString(" | ") { node ->
         (
@@ -104,7 +107,7 @@ class PlayerKeysUiTest {
         press(Key.MediaFastForward)
         // The panel closes and the player answers (live TV here can't skip).
         waitFor("Skipping isn't available here")
-        compose.waitAdvancingClock { compose.onAllNodes(hasText("Sleep timer")).fetchSemanticsNodes().isEmpty() }
+        waitGone("Sleep timer")
         press(Key.Menu)
         waitFor("Sleep timer")
         press(Key.MediaStop)
@@ -145,7 +148,22 @@ class PlayerKeysUiTest {
             compose.onAllNodes(hasText("other channels", substring = true) or hasText("Previous", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        assertTrue(compose.onAllNodes(hasText("Sleep timer")).fetchSemanticsNodes().isEmpty())
+        assertTrue(compose.onAllNodes(hasText("Sleep timer", substring = true)).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun `the guide and menu buttons close the panels they open`() {
+        show(Screen.Player(playlistId, 101, ChannelFilter.All))
+        waitFor("Channel guide")
+        press(Key.Guide)
+        waitForFocus("Now on one.uk")
+        press(Key.Guide)
+        waitGone("Now on one.uk")
+        press(Key.Menu)
+        waitFor("Sleep timer")
+        press(Key.Menu)
+        waitGone("Sleep timer")
+        assertTrue(navigator.current.screen is Screen.Player) // still playing
     }
 
     @Test

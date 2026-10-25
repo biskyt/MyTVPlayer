@@ -43,6 +43,9 @@ fun Modifier.onOptionsKey(onOptions: () -> Unit): Modifier = onPreviewKeyEvent {
 fun Modifier.onGuideKey(enabled: () -> Boolean, onGuide: () -> Unit): Modifier =
     onKeyEvent { e -> handlePress(e, e.key.isGuide() && enabled(), onGuide) }
 
+/** Runs [onMenu] for the remote's Menu button, once per press. */
+fun Modifier.onMenuKey(onMenu: () -> Unit): Modifier = onKeyEvent { e -> handlePress(e, e.key == Key.Menu, onMenu) }
+
 /** Consumes the whole press (down, repeats, up) when [matches], acting once on the first key-down. */
 private fun handlePress(e: KeyEvent, matches: Boolean, action: () -> Unit): Boolean {
     if (!matches) return false

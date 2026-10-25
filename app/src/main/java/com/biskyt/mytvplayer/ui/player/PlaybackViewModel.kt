@@ -224,9 +224,9 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     /** A remote key; [repeat] counts the repeats while it's held. */
     fun onKey(key: RemoteKey, digit: Int = 0, repeat: Int = 0): Boolean {
         if (!::mapper.isInitialized) return false
-        // A held OK does it once (its repeats would toggle the controls, or the pause, back and forth).
-        if (key == RemoteKey.OK && repeat > 0) return true
-        val action = mapper.map(key, overlay, isLive, digit)
+        // A held OK or Menu does it once (its repeats would toggle the controls, the pause or the menu back and forth).
+        if ((key == RemoteKey.OK || key == RemoteKey.MENU) && repeat > 0) return true
+        val action = mapper.map(key, overlay, isLive, digit, menuOpen = sheet == Sheet.MORE)
         if (overlay != OverlayState.NONE) showControls(keepOverlay = true)
         return perform(action, repeat)
     }
@@ -259,6 +259,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             }
             PlayerAction.CloseGuide -> closeGuide()
             PlayerAction.OpenMenu -> sheet = Sheet.MORE
+            PlayerAction.CloseMenu -> sheet = null
             PlayerAction.None -> return false
         }
         return true
