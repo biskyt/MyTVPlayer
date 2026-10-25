@@ -167,6 +167,17 @@ class PlayerKeysUiTest {
     }
 
     @Test
+    fun `menu with the channel guide open opens the more menu in its place`() {
+        show(Screen.Player(playlistId, 101, ChannelFilter.All))
+        waitFor("Channel guide")
+        press(Key.Guide)
+        waitForFocus("Now on one.uk")
+        press(Key.Menu)
+        waitFor("Sleep timer")
+        waitGone("Now on one.uk")
+    }
+
+    @Test
     fun `a channel's catch-up keeps focus on its programmes on opening, right from the days, and back from one`() {
         show(Screen.Live(ChannelFilter.Catchup))
         waitForFocus("CHANNEL ONE")

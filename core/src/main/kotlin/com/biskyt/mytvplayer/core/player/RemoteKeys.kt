@@ -29,6 +29,13 @@ val RemoteKey.isMedia: Boolean
 private val mediaButtons =
     setOf(RemoteKey.PLAY_PAUSE, RemoteKey.PLAY, RemoteKey.PAUSE, RemoteKey.STOP, RemoteKey.REWIND, RemoteKey.FAST_FORWARD)
 
+/**
+ * The buttons a panel over the video (the channel guide, a menu) passes on to the player, whose own keys it would
+ * otherwise never see: the media buttons, Guide and Menu. The player acts on them as [KeyActionMapper] says.
+ */
+val RemoteKey.passedOnByPanels: Boolean
+    get() = isMedia || this == RemoteKey.GUIDE || this == RemoteKey.MENU
+
 sealed interface PlayerAction {
     data class SeekBy(val ms: Long) : PlayerAction
     data class Zap(val step: Int) : PlayerAction
@@ -62,9 +69,11 @@ class KeyActionMapper(private val skipBackMs: Long, private val skipForwardMs: L
 
     fun map(key: RemoteKey, overlay: OverlayState, isLive: Boolean, digit: Int = 0, menuOpen: Boolean = false): PlayerAction {
         if (overlay == OverlayState.GUIDE) {
-            // The guide panel handles its own navigation; Back/Guide close it, and the media buttons still work.
+            // The guide panel handles its own navigation; Back/Guide close it, Menu opens the More menu in its place,
+            // and the media buttons still work.
             return when (key) {
                 RemoteKey.BACK, RemoteKey.GUIDE -> PlayerAction.CloseGuide
+                RemoteKey.MENU -> PlayerAction.OpenMenu
                 else -> if (key.isMedia) map(key, OverlayState.NONE, isLive) else PlayerAction.None
             }
         }
