@@ -294,12 +294,13 @@ private fun remoteKey(key: Key): RemoteKey? = when (key) {
  */
 @Composable
 internal fun Modifier.panelKeys(vm: PlaybackViewModel): Modifier {
+    // The buttons held now that are kept, decided as each is pressed (what it does may change what the player acts on,
+    // e.g. close this panel). The rest of a press that opened this panel never gets here (see ignoreHeldButtons).
     val kept = remember { mutableSetOf<Key>() }
     return onAnyTouch(vm::wake).onPreviewKeyEvent { e ->
         if (e.type == KeyEventType.KeyDown) vm.wake() // any key or touch puts off dimming the paused screen
         val key = remoteKey(e.key)?.takeIf { it.passedOnByPanels } ?: return@onPreviewKeyEvent false
         val repeat = e.nativeKeyEvent.repeatCount
-        // Decided as it's pressed (what it does may change what the player acts on, e.g. close this panel).
         if (e.type == KeyEventType.KeyDown && repeat == 0) if (vm.actsOn(key)) kept += e.key else kept -= e.key
         if (e.key !in kept) return@onPreviewKeyEvent false
         if (e.type == KeyEventType.KeyDown) vm.onKey(key, repeat = repeat) else kept -= e.key

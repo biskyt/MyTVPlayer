@@ -50,21 +50,39 @@ private fun handlePress(e: KeyEvent, matches: Boolean, action: () -> Unit): Bool
     return true
 }
 
+/** Buttons that act on whatever is open: OK, Guide (else the TV's own guide) and the options buttons. */
+private val actingKeys = selectKeys + optionsKeys + Key.Guide
+
+/**
+ * Ignores the rest of OK, Guide and options presses that began before this window appeared (a panel opened by holding
+ * one): their repeats and release would otherwise press what has focus here, or reach the TV (Guide: its own guide).
+ */
+@Composable
+fun Modifier.ignoreHeldButtons(): Modifier = ignoreHeld(actingKeys)
+
 /**
  * Ignores OK presses that began before this content appeared. Holding OK opens a menu while the button is still
  * down; without this, the held key's repeats and its release land on the menu's first item and select it.
  */
 @Composable
-fun Modifier.ignoreHeldSelect(): Modifier {
-    val armed = remember { booleanArrayOf(false) }
+fun Modifier.ignoreHeldSelect(): Modifier = ignoreHeld(selectKeys)
+
+/** Ignores the repeats and release of any of [keys] whose press this content didn't see begin. */
+@Composable
+private fun Modifier.ignoreHeld(keys: Set<Key>): Modifier {
+    val pressedHere = remember { mutableSetOf<Key>() }
     return onPreviewKeyEvent { e ->
         when {
-            e.key !in selectKeys || armed[0] -> false
+            e.key !in keys -> false
             e.type == KeyEventType.KeyDown && e.nativeKeyEvent.repeatCount == 0 -> {
-                armed[0] = true
+                pressedHere += e.key
                 false
             }
-            else -> true
+            e.key !in pressedHere -> true
+            else -> {
+                if (e.type == KeyEventType.KeyUp) pressedHere -= e.key
+                false
+            }
         }
     }
 }
