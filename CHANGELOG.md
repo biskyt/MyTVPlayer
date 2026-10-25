@@ -2,6 +2,10 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.3.2
+- Holding OK, Guide or Menu to open a menu or the guide no longer carries on into it: holding Guide or Menu while
+  watching no longer also reaches the TV (which could open its own guide over the channel).
+
 ## 1.3.1
 - While watching live TV with the channel guide open, the remote's Menu button now opens the menu in the guide's
   place (it did nothing before).

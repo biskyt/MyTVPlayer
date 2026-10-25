@@ -127,7 +127,7 @@ fun SidePanel(onDismiss: () -> Unit, width: Dp = 430.dp, dim: Boolean = true, co
                 SideEffect { (dialogView.parent as? DialogWindowProvider)?.window?.hideSystemBars() }
             }
             Box(
-                Modifier.fillMaxSize().ignoreHeldSelect()
+                Modifier.fillMaxSize().ignoreHeldButtons()
                     // On a touch screen, tapping beside the panel closes it.
                     .onPlainTap(onDismiss)
                     .background(if (dim) Palette.background.copy(alpha = 0.6f) else Color.Transparent),

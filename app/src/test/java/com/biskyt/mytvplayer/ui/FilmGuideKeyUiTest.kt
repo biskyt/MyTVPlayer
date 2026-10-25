@@ -2,9 +2,6 @@ package com.biskyt.mytvplayer.ui
 
 import android.view.KeyEvent as NativeKeyEvent
 import androidx.compose.runtime.remember
-import androidx.compose.ui.input.key.KeyEvent
-import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.performKeyPress
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.testutil.FakeProvider
@@ -12,8 +9,7 @@ import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.addHomeTv
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
-import com.biskyt.mytvplayer.testutil.idleFrames
-import com.biskyt.mytvplayer.testutil.topRoot
+import com.biskyt.mytvplayer.testutil.sendKey
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.ui.player.VodPlayerViewModel
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
@@ -28,7 +24,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /** On a film the player has no channel guide: the Guide button is the TV's, the whole press, held or not. */
-@OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "+w960dp-h540dp-tvdpi")
 class FilmGuideKeyUiTest {
@@ -50,10 +45,7 @@ class FilmGuideKeyUiTest {
     fun tearDown() = provider.close()
 
     /** Sends a Guide key event; whether the app kept it. */
-    private fun guide(action: Int, repeat: Int = 0): Boolean =
-        compose.topRoot().performKeyPress(KeyEvent(NativeKeyEvent(0, 0, action, NativeKeyEvent.KEYCODE_GUIDE, repeat))).also {
-            compose.idleFrames()
-        }
+    private fun guide(action: Int, repeat: Int = 0) = compose.sendKey(NativeKeyEvent.KEYCODE_GUIDE, action, repeat)
 
     @Test
     fun `a held guide button on a film is left to the TV`() {
