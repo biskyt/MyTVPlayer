@@ -18,6 +18,8 @@ on:
       - ".github/workflows/ci.yml"
       - ".github/workflows/release.yml"
       - ".github/workflows/release-notes.yml"
+      - ".github/workflows/play-upload.yml"
+      - ".github/actions/**"
       - ".github/scripts/release-notes.sh"
       - ".github/scripts/play-notes.py"
       - ".github/scripts/robolectric-cache-key.sh"

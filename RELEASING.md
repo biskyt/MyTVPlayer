@@ -53,6 +53,8 @@ Each release uploads its `.aab` to the closed testing track (**Closed testing - 
 
 Without the secret (or for a build signed with the development key) the upload is skipped; upload the `.aab` from the run's Artifacts by hand instead.
 
+If the upload fails after the GitHub release is published (e.g. Play answers "The service is currently unavailable"), run the **Play upload** workflow from the Actions tab with the release's tag (e.g. `v1.2.2`). It uploads that release's own bundle again, from its run's Artifacts (kept 90 days), with its "What's new"; the Release workflow itself won't run again for a version already released. If Play answers that the version code has already been used, the first upload did go through: check the release in Play Console instead.
+
 ### Repository variables (optional, same settings page, *Variables* tab)
 - `PLAY_RELEASE_STATUS`: unset, each release goes to testers once Play has reviewed it. Set it to `draft` to check each one in Play Console and send it from there instead.
 - `PLAY_NOTES_LANGUAGE`: the language of "What's new", `en-GB` unless set. It must be one of the store listing's languages.

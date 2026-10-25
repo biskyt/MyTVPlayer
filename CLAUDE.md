@@ -63,6 +63,8 @@ See also:
    - A change with no app changes (CI, tests, docs) is merged without a version bump, changelog entry or release.
    - The signed Play bundle (`.aab`) goes to Play's closed testing track, and is a run artifact called
      `MyTVPlayer-<version>-play-bundle`, kept 90 days.
+   - If only the Play upload failed (the GitHub release is out), run `play-upload.yml` on `main` with input `tag`
+     (e.g. `v1.2.2`): it uploads that release's bundle again. Don't re-run the release.
    - Versions `0.x` (or dev-key signed builds) are pre-releases. `1.x` and later are full releases.
 9. Confirm the release exists (`get_release_by_tag`), then give the owner the release link and the `.aab` artifact link
    (`actions_list` with method `list_workflow_run_artifacts` and the release run's id). For when testers see it, see

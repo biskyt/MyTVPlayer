@@ -1,0 +1,56 @@
+name: Upload to Google Play
+description: >-
+  Uploads a released version's app bundle to Google Play's closed testing track ("Closed testing - Alpha" in Play
+  Console), with its notes (from CHANGELOG.md, cut to Play's limit) as "What's new". Used by the Release and Play
+  upload workflows, after the version's GitHub release is published.
+
+inputs:
+  service-account-json:
+    description: The Play service account's JSON key (the PLAY_SERVICE_ACCOUNT_JSON secret).
+    required: true
+  version:
+    description: The versionName, e.g. 1.2.2.
+    required: true
+  bundle:
+    description: The signed .aab.
+    required: true
+  mapping:
+    description: R8's mapping.txt, for readable crash reports in Play Console; skipped if it isn't there.
+    required: true
+  status:
+    description: completed (to testers once Play has reviewed it) or draft (sent by hand from Play Console).
+    required: true
+  notes-language:
+    description: The language of "What's new" (one of the store listing's).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: What's new
+      id: notes
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        VERSION: ${{ inputs.version }}
+        MAPPING: ${{ inputs.mapping }}
+        LANGUAGE: ${{ inputs.notes-language }}
+      run: |
+        dir="$RUNNER_TEMP/whatsnew"
+        mkdir -p "$dir"
+        .github/scripts/release-notes.sh "$VERSION" > "$RUNNER_TEMP/notes.md"
+        python3 .github/scripts/play-notes.py "$RUNNER_TEMP/notes.md" \
+          "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/v$VERSION" > "$dir/whatsnew-$LANGUAGE"
+        echo "dir=$dir" >> "$GITHUB_OUTPUT"
+        [ ! -f "$MAPPING" ] || echo "mapping=$MAPPING" >> "$GITHUB_OUTPUT"
+
+    - uses: r0adkll/upload-google-play@v1
+      with:
+        serviceAccountJsonPlainText: ${{ inputs.service-account-json }}
+        packageName: com.biskyt.mytvplayer
+        releaseFiles: ${{ inputs.bundle }}
+        releaseName: ${{ inputs.version }}
+        track: alpha
+        status: ${{ inputs.status }}
+        whatsNewDirectory: ${{ steps.notes.outputs.dir }}
+        mappingFile: ${{ steps.notes.outputs.mapping }}

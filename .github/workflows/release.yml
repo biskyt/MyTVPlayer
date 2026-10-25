@@ -119,23 +119,25 @@ jobs:
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk "dist/MyTVPlayer-$v.apk"
           (cd dist && sha256sum MyTVPlayer-*.apk > SHA256SUMS.txt)
-          mkdir -p play/whatsnew
+          mkdir -p play
           cp app/build/outputs/bundle/release/app-release.aab "play/MyTVPlayer-$v.aab"
+          # Kept with the bundle, for the Play upload workflow should this release's own upload fail.
+          mapping=app/build/outputs/mapping/release/mapping.txt
+          [ ! -f "$mapping" ] || cp "$mapping" play/
           # Release notes: this version's section of CHANGELOG.md, and any versions since the last release.
           .github/scripts/release-notes.sh "$v" > dist/notes.md
-          python3 .github/scripts/play-notes.py dist/notes.md \
-            "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/v$v" \
-            > "play/whatsnew/whatsnew-${{ vars.PLAY_NOTES_LANGUAGE || 'en-GB' }}"
           if [ "$SIGNED_WITH" = "development" ]; then
             printf '\n> **Test build:** signed with the public development key. Not for general distribution.\n' >> dist/notes.md
           fi
           printf '\n**Install on Android TV:** download the APK and sideload it (e.g. with the Downloader app or `adb install`).\n' >> dist/notes.md
 
-      # For Google Play by hand, if the upload below is off or fails: on the run's page under Artifacts, kept 90 days.
+      # If the upload below is off or fails: on the run's page under Artifacts, kept 90 days (see RELEASING.md › Google Play).
       - uses: actions/upload-artifact@v6
         with:
           name: MyTVPlayer-${{ steps.version.outputs.version }}-play-bundle
-          path: play/*.aab
+          path: |
+            play/*.aab
+            play/mapping.txt
           retention-days: 90
 
       - uses: softprops/action-gh-release@v3
@@ -154,15 +156,14 @@ jobs:
       # build signed with the development key, which Play would refuse.
       # The release goes to testers after Play's review of it; set the repository variable PLAY_RELEASE_STATUS to
       # "draft" to send each one by hand from Play Console instead.
+      # If this fails after the GitHub release (e.g. Play unavailable): the Play upload workflow (see RELEASING.md).
       - name: Upload to Google Play (closed testing)
         if: env.HAS_PLAY_ACCOUNT == 'true' && env.SIGNED_WITH == 'release'
-        uses: r0adkll/upload-google-play@v1
+        uses: ./.github/actions/play-upload
         with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: com.biskyt.mytvplayer
-          releaseFiles: play/MyTVPlayer-${{ steps.version.outputs.version }}.aab
-          releaseName: ${{ steps.version.outputs.version }}
-          track: alpha
+          service-account-json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          version: ${{ steps.version.outputs.version }}
+          bundle: play/MyTVPlayer-${{ steps.version.outputs.version }}.aab
+          mapping: play/mapping.txt
           status: ${{ vars.PLAY_RELEASE_STATUS || 'completed' }}
-          whatsNewDirectory: play/whatsnew
-          mappingFile: app/build/outputs/mapping/release/mapping.txt
+          notes-language: ${{ vars.PLAY_NOTES_LANGUAGE || 'en-GB' }}
