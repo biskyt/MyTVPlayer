@@ -44,8 +44,8 @@ Each version's section becomes its GitHub release notes, so it is written for th
   darker, so they read over a bright picture too.
 
 ## 1.2.5
-- **Dolby Vision films that also carry HDR10+ now play in Dolby Vision** on TVs that showed them as HDR10 (such as
-  some Philips TVs). On a screen without Dolby Vision, they still play in HDR10+.
+- **Dolby Vision films that also carry HDR10+ now play in Dolby Vision** on TVs that showed them as HDR10. On a
+  screen without Dolby Vision, they still play in HDR10+.
 - Hiding a category from the column now always leaves the remote on the category shown next.
 
 ## 1.2.4
@@ -126,10 +126,10 @@ Each version's section becomes its GitHub release notes, so it is written for th
 - Search shows channels, then movies and series, then TV programmes.
 
 ## 1.0.1
-- **Restoring a backup on TVs without Android's file picker** (such as Philips): instead of "no application can
-  handle this request", MyTVPlayer now offers the file manager apps installed (such as X-plore). You can also open
-  the backup file from a file manager with Open with or Share and choose MyTVPlayer: it goes to Backup & restore,
-  which asks before restoring.
+- **Restoring a backup on TVs without Android's file picker**: instead of "no application can handle this request",
+  MyTVPlayer now offers the file manager apps installed (such as X-plore). You can also open the backup file from a
+  file manager with Open with or Share and choose MyTVPlayer: it goes to Backup & restore, which asks before
+  restoring.
 - A channel's catch-up now opens with focus on its programmes (the first key press went to the top bar). Right from
   the days goes to the programmes, and back from watching one, focus is on it again.
 - With the Audio, Subtitles or More panel open over live TV, the Guide button now opens the channel guide, as it does

@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 /**
  * Switches off the HDR10+ metadata in an HEVC sample (Annex B, as Media3's Matroska and MP4 readers hand it to the
- * decoder) bound for a Dolby Vision decoder. Some TVs (the owner's Philips, a MediaTek chip) show a Dolby Vision
+ * decoder) bound for a Dolby Vision decoder. Some TVs (such as one with a MediaTek chip) show a Dolby Vision
  * profile 8 file that also carries HDR10+ as HDR10: proven with the diagnostics app in MyPlexPlayer's
  * `spikes/dv-diagnostics`.
  *
