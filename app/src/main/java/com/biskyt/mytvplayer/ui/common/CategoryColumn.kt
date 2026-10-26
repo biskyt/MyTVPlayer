@@ -309,7 +309,8 @@ fun <F> FilteredCategoryColumn(
     selected: F,
     onFocus: (F) -> Unit,
     onSelect: (F) -> Unit,
-    onHide: ((CategoryEntity) -> Unit)? = null
+    onHide: ((CategoryEntity) -> Unit)? = null,
+    right: FocusRequester = FocusRequester.Default
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     val q = query.trim()
@@ -330,7 +331,7 @@ fun <F> FilteredCategoryColumn(
     }
     Column(Modifier.width(CATEGORY_WIDTH), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         FilterField(query, { query = it }, stringResource(R.string.common_filter_categories), Modifier.fillMaxWidth())
-        CategoryColumn(shown, selected, onFocus, onSelect, onHide)
+        CategoryColumn(shown, selected, onFocus, onSelect, onHide, right)
     }
 }
 

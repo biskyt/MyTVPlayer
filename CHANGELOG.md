@@ -2,6 +2,11 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.4.1
+- **The TV guide keeps the highlight in it:** opening the guide with its button no longer sends the highlight to the
+  Home tab on some TVs, and Right from the categories goes back to the programme you left, rather than to the buttons
+  above the guide.
+
 ## 1.4.0
 - TV guides are now chosen per playlist: switch a guide on or off for the playlist you're using, under TV guide
   sources. Each playlist's channels are matched only to its own guides, so another provider's guide no longer shows
