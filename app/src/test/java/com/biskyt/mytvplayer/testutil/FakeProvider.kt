@@ -30,6 +30,9 @@ class FakeProvider(private val now: Long = System.currentTimeMillis()) : Dispatc
     /** How long catch-up listings take to arrive (a slow provider). */
     var catchupDelayMs = 0L
 
+    /** How long a series' details (get_series_info) take to arrive. */
+    var seriesInfoDelayMs = 0L
+
     data class Stream(
         val id: Long,
         val num: Int,
@@ -225,6 +228,7 @@ class FakeProvider(private val now: Long = System.currentTimeMillis()) : Dispatc
         }
         "get_vod_info" -> MockResponse().setBody(movieInfo(url.queryParameter("vod_id")!!))
         "get_series_info" -> MockResponse().setBody(seriesInfo(url.queryParameter("series_id")!!))
+            .setBodyDelay(seriesInfoDelayMs, java.util.concurrent.TimeUnit.MILLISECONDS)
         else -> null
     }
 
