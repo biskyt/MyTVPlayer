@@ -309,7 +309,9 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     /** Back in the app: plays again what was stopped. */
     protected open fun resume() {
         engine?.player?.let {
-            if (it.playbackState == Player.STATE_IDLE && !exit) {
+            // Nothing in it yet (what to play is still loading, as the screen's first "shown" comes straight away):
+            // prepared empty, it would end at once and close the player.
+            if (it.playbackState == Player.STATE_IDLE && it.mediaItemCount > 0 && !exit) {
                 it.prepare()
                 it.play()
             }
