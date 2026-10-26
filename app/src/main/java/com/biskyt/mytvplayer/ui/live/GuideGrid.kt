@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -89,40 +90,37 @@ private const val DAY_MS = 24 * HOUR
 /** Where focus should land: the programme on [time] in channel [streamId] (null = the first row). */
 private data class GuideFocus(val streamId: Long?, val time: Long)
 
-/** What the Live screen around the grid knows of focus: whether it has it, and how often the remote's arrows were pressed. */
+/**
+ * What the Live screen around the grid knows of focus: how often the user moved around it, by the remote's arrows and
+ * Back (a held key once) or a tap.
+ */
 class ScreenFocus {
-    var hasFocus = false
-    var arrowPresses = 0
+    var moves = 0
 }
 
 /** Where focus goes in the grid once that row's cell is there ([value]); null when there's nowhere to go. */
 private class FocusTarget(private val screen: ScreenFocus) {
     var value by mutableStateOf<GuideFocus?>(null)
     private var gridHasFocus = false
-
-    /** Whether the grid has had focus since the target was set. */
-    private var gridHadFocus = false
     private var pressesWhenSet = 0
 
     fun set(target: GuideFocus) {
-        gridHadFocus = gridHasFocus
-        pressesWhenSet = screen.arrowPresses
+        pressesWhenSet = screen.moves
         value = target
     }
 
     fun gridFocusChanged(hasFocus: Boolean) {
         gridHasFocus = hasFocus
-        if (hasFocus) gridHadFocus = true
     }
 
     /**
-     * Whether the target's cell may still take focus: not once focus has left the grid for somewhere else on the screen
-     * (up to the filter, the categories: moved there with the remote, or thrown there) while the row's programmes were
-     * on their way. The target is then done, and focus stays there. Arriving at the grid, or a placeholder cell
-     * replaced by the programmes (focus briefly nowhere), carries on.
+     * Whether the target's cell may still take focus: not once the user moved while the row's programmes were on their
+     * way (up to the filter, to the categories, Back, a tap): they have moved on, and focus stays where they put it.
+     * Focus that moved by itself doesn't end it: a placeholder cell replaced by the programmes loses focus, which some
+     * TVs hand to the first thing on the screen (the Home tab) before the real cell asks for it.
      */
     fun mayTakeFocus(): Boolean {
-        val movedAway = !gridHasFocus && (screen.arrowPresses != pressesWhenSet || (gridHadFocus && screen.hasFocus))
+        val movedAway = !gridHasFocus && screen.moves != pressesWhenSet
         if (movedAway) value = null
         return !movedAway
     }
@@ -137,7 +135,13 @@ private val ChannelColumn = 288.dp
  * and focus follows on to the next/previous programme of the same channel.
  */
 @Composable
-fun GuideGrid(vm: LiveViewModel, items: LazyPagingItems<ChannelEntity>, play: (ChannelEntity) -> Unit, screen: ScreenFocus) {
+fun GuideGrid(
+    vm: LiveViewModel,
+    items: LazyPagingItems<ChannelEntity>,
+    play: (ChannelEntity) -> Unit,
+    screen: ScreenFocus,
+    entry: FocusRequester
+) {
     val container = LocalContext.current.container
     val epg = container.epg
     val nav = LocalNavigator.current
@@ -187,7 +191,10 @@ fun GuideGrid(vm: LiveViewModel, items: LazyPagingItems<ChannelEntity>, play: (C
         TimeHeader(windowStart) { dir -> window.move(dir, null) }
         val nowLine = (now - windowStart) / 60_000f
         Box(Modifier.fillMaxSize()) {
+            // Focus entering the grid from the categories lands on the programme it left (else the first), not on whatever
+            // is nearest across the screen (the buttons above).
             LazyColumn(
+                modifier = Modifier.focusRequester(entry).focusRestorer(),
                 state = vm.listState,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 contentPadding = PaddingValues(bottom = 40.dp)

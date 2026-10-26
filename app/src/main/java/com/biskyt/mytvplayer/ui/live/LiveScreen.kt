@@ -77,6 +77,7 @@ import com.biskyt.mytvplayer.ui.common.distinctLabels
 import com.biskyt.mytvplayer.ui.common.formatTime
 import com.biskyt.mytvplayer.ui.common.isGuide
 import com.biskyt.mytvplayer.ui.common.numberLabel
+import com.biskyt.mytvplayer.ui.common.onAnyTouch
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.theme.Palette
@@ -105,13 +106,15 @@ fun LiveScreen(initialFilter: ChannelFilter?, initialGuide: Boolean) {
     LaunchedEffect(Unit) { vm.restoreFocusPending = true }
     // So a late focus target in the guide knows when the user has moved on (see GuideGrid).
     val screenFocus = remember { ScreenFocus() }
+    // Right from the categories enters the guide's programmes (see GuideGrid).
+    val guideEntry = remember { FocusRequester() }
 
     TabScaffold(
         if (vm.catchupMode) Tab.CATCHUP else Tab.LIVE,
         // Anywhere on the screen, the tabs included (else the TV would take the Guide button for its own guide): 0–9
         // on the remote jumps straight to that channel number; the Guide button switches list/guide.
-        Modifier.onFocusChanged { screenFocus.hasFocus = it.hasFocus }.onPreviewKeyEvent { e ->
-            if (e.type == KeyEventType.KeyDown && e.key in arrowKeys) screenFocus.arrowPresses++
+        Modifier.onAnyTouch { screenFocus.moves++ }.onPreviewKeyEvent { e ->
+            if (e.type == KeyEventType.KeyDown && e.nativeKeyEvent.repeatCount == 0 && e.key in movingKeys) screenFocus.moves++
             val digit = e.key.digit()
             when {
                 e.type != KeyEventType.KeyDown -> e.key.isGuide()
@@ -129,7 +132,9 @@ fun LiveScreen(initialFilter: ChannelFilter?, initialGuide: Boolean) {
         }
     ) {
         Row(Modifier.fillMaxSize().padding(horizontal = 56.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-            LiveCategories(vm, filter)
+            // Only while the guide is there to take it (a requester with nothing attached fails the key).
+            val guideShown = vm.guideMode && vm.filters.settled
+            LiveCategories(vm, filter, if (guideShown) guideEntry else FocusRequester.Default)
             Column(Modifier.weight(1f)) {
                 val filterBox = remember { FocusRequester() }
                 ListHeader(vm, filter, Modifier.focusRequester(filterBox))
@@ -139,7 +144,7 @@ fun LiveScreen(initialFilter: ChannelFilter?, initialGuide: Boolean) {
                 BackToFilter(filterBox, atTop = { vm.guideMode && vm.focusIndex == 0 }) {
                     when {
                         !vm.filters.settled -> Unit
-                        vm.guideMode -> GuideGrid(vm, items, play, screenFocus)
+                        vm.guideMode -> GuideGrid(vm, items, play, screenFocus, guideEntry)
                         else -> ChannelList(vm, items, open)
                     }
                 }
@@ -168,8 +173,8 @@ private fun BackToFilter(filterBox: FocusRequester, atTop: () -> Boolean, conten
 }
 
 @Composable
-private fun LiveCategories(vm: LiveViewModel, selected: ChannelFilter) {
-    if (vm.catchupMode) return CatchupCategories(vm, selected)
+private fun LiveCategories(vm: LiveViewModel, selected: ChannelFilter, right: FocusRequester) {
+    if (vm.catchupMode) return CatchupCategories(vm, selected, right)
     val categories by vm.categories.collectAsState()
     val favourites = stringResource(R.string.common_favourites)
     val recent = stringResource(R.string.common_recent)
@@ -181,12 +186,12 @@ private fun LiveCategories(vm: LiveViewModel, selected: ChannelFilter) {
             CategoryEntry(ChannelFilter.All, all)
         ) + categoryEntries<ChannelFilter>(categories) { ChannelFilter.Category(it.categoryId) }
     }
-    FilteredCategoryColumn(entries, fixed = 3, selected, vm.filters::focus, vm.filters::select, vm::hideCategory)
+    FilteredCategoryColumn(entries, fixed = 3, selected, vm.filters::focus, vm.filters::select, vm::hideCategory, right)
 }
 
 /** The Catch-up tab's column: all catch-up channels, then each category that has some. */
 @Composable
-private fun CatchupCategories(vm: LiveViewModel, selected: ChannelFilter) {
+private fun CatchupCategories(vm: LiveViewModel, selected: ChannelFilter, right: FocusRequester) {
     val categories by vm.catchupCategories.collectAsState()
     val all = stringResource(R.string.live_all_catchup)
     val entries = remember(categories, all) {
@@ -195,7 +200,7 @@ private fun CatchupCategories(vm: LiveViewModel, selected: ChannelFilter) {
                 CategoryEntry<ChannelFilter>(ChannelFilter.CatchupCategory(c.categoryId), label, c.count)
             }
     }
-    FilteredCategoryColumn(entries, fixed = 1, selected, vm.filters::focus, vm.filters::select)
+    FilteredCategoryColumn(entries, fixed = 1, selected, vm.filters::focus, vm.filters::select, right = right)
 }
 
 @Composable
@@ -343,4 +348,5 @@ private fun PlaceholderRow() {
     Box(Modifier.fillMaxWidth().height(64.dp).clip(RoundedCornerShape(14.dp)).background(Palette.surfaceLow))
 }
 
-private val arrowKeys = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight)
+/** The keys that move around the screen (or leave it): when one is pressed, focus is where the user wants it. */
+private val movingKeys = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight, Key.Back)
