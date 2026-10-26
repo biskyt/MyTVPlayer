@@ -128,6 +128,9 @@ See also:
     each test ends. A test sets only what differs from the defaults (in its `setUp`).
   - **A panel is its own window:** `SidePanel` dialogs are separate windows. Send keys to the right root (`onAllNodes(isRoot())`).
   - **Thread dumps on timeout:** `otherThreads()` in UiWait.kt dumps the other threads when a wait times out.
+  - **Images on two threads at once abort the test JVM** (exit 134, "JniConstants … Class not found: java/nio/…"):
+    Robolectric's native graphics set themselves up unsafely. `TestApp` and `PlainApp` call `lookUpNioClasses()`
+    (testutil/NativeGraphics.kt) first, so a new test application class must call it too.
 - **Detekt limits:**
   - `AppUiTest` is near `LargeClass` (600 lines), so put new UI tests in their own class.
   - Composables near the complexity limit: `CategoryColumn`, `GuideGrid`, `AppRoot`.

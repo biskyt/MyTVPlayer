@@ -6,6 +6,7 @@ import com.biskyt.mytvplayer.AppText
 /** A bare application (none of the app's wiring) whose code can still use the app's words. */
 class PlainApp : Application() {
     override fun onCreate() {
+        lookUpNioClasses() // before any image is loaded
         super.onCreate()
         AppText.init(this)
     }

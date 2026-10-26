@@ -8,6 +8,11 @@ import org.robolectric.shadows.ShadowLooper
 
 /** The real app wiring, minus the background scheduler (WorkManager isn't set up under Robolectric). */
 class TestApp : MyTvApp() {
+    override fun onCreate() {
+        lookUpNioClasses() // before any image is loaded
+        super.onCreate()
+    }
+
     override fun scheduleDailyRefresh() = Unit
 
     // A process-wide handler: each test's app would wrap the last one's (tests that need it install it themselves).
