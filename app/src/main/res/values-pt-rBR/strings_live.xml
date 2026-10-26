@@ -29,11 +29,11 @@
     <string name="live_guide_earlier">Antes</string>
     <string name="live_guide_later">Depois</string>
 
-    <string name="live_guide_sources_intro">Os guias são atualizados todos os dias. Os programas só ficam salvos para os canais que os usam, para os próximos 3 dias.</string>
+    <string name="live_guide_sources_intro">Cada playlist tem os seus próprios guias: ativado aqui, %1$s o usa. Um guia usado por mais de uma playlist é baixado uma só vez.</string>
     <string name="live_guide_add">Adicionar guia</string>
     <string name="live_guide_update_now">Atualizar guia agora</string>
     <string name="live_guide_match_missing">Associar canais sem guia</string>
-    <string name="live_guide_yours">Seus guias</string>
+    <string name="live_guide_for">Guias de %1$s</string>
     <string name="live_guide_none_yet">Nenhum guia ainda. Adicione um guia gratuito do seu país ou o seu próprio endereço XMLTV.</string>
     <string name="live_guide_last_failed">A última atualização falhou: %1$s</string>
     <string name="live_guide_wait">Aguarde isto terminar primeiro: %1$s</string>
@@ -48,7 +48,10 @@
         <item quantity="many">%1$s canais</item>
         <item quantity="other">%1$s canais</item>
     </plurals>
-    <string name="live_guide_source_off">desativado</string>
+    <string name="live_guide_off_here">desativado aqui</string>
+    <string name="live_guide_from_other_provider">Provedor de %1$s</string>
+    <string name="live_guide_also_used_by">também usado por %1$s</string>
+    <string name="live_guide_not_used">não usado por nenhuma playlist</string>
 
     <string name="live_guide_adding">Adicionando %1$s</string>
     <string name="live_guide_added">%1$s adicionado</string>

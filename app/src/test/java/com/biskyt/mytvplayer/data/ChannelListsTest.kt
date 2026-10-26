@@ -10,6 +10,7 @@ import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.EpgChannelEntity
 import com.biskyt.mytvplayer.data.db.EpgSourceEntity
 import com.biskyt.mytvplayer.data.db.FavouriteEntity
+import com.biskyt.mytvplayer.data.db.PlaylistEpgSourceEntity
 import com.biskyt.mytvplayer.data.db.RecentEntity
 import com.biskyt.mytvplayer.testutil.PlainApp
 import kotlinx.coroutines.CoroutineScope
@@ -58,12 +59,13 @@ class ChannelListsTest {
     @Test
     fun `guide channel search takes what's typed literally`() = runBlocking {
         val source = db.epg().insertSource(EpgSourceEntity(name = "Guide", url = "http://guide.example/epg.xml"))
+        db.epg().link(listOf(PlaylistEpgSourceEntity(1, source)))
         db.epg().upsertChannels(
             listOf(EpgChannelEntity(source, "bbc1.uk", "BBC_One", "bbc one"), EpgChannelEntity(source, "bbc2.uk", "BBC Two", "bbc two"))
         )
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val epg = EpgRepository(db, OkHttpClient(), context.cacheDir.resolve("test-epg"), CoroutineScope(Dispatchers.Unconfined))
         // "_" is a character to find, not "any one character".
-        assertEquals(listOf("BBC_One"), epg.searchGuideChannels("C_").map { it.displayName })
+        assertEquals(listOf("BBC_One"), epg.searchGuideChannels(1, "C_").map { it.displayName })
     }
 }

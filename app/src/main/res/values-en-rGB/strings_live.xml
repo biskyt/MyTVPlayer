@@ -3,5 +3,4 @@
      device (a same-language match beats the unqualified values). Same text as values/. -->
 <resources>
     <string name="live_option_channel_guide_help">Upcoming programmes</string>
-    <string name="live_guide_sources_intro">Guides are updated every day. Programmes are only stored for channels that use them, for the next 3 days.</string>
 </resources>

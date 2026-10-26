@@ -142,4 +142,30 @@ class MigrationTest {
             }
         }
     }
+
+    @Test
+    fun `version 7 to 8 keeps each guide that was on for the playlists that used it`() {
+        helper.createDatabase("migration-test-8", 7).use { db ->
+            listOf(1, 2).forEach {
+                db.execSQL(
+                    "INSERT INTO playlist (id, name, server, username, password, lastSyncAt, kind) VALUES ($it, 'P$it', 'http://x', 'u', 'p', 0, 'xtream')"
+                )
+            }
+            // A provider's own guide on, another provider's off, a guide added by hand on, and one off.
+            listOf("10, 1, 1", "20, 2, 0", "30, NULL, 1", "40, NULL, 0").forEach {
+                db.execSQL(
+                    "INSERT INTO epg_source (id, playlistId, enabled, name, url, lastImportAt, channelCount) VALUES ($it, 'g', 'http://g', 0, 0)"
+                )
+            }
+        }
+        helper.runMigrationsAndValidate("migration-test-8", 8, true, AppDatabase.MIGRATION_7_8).use { db ->
+            val links = db.query("SELECT playlistId, sourceId FROM playlist_epg_source ORDER BY sourceId, playlistId").use {
+                List(it.count) { _ ->
+                    it.moveToNext()
+                    it.getLong(0) to it.getLong(1)
+                }
+            }
+            assertEquals(listOf(1L to 10L, 1L to 30L, 2L to 30L), links)
+        }
+    }
 }

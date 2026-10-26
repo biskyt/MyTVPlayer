@@ -106,7 +106,7 @@ class FavouriteOrderTest {
 
     @Test
     fun `a backup keeps the order, and one from before the order restores in the old one`() = runBlocking {
-        val backup = BackupRepository(db, settings, epg, SyncManager(scope, playlists, vod, epg))
+        val backup = BackupRepository(db, settings, epg, SyncManager(scope, playlists, vod, epg, settings))
         listOf(101L, 102L, 103L).forEach { channels.setFavourite(pid, it, true) }
         favourites.setOrder(pid, CAT_LIVE, listOf(103L, 101L, 102L))
         val file = backup.export().decodeToString()

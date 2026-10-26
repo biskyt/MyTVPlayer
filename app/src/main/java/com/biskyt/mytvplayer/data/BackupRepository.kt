@@ -12,6 +12,7 @@ import com.biskyt.mytvplayer.data.db.ChannelEpgMappingEntity
 import com.biskyt.mytvplayer.data.db.EpgSourceEntity
 import com.biskyt.mytvplayer.data.db.FavouriteEntity
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
+import com.biskyt.mytvplayer.data.db.PlaylistEpgSourceEntity
 import com.biskyt.mytvplayer.data.db.VodFavouriteEntity
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
 import java.io.ByteArrayOutputStream
@@ -49,8 +50,18 @@ class Backup(
     val vodFavourites: List<VodFavouriteEntity>,
     val epgSources: List<EpgSourceEntity>,
     val guideChoices: List<ChannelEpgMappingEntity>,
-    val progress: List<WatchProgressEntity>
+    val progress: List<WatchProgressEntity>,
+    /** Which guides are on for which playlists; null from versions before 1.4.0 (see [guideLinks]). */
+    val guideLinks: List<PlaylistEpgSourceEntity>? = null
 ) {
+    /**
+     * [guideLinks], or for a backup from before 1.4.0, its guides that were on: a provider's own guide for its playlist,
+     * any other for every playlist (as when the database was upgraded).
+     */
+    fun guideLinks(): List<PlaylistEpgSourceEntity> = guideLinks ?: epgSources.filter { it.enabled }.flatMap { s ->
+        playlists.filter { s.playlistId == null || it.id == s.playlistId }.map { PlaylistEpgSourceEntity(it.id, s.id) }
+    }
+
     companion object {
         const val APP = "MyTVPlayer"
         const val VERSION = 1
@@ -90,7 +101,8 @@ class BackupRepository(
                 vodFavourites = dao.vodFavourites(),
                 epgSources = dao.epgSources(),
                 guideChoices = dao.manualMappings(),
-                progress = dao.progress()
+                progress = dao.progress(),
+                guideLinks = dao.guideLinks()
             )
         }
         return ByteArrayOutputStream().also { json.encodeToStream(backup, it) }.toByteArray()
@@ -145,6 +157,7 @@ class BackupRepository(
                 backup.favourites,
                 backup.vodFavourites,
                 backup.epgSources.map { it.copy(lastImportAt = 0, channelCount = 0, lastError = null) },
+                backup.guideLinks(),
                 backup.guideChoices,
                 backup.progress
             )

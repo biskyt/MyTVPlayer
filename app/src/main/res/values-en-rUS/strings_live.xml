@@ -2,5 +2,4 @@
 <!-- US English overrides: only strings whose wording differs from the UK source in values/. -->
 <resources>
     <string name="live_option_channel_guide_help">Upcoming programs</string>
-    <string name="live_guide_sources_intro">Guides are updated every day. Programs are only stored for channels that use them, for the next 3 days.</string>
 </resources>
