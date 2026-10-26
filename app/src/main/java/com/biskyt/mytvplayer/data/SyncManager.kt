@@ -9,6 +9,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -51,33 +52,43 @@ sealed interface GuideStep {
 
 /**
  * Runs channel and guide refreshes one at a time in the app's scope and reports progress.
- * Used both from the UI (e.g. after adding a playlist) and the daily background worker.
+ * Used both from the UI (e.g. after adding a playlist) and the daily background worker. The guide is updated for the
+ * playlist in use: switching to another updates its guides that are out of date.
  */
 class SyncManager(
     private val scope: CoroutineScope,
     private val playlists: PlaylistRepository,
     private val vod: VodRepository,
-    private val epg: EpgRepository
+    private val epg: EpgRepository,
+    private val settings: SettingsRepository
 ) {
     private val mutex = Mutex()
     private val _state = MutableStateFlow<SyncState>(SyncState.Idle)
     val state: StateFlow<SyncState> = _state.asStateFlow()
+
+    init {
+        // Not the playlist in use at start: only a switch to another.
+        scope.launch { settings.activePlaylistId.drop(1).collect { updateOutOfDateGuides(it) } }
+    }
 
     /** Refreshes a playlist's channels, then the guide, then movies and series (the slowest, so last). */
     fun refresh(playlistId: Long): Job = scope.launch { refreshNow(playlistId) }
 
     fun refreshAll(): Job = scope.launch { refreshAllNow() }
 
-    /** Every playlist's channels, movies and series, then the guide once for all of them. */
+    /**
+     * Every playlist's channels, movies and series, then the guides of the playlist in use that are out of date (as
+     * they are a day on; one just loaded, e.g. by switching to the playlist, isn't loaded again).
+     */
     suspend fun refreshAllNow() {
         val ids = playlists.allIds()
         ids.forEach { refreshNow(it, includeGuide = false) }
-        if (ids.isNotEmpty()) updateGuide()
+        inUse().forEach { updateOutOfDateGuides(it) }
     }
 
     /** Looks for guides for channels without one. A failure also shows in [state]. */
     suspend fun matchMissingGuides(): Result<MatchResult> =
-        attempt(R.string.common_match_failed) { epg.matchMissing(playlists.allIds()) { _state.value = SyncState.Guide(it) } }
+        attempt(R.string.common_match_failed) { epg.matchMissing(inUse()) { _state.value = SyncState.Guide(it) } }
 
     /** Runs [block] while no refresh is running, e.g. replacing everything from a backup. */
     suspend fun <T> whileIdle(block: suspend () -> T): T = mutex.withLock { block() }
@@ -91,19 +102,23 @@ class SyncManager(
             val name = playlists.get(playlistId)?.name.orEmpty()
             _state.value = SyncState.Channels(name, 0)
             playlists.syncChannels(playlistId) { _state.value = SyncState.Channels(name, it) }
-            val guideErrors = if (includeGuide) importGuide() else emptyMap()
+            val guideErrors = if (includeGuide) importGuide(listOf(playlistId)) else emptyMap()
             // Read again (by syncVod): updating the channels stores to the playlist (its account, M3U state).
             syncVod(playlistId)
             guideErrors
         }
 
     /**
-     * Updates the guide now, with this update's own outcome (another refresh may change [state] straight after):
-     * the error of each guide that couldn't be loaded, by source id. With [only], just that guide is downloaded (e.g.
-     * one just added); the others are used as last loaded.
+     * Updates the guide of the playlist in use now, with this update's own outcome (another refresh may change [state]
+     * straight after): the error of each guide that couldn't be loaded, by source id. With [only], just that guide is
+     * downloaded (e.g. one just added); the others are used as last loaded.
      */
     suspend fun updateGuide(only: Long? = null): Result<Map<Long, String>> =
-        attempt(R.string.common_guide_update_failed) { importGuide(only) }
+        attempt(R.string.common_guide_update_failed) { importGuide(inUse(), only) }
+
+    /** Updates those of [playlistId]'s guides that are out of date, if any (as [updateGuide]). */
+    suspend fun updateOutOfDateGuides(playlistId: Long): Result<Map<Long, String>> =
+        attempt(R.string.common_guide_update_failed) { importGuide(listOf(playlistId), outOfDate = true) }
 
     /** Only movies and series (after their categories change). */
     fun refreshVod(playlistId: Long): Job = scope.launch { guarded(R.string.data_vod_failed) { syncVod(playlistId) } }
@@ -115,7 +130,11 @@ class SyncManager(
         vod.sync(p) { _state.value = SyncState.Vod(p.name, it) }
     }
 
-    private suspend fun importGuide(only: Long? = null) = epg.importAll(playlists.allIds(), only) { _state.value = SyncState.Guide(it) }
+    private suspend fun importGuide(playlistIds: List<Long>, only: Long? = null, outOfDate: Boolean = false) =
+        epg.importAll(playlistIds, only, outOfDate) { _state.value = SyncState.Guide(it) }
+
+    /** The playlist in use, if there's one. */
+    private suspend fun inUse(): List<Long> = listOfNotNull(settings.current().activePlaylistId.takeIf { it != 0L })
 
     /** [attempt] when only the state needs to show the outcome. */
     private suspend fun <T> guarded(@StringRes failure: Int, block: suspend () -> T): T? = attempt(failure, block).getOrNull()

@@ -244,7 +244,10 @@ data class FavouriteEntity(
 @Entity(tableName = "recent", primaryKeys = ["playlistId", "streamId"], indices = [Index("playlistId", "watchedAt")])
 data class RecentEntity(val playlistId: Long, val streamId: Long, val watchedAt: Long)
 
-/** An XMLTV guide source. Provider guides are added automatically with [playlistId] set. */
+/**
+ * An XMLTV guide source, stored once however many playlists use it ([PlaylistEpgSourceEntity]). Provider guides are
+ * added automatically with [playlistId] set.
+ */
 @Entity(tableName = "epg_source")
 @Serializable
 data class EpgSourceEntity(
@@ -252,11 +255,17 @@ data class EpgSourceEntity(
     val name: String,
     val url: String,
     val playlistId: Long? = null,
+    /** Before database version 8: whether it was on (for every playlist). Since, only written to backups, for older versions. */
     val enabled: Boolean = true,
     val lastImportAt: Long = 0,
     val channelCount: Int = 0,
     val lastError: String? = null
 )
+
+/** A guide switched on for a playlist: only its playlists' channels are matched to it, and it's updated only for them. */
+@Entity(tableName = "playlist_epg_source", primaryKeys = ["playlistId", "sourceId"], indices = [Index("sourceId")])
+@Serializable
+data class PlaylistEpgSourceEntity(val playlistId: Long, val sourceId: Long)
 
 @Entity(tableName = "epg_channel", primaryKeys = ["sourceId", "xmlId"])
 data class EpgChannelEntity(

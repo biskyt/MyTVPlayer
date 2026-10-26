@@ -192,8 +192,8 @@ class RepositoriesTest {
         assertEquals("Next on one.uk", programmes.getValue(101)[1].title)
         // Misspelt names aren't matched automatically (too risky) but are the top suggestion for the user to confirm.
         assertNull(programmes[102])
-        assertEquals("arena1.uk", epg.suggestions("UK: ARENA SPRTS 1 FHD", null).first().candidate.xmlId)
-        assertEquals("kite.uk", epg.suggestions("UK: KITE KIDZ", null).first().candidate.xmlId)
+        assertEquals("arena1.uk", epg.suggestions(id, "UK: ARENA SPRTS 1 FHD", null).first().candidate.xmlId)
+        assertEquals("kite.uk", epg.suggestions(id, "UK: KITE KIDZ", null).first().candidate.xmlId)
 
         // cine.fr is in the guide but no included channel uses it, so its programmes aren't stored.
         val stored = db.query("SELECT COUNT(*) FROM programme WHERE xmlId = 'cine.fr'", null).use {
@@ -257,7 +257,7 @@ class RepositoriesTest {
 
         // Adding a guide reads its own programmes, with progress; the provider's guide isn't read again.
         val added = mutableListOf<GuideStep>()
-        val extra = epg.addSource("Extra", provider.url + "xmltv.php?username=me&password=secret&extra=1")
+        val extra = epg.addSource("Extra", provider.url + "xmltv.php?username=me&password=secret&extra=1", id)
         epg.importAll(listOf(id), only = extra) { added += it }
         assertTrue(added.any { it is GuideStep.Loading && it.guide == "Extra" && it.fraction != null })
         assertTrue(added.none { it is GuideStep.Loading && it.guide.orEmpty().startsWith("Home") })
@@ -277,7 +277,7 @@ class RepositoriesTest {
         }
         epg.importAll(listOf(id))
         assertEquals(4, guideChannelCount())
-        assertEquals("kite.uk", epg.suggestions("UK: KITE KIDZ", null).first().candidate.xmlId)
+        assertEquals("kite.uk", epg.suggestions(id, "UK: KITE KIDZ", null).first().candidate.xmlId)
         // Later updates read such a guide in full straight away.
         epg.importAll(listOf(id))
         assertEquals(4, guideChannelCount())
@@ -290,7 +290,7 @@ class RepositoriesTest {
         val p = playlists.get(id)!!
         epg.ensureProviderSource(p, playlists.client(p).xmltvUrl())
         epg.importAll(listOf(id))
-        val source = db.epg().enabledSources().first().id
+        val source = db.epg().sourcesFor(listOf(id)).first().id
 
         epg.setManual(id, 103, source, "cine.fr", offsetMinutes = 60)
         delay(2_500) // debounced programme import
@@ -316,7 +316,7 @@ class RepositoriesTest {
         epg.ensureProviderSource(p, playlists.client(p).xmltvUrl())
         playlists.delete(id)
         assertTrue(channels.ids(id, ChannelFilter.All).isEmpty())
-        assertTrue(db.epg().enabledSources().isEmpty())
+        assertTrue(db.epg().allSourceIds().isEmpty())
         assertEquals(0L, settings.current().activePlaylistId)
     }
 
@@ -407,14 +407,14 @@ class RepositoriesTest {
 
     @Test
     fun `a backup restores playlists, choices, favourites, guide choices and settings`() = runBlocking {
-        val backup = BackupRepository(db, settings, epg, SyncManager(scope, playlists, vod, epg))
+        val backup = BackupRepository(db, settings, epg, SyncManager(scope, playlists, vod, epg, settings))
         fun import(text: String) = runBlocking { backup.apply(backup.read(text.byteInputStream())) }
         val id = addPlaylist()
         playlists.syncChannels(id)
         vod.sync(playlists.get(id)!!)
         val p = playlists.get(id)!!
         epg.ensureProviderSource(p, playlists.client(p).xmltvUrl())
-        val source = db.epg().enabledSources().first().id
+        val source = db.epg().sourcesFor(listOf(id)).first().id
         channels.setHidden(id, 103, true)
         channels.setFavourite(id, 101, true)
         db.channels().setSortOrder(id, 102, 0) // an order set with Move up, before 1.2.1
@@ -454,7 +454,7 @@ class RepositoriesTest {
         assertTrue(db.categories().all(id, CAT_MOVIE).single { it.categoryId == "11" }.included)
         assertTrue(vod.observeFavourite(id, CAT_MOVIE, 501).first())
         assertEquals(600_000L, vod.progress(id, VOD_MOVIE, 501)!!.positionMs)
-        assertEquals(source, db.epg().enabledSources().single().id)
+        assertEquals(source, db.epg().sourcesFor(listOf(id)).single().id)
         assertEquals(60, db.epg().mapping(id, 101)!!.offsetMinutes)
 
         // The next download fills the channel list back in, keeping the hidden, moved and favourite channels.
@@ -500,7 +500,7 @@ class RepositoriesTest {
         assertEquals("Now on wnbc.us", epg.programmes(id, listOf(104), now, now + 3_600_000).getValue(104).first().title)
 
         // A new guide source matches everything again.
-        epg.addSource("Extra", provider.url + "xmltv.php?username=me&password=secret&extra=1")
+        epg.addSource("Extra", provider.url + "xmltv.php?username=me&password=secret&extra=1", id)
         epg.importAll(listOf(id))
         assertEquals(1.0, db.epg().mapping(id, 101)!!.score, 0.0)
 

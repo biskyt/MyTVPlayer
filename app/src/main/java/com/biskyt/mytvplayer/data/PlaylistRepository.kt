@@ -200,6 +200,7 @@ class PlaylistRepository(
             playlists.deleteFavourites(id)
             playlists.deleteRecents(id)
             playlists.deleteMappings(id)
+            playlists.deleteGuideLinks(id)
             playlists.deleteMovies(id)
             playlists.deleteSeries(id)
             playlists.deleteEpisodes(id)
@@ -208,6 +209,7 @@ class PlaylistRepository(
             playlists.delete(id)
         }
         db.epg().providerSource(id)?.let { epg.removeSource(it.id) }
+        epg.clearUnused()
         settings.forgetStreamFormat(id)
         val next = playlists.all().firstOrNull()?.id ?: 0
         if (settings.current().activePlaylistId == id) settings.update { it.copy(activePlaylistId = next) }

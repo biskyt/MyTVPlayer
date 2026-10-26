@@ -51,7 +51,8 @@ class SavedTextTest {
         provider.close()
     }
 
-    private suspend fun names() = db.playlists().all().map { it.name } + db.epg().enabledSources().map { it.name }
+    private suspend fun names() =
+        db.playlists().all().map { it.name } + db.epg().sourcesFor(db.playlists().all().map { it.id }).map { it.name }
 
     @Test
     fun `saved playlist and guide names stay as they are when the language changes`() = runBlocking {
@@ -71,7 +72,7 @@ class SavedTextTest {
         val id = playlists.add("Home", provider.url, "me", "secret")
         playlists.syncChannels(id)
         epg.importAll(listOf(id))
-        val saved = db.epg().enabledSources().single().lastError!!
+        val saved = db.epg().sourcesFor(listOf(id)).single().lastError!!
         assertFalse(saved.contains("error"))
         assertEquals("Server returned error 500", GuideError.text(saved))
         AppText.setLanguage(context, "es")

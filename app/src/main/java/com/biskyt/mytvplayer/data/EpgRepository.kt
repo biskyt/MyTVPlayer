@@ -17,6 +17,7 @@ import com.biskyt.mytvplayer.data.db.EpgChannelEntity
 import com.biskyt.mytvplayer.data.db.EpgSourceEntity
 import com.biskyt.mytvplayer.data.db.MAX_SQL_ARGS
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
+import com.biskyt.mytvplayer.data.db.PlaylistEpgSourceEntity
 import com.biskyt.mytvplayer.data.db.ProgrammeEntity
 import java.io.BufferedInputStream
 import java.io.File
@@ -79,69 +80,92 @@ class EpgRepository(
     private fun changed() = _changes.update { it + 1 }
 
     /**
-     * Built from every guide channel and reused while matching (building it is the slow part). Dropped after each
-     * import's matching step and when the matching screen closes, so it doesn't hold memory while watching TV.
+     * Built from the channels of a playlist's guides and reused while matching it (building it is the slow part), with
+     * the playlist's id. Dropped after each import's matching step and when the matching screen closes, so it doesn't
+     * hold memory while watching TV.
      */
-    @Volatile private var matcherCache: ChannelMatcher? = null
+    @Volatile private var matcherCache: Pair<Long, ChannelMatcher>? = null
 
-    private suspend fun matcher(): ChannelMatcher = matcherCache ?: ChannelMatcher(
-        // Normalized afresh rather than from nameNorm, so guides stored by an older version follow today's rules.
-        epg.enabledChannels().map { EpgCandidate(it.sourceId, it.xmlId, it.displayName, ChannelNames.normalize(it.displayName)) }
-    ).also { matcherCache = it }
+    private suspend fun matcher(playlistId: Long): ChannelMatcher = matcherCache?.takeIf { it.first == playlistId }?.second
+        ?: ChannelMatcher(
+            // Normalized afresh rather than from nameNorm, so guides stored by an older version follow today's rules.
+            epg.channelsFor(playlistId).map { EpgCandidate(it.sourceId, it.xmlId, it.displayName, ChannelNames.normalize(it.displayName)) }
+        ).also { matcherCache = playlistId to it }
 
     fun observeSources() = epg.observeSources()
 
+    /** Which guides are switched on for which playlists. */
+    fun observeLinks() = epg.observeLinks()
+
     fun observeMatchCounts(playlistId: Long) = epg.observeMatchCounts(playlistId)
 
-    suspend fun coverage() = epg.coverage()
+    suspend fun coverage(playlistId: Long) = epg.coverage(playlistId)
 
     fun pageForMatching(playlistId: Long, query: String, status: Int) = androidx.paging.Pager(androidx.paging.PagingConfig(pageSize = 40)) {
         epg.pageForMatching(playlistId, likeArg(query), status)
     }.flow
 
-    /** The playlist's own guide, named once when added ("My TV guide"); like any saved name, never translated after. */
+    /**
+     * The playlist's own guide, switched on for it, and named once when added ("My TV guide"); like any saved name,
+     * never translated after.
+     */
     suspend fun ensureProviderSource(p: PlaylistEntity, xmltvUrl: String) {
         val existing = epg.providerSource(p.id)
         if (existing == null) {
-            epg.insertSource(
-                EpgSourceEntity(name = appString(R.string.data_provider_guide_name, p.name), url = xmltvUrl, playlistId = p.id)
-            )
+            db.withTransaction {
+                val id = epg.insertSource(
+                    EpgSourceEntity(name = appString(R.string.data_provider_guide_name, p.name), url = xmltvUrl, playlistId = p.id)
+                )
+                epg.link(listOf(PlaylistEpgSourceEntity(p.id, id)))
+            }
         } else if (existing.url != xmltvUrl) {
             epg.upsertSource(existing.copy(url = xmltvUrl, lastImportAt = 0)) // a different guide: match everything again
         }
     }
 
-    /** Named after its address when [name] is blank. */
-    suspend fun addSource(name: String, url: String): Long =
-        epg.insertSource(EpgSourceEntity(name = name.trim().ifEmpty { url.trim() }, url = url.trim()))
-
-    /** Adds those of [guides] not added already (by address). */
-    suspend fun addMissing(guides: List<FreeGuide>) {
-        val added = sourceUrls()
-        guides.filter { it.url !in added }.forEach { addSource(it.sourceName, it.url) }
+    /**
+     * Named after its address when [name] is blank; switched on for [playlistId]. A guide another playlist added
+     * already (by address) is switched on for this one instead, so it's still downloaded once.
+     */
+    suspend fun addSource(name: String, url: String, playlistId: Long): Long = db.withTransaction {
+        val address = url.trim()
+        (epg.sourceByUrl(address)?.id ?: epg.insertSource(EpgSourceEntity(name = name.trim().ifEmpty { address }, url = address))).also {
+            epg.link(listOf(PlaylistEpgSourceEntity(playlistId, it)))
+        }
     }
-
-    suspend fun sourceUrls(): Set<String> = epg.sourceUrls().toHashSet()
 
     /**
-     * Switched off, a guide's programmes go and channels matched to it automatically are matched afresh at the next
-     * update (to the other guides); the user's own choices stay, for when it's back. Switched on, the next update
-     * downloads it again (to read it in full) and tries it for channels that found no guide.
+     * Switched off for [playlistId], its channels matched to the guide automatically are matched afresh at the next
+     * update (to its other guides); the user's own choices stay, for when it's back. A guide no playlist uses any more
+     * loses its programmes and isn't updated. Switched on, the next update tries it for the playlist's channels that
+     * found no guide (downloading it again, to read it in full, if no other playlist was using it). Returns whether
+     * it needs loading now that it's on: it had no programmes (no playlist used it), or they're out of date.
      */
-    suspend fun setSourceEnabled(source: EpgSourceEntity, enabled: Boolean) {
-        db.withTransaction {
-            epg.setSourceEnabled(source.id, enabled)
-            if (enabled) epg.deleteFailedAutoMappings() else clearSwitchedOff()
+    suspend fun setSourceOn(playlistId: Long, source: EpgSourceEntity, on: Boolean): Boolean {
+        val wasUsed = db.withTransaction {
+            epg.isUsed(source.id).also {
+                if (on) {
+                    epg.link(listOf(PlaylistEpgSourceEntity(playlistId, source.id)))
+                    epg.deleteFailedAutoMappings(playlistId)
+                } else {
+                    epg.unlink(playlistId, source.id)
+                    clearSwitchedOff()
+                }
+            }
         }
-        if (enabled) metaFile(source.id).delete() // no "not changed" from the server: its programmes went
+        if (on && !wasUsed) metaFile(source.id).delete() // no "not changed" from the server: its programmes went
         releaseMatcher()
         changed()
+        return on && (!wasUsed || isOutOfDate(source))
     }
 
-    /** What the guides switched off left (see [setSourceEnabled]); also for guides switched off by an older version. */
+    /** After a playlist went: the programmes of guides no playlist uses any more. */
+    suspend fun clearUnused() = db.withTransaction { clearSwitchedOff() }
+
+    /** What the guides switched off left (see [setSourceOn]). */
     private suspend fun clearSwitchedOff() {
-        epg.clearSwitchedOffProgrammes()
-        epg.deleteSwitchedOffAutoMappings()
+        epg.clearUnusedProgrammes()
+        epg.deleteUnlinkedAutoMappings()
     }
 
     suspend fun removeSource(id: Long) {
@@ -149,6 +173,7 @@ class EpgRepository(
             epg.clearProgrammes(id)
             epg.clearChannels(id)
             epg.deleteMappingsForSource(id)
+            epg.deleteLinksForSource(id)
             epg.deleteSource(id)
         }
         sourceFile(id).delete()
@@ -157,33 +182,50 @@ class EpgRepository(
     }
 
     /**
-     * Downloads and imports every enabled source, then re-runs automatic matching for [playlistIds]. A source that
-     * fails doesn't stop the others: returns each failed source's error, by id (also kept as its lastError). With
-     * [only], just that source is downloaded again; the others are used as last downloaded.
+     * Downloads and imports the guides switched on for [playlistIds], then re-runs automatic matching for them; guides
+     * no playlist uses aren't downloaded. A source that fails doesn't stop the others: returns each failed source's
+     * error, by id (also kept as its lastError). With [only], just that source is downloaded again; the others are
+     * used as last downloaded. With [outOfDate], only the guides due an update are, and nothing is done if none is.
      */
-    suspend fun importAll(playlistIds: List<Long>, only: Long? = null, onProgress: (GuideStep) -> Unit = {}): Map<Long, String> =
-        withContext(Dispatchers.IO) {
-            val errors = HashMap<Long, String>()
-            db.withTransaction { clearSwitchedOff() }
-            val sources = epg.enabledSources()
-            val downloads = downloadAll(sources.filter { only == null || it.id == only || !sourceFile(it.id).exists() }, errors, onProgress)
-            // Sources not read in full afterwards: which guide channels they supply before matching, so only what
-            // matching adds is read.
-            val mappedBefore = sources.filterNot { readInFull(it, it.id in downloads.fresh) }
-                .associate { it.id to epg.mappedXmlIds(it.id).toHashSet() }
-            onProgress(GuideStep.Matching())
-            playlistIds.forEach { autoMatch(it, downloads.scope, onProgress) }
-            releaseMatcher()
-            val late = HashMap<Long, List<EpgChannelEntity>>()
-            for (s in sources) {
-                importProgrammesOf(s, s.id in downloads.fresh, mappedBefore[s.id].orEmpty(), errors, onProgress)
-                    ?.let { if (it.isNotEmpty()) late[s.id] = it }
-            }
-            if (late.isNotEmpty()) addLateChannels(late, playlistIds, onProgress)
-            epg.pruneProgrammes(clock() - KEEP_PAST_MS)
-            changed()
-            errors
+    suspend fun importAll(
+        playlistIds: List<Long>,
+        only: Long? = null,
+        outOfDate: Boolean = false,
+        onProgress: (GuideStep) -> Unit = {}
+    ): Map<Long, String> = withContext(Dispatchers.IO) {
+        val errors = HashMap<Long, String>()
+        val sources = epg.sourcesFor(playlistIds)
+        val due = sources.filter {
+            !sourceFile(it.id).exists() ||
+                when {
+                    only != null -> it.id == only
+                    outOfDate -> isOutOfDate(it)
+                    else -> true
+                }
         }
+        if (outOfDate && due.isEmpty()) return@withContext errors
+        db.withTransaction { clearSwitchedOff() }
+        val downloads = downloadAll(due, errors, onProgress)
+        // Sources not read in full afterwards: which guide channels they supply before matching, so only what
+        // matching adds is read.
+        val mappedBefore = sources.filterNot { readInFull(it, it.id in downloads.fresh) }
+            .associate { it.id to epg.mappedXmlIds(it.id).toHashSet() }
+        onProgress(GuideStep.Matching())
+        playlistIds.forEach { autoMatch(it, downloads.scope, onProgress) }
+        releaseMatcher()
+        val late = HashMap<Long, List<EpgChannelEntity>>()
+        for (s in sources) {
+            importProgrammesOf(s, s.id in downloads.fresh, mappedBefore[s.id].orEmpty(), errors, onProgress)
+                ?.let { if (it.isNotEmpty()) late[s.id] = it }
+        }
+        if (late.isNotEmpty()) addLateChannels(late, playlistIds, onProgress)
+        epg.pruneProgrammes(clock() - KEEP_PAST_MS)
+        changed()
+        errors
+    }
+
+    /** Never loaded, or not since the last daily update was due: what switching to a playlist updates. */
+    fun isOutOfDate(s: EpgSourceEntity) = clock() - s.lastImportAt > REREAD_AFTER_MS
 
     /** What [downloadAll] found: the sources downloaded anew, and how much matching that calls for. */
     private class Downloads(val fresh: Set<Long>, val scope: MatchScope)
@@ -216,7 +258,7 @@ class EpgRepository(
     }
 
     /** All of a source's programmes are read if it was just downloaded, or those stored are running short. */
-    private fun readInFull(s: EpgSourceEntity, fresh: Boolean) = fresh || clock() - s.lastImportAt > REREAD_AFTER_MS
+    private fun readInFull(s: EpgSourceEntity, fresh: Boolean) = fresh || isOutOfDate(s)
 
     /**
      * Stores a source's programmes after matching: all of them if it was just downloaded ([fresh]) or its stored ones
@@ -316,7 +358,7 @@ class EpgRepository(
         }
         // Building the matcher is the slow part: skip it when there's nothing to match.
         if (channels.isEmpty() && scope != MatchScope.ALL) return@withContext emptyList()
-        val matcher = matcher()
+        val matcher = matcher(playlistId)
         var reportedAt = 0L
         val rows = channels.mapIndexed { i, c ->
             // Matching is quick per channel: progress at most twice a second, as for downloads.
@@ -350,7 +392,7 @@ class EpgRepository(
         val checked = playlistIds.flatMap { autoMatch(it, MatchScope.MISSING, onProgress) }
         val found = checked.filter { it.sourceId != null }
         releaseMatcher()
-        val names = epg.enabledSources().associate { it.id to it.name }
+        val names = epg.sourcesFor(playlistIds).associate { it.id to it.name }
         found.groupBy({ it.sourceId!! }, { it.xmlId!! }).forEach { (source, xmlIds) ->
             onProgress(GuideStep.Loading(names[source]))
             runCatching { importProgrammes(source, xmlIds.toHashSet(), onlyThese = true) }
@@ -363,12 +405,13 @@ class EpgRepository(
         matcherCache = null
     }
 
-    suspend fun suggestions(channelName: String, providerEpgId: String?, limit: Int = 8): List<EpgMatch> =
+    /** Guide channels for [playlistId]'s channel [channelName], from the guides switched on for it, best first. */
+    suspend fun suggestions(playlistId: Long, channelName: String, providerEpgId: String?, limit: Int = 8): List<EpgMatch> =
         withContext(Dispatchers.Default) {
-            matcher().suggestions(channelName, providerEpgId, limit)
+            matcher(playlistId).suggestions(channelName, providerEpgId, limit)
         }
 
-    suspend fun searchGuideChannels(query: String) = epg.searchChannels(likeArg(query), 50)
+    suspend fun searchGuideChannels(playlistId: Long, query: String) = epg.searchChannels(playlistId, likeArg(query), 50)
 
     suspend fun mappingInfo(playlistId: Long, ids: List<Long>) = if (ids.isEmpty()) emptyList() else epg.mappingInfo(playlistId, ids)
 
@@ -419,7 +462,7 @@ class EpgRepository(
 
     suspend fun resetToAutomatic(playlistId: Long, streamId: Long, channelName: String, providerEpgId: String?) {
         epg.deleteMapping(playlistId, streamId)
-        val m = withContext(Dispatchers.Default) { matcher().autoMatch(channelName, providerEpgId) }
+        val m = withContext(Dispatchers.Default) { matcher(playlistId).autoMatch(channelName, providerEpgId) }
         if (m == null) {
             changed()
         } else {

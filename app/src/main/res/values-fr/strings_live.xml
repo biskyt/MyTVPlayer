@@ -29,11 +29,11 @@
     <string name="live_guide_earlier">Avant</string>
     <string name="live_guide_later">Après</string>
 
-    <string name="live_guide_sources_intro">Les guides sont mis à jour chaque jour. Les programmes ne sont enregistrés que pour les chaînes qui les utilisent, pour les 3 prochains jours.</string>
+    <string name="live_guide_sources_intro">Chaque playlist a ses propres guides : activé ici, il est utilisé par %1$s. Un guide utilisé par plusieurs playlists n\'est téléchargé qu\'une fois.</string>
     <string name="live_guide_add">Ajouter un guide</string>
     <string name="live_guide_update_now">Mettre à jour le guide</string>
     <string name="live_guide_match_missing">Associer les chaînes sans guide</string>
-    <string name="live_guide_yours">Vos guides</string>
+    <string name="live_guide_for">Guides de %1$s</string>
     <string name="live_guide_none_yet">Aucun guide pour l\'instant. Ajoutez un guide gratuit pour votre pays, ou votre propre adresse XMLTV.</string>
     <string name="live_guide_last_failed">Échec de la dernière mise à jour : %1$s</string>
     <string name="live_guide_wait">Attendez d\'abord la fin de cette tâche : %1$s</string>
@@ -48,7 +48,10 @@
         <item quantity="many">%1$s chaînes</item>
         <item quantity="other">%1$s chaînes</item>
     </plurals>
-    <string name="live_guide_source_off">désactivé</string>
+    <string name="live_guide_off_here">désactivé ici</string>
+    <string name="live_guide_from_other_provider">Fournisseur de %1$s</string>
+    <string name="live_guide_also_used_by">aussi utilisé par %1$s</string>
+    <string name="live_guide_not_used">aucune playlist ne l\'utilise</string>
 
     <string name="live_guide_adding">Ajout de %1$s</string>
     <string name="live_guide_added">%1$s ajouté</string>

@@ -54,6 +54,9 @@ interface PlaylistDao {
     @Query("DELETE FROM channel_epg_mapping WHERE playlistId = :pid")
     suspend fun deleteMappings(pid: Long)
 
+    @Query("DELETE FROM playlist_epg_source WHERE playlistId = :pid")
+    suspend fun deleteGuideLinks(pid: Long)
+
     @Query("DELETE FROM movie WHERE playlistId = :pid")
     suspend fun deleteMovies(pid: Long)
 
@@ -349,23 +352,36 @@ interface EpgDao {
     @Query("UPDATE epg_source SET lastImportAt = :at, channelCount = :channelCount, lastError = :error WHERE id = :id")
     suspend fun setImportResult(id: Long, at: Long, channelCount: Int, error: String?)
 
-    @Query("UPDATE epg_source SET enabled = :enabled WHERE id = :id")
-    suspend fun setSourceEnabled(id: Long, enabled: Boolean)
+    @Query("SELECT * FROM playlist_epg_source")
+    fun observeLinks(): Flow<List<PlaylistEpgSourceEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun link(links: List<PlaylistEpgSourceEntity>)
+
+    @Query("DELETE FROM playlist_epg_source WHERE playlistId = :pid AND sourceId = :sourceId")
+    suspend fun unlink(pid: Long, sourceId: Long)
+
+    @Query("DELETE FROM playlist_epg_source WHERE sourceId = :sourceId")
+    suspend fun deleteLinksForSource(sourceId: Long)
+
+    @Query("SELECT EXISTS (SELECT 1 FROM playlist_epg_source WHERE sourceId = :sourceId)")
+    suspend fun isUsed(sourceId: Long): Boolean
 
     @Query("SELECT xmlId FROM epg_channel WHERE sourceId = :sourceId")
     suspend fun channelXmlIds(sourceId: Long): List<String>
 
-    @Query("SELECT url FROM epg_source")
-    suspend fun sourceUrls(): List<String>
-
     @Query("SELECT id FROM epg_source")
     suspend fun allSourceIds(): List<Long>
 
-    @Query("SELECT * FROM epg_source WHERE enabled = 1 ORDER BY id")
-    suspend fun enabledSources(): List<EpgSourceEntity>
+    /** The guides switched on for any of [pids]. */
+    @Query("SELECT * FROM epg_source WHERE id IN (SELECT sourceId FROM playlist_epg_source WHERE playlistId IN (:pids)) ORDER BY id")
+    suspend fun sourcesFor(pids: List<Long>): List<EpgSourceEntity>
 
     @Query("SELECT * FROM epg_source WHERE playlistId = :pid")
     suspend fun providerSource(pid: Long): EpgSourceEntity?
+
+    @Query("SELECT * FROM epg_source WHERE url = :url LIMIT 1")
+    suspend fun sourceByUrl(url: String): EpgSourceEntity?
 
     @Insert
     suspend fun insertSource(s: EpgSourceEntity): Long
@@ -379,17 +395,21 @@ interface EpgDao {
     @Query("DELETE FROM channel_epg_mapping WHERE sourceId = :sourceId")
     suspend fun deleteMappingsForSource(sourceId: Long)
 
-    /** Automatic matching that found nothing, so the next update tries again. */
-    @Query("DELETE FROM channel_epg_mapping WHERE manual = 0 AND sourceId IS NULL")
-    suspend fun deleteFailedAutoMappings()
+    /** [pid]'s automatic matching that found nothing, so the next update tries again. */
+    @Query("DELETE FROM channel_epg_mapping WHERE playlistId = :pid AND manual = 0 AND sourceId IS NULL")
+    suspend fun deleteFailedAutoMappings(pid: Long)
 
-    /** Programmes of the guides switched off. */
-    @Query("DELETE FROM programme WHERE sourceId IN (SELECT id FROM epg_source WHERE enabled = 0)")
-    suspend fun clearSwitchedOffProgrammes()
+    /** Programmes of the guides no playlist uses (found among the few guides, then deleted by key). */
+    @Query("DELETE FROM programme WHERE sourceId IN (SELECT id FROM epg_source WHERE id NOT IN (SELECT sourceId FROM playlist_epg_source))")
+    suspend fun clearUnusedProgrammes()
 
-    /** Automatic matches to the guides switched off (the user's own choices stay, for when one is back). */
-    @Query("DELETE FROM channel_epg_mapping WHERE manual = 0 AND sourceId IN (SELECT id FROM epg_source WHERE enabled = 0)")
-    suspend fun deleteSwitchedOffAutoMappings()
+    /** Automatic matches to guides switched off for their playlist (the user's own choices stay, for when one is back). */
+    @Query(
+        """DELETE FROM channel_epg_mapping WHERE manual = 0 AND sourceId IS NOT NULL AND NOT EXISTS
+             (SELECT 1 FROM playlist_epg_source l WHERE l.playlistId = channel_epg_mapping.playlistId
+                AND l.sourceId = channel_epg_mapping.sourceId)"""
+    )
+    suspend fun deleteUnlinkedAutoMappings()
 
     @Query("DELETE FROM epg_channel WHERE sourceId = :sourceId")
     suspend fun clearChannels(sourceId: Long)
@@ -397,17 +417,17 @@ interface EpgDao {
     @Upsert
     suspend fun upsertChannels(items: List<EpgChannelEntity>)
 
-    /** The channels of the guides switched on: what matching chooses from. */
-    @Query("SELECT e.* FROM epg_channel e JOIN epg_source s ON s.id = e.sourceId WHERE s.enabled = 1")
-    suspend fun enabledChannels(): List<EpgChannelEntity>
+    /** The channels of the guides switched on for [pid]: what its matching chooses from. */
+    @Query("SELECT e.* FROM epg_channel e JOIN playlist_epg_source l ON l.sourceId = e.sourceId WHERE l.playlistId = :pid")
+    suspend fun channelsFor(pid: Long): List<EpgChannelEntity>
 
-    /** The guide channels to choose from by hand: those of the guides switched on. */
+    /** The guide channels to choose from by hand for [pid]: those of its guides switched on. */
     @Query(
-        """SELECT e.* FROM epg_channel e JOIN epg_source s ON s.id = e.sourceId
-           WHERE s.enabled = 1 AND (:q = '' OR e.displayName $LIKE_Q OR e.xmlId $LIKE_Q)
+        """SELECT e.* FROM epg_channel e JOIN playlist_epg_source l ON l.sourceId = e.sourceId
+           WHERE l.playlistId = :pid AND (:q = '' OR e.displayName $LIKE_Q OR e.xmlId $LIKE_Q)
            ORDER BY e.displayName LIMIT :limit"""
     )
-    suspend fun searchChannels(q: String, limit: Int): List<EpgChannelEntity>
+    suspend fun searchChannels(pid: Long, q: String, limit: Int): List<EpgChannelEntity>
 
     @Query("DELETE FROM programme WHERE sourceId = :sourceId")
     suspend fun clearProgrammes(sourceId: Long)
@@ -433,6 +453,7 @@ interface EpgDao {
                   p.stopMs + m.offsetMinutes * 60000 AS stopMs, p.title, p.subtitle
            FROM programme p JOIN channel_epg_mapping m ON m.sourceId = p.sourceId AND m.xmlId = p.xmlId
            JOIN channel c ON c.playlistId = m.playlistId AND c.streamId = m.streamId
+           JOIN playlist_epg_source l ON l.playlistId = m.playlistId AND l.sourceId = m.sourceId
            WHERE m.playlistId = :pid AND c.hidden = 0
              AND p.startMs > :from - m.offsetMinutes * 60000 - $MAX_PROGRAMME_MS
              AND p.stopMs > :from - m.offsetMinutes * 60000
@@ -441,7 +462,12 @@ interface EpgDao {
     )
     suspend fun searchProgrammes(pid: Long, q: String, from: Long, limit: Int): List<ProgrammeHit>
 
-    @Query("SELECT DISTINCT xmlId FROM channel_epg_mapping WHERE sourceId = :sourceId")
+    /** The guide channels of [sourceId] that a playlist using it has chosen: those whose programmes are stored. */
+    @Query(
+        """SELECT DISTINCT m.xmlId FROM channel_epg_mapping m
+           JOIN playlist_epg_source l ON l.playlistId = m.playlistId AND l.sourceId = m.sourceId
+           WHERE m.sourceId = :sourceId"""
+    )
     suspend fun mappedXmlIds(sourceId: Long): List<String>
 
     // Time bounds are applied to the bare startMs column (offset moved to the other side) so SQLite can range-scan the
@@ -450,6 +476,7 @@ interface EpgDao {
         """SELECT m.streamId, p.startMs + m.offsetMinutes * 60000 AS startMs, p.stopMs + m.offsetMinutes * 60000 AS stopMs,
                   p.title, p.subtitle, CASE WHEN :details THEN p.description END AS description, p.kind, p.season, p.episode
            FROM channel_epg_mapping m JOIN programme p ON p.sourceId = m.sourceId AND p.xmlId = m.xmlId
+           JOIN playlist_epg_source l ON l.playlistId = m.playlistId AND l.sourceId = m.sourceId
            WHERE m.playlistId = :pid AND m.streamId IN (:ids)
              AND p.startMs > :from - m.offsetMinutes * 60000 - $MAX_PROGRAMME_MS
              AND p.startMs < :to - m.offsetMinutes * 60000
@@ -524,9 +551,10 @@ interface EpgDao {
     @Query(
         """SELECT COALESCE(SUM(has), 0) AS withGuide, COUNT(*) - COALESCE(SUM(has), 0) AS noGuide FROM
              (SELECT EXISTS (SELECT 1 FROM channel_epg_mapping m WHERE m.playlistId = c.playlistId AND m.streamId = c.streamId
-                AND m.sourceId IS NOT NULL) AS has FROM channel c WHERE c.hidden = 0)"""
+                AND m.sourceId IS NOT NULL) AS has
+              FROM channel c WHERE c.playlistId = :pid AND c.hidden = 0)"""
     )
-    suspend fun coverage(): GuideCoverage
+    suspend fun coverage(pid: Long): GuideCoverage
 }
 
 /** Longest programme the time-range queries allow for; IPTV guides often use 24-hour placeholder entries. */
@@ -544,7 +572,7 @@ data class MatchRow(
 
 data class MatchCounts(val total: Int, val unmatched: Int, val auto: Int, val manual: Int)
 
-/** How many visible channels, across every playlist, have a guide and how many have none. */
+/** How many of a playlist's visible channels have a guide and how many have none. */
 data class GuideCoverage(val withGuide: Int, val noGuide: Int)
 
 /** A poster in a movie or series grid: only what the grid shows, so paging holds as little as possible. */
@@ -755,8 +783,16 @@ interface BackupDao {
     @Query("SELECT * FROM vod_favourite")
     suspend fun vodFavourites(): List<VodFavouriteEntity>
 
-    @Query("SELECT * FROM epg_source ORDER BY id")
+    /** For older versions, which read [EpgSourceEntity.enabled]: on if any playlist uses it. */
+    @Query(
+        """SELECT id, name, url, playlistId, EXISTS (SELECT 1 FROM playlist_epg_source l WHERE l.sourceId = s.id) AS enabled,
+                  lastImportAt, channelCount, lastError
+           FROM epg_source s ORDER BY id"""
+    )
     suspend fun epgSources(): List<EpgSourceEntity>
+
+    @Query("SELECT * FROM playlist_epg_source")
+    suspend fun guideLinks(): List<PlaylistEpgSourceEntity>
 
     /** Automatic matches are worked out again on the next guide update. */
     @Query("SELECT * FROM channel_epg_mapping WHERE manual = 1")
@@ -774,6 +810,7 @@ interface BackupDao {
         favourites: List<FavouriteEntity>,
         vodFavourites: List<VodFavouriteEntity>,
         epgSources: List<EpgSourceEntity>,
+        guideLinks: List<PlaylistEpgSourceEntity>,
         mappings: List<ChannelEpgMappingEntity>,
         progress: List<WatchProgressEntity>
     )

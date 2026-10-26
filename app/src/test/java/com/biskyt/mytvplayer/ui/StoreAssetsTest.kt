@@ -290,7 +290,7 @@ class StoreAssetsTest {
     // One channel set by hand (an hour's shift), and another open on its suggestions.
     @Test fun guideMatching() {
         runBlocking {
-            val source = app.container.db.epg().enabledSources().first().id
+            val source = app.container.db.epg().sourcesFor(listOf(playlistId)).first().id
             app.container.epg.setManual(playlistId, 108, source, "comedy", offsetMinutes = 60)
         }
         screenshot("6-guide-matching", Screen.GuideMatching(playlistId), "Meadow Comedy") {

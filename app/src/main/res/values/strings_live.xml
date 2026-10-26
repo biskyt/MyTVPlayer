@@ -44,14 +44,14 @@
     <string name="live_guide_later">Later</string>
 
     <!-- TV guide sources (settings page) -->
-    <string name="live_guide_sources_intro">Guides are updated every day. Programmes are only stored for channels that use them, for the next 3 days.</string>
+    <string name="live_guide_sources_intro">Each playlist has its own guides: switched on here, %1$s uses it. A guide more than one playlist uses is downloaded once.</string>
     <!-- Button and panel title. Keep short -->
     <string name="live_guide_add">Add a guide</string>
     <!-- Button. Keep short -->
     <string name="live_guide_update_now">Update guide now</string>
     <!-- Button -->
     <string name="live_guide_match_missing">Match channels without a guide</string>
-    <string name="live_guide_yours">Your guides</string>
+    <string name="live_guide_for">Guides for %1$s</string>
     <!-- "XMLTV" is a file format name: don't translate it -->
     <string name="live_guide_none_yet">No guides yet. Add a free guide for your country, or your own XMLTV address.</string>
     <!-- %1$s is an error message -->
@@ -74,7 +74,10 @@
         <item quantity="other">%1$s channels</item>
     </plurals>
     <!-- A guide's details: the guide is switched off -->
-    <string name="live_guide_source_off">off</string>
+    <string name="live_guide_off_here">off here</string>
+    <string name="live_guide_from_other_provider">%1$s\'s provider</string>
+    <string name="live_guide_also_used_by">also used by %1$s</string>
+    <string name="live_guide_not_used">not used by any playlist</string>
 
     <!-- Progress and outcomes of guide updates. %1$s is a guide's name or web address -->
     <string name="live_guide_adding">Adding %1$s</string>

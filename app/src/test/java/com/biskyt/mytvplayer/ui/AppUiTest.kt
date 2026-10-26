@@ -593,7 +593,7 @@ class AppUiTest {
     @Test
     fun `guides are added from a panel offering free country guides`() {
         show(Screen.GuideSources)
-        waitFor("Your guides")
+        waitFor("Guides for ") // the playlist in use's
         compose.onNode(hasText("Add a guide")).performSemanticsAction(SemanticsActions.OnClick)
         waitFor("Free guides by country")
         waitFor("Your own XMLTV address")

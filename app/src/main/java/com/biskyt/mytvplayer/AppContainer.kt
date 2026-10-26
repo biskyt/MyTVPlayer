@@ -71,7 +71,7 @@ class AppContainer(context: Context) {
     val favourites = Favourites(appScope, settings, channels, vod)
     val search = SearchRepository(db)
     val catchup = CatchupRepository(playlists)
-    val sync = SyncManager(appScope, playlists, vod, epg)
+    val sync = SyncManager(appScope, playlists, vod, epg, settings)
     val backup = BackupRepository(db, settings, epg, sync)
     val backupFile = BackupFile(context)
     val crashLog = CrashLog(context.filesDir, BuildConfig.VERSION_NAME)

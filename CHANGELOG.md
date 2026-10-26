@@ -2,6 +2,13 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.4.0
+- TV guides are now chosen per playlist: switch a guide on or off for the playlist you're using, under TV guide
+  sources. Each playlist's channels are matched only to its own guides, so another provider's guide no longer shows
+  on its channels. A guide used by more than one playlist is still downloaded and stored once.
+- Guide updates download only the guides of the playlist you're using. Switching to another playlist updates its
+  guides there and then if they're out of date.
+
 ## 1.3.4
 - Choosing categories: switching between live channels, films and series now always shows the first language's
   categories (it could show none).

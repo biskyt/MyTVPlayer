@@ -53,6 +53,8 @@ import com.biskyt.mytvplayer.data.db.GuideCoverage
 import com.biskyt.mytvplayer.data.db.MappingInfo
 import com.biskyt.mytvplayer.data.db.MatchCounts
 import com.biskyt.mytvplayer.data.db.MatchRow
+import com.biskyt.mytvplayer.data.db.PlaylistEntity
+import com.biskyt.mytvplayer.data.db.PlaylistEpgSourceEntity
 import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.AppIcons
 import com.biskyt.mytvplayer.ui.common.ChannelLogo
@@ -87,8 +89,42 @@ import kotlinx.coroutines.launch
 
 // ---------------------------------------------------------------- sources
 
+/**
+ * Every guide as [shown] sees it, given which playlists use which ([links]): its own provider guide first, then as
+ * added, so a row doesn't move when it's switched.
+ */
+private fun guideRows(
+    sources: List<EpgSourceEntity>,
+    links: List<PlaylistEpgSourceEntity>,
+    playlists: List<PlaylistEntity>,
+    shown: PlaylistEntity?
+): List<GuideRow> {
+    val byId = playlists.associateBy { it.id }
+    val usedBy = links.groupBy({ it.sourceId }, { it.playlistId })
+    return sources.map { s ->
+        val users = usedBy[s.id].orEmpty()
+        val others = users.filter { it != shown?.id }.mapNotNull { byId[it]?.name }
+        GuideRow(s, on = shown?.id in users, others = others, provider = s.playlistId?.let(byId::get))
+    }.sortedByDescending { shown != null && it.provider?.id == shown.id }
+}
+
+/**
+ * A guide as the playlist shown sees it: [on] for it, the [others] using it too, and the playlist it's the
+ * provider's own guide of ([provider]), if it is one.
+ */
+data class GuideRow(val source: EpgSourceEntity, val on: Boolean, val others: List<String>, val provider: PlaylistEntity?)
+
 class GuideSourcesViewModel(private val c: AppContainer) : ViewModel() {
-    val sources = c.epg.observeSources().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    private val playlists = c.playlists.observePlaylists().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** The playlist whose guides are shown: the one in use. */
+    val playlist = combine(c.settings.activePlaylistId, playlists) { id, all -> all.firstOrNull { it.id == id } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Every guide as the playlist shown sees it (see [guideRows]). */
+    val sources = combine(c.epg.observeSources(), c.epg.observeLinks(), playlists, playlist) { s, l, p, shown ->
+        guideRows(s, l, p, shown)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     var name by mutableStateOf("")
     var url by mutableStateOf("")
     private val work = WorkRunner(c.appScope, viewModelScope, c.sync.state)
@@ -107,27 +143,31 @@ class GuideSourcesViewModel(private val c: AppContainer) : ViewModel() {
     fun addFree(g: FreeGuide) = addAndLoad(g.sourceName, g.url)
 
     private fun addAndLoad(name: String, url: String): Boolean {
+        val pid = playlist.value?.id ?: return false
         val shown = name.trim().ifEmpty { url.trim() }
         return work.run(appString(R.string.live_guide_adding, shown)) {
-            val id = c.epg.addSource(name, url)
-            // A guide that couldn't be loaded doesn't fail the update (the others still load), so look for its own error.
-            update(appString(R.string.live_guide_added, shown), only = id) { errors ->
-                errors[id]?.let { WorkStatus(appString(R.string.live_guide_load_failed, shown), it, failed = true) }
-            }
+            loadOne(c.epg.addSource(name, url, pid), shown, appString(R.string.live_guide_added, shown))
         }
     }
+
+    /** Updates just guide [id] (named [shown]): [done], or its own error if it couldn't be loaded. */
+    private suspend fun loadOne(id: Long, shown: String, done: String) =
+        // A guide that couldn't be loaded doesn't fail the update (the others still load), so look for its own error.
+        update(done, only = id) { errors ->
+            errors[id]?.let { WorkStatus(appString(R.string.live_guide_load_failed, shown), it, failed = true) }
+        }
 
     fun refresh() = work.run(appString(R.string.live_guide_updating)) {
         update(appString(R.string.live_guide_updated)) { errors ->
             if (errors.isEmpty()) return@update null
-            val names = sources.value.filter { it.id in errors }.joinToString { it.name }
+            val names = sources.value.map { it.source }.filter { it.id in errors }.joinToString { it.name }
             WorkStatus(appString(R.string.live_guide_some_failed), "$names: ${errors.values.first()}", failed = true)
         }
     }
 
     fun matchMissing() = work.run(appString(R.string.live_guide_matching)) {
         val r = c.sync.matchMissingGuides().getOrElse { return@run WorkRunner.failed(appString(R.string.common_match_failed), it) }
-        val now = c.epg.coverage()
+        val now = coverage()
         val title = when {
             r.matched > 0 -> appPlural(R.plurals.live_guide_match_found, r.matched, formatCount(r.matched))
             now.noGuide == 0 -> appString(R.string.live_guide_match_all)
@@ -142,12 +182,25 @@ class GuideSourcesViewModel(private val c: AppContainer) : ViewModel() {
      * [check] finds a problem.
      */
     private suspend fun update(done: String, only: Long? = null, check: (Map<Long, String>) -> WorkStatus?): WorkStatus {
-        val before = c.epg.coverage()
+        val before = coverage()
         val errors = c.sync.updateGuide(only).getOrElse { return WorkRunner.failed(appString(R.string.common_guide_update_failed), it) }
-        return check(errors) ?: WorkStatus(done, coverageText(before, c.epg.coverage()))
+        return check(errors) ?: WorkStatus(done, coverageText(before, coverage()))
     }
 
-    fun toggle(s: EpgSourceEntity) = viewModelScope.launch { c.epg.setSourceEnabled(s, !s.enabled) }
+    /** How many of the shown playlist's channels have a guide. */
+    private suspend fun coverage() = c.epg.coverage(playlist.value?.id ?: 0)
+
+    /** Switches [row]'s guide on or off for the playlist shown. Switched on, it's loaded then if it needs to be. */
+    fun toggle(row: GuideRow) = viewModelScope.launch {
+        val pid = playlist.value?.id ?: return@launch
+        val s = row.source
+        if (c.epg.setSourceOn(pid, s, !row.on)) {
+            work.run(appString(R.string.live_guide_updating)) {
+                loadOne(s.id, s.name, appString(R.string.live_guide_updated))
+            }
+        }
+    }
+
     fun remove(s: EpgSourceEntity) = viewModelScope.launch { c.epg.removeSource(s.id) }
 
     private fun coverageText(before: GuideCoverage, now: GuideCoverage): String {
@@ -168,10 +221,13 @@ class GuideSourcesViewModel(private val c: AppContainer) : ViewModel() {
 fun GuideSourcesScreen() {
     val vm = appViewModel { GuideSourcesViewModel(it) }
     val sources by vm.sources.collectAsState()
+    val playlist by vm.playlist.collectAsState()
+    val name = playlist?.name.orEmpty()
     var adding by rememberSaveable { mutableStateOf(false) }
-    SettingsPage(stringResource(R.string.common_guide_sources)) {
+    val title = stringResource(R.string.common_guide_sources)
+    SettingsPage(if (playlist == null) title else "$title · $name") {
         item {
-            Muted(stringResource(R.string.live_guide_sources_intro), maxLines = 2)
+            Muted(stringResource(R.string.live_guide_sources_intro, name), maxLines = 2)
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -184,19 +240,20 @@ fun GuideSourcesScreen() {
         item(key = "status") { StatusPanel(vm.status) }
         item {
             Text(
-                stringResource(R.string.live_guide_yours),
+                stringResource(R.string.live_guide_for, name),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(top = 12.dp)
             )
         }
         if (sources.isEmpty()) item { Muted(stringResource(R.string.live_guide_none_yet)) }
-        items(sources, key = { it.id }) { s ->
+        items(sources, key = { it.source.id }) { row ->
+            val s = row.source
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                TvCard(onClick = { vm.toggle(s) }, color = Palette.surfaceLow, modifier = Modifier.weight(1f)) {
+                TvCard(onClick = { vm.toggle(row) }, color = Palette.surfaceLow, modifier = Modifier.weight(1f)) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(s.name, style = MaterialTheme.typography.titleMedium)
-                            Muted(sourceDetails(s))
+                            Muted(sourceDetails(row, playlist))
                             s.lastError?.let {
                                 Text(
                                     stringResource(R.string.live_guide_last_failed, GuideError.text(it)),
@@ -206,14 +263,14 @@ fun GuideSourcesScreen() {
                                 )
                             }
                         }
-                        Toggle(s.enabled)
+                        Toggle(row.on)
                     }
                 }
                 if (s.playlistId == null) PillButton(stringResource(R.string.common_remove), { vm.remove(s) })
             }
         }
     }
-    if (adding) AddGuidePanel(vm, sources) { adding = false }
+    if (adding) AddGuidePanel(vm, sources.map { it.source }) { adding = false }
 }
 
 /** Adding a guide: a free one for a country (the TV's own first), or any XMLTV address. Closes once one is added. */
@@ -263,11 +320,25 @@ private fun AddGuidePanel(vm: GuideSourcesViewModel, sources: List<EpgSourceEnti
     }
 }
 
-private fun sourceDetails(s: EpgSourceEntity): String {
-    val parts = mutableListOf(if (s.playlistId != null) appString(R.string.live_guide_from_provider) else s.url)
+/** Where [row]'s guide is from, its size, and which playlists use it, as [shown] sees it. */
+private fun sourceDetails(row: GuideRow, shown: PlaylistEntity?): String {
+    val s = row.source
+    val parts = mutableListOf(
+        when (row.provider?.id) {
+            null -> s.url
+            shown?.id -> appString(R.string.live_guide_from_provider)
+            else -> appString(R.string.live_guide_from_other_provider, row.provider.name)
+        }
+    )
     if (s.channelCount > 0) parts += appPlural(R.plurals.live_guide_source_channels, s.channelCount, formatCount(s.channelCount))
-    if (s.lastImportAt > 0) parts += appString(R.string.common_updated_at, formatDateTime(s.lastImportAt))
-    if (!s.enabled) parts += appString(R.string.live_guide_source_off)
+    when {
+        !row.on && row.others.isEmpty() -> parts += appString(R.string.live_guide_not_used)
+        !row.on -> parts += appString(R.string.live_guide_off_here)
+        else -> {
+            if (s.lastImportAt > 0) parts += appString(R.string.common_updated_at, formatDateTime(s.lastImportAt))
+            if (row.others.isNotEmpty()) parts += appString(R.string.live_guide_also_used_by, row.others.joinToString())
+        }
+    }
     return parts.joinToString(" · ")
 }
 
@@ -342,7 +413,7 @@ class GuideMatchingViewModel(private val c: AppContainer, private val playlistId
             choices = if (q.isBlank()) {
                 suggestionsFor(ch)
             } else {
-                c.epg.searchGuideChannels(q).map {
+                c.epg.searchGuideChannels(playlistId, q).map {
                     GuideChoice(
                         EpgCandidate(it.sourceId, it.xmlId, it.displayName, it.nameNorm),
                         null,
@@ -353,7 +424,7 @@ class GuideMatchingViewModel(private val c: AppContainer, private val playlistId
         }
     }
 
-    private suspend fun suggestionsFor(ch: ChannelEntity) = c.epg.suggestions(ch.name, ch.providerEpgId).map { it.toChoice() }
+    private suspend fun suggestionsFor(ch: ChannelEntity) = c.epg.suggestions(playlistId, ch.name, ch.providerEpgId).map { it.toChoice() }
 
     private fun EpgMatch.toChoice() = GuideChoice(candidate, score, sources[candidate.sourceId] ?: "")
 

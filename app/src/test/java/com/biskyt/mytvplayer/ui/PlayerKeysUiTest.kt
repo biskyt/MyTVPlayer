@@ -120,7 +120,7 @@ class PlayerKeysUiTest {
         provider.guideShiftMin = mapOf("kite.uk" to 10)
         runBlocking {
             val epg = app.container.epg
-            epg.setManual(playlistId, 103, app.container.db.epg().enabledSources().first().id, "kite.uk", offsetMinutes = 0)
+            epg.setManual(playlistId, 103, app.container.db.epg().sourcesFor(listOf(playlistId)).first().id, "kite.uk", offsetMinutes = 0)
             epg.importAll(listOf(playlistId))
         }
         show(Screen.Player(playlistId, 101, ChannelFilter.All))
