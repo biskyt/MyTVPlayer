@@ -147,7 +147,7 @@ See also:
 - **Touch:** tv-material `Surface` only answers D-pad OK. Taps are wired through `LocalTouch` and `Modifier.onTap` / `onPlainTap` / `onAnyTouch` in `ui/common/Touch.kt`.
 - **Never run `pkill -f <pattern>`** where the pattern also appears in your own command line, because it kills your own shell. Kill background loops by PID.
 - **Network from the sandbox and from GitHub runners:** archive.org isn't reachable from either, so the app can't be tested against it from here. Wikimedia is reachable.
-- **Android TV stand-in pickers:** some TVs (e.g. a Philips 48OLED806 on Android TV 10) ship stand-in "pickers" that only say "no application can handle this request".
+- **Android TV stand-in pickers:** some TVs (e.g. one on Android TV 10) ship stand-in "pickers" that only say "no application can handle this request".
   - The backup screen opens a picker directly only if it's Android's own (`…documentsui`). Otherwise it offers the installed file managers.
   - MyTVPlayer also accepts backup files via Open with / Share (JSON).
 - **Dolby Vision with HDR10+** (1.2.5, ported from MyPlexPlayer 0.3.2): a Dolby Vision decoder gets no HDR10+ while
@@ -156,7 +156,7 @@ See also:
   - Films and episodes from M3U feeds don't store a per-entry UA yet. That was offered and isn't done.
 
 ## The owner's setup and the free playlist
-- **Owner's devices:** they test on a Philips 48OLED806 TV (Android TV 10) and an Android phone. The phone needs the touch UI.
+- **Owner's devices:** they test on an Android TV 10 TV and an Android phone. The phone needs the touch UI.
 - **The free channels, films and series** come from the owner's own playlist project, https://biskyt.github.io/legalFreeIPTVplaylist/, with its own EPG at `epg.xml.gz`.
   - Films are hosted on archive.org and upload.wikimedia.org.
   - Its group titles carry prefixes ("Movies: Open Movies"). The app doesn't add them.
