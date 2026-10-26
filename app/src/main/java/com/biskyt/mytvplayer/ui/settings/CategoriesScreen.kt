@@ -63,7 +63,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -75,10 +74,16 @@ class CategoriesViewModel(private val c: AppContainer, private val playlistId: L
     /** Which list is being chosen: live channels, movies or series. */
     val type = MutableStateFlow(CAT_LIVE)
 
-    // Only ever the shown type's list: right after switching, the previous type's list is not shown or acted on.
-    val categories = type.flatMapLatest { t -> c.db.categories().observe(playlistId, t).map { list -> list.takeIf { t == type.value } } }
-        .map { it.orEmpty() }
+    /** The shown type's list. Right after switching, it still holds the previous type's: see [ofType]. */
+    val categories = type.flatMapLatest { c.db.categories().observe(playlistId, it) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /**
+     * [list] if it's type [t]'s, else nothing: not the previous type's, held until the new type's list arrives. Each list
+     * is of one type, so its first says which.
+     */
+    fun ofType(list: List<CategoryEntity> = categories.value, t: String = type.value) =
+        list.takeIf { it.firstOrNull()?.type == t }.orEmpty()
 
     /** Movies and series exist for Xtream accounts only. */
     var hasVod by mutableStateOf(false)
@@ -133,17 +138,15 @@ class CategoriesViewModel(private val c: AppContainer, private val playlistId: L
         setIncluded(type.value, shownIn(code).map { it.categoryId }, included)
     }
 
-    private fun shownIn(code: String?) = shown(categories.value.filter { it.type == type.value }, code, query.trim())
+    private fun shownIn(code: String?) = shown(ofType(), code, query.trim())
 
     /** Ticks or unticks every language's categories of the type shown: while filtering, only those that match. */
     fun setAll(included: Boolean) = viewModelScope.launch {
         val t = type.value
         val q = query.trim()
         // What the screen shows: categories whose name, or whose group's name, matches.
-        val ids = categories.value
-            .filter {
-                it.type == t && (matchesFilter(it.label, q) || matchesFilter(groupLabel(it.lang), q))
-            }
+        val ids = ofType(t = t)
+            .filter { matchesFilter(it.label, q) || matchesFilter(groupLabel(it.lang), q) }
             .map { it.categoryId }
         setIncluded(t, ids, included)
     }
@@ -183,8 +186,11 @@ class CategoriesViewModel(private val c: AppContainer, private val playlistId: L
 fun CategoriesScreen(playlistId: Long, firstRun: Boolean) {
     val vm = appViewModel(key = "cats-$playlistId") { CategoriesViewModel(it, playlistId) }
     val nav = LocalNavigator.current
-    val categories by vm.categories.collectAsState()
+    val listed by vm.categories.collectAsState()
     val type by vm.type.collectAsState()
+    // Not the previous type's (its first language would be chosen for this one). Checked against the type as it is now:
+    // the one collected above may not have caught up with a switch yet.
+    val categories = vm.ofType(listed)
     val hidden by vm.hidden.collectAsState()
     val query = vm.query.trim()
     // Their names are in the app's language: built again when it changes (LocalConfiguration follows it).

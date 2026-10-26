@@ -2,6 +2,10 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.3.4
+- Choosing categories: switching between live channels, films and series now always shows the first language's
+  categories (it could show none).
+
 ## 1.3.3
 - A film, episode or catch-up programme that's slow to start no longer closes the player (or shows an error) as it
   opens.
