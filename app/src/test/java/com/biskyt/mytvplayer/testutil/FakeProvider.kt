@@ -255,6 +255,9 @@ class FakeProvider(private val now: Long = System.currentTimeMillis()) : Dispatc
     /** Guide channel id to minutes its programmes are moved by (else every channel's start at the same times). */
     var guideShiftMin = mapOf<String, Int>()
 
+    /** Hours of programmes after the next one: "Later 1 on <id>", "Later 2 on <id>"…, an hour each (a full guide). */
+    var laterHours = 0
+
     /** Each channel followed by its programmes, as some joined-up guides are (against the XMLTV format). */
     var interleavedGuide = false
 
@@ -273,6 +276,13 @@ class FakeProvider(private val now: Long = System.currentTimeMillis()) : Dispatc
                     30
                 )}\" stop=\"${at(90)}\" channel=\"$id\"><title>${nextTitle[id] ?: "Next on $id"}</title></programme>"
             )
+            for (k in 1..laterHours) {
+                append(
+                    "<programme start=\"${at(
+                        30 + 60 * k
+                    )}\" stop=\"${at(90 + 60 * k)}\" channel=\"$id\"><title>Later $k on $id</title></programme>"
+                )
+            }
         }
         if (interleavedGuide) {
             for ((id, name) in guideChannels) {

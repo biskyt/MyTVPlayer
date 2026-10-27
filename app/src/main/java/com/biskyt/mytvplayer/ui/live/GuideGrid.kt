@@ -1,6 +1,9 @@
 package com.biskyt.mytvplayer.ui.live
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,31 +18,42 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
@@ -48,6 +62,7 @@ import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.container
+import com.biskyt.mytvplayer.data.EpgRepository
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
@@ -56,26 +71,42 @@ import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Navigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.common.BatchLoader
+import com.biskyt.mytvplayer.ui.common.CardShape
 import com.biskyt.mytvplayer.ui.common.CatchupMark
 import com.biskyt.mytvplayer.ui.common.ChannelLogo
+import com.biskyt.mytvplayer.ui.common.FocusStroke
 import com.biskyt.mytvplayer.ui.common.LocalTouch
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.TouchStepButtons
-import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.collectIds
+import com.biskyt.mytvplayer.ui.common.formatDay
+import com.biskyt.mytvplayer.ui.common.formatDayTime
 import com.biskyt.mytvplayer.ui.common.formatRange
 import com.biskyt.mytvplayer.ui.common.formatTime
+import com.biskyt.mytvplayer.ui.common.ignoreHeldSelect
 import com.biskyt.mytvplayer.ui.common.isLive
+import com.biskyt.mytvplayer.ui.common.isSelect
+import com.biskyt.mytvplayer.ui.common.isToday
 import com.biskyt.mytvplayer.ui.common.numberLabel
+import com.biskyt.mytvplayer.ui.common.onOptionsKey
+import com.biskyt.mytvplayer.ui.common.onTap
 import com.biskyt.mytvplayer.ui.common.rememberDetails
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
+import java.time.Instant
+import java.time.ZoneId
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 private const val HALF_HOUR = 30 * 60_000L
 private const val HOUR = 2 * HALF_HOUR
@@ -86,191 +117,415 @@ private const val WINDOW_MS = 5 * HALF_HOUR // 2.5 hours on screen
 private const val CHUNK_STEP = 3 * HOUR
 private const val CHUNK_MS = 6 * HOUR
 private const val DAY_MS = 24 * HOUR
-
-/** Where focus should land: the programme on [time] in channel [streamId] (null = the first row). */
-private data class GuideFocus(val streamId: Long?, val time: Long)
+private const val SHOWN_ROWS = 300
+private const val NEW_LIST_MS = 5_000L
 
 /**
- * What the Live screen around the grid knows of focus: how often the user moved around it, by the remote's arrows and
- * Back (a held key once) or a tap.
+ * The guide's highlight: a row (its position in the channel list) and a time; the programme on that time in that row
+ * is the highlighted one. Moving up and down keeps the time, so the highlight stays in the same column.
  */
-class ScreenFocus {
+private class GuideCursor(row: Int, time: Long) {
+    var row by mutableIntStateOf(row)
+    var time by mutableLongStateOf(time)
+
+    /** Whether it has been placed on arriving (until then, the row it's on isn't the channel to remember). */
+    var placed by mutableStateOf(false)
+
+    /** Moves the user has made (a key or a tap): a placement that took a while doesn't undo them. */
     var moves = 0
 }
 
-/** Where focus goes in the grid once that row's cell is there ([value]); null when there's nowhere to go. */
-private class FocusTarget(private val screen: ScreenFocus) {
-    var value by mutableStateOf<GuideFocus?>(null)
-    private var gridHasFocus = false
-    private var pressesWhenSet = 0
-
-    fun set(target: GuideFocus) {
-        pressesWhenSet = screen.moves
-        value = target
-    }
-
-    fun gridFocusChanged(hasFocus: Boolean) {
-        gridHasFocus = hasFocus
-    }
+/** The rows' programmes: fetched per 6-hour chunk, for rows on screen only (see [BatchLoader]). */
+private class GuideRows(
+    private val scope: CoroutineScope,
+    private val epg: EpgRepository,
+    private val playlistId: () -> Long,
+    private val catchup: GuideCatchup,
+    private val window: GuideWindow
+) {
+    private var chunk = Long.MIN_VALUE
+    private var guide: BatchLoader<List<ChannelProgramme>>? = null
+    private var past: BatchLoader<List<ChannelProgramme>>? = null
 
     /**
-     * Whether the target's cell may still take focus: not once the user moved while the row's programmes were on their
-     * way (up to the filter, to the categories, Back, a tap): they have moved on, and focus stays where they put it.
-     * Focus that moved by itself doesn't end it: a placeholder cell replaced by the programmes loses focus, which some
-     * TVs hand to the first thing on the screen (the Home tab) before the real cell asks for it.
+     * What rows had in chunks the window has left: shown while the window's chunk loads, instead of blanking. The most
+     * recently used rows only, as the loaders keep.
      */
-    fun mayTakeFocus(): Boolean {
-        val movedAway = !gridHasFocus && screen.moves != pressesWhenSet
-        if (movedAway) value = null
-        return !movedAway
+    private val shown = object : LinkedHashMap<Long, List<ChannelProgramme>>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, List<ChannelProgramme>>?) = size > SHOWN_ROWS
     }
+
+    /** The loader for the window's chunk: a fresh one per chunk. */
+    fun guide(): BatchLoader<List<ChannelProgramme>> {
+        val start = window.start / CHUNK_STEP * CHUNK_STEP
+        guide?.takeIf { chunk == start }?.let { return it }
+        guide?.entries?.let(shown::putAll)
+        past?.entries?.let(shown::putAll)
+        chunk = start
+        past = null
+        return BatchLoader<List<ChannelProgramme>>(scope) { ids ->
+            epg.programmes(playlistId(), ids, start, start + CHUNK_MS, details = false).let { r -> ids.associateWith { r[it].orEmpty() } }
+        }.also { guide = it }
+    }
+
+    /** In the past, catch-up channels' programmes come from the provider (see [GuideCatchup]). */
+    fun loaderFor(ch: ChannelEntity): BatchLoader<List<ChannelProgramme>> {
+        val guide = guide()
+        // Back to the present: going back again fetches the past afresh (programmes have ended meanwhile).
+        if (!window.inPast) {
+            past = past?.let {
+                it.entries.let(shown::putAll)
+                null
+            }
+        }
+        if (!window.inPast || ch.archiveDays <= 0) return guide
+        return past ?: catchup.loader(chunk, chunk + CHUNK_MS).also {
+            guide.entries.let(shown::putAll) // shown while the provider's programmes load
+            past = it
+        }
+    }
+
+    /** A row's programmes as shown: the window's, or while those load, the last it had (null before any). */
+    fun programmes(ch: ChannelEntity) = loaderFor(ch).entries[ch.streamId] ?: shown[ch.streamId]
+
+    fun hasProgrammes(ch: ChannelEntity) = programmes(ch) != null
+
+    /** Whether a row's programmes for the window's chunk are in (not just those it had before). */
+    fun loaded(ch: ChannelEntity) = loaderFor(ch).entries[ch.streamId] != null
+
+    /** Asks for a row's programmes for the window (a row on screen, or the highlighted one). */
+    fun request(ch: ChannelEntity) {
+        if (ch.archiveDays > 0 && window.inPast) catchup.rows[ch.streamId] = ch
+        loaderFor(ch).request(ch.streamId)
+    }
+
+    /** A row's programmes in the window (as shown), and which of them is on [time] (-1 when there are none). */
+    fun inWindow(ch: ChannelEntity, time: Long): Pair<List<ChannelProgramme>, Int> {
+        val visible = visibleIn(programmes(ch).orEmpty(), window.start)
+        return visible to cellAt(visible, time)
+    }
+}
+
+private fun visibleIn(programmes: List<ChannelProgramme>, windowStart: Long): List<ChannelProgramme> {
+    val windowEnd = windowStart + WINDOW_MS
+    return programmes.filter { it.stopMs > windowStart && it.startMs < windowEnd }
+}
+
+/** The programme on [time], else the next one after it, else the last: what a highlight on [time] shows. */
+internal fun cellAt(visible: List<ChannelProgramme>, time: Long): Int =
+    visible.indexOfFirst { it.stopMs > time }.takeIf { it >= 0 } ?: visible.lastIndex
+
+/**
+ * A time for the highlight on the programme after ([dir] 1) or before (-1) [visible]`[i]`: the first that a time can
+ * pick out (guides can have programmes that overlap, or last no time at all), or null at the window's edge.
+ */
+internal fun stepTime(visible: List<ChannelProgramme>, i: Int, dir: Int, windowStart: Long): Long? {
+    val others = if (dir > 0) i + 1..visible.lastIndex else i - 1 downTo 0
+    return others.firstNotNullOfOrNull { j -> timeOn(visible, j, windowStart) }
+}
+
+/** A time that picks out [visible]`[j]`: the earliest on it that the ones before it have all ended by (if any). */
+private fun timeOn(visible: List<ChannelProgramme>, j: Int, windowStart: Long): Long? {
+    val earlier = (0 until j).maxOfOrNull { visible[it].stopMs } ?: Long.MIN_VALUE
+    return maxOf(visible[j].startMs, windowStart, earlier).takeIf { cellAt(visible, it) == j }
 }
 
 private val DpPerMinute = 6.dp
 private val ChannelColumn = 288.dp
+private val arrowKeys = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight)
 
 /**
  * The full TV guide grid. Rows come from the same paged channel list; programmes are fetched only for rows on
- * screen and only around the visible time window. Pressing left/right at the edge of the window moves it by an hour,
- * and focus follows on to the next/previous programme of the same channel.
+ * screen and only around the visible time window.
+ *
+ * The grid is one focus stop with a highlight of its own (a [GuideCursor]): every arrow press, held or not, moves the
+ * highlight one row or one programme, whatever is loaded or on screen. Left and right past the window's edge move the
+ * window (at least an hour); the highlight stays in the grid at its earliest and latest times. Up from the first row,
+ * and Back, leave it for the filter box (see LiveScreen).
  */
 @Composable
 fun GuideGrid(
     vm: LiveViewModel,
     items: LazyPagingItems<ChannelEntity>,
     play: (ChannelEntity) -> Unit,
-    screen: ScreenFocus,
-    entry: FocusRequester
+    entry: FocusRequester,
+    /** Where Up from the first row goes (the filter box). */
+    up: FocusRequester
 ) {
     val container = LocalContext.current.container
-    val epg = container.epg
     val nav = LocalNavigator.current
     val scope = rememberCoroutineScope()
-    val guideVersion by epg.changes.collectAsState()
+    val guideVersion by container.epg.changes.collectAsState()
     val now by rememberMinuteClock()
     // Catch-up (see GuideCatchup): only once the user scrolls back before now.
     val playlistId by vm.playlistId.collectAsState()
     val favourites = vm.favouriteIds.collectIds()
     val catchup = remember(playlistId) { GuideCatchup(container, scope, playlistId) }
     val window = remember(catchup) { GuideWindow(scope, catchup) }
+    val rows = remember(window) { GuideRows(scope, container.epg, { vm.playlistId.value }, catchup, window) }
+    val cursor = remember { GuideCursor(vm.focusIndex ?: 0, System.currentTimeMillis()) }
+    val open by rememberUpdatedState<(ChannelEntity, ChannelProgramme?) -> Unit> { ch, p -> openProgramme(nav, ch, p, play) }
+    val highlight = remember(rows, items) { GuideHighlight(cursor, rows, window, items, vm, scope, entry, up) { ch, p -> open(ch, p) } }
+    var hasFocus by remember { mutableStateOf(false) }
     val windowStart = window.start
-    // A fresh loader per chunk: rows on screen fetch just that chunk's programmes in batches.
-    val chunkStart = windowStart / CHUNK_STEP * CHUNK_STEP
-    val loader = remember(chunkStart) {
-        BatchLoader(scope) { ids ->
-            epg.programmes(vm.playlistId.value, ids, chunkStart, chunkStart + CHUNK_MS, details = false)
-                .let { r -> ids.associateWith { r[it].orEmpty() } }
-        }
-    }
-    val scrolledBack = window.inPast
-    val catchupLoader = remember(chunkStart, scrolledBack) { if (scrolledBack) catchup.loader(chunkStart, chunkStart + CHUNK_MS) else null }
+    val midnight = remember(windowStart) { midnightIn(windowStart) }
+    val noGuide = stringResource(R.string.common_no_guide)
     // After a guide update, reload the rows already shown (keeping them on screen meanwhile).
-    LaunchedEffect(guideVersion) { loader.refreshAll() }
-    // Read only inside FocusedInfo, so moving focus around the grid doesn't recompose the grid itself.
-    val focused = remember { mutableStateOf<Pair<ChannelEntity, ChannelProgramme?>?>(null) }
-    val focusTarget = remember { FocusTarget(screen) }
-    // Arriving from the list (or the player, or after a move): focus what's on now on the channel that had focus.
-    LaunchedEffect(vm.restoreFocusPending) {
+    LaunchedEffect(guideVersion) { rows.guide().refreshAll() }
+
+    // Arriving (from the list, the player or another tab): the highlight goes to what's on now on the channel last
+    // used. Focus comes too, unless the view was switched with its buttons (they keep it).
+    LaunchedEffect(Unit) {
+        // Another list (a category, or a search): its first row, at the same time.
+        launch {
+            combine(vm.filter, vm.query, ::Pair).drop(1).collectLatest {
+                cursor.row = 0
+                vm.focusStreamId = null
+                vm.listState.scrollToItem(0)
+                // When the new list's rows arrive, to the top again: a list keeps the channel on top in view, wherever
+                // it is in the new one. (A search typed and deleted at once makes no new list: nothing arrives.)
+                withTimeoutOrNull(NEW_LIST_MS) {
+                    snapshotFlow { items.itemSnapshotList }.drop(1).first()
+                    vm.listState.requestScrollToItem(0)
+                }
+            }
+        }
+        // Focus first: the grid is one focus stop, there whichever row the highlight goes to (that can take a lookup,
+        // and the user may have moved on meanwhile).
+        withFrameNanos { }
         if (vm.restoreFocusPending) {
             vm.restoreFocusPending = false
-            focusTarget.set(GuideFocus(vm.focusStreamId, System.currentTimeMillis()))
-            vm.revealFocused()
+            runCatching { entry.requestFocus() }
         }
+        val moves = cursor.moves
+        val row = vm.revealFocused() ?: 0.also { vm.listState.scrollToItem(0) }
+        if (cursor.moves == moves) highlight.place(row)
+        cursor.placed = true
+    }
+    // A shorter list (a channel hidden, or no longer a favourite): the highlight stays on it.
+    LaunchedEffect(items.itemCount) {
+        if (cursor.row >= items.itemCount && items.itemCount > 0) highlight.place(items.itemCount - 1)
     }
 
-    /**
-     * Left/right past the window edge: moves the window at least an hour, and far enough to show the time just
-     * beyond [p], then carries focus there. Returns false at the limits so the key can move focus normally
-     * (e.g. left to the categories).
-     */
-    fun edge(ch: ChannelEntity, dir: Int, p: ChannelProgramme?): Boolean =
-        window.move(dir, p) { focusTarget.set(GuideFocus(ch.streamId, it)) }
-
-    Column(Modifier.fillMaxSize().onFocusChanged { focusTarget.gridFocusChanged(it.hasFocus) }) {
-        FocusedInfo(focused)
-        TimeHeader(windowStart) { dir -> window.move(dir, null) }
+    Column(Modifier.fillMaxSize()) {
+        FocusedInfo(highlight, now)
+        TimeHeader(windowStart, midnight, now) { dir -> window.move(dir, null) { cursor.time = it } }
         val nowLine = (now - windowStart) / 60_000f
-        Box(Modifier.fillMaxSize()) {
-            // Focus entering the grid from the categories lands on the programme it left (else the first), not on whatever
-            // is nearest across the screen (the buttons above).
+        GridFocus(
+            label = { highlight.at()?.let { (ch, p) -> cellTitle(ch, p, now, noGuide.takeIf { rows.hasProgrammes(ch) }) } },
+            modifier = Modifier.fillMaxSize()
+                .focusRequester(entry)
+                .onFocusChanged { hasFocus = it.isFocused }
+                .ignoreHeldSelect()
+                .onOptionsKey(highlight::options)
+                .onKeyEvent(highlight::onKey)
+                .focusable()
+        ) {
             LazyColumn(
-                modifier = Modifier.focusRequester(entry).focusRestorer(),
                 state = vm.listState,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 contentPadding = PaddingValues(bottom = 40.dp)
             ) {
                 items(count = items.itemCount, key = items.itemKey { it.streamId }) { index ->
                     val ch = items[index] ?: return@items
-                    // In the past, catch-up channels' programmes come from the provider.
-                    val rowLoader = if (catchupLoader != null && ch.archiveDays > 0) catchupLoader else loader
-                    LaunchedEffect(ch.streamId, rowLoader) {
-                        if (rowLoader === catchupLoader) catchup.rows[ch.streamId] = ch
-                        rowLoader.request(ch.streamId)
-                    }
-                    // Derived per row, so a new target only recomposes the row it concerns.
-                    val focusTime by remember(ch.streamId, index) {
-                        derivedStateOf {
-                            focusTarget.value?.takeIf { it.streamId == ch.streamId || (it.streamId == null && index == 0) }?.time
-                        }
-                    }
-                    val (programmes, loaded) = rowProgrammes(rowLoader.entries[ch.streamId])
+                    LaunchedEffect(ch.streamId, rows.loaderFor(ch)) { rows.request(ch) }
+                    // Derived per row, so moving the highlight only recomposes the rows it leaves and enters.
+                    val time by remember(index) { derivedStateOf { cursor.time.takeIf { cursor.row == index } } }
+                    // The highlight's channel, for the list and coming back (also when it got here before the row did).
+                    if (time != null && cursor.placed) LaunchedEffect(ch.streamId) { vm.focusMoved(ch.streamId, index) }
                     GuideRow(
                         ch = ch,
                         favourite = ch.streamId in favourites,
-                        programmes = programmes,
-                        loaded = loaded,
+                        programmes = rows.programmes(ch),
                         windowStart = windowStart,
                         now = now,
-                        focusTime = focusTime,
-                        onFocus = { p, isTarget ->
-                            focused.value = ch to p
-                            vm.focusMoved(ch.streamId, index)
-                            // The target is done once its cell has focus with the programmes loaded (until then the
-                            // placeholder holds focus, and the real cell takes it when they arrive). Focus moved by the
-                            // user ends it too: it mustn't pull focus back when a row's programmes arrive later.
-                            if (!isTarget || loaded) focusTarget.value = null
-                        },
-                        onPlay = { p -> openProgramme(nav, ch, p, play) },
-                        // The programme with focus on this row, so its options can offer to find it on demand.
-                        onOptions = { vm.openOptions(ch, focused.value?.takeIf { it.first.streamId == ch.streamId }?.second) },
-                        onEdge = { dir, p -> edge(ch, dir, p) },
-                        mayTakeFocus = focusTarget::mayTakeFocus
+                        highlight = time?.takeIf { hasFocus },
+                        onTap = { p -> highlight.tap(index, ch, p) },
+                        onLongTap = { p -> highlight.longTap(index, ch, p) }
                     )
                 }
             }
-            if (nowLine in 0f..(WINDOW_MS / 60_000f)) {
-                Box(
-                    Modifier.offset(
-                        x = ChannelColumn + DpPerMinute * nowLine
-                    ).width(2.dp).fillMaxHeight().background(LocalAccent.current.color)
-                )
-            }
+            if (nowLine in 0f..(WINDOW_MS / 60_000f)) DayLine(nowLine, LocalAccent.current.color)
+            midnight?.let { DayLine((it - windowStart) / 60_000f, Palette.textDim) }
         }
     }
 }
 
 /**
- * A row's programmes, and whether they're the ones asked for ([loaded], null while loading). While a row loads another
- * stretch of time (or catch-up, from the provider) it keeps showing what it had: the cell with focus stays, instead
- * of focus being lost and landing elsewhere.
+ * The grid's one focus stop. [label] (what the highlight is on) is what it says it is, to accessibility and tests.
+ * Read here, in a scope of its own, so a key press recomposes this box and the rows it changes, not the whole grid.
  */
 @Composable
-private fun rowProgrammes(loaded: List<ChannelProgramme>?): Pair<List<ChannelProgramme>?, Boolean> {
-    val last = remember { arrayOfNulls<List<ChannelProgramme>>(1) }
-    if (loaded != null) last[0] = loaded
-    return (loaded ?: last[0]) to (loaded != null)
+private fun GridFocus(label: () -> String?, modifier: Modifier, content: @Composable () -> Unit) {
+    val text = label()
+    Box(modifier.semantics { contentDescription = text.orEmpty() }) { content() }
+}
+
+/** The highlight ([cursor]) and what the remote's keys do with it. */
+private class GuideHighlight(
+    private val cursor: GuideCursor,
+    private val rows: GuideRows,
+    private val window: GuideWindow,
+    private val items: LazyPagingItems<ChannelEntity>,
+    private val vm: LiveViewModel,
+    private val scope: CoroutineScope,
+    /** The grid's own focus (a tap takes it there). */
+    private val self: FocusRequester,
+    private val up: FocusRequester,
+    /** Opens a programme (OK, or a tap). */
+    private val open: (ChannelEntity, ChannelProgramme?) -> Unit
+) {
+    private var revealing: Job? = null
+    private var okHeld = false
+
+    /** The channel in row [row], once its page is loaded (paging throws for a row it doesn't have yet). */
+    private fun channelAt(row: Int) = if (row in 0 until items.itemCount) items.peek(row) else null
+
+    /** The channel and programme the highlight is on. */
+    fun at(): Pair<ChannelEntity, ChannelProgramme?>? {
+        val ch = channelAt(cursor.row) ?: return null
+        val (visible, i) = rows.inWindow(ch, cursor.time)
+        return ch to visible.getOrNull(i)
+    }
+
+    fun place(row: Int) {
+        cursor.row = row
+        channelAt(row)?.let { vm.focusMoved(it.streamId, row) }
+    }
+
+    private fun moveTo(row: Int) {
+        place(row)
+        revealing?.cancel()
+        if (!vm.listState.inFullView(row)) revealing = scope.launch { vm.listState.reveal(row) }
+    }
+
+    /**
+     * Left (-1) or right (1): the previous or next programme, moving the window past its edge. The window doesn't move
+     * while the row's programmes for it are loading: it would move on an hour a press, past programmes not yet shown.
+     */
+    private fun step(dir: Int) {
+        val ch = channelAt(cursor.row) ?: return
+        val (visible, i) = rows.inWindow(ch, cursor.time)
+        val next = if (i >= 0) stepTime(visible, i, dir, window.start) else null
+        when {
+            next != null -> cursor.time = next
+            rows.loaded(ch) -> window.move(dir, visible.getOrNull(i)) { cursor.time = it }
+            else -> rows.request(ch) // (scrolled off screen by touch, it may not have been asked for)
+        }
+    }
+
+    /** A tap on a programme (a touch screen): the highlight goes there, and it opens. */
+    fun tap(row: Int, ch: ChannelEntity, p: ChannelProgramme?) {
+        touch(row, ch, p)
+        open(ch, p)
+    }
+
+    /** A long press on a programme: the highlight goes there, and its options open. */
+    fun longTap(row: Int, ch: ChannelEntity, p: ChannelProgramme?) {
+        touch(row, ch, p)
+        vm.openOptions(ch, p)
+    }
+
+    private fun touch(row: Int, ch: ChannelEntity, p: ChannelProgramme?) {
+        cursor.moves++
+        val (visible, _) = rows.inWindow(ch, cursor.time)
+        visible.indexOf(p).takeIf { it >= 0 }?.let { timeOn(visible, it, window.start) }?.let { cursor.time = it }
+        moveTo(row)
+        runCatching { self.requestFocus() }
+    }
+
+    fun options() {
+        at()?.let { (ch, p) -> vm.openOptions(ch, p) }
+    }
+
+    /**
+     * Every arrow press moves the highlight one step (Up from the first row goes to the filter box);
+     * OK opens what it's on and holding OK opens its options (as Info/Menu do, see [GuideGrid]).
+     */
+    fun onKey(e: KeyEvent): Boolean = when {
+        e.key.isSelect() -> true.also { ok(e) }
+        e.key !in arrowKeys -> false
+        e.type != KeyEventType.KeyDown -> true
+        else -> arrow(e)
+    }
+
+    private fun arrow(e: KeyEvent): Boolean {
+        cursor.moves++
+        return when {
+            e.key == Key.DirectionUp && cursor.row > 0 -> true.also { moveTo(cursor.row - 1) }
+            // Leaving takes a press of its own: held, Up stops on the first row (as Down does on the last).
+            e.key == Key.DirectionUp -> e.nativeKeyEvent.repeatCount > 0 || runCatching { up.requestFocus() }.isSuccess
+            e.key == Key.DirectionDown -> true.also { if (cursor.row < items.itemCount - 1) moveTo(cursor.row + 1) }
+            else -> true.also { step(if (e.key == Key.DirectionLeft) -1 else 1) }
+        }
+    }
+
+    /** A press opens; held, the options open instead (a press that began elsewhere never gets here: ignoreHeldSelect). */
+    private fun ok(e: KeyEvent) {
+        when {
+            e.type == KeyEventType.KeyDown && e.nativeKeyEvent.repeatCount == 0 -> okHeld = false
+            e.type == KeyEventType.KeyDown -> if (!okHeld) {
+                okHeld = true
+                options()
+            }
+            e.type == KeyEventType.KeyUp && !okHeld -> at()?.let { (ch, p) -> open(ch, p) }
+        }
+    }
+}
+
+/** Whether row [index] is on screen in full. */
+private fun LazyListState.inFullView(index: Int): Boolean {
+    val end = layoutInfo.viewportEndOffset - layoutInfo.afterContentPadding
+    return layoutInfo.visibleItemsInfo.any { it.index == index && it.offset >= 0 && it.offset + it.size <= end }
+}
+
+/** Scrolls the list just enough to show row [index] in full (it's usually the row next to one on screen). */
+internal suspend fun LazyListState.reveal(index: Int) {
+    val info = layoutInfo
+    val end = info.viewportEndOffset - info.afterContentPadding
+    val item = info.visibleItemsInfo.firstOrNull { it.index == index }
+    when {
+        item == null -> {
+            val inFull = info.visibleItemsInfo.count { it.offset >= 0 && it.offset + it.size <= end }
+            scrollToItem(if (index < firstVisibleItemIndex) index else maxOf(0, index - maxOf(1, inFull) + 1))
+        }
+        item.offset < 0 -> scrollBy(item.offset.toFloat())
+        item.offset + item.size > end -> scrollBy((item.offset + item.size - end).toFloat())
+    }
+}
+
+/** What a programme's cell says: its title (⟲ when it can be replayed), or, without one, [noGuide] (null: not loaded). */
+private fun cellTitle(ch: ChannelEntity, p: ChannelProgramme?, now: Long, noGuide: String?): String = when {
+    p != null -> programmeTitle(p.title).let { if (ch.archiveDays > 0 && p.stopMs <= now) "⟲ $it" else it }
+    else -> noGuide.orEmpty()
+}
+
+/** Local midnight within the window starting at [windowStart], if there is one. */
+private fun midnightIn(windowStart: Long): Long? {
+    val zone = ZoneId.systemDefault()
+    val next = Instant.ofEpochMilli(windowStart).atZone(zone).toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+    return next.takeIf { it < windowStart + WINDOW_MS }
+}
+
+/** A line down the grid [minutes] into the window: now, or where a day begins. */
+@Composable
+private fun DayLine(minutes: Float, color: Color) {
+    Box(Modifier.offset(x = ChannelColumn + DpPerMinute * minutes).width(2.dp).fillMaxHeight().background(color))
 }
 
 @Composable
-private fun FocusedInfo(focused: State<Pair<ChannelEntity, ChannelProgramme?>?>) {
+private fun FocusedInfo(highlight: GuideHighlight, now: Long) {
     // Two lines for the channel, time and description: most descriptions can be read just by moving around.
     Column(Modifier.fillMaxWidth().height(86.dp)) {
-        val (ch, p) = focused.value ?: return@Column
+        val (ch, p) = remember(highlight) { derivedStateOf(highlight::at) }.value ?: return@Column
         if (p != null) {
-            // Descriptions aren't kept for the whole grid (they're large); the focused one is read when focus rests.
+            // Descriptions aren't kept for the whole grid (they're large); the highlighted one is read when it rests.
             val about = rememberDetails(ch.playlistId, p, delayMs = 300).value?.description
             Text(programmeTitle(p.title), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Muted("${ch.name} · ${formatRange(p.startMs, p.stopMs)}" + (about?.let { " · $it" } ?: ""), maxLines = 2)
+            // The day too, when it isn't today: the times alone don't say how far ahead the guide is.
+            val day = formatDay(p.startMs, now).takeIf { !isToday(p.startMs, now) }
+            val time = listOfNotNull(day, formatRange(p.startMs, p.stopMs)).joinToString(" ")
+            Muted("${ch.name} · $time" + (about?.let { " · $it" } ?: ""), maxLines = 2)
         } else {
             Text(ch.name, style = MaterialTheme.typography.titleMedium)
             Muted(stringResource(R.string.common_no_guide))
@@ -279,20 +534,28 @@ private fun FocusedInfo(focused: State<Pair<ChannelEntity, ChannelProgramme?>?>)
 }
 
 @Composable
-private fun TimeHeader(windowStart: Long, onMove: (dir: Int) -> Unit) {
-    // A touch screen has no ◀ ▶ to reach past the edge: buttons above the channels move the window instead.
+private fun TimeHeader(windowStart: Long, midnight: Long?, now: Long, onMove: (dir: Int) -> Unit) {
     Row(Modifier.fillMaxWidth().height(if (LocalTouch.current) 48.dp else 30.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(ChannelColumn)) {
+        Row(Modifier.width(ChannelColumn).padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            // A touch screen has no ◀ ▶ to reach past the edge: buttons move the window instead.
             TouchStepButtons(stringResource(R.string.live_guide_earlier), stringResource(R.string.live_guide_later), onMove)
         }
         for (i in 0 until 5) {
+            val time = windowStart + i * HALF_HOUR
+            // A new day starts here: its name instead of 00:00. The first time says the day, too ("Today 20:00"), so
+            // the times say how far ahead (or back) the guide is.
+            val newDay = midnight?.takeIf { it >= time && it < time + HALF_HOUR }
             Text(
-                formatTime(windowStart + i * HALF_HOUR),
+                when {
+                    newDay != null -> formatDay(newDay, now)
+                    i == 0 -> formatDayTime(time, now)
+                    else -> formatTime(time)
+                },
                 style = MaterialTheme.typography.bodyMedium,
-                color = Palette.textMuted,
-                modifier = Modifier.width(
-                    DpPerMinute * 30
-                ).padding(start = 8.dp)
+                color = if (newDay != null) Palette.text else Palette.textMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.width(DpPerMinute * 30).padding(start = 8.dp)
             )
         }
     }
@@ -303,18 +566,14 @@ private fun GuideRow(
     ch: ChannelEntity,
     favourite: Boolean,
     programmes: List<ChannelProgramme>?,
-    loaded: Boolean,
     windowStart: Long,
     now: Long,
-    focusTime: Long?,
-    onFocus: (ChannelProgramme?, isTarget: Boolean) -> Unit,
-    onPlay: (ChannelProgramme?) -> Unit,
-    onOptions: () -> Unit,
-    onEdge: (Int, ChannelProgramme?) -> Boolean,
-    mayTakeFocus: () -> Boolean
+    /** The highlight's time when it's on this row (and the grid has focus). */
+    highlight: Long?,
+    onTap: (ChannelProgramme?) -> Unit,
+    onLongTap: (ChannelProgramme?) -> Unit
 ) {
     val windowEnd = windowStart + WINDOW_MS
-    val noGuide = stringResource(R.string.common_no_guide)
     Row(Modifier.fillMaxWidth().height(60.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.width(ChannelColumn).padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(ch.numberLabel, style = MaterialTheme.typography.bodyMedium, color = Palette.textDim, modifier = Modifier.width(44.dp))
@@ -329,32 +588,31 @@ private fun GuideRow(
             )
             CatchupMark(ch, Modifier.padding(start = 4.dp))
         }
-        val visible =
-            remember(programmes, windowStart) { programmes.orEmpty().filter { it.stopMs > windowStart && it.startMs < windowEnd } }
+        val visible = remember(programmes, windowStart) { visibleIn(programmes.orEmpty(), windowStart) }
         if (visible.isEmpty()) {
-            // One cell for the whole window so the row stays focusable and playable. While loading it holds focus for
-            // a pending target, which then moves to the real programme once it arrives.
+            // One cell for the whole window, so the row can still be highlighted and played.
             Cell(
-                null, DpPerMinute * (WINDOW_MS / 60_000f), live = true, first = true, last = true,
-                focusKey = focusTime?.let { Triple(it, programmes, loaded) }, onFocus, onPlay, onOptions, onEdge, mayTakeFocus,
-                if (programmes == null) "" else noGuide
+                DpPerMinute * (WINDOW_MS / 60_000f),
+                live = true,
+                highlighted = highlight != null,
+                cellTitle(ch, null, now, stringResource(R.string.common_no_guide).takeIf { programmes != null }),
+                { onTap(null) },
+                { onLongTap(null) }
             )
         } else {
-            // The cell to focus: the programme on the target time, or the nearest one after it (or the last).
-            val focusIndex = focusTime?.let { t -> visible.indexOfFirst { it.stopMs > t }.takeIf { it >= 0 } ?: visible.lastIndex }
+            val highlighted = highlight?.let { cellAt(visible, it) }
             var cursor = windowStart
             visible.forEachIndexed { i, p ->
                 val start = maxOf(p.startMs, windowStart)
                 if (start > cursor) Spacer(Modifier.width(DpPerMinute * ((start - cursor) / 60_000f)))
                 val end = minOf(p.stopMs, windowEnd)
-                val width = DpPerMinute * ((end - start) / 60_000f)
                 Cell(
-                    p, width, p.isLive(now), i == 0, i == visible.lastIndex,
-                    // Asks again once the row's own programmes arrive (and the target is then done).
-                    focusKey = if (i == focusIndex) focusTime?.let { it to loaded } else null,
-                    onFocus, onPlay, onOptions, onEdge, mayTakeFocus,
-                    // Marks what can be replayed.
-                    programmeTitle(p.title).let { if (ch.archiveDays > 0 && p.stopMs <= now) "⟲ $it" else it }
+                    DpPerMinute * ((end - start) / 60_000f),
+                    p.isLive(now),
+                    i == highlighted,
+                    cellTitle(ch, p, now, noGuide = null),
+                    { onTap(p) },
+                    { onLongTap(p) }
                 )
                 cursor = end
             }
@@ -362,59 +620,34 @@ private fun GuideRow(
     }
 }
 
+/** A programme: not focusable itself (the grid is, see [GuideGrid]); drawn as a focused card when [highlighted]. */
 @Composable
-private fun Cell(
-    p: ChannelProgramme?,
-    width: androidx.compose.ui.unit.Dp,
-    live: Boolean,
-    first: Boolean,
-    last: Boolean,
-    /** Non-null when this cell should take focus; a new value asks again. */
-    focusKey: Any?,
-    onFocus: (ChannelProgramme?, isTarget: Boolean) -> Unit,
-    onPlay: (ChannelProgramme?) -> Unit,
-    onOptions: () -> Unit,
-    onEdge: (Int, ChannelProgramme?) -> Boolean,
-    mayTakeFocus: () -> Boolean,
-    title: String
-) {
-    val requester = remember { FocusRequester() }
-    val hasFocus = remember { booleanArrayOf(false) }
-    if (focusKey != null) {
-        LaunchedEffect(focusKey) {
-            // Already focused: requesting again wouldn't report anything, so report it directly.
-            // Not when the target is done (focus was taken elsewhere meanwhile).
-            when {
-                hasFocus[0] -> onFocus(p, true)
-                mayTakeFocus() -> runCatching { requester.requestFocus() }
-            }
-        }
-    }
-    TvCard(
-        onClick = { onPlay(p) },
-        onLongClick = onOptions,
-        color = if (live) Palette.surface else Palette.surfaceLow,
-        modifier = Modifier.width(width).fillMaxHeight().padding(horizontal = 2.dp)
-            .focusRequester(requester)
-            .onFocusChanged {
-                hasFocus[0] = it.isFocused
-                if (it.isFocused) onFocus(p, focusKey != null)
-            }
-            .onPreviewKeyEvent { e ->
-                if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+private fun Cell(width: Dp, live: Boolean, highlighted: Boolean, title: String, onTap: () -> Unit, onLongTap: () -> Unit) {
+    Box(
+        Modifier.width(width).fillMaxHeight().padding(horizontal = 2.dp)
+            .clip(CardShape)
+            .background(
                 when {
-                    e.key == Key.DirectionLeft && first -> onEdge(-1, p)
-                    e.key == Key.DirectionRight && last -> onEdge(1, p)
-                    else -> false
+                    highlighted -> Palette.surfaceHigh
+                    live -> Palette.surface
+                    else -> Palette.surfaceLow
                 }
-            }
+            )
+            .then(if (highlighted) Modifier.border(FocusStroke, CardShape) else Modifier)
+            .onTap(onLongTap, onTap)
+            // (For accessibility services: a screen reader's double tap, and its long press.)
+            .semantics {
+                onClick { true.also { onTap() } }
+                onLongClick { true.also { onLongTap() } }
+            },
+        contentAlignment = Alignment.CenterStart
     ) {
         Text(
             title,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 18.dp)
+            modifier = Modifier.padding(horizontal = 10.dp)
         )
     }
 }

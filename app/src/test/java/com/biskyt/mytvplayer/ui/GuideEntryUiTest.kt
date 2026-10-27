@@ -83,8 +83,12 @@ class GuideEntryUiTest {
         compose.onNode(hasText("TV guide") and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
         compose.waitAdvancingClock { compose.focusedText().contains("TV guide") }
         press(Key.DirectionCenter)
-        compose.waitAdvancingClock(50) { compose.focusedText().isNotEmpty() && !compose.focusedText().contains("TV guide") }
-        assertTrue("in the guide after the click: ${compose.focusedText()}", inGuide(compose.focusedText()))
+        // The button keeps focus (the guide is below it, a press away).
+        compose.waitAdvancingClock(50) { compose.onAllNodes(hasText("Now on one.uk")).fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("on the button after the click: ${compose.focusedText()}", compose.focusedText().contains("TV guide"))
+        // (Past the touch screen's Earlier and Later buttons, which the test app shows.)
+        repeat(3) { if (!inGuide(compose.focusedText())) press(Key.DirectionDown) }
+        assertTrue("in the guide: ${compose.focusedText()}", inGuide(compose.focusedText()))
         repeat(3) { press(Key.DirectionRight) }
         // Over to the categories (Left at the guide's edge scrolls back through catch-up first).
         compose.onNode(hasText("All channels") and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
@@ -97,23 +101,27 @@ class GuideEntryUiTest {
         }
     }
 
-    /** Programmes arriving late replace the cell holding focus; a TV may hand focus to the Home tab as that happens. */
+    /**
+     * The Guide button from the list takes focus into the guide, which keeps it while its programmes load and arrive.
+     * (Before 1.5.0 a placeholder cell held focus and was replaced when they arrived; some TVs then handed focus to
+     * the Home tab. The guide is now one focus stop that stays put, whatever its rows do.)
+     */
     @Test
-    fun `focus handed to another tab while the guide's programmes load comes back to the guide`() {
+    fun `the guide keeps focus while its programmes load and arrive`() {
         live()
         val held = holdDatabase()
         try {
             press(Key.Guide)
-            // The row holds focus with its placeholder; then focus is handed away without a key (as a TV does).
-            compose.onNode(hasText("Home") and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
             compose.settle()
-            assertTrue(compose.focusedText(), compose.focusedText().contains("Home"))
+            assertTrue(
+                "in the guide while loading: ${compose.focusedText()}",
+                inGuide(compose.focusedText()) || compose.focusedText() == ""
+            )
+            assertFalse(compose.focusedText(), compose.focusedText().contains("CHANNEL ONE"))
         } finally {
             release(held)
         }
-        compose.waitAdvancingClock(50) { compose.onAllNodes(hasText("Now on one.uk")).fetchSemanticsNodes().isNotEmpty() }
-        compose.settle()
-        assertFalse("back in the guide: ${compose.focusedText()}", compose.focusedText().contains("Home"))
+        compose.waitAdvancingClock(50) { compose.focusedText().contains("Now on one.uk") }
     }
 
     /** Opened on the guide, the list to show is found before the guide is there: Right meanwhile mustn't fail. */

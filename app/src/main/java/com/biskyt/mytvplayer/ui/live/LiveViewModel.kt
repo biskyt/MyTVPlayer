@@ -95,8 +95,8 @@ class LiveViewModel(
         c.playlists.hideCategory(cat)
     }
 
-    val totalCount: StateFlow<Int> = activePlaylist.flatMapLatest { c.channels.observeCount(it) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    val totalCount: StateFlow<Int?> = activePlaylist.flatMapLatest { c.channels.observeCount(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Null until read. */
     val favouriteIds: StateFlow<Set<Long>?> = c.favourites.channels
@@ -179,18 +179,19 @@ class LiveViewModel(
     /**
      * Before restoring focus: scrolls the remembered channel fully into view, as row heights differ between the list
      * and the guide. Call from a composition effect: it first waits a frame so the view now shown has been laid out.
+     * Returns the channel's position, when known.
      */
-    suspend fun revealFocused() {
+    suspend fun revealFocused(): Int? {
         withFrameNanos { }
-        val id = focusStreamId ?: return listState.scrollToItem(0) // nothing remembered: focus goes to the first row
+        val id = focusStreamId ?: return 0.also { listState.scrollToItem(0) } // nothing remembered: the first row
         // Unknown position (e.g. a channel picked by number): look it up, unless a search makes the list different.
         val index = focusIndex ?: run {
-            if (query.value.isNotBlank()) return
-            c.channels.ids(playlistId.value, filter.value).indexOf(id).takeIf { it >= 0 } ?: return
+            if (query.value.isNotBlank()) return null
+            c.channels.ids(playlistId.value, filter.value).indexOf(id).takeIf { it >= 0 } ?: return null
         }
-        val info = listState.layoutInfo
-        val item = info.visibleItemsInfo.firstOrNull { it.index == index }
-        if (item == null || item.offset + item.size > info.viewportEndOffset) listState.scrollToItem(index)
+        focusMoved(id, index)
+        listState.reveal(index)
+        return index
     }
     var restoreFocusPending by mutableStateOf(true)
 
@@ -209,11 +210,15 @@ class LiveViewModel(
         closeOptions()
     }
 
-    /** Switches between the channel list and the TV guide grid, keeping focus on the same channel. */
-    fun showGuide(guide: Boolean) {
+    /**
+     * Switches between the list and the guide. Focus follows into the view shown only when [moveFocus] (it was in the
+     * view switched from, and would otherwise be lost); the List and TV guide buttons keep it.
+     */
+    fun showGuide(guide: Boolean, moveFocus: Boolean) {
         if (guide == guideMode) return
         guideMode = guide
-        restoreFocusPending = true
+        // (A restore still waiting, e.g. for the list's rows, stays: focus is on neither view yet.)
+        restoreFocusPending = restoreFocusPending || moveFocus
     }
 
     /** Moving a favourite within Favourites (the list, not the guide). */

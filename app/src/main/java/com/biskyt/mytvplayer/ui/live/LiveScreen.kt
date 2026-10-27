@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,7 +30,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -77,7 +77,6 @@ import com.biskyt.mytvplayer.ui.common.distinctLabels
 import com.biskyt.mytvplayer.ui.common.formatTime
 import com.biskyt.mytvplayer.ui.common.isGuide
 import com.biskyt.mytvplayer.ui.common.numberLabel
-import com.biskyt.mytvplayer.ui.common.onAnyTouch
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.theme.Palette
@@ -104,17 +103,16 @@ fun LiveScreen(initialFilter: ChannelFilter?, initialGuide: Boolean) {
     }
 
     LaunchedEffect(Unit) { vm.restoreFocusPending = true }
-    // So a late focus target in the guide knows when the user has moved on (see GuideGrid).
-    val screenFocus = remember { ScreenFocus() }
     // Right from the categories enters the guide's programmes (see GuideGrid).
     val guideEntry = remember { FocusRequester() }
+    // Whether focus is in the list or guide: the Guide button then takes it on into the other view.
+    val inContent = remember { mutableStateOf(false) }
 
     TabScaffold(
         if (vm.catchupMode) Tab.CATCHUP else Tab.LIVE,
         // Anywhere on the screen, the tabs included (else the TV would take the Guide button for its own guide): 0–9
         // on the remote jumps straight to that channel number; the Guide button switches list/guide.
-        Modifier.onAnyTouch { screenFocus.moves++ }.onPreviewKeyEvent { e ->
-            if (e.type == KeyEventType.KeyDown && e.nativeKeyEvent.repeatCount == 0 && e.key in movingKeys) screenFocus.moves++
+        Modifier.onPreviewKeyEvent { e ->
             val digit = e.key.digit()
             when {
                 e.type != KeyEventType.KeyDown -> e.key.isGuide()
@@ -124,7 +122,7 @@ fun LiveScreen(initialFilter: ChannelFilter?, initialGuide: Boolean) {
                     true
                 }
                 e.key.isGuide() -> {
-                    vm.showGuide(!vm.guideMode)
+                    vm.showGuide(!vm.guideMode, moveFocus = inContent.value)
                     true
                 }
                 else -> false
@@ -141,10 +139,10 @@ fun LiveScreen(initialFilter: ChannelFilter?, initialGuide: Boolean) {
                 MoveHint(vm.mover, CAT_LIVE, MoveLayout.COLUMN, Modifier.padding(bottom = 8.dp))
                 // One paged list for both views, so the one switched to has its rows (and somewhere for focus) at once.
                 val items = vm.channels.collectAsLazyPagingItems()
-                BackToFilter(filterBox, atTop = { vm.guideMode && vm.focusIndex == 0 }) {
+                BackToFilter(filterBox, inContent) {
                     when {
                         !vm.filters.settled -> Unit
-                        vm.guideMode -> GuideGrid(vm, items, play, screenFocus, guideEntry)
+                        vm.guideMode -> GuideGrid(vm, items, play, guideEntry, up = filterBox)
                         else -> ChannelList(vm, items, open)
                     }
                 }
@@ -158,18 +156,13 @@ fun LiveScreen(initialFilter: ChannelFilter?, initialGuide: Boolean) {
 }
 
 /**
- * Back with focus in [content] (the list or guide) goes up to the filter box, as does up from the guide's first row
- * ([atTop]; the guide's own focus handling could keep it there); anywhere else Back leaves Live TV.
+ * Back with focus in [content] (the list or guide; [inside] says whether it is) goes up to the filter box (as does Up
+ * from the guide's first row, see GuideGrid); anywhere else Back leaves Live TV.
  */
 @Composable
-private fun BackToFilter(filterBox: FocusRequester, atTop: () -> Boolean, content: @Composable () -> Unit) {
-    var inside by remember { mutableStateOf(false) }
-    BackHandler(enabled = inside) { runCatching { filterBox.requestFocus() } }
-    Box(
-        Modifier.onFocusChanged { inside = it.hasFocus }.onPreviewKeyEvent { e ->
-            e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp && atTop() && runCatching { filterBox.requestFocus() }.isSuccess
-        }
-    ) { content() }
+private fun BackToFilter(filterBox: FocusRequester, inside: MutableState<Boolean>, content: @Composable () -> Unit) {
+    BackHandler(enabled = inside.value) { runCatching { filterBox.requestFocus() } }
+    Box(Modifier.onFocusChanged { inside.value = it.hasFocus }) { content() }
 }
 
 @Composable
@@ -179,11 +172,13 @@ private fun LiveCategories(vm: LiveViewModel, selected: ChannelFilter, right: Fo
     val favourites = stringResource(R.string.common_favourites)
     val recent = stringResource(R.string.common_recent)
     val all = stringResource(R.string.live_all_channels)
-    val entries = remember(categories, favourites, recent, all) {
+    // The count the list's heading shows for All channels too.
+    val total by vm.totalCount.collectAsState()
+    val entries = remember(categories, favourites, recent, all, total) {
         listOf<CategoryEntry<ChannelFilter>>(
             CategoryEntry(ChannelFilter.Favourites, favourites),
             CategoryEntry(ChannelFilter.Recent, recent),
-            CategoryEntry(ChannelFilter.All, all)
+            CategoryEntry(ChannelFilter.All, all, total)
         ) + categoryEntries<ChannelFilter>(categories) { ChannelFilter.Category(it.categoryId) }
     }
     FilteredCategoryColumn(entries, fixed = 3, selected, vm.filters::focus, vm.filters::select, vm::hideCategory, right)
@@ -227,8 +222,8 @@ private fun ListHeader(vm: LiveViewModel, filter: ChannelFilter, filterModifier:
     }
     ListHeader(title, count, query, { vm.query.value = it }, stringResource(R.string.live_filter_hint), filterModifier) {
         Row(Modifier.clip(RoundedCornerShape(12.dp)).background(Palette.surface).padding(4.dp)) {
-            PillButton(stringResource(R.string.live_view_list), { vm.showGuide(false) }, primary = !vm.guideMode)
-            PillButton(stringResource(R.string.live_view_guide), { vm.showGuide(true) }, primary = vm.guideMode)
+            PillButton(stringResource(R.string.live_view_list), { vm.showGuide(false, moveFocus = false) }, primary = !vm.guideMode)
+            PillButton(stringResource(R.string.live_view_guide), { vm.showGuide(true, moveFocus = false) }, primary = vm.guideMode)
         }
     }
 }
@@ -347,6 +342,3 @@ private fun SkeletonLines() {
 private fun PlaceholderRow() {
     Box(Modifier.fillMaxWidth().height(64.dp).clip(RoundedCornerShape(14.dp)).background(Palette.surfaceLow))
 }
-
-/** The keys that move around the screen (or leave it): when one is pressed, focus is where the user wants it. */
-private val movingKeys = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight, Key.Back)

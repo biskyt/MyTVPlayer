@@ -71,7 +71,12 @@ import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
 import kotlinx.coroutines.flow.StateFlow
 
-private val FocusRing = Border(BorderStroke(3.dp, Palette.text))
+/** The ring around what has focus (the guide draws it around its highlight, too). */
+val FocusStroke = BorderStroke(3.dp, Palette.text)
+private val FocusRing = Border(FocusStroke)
+
+/** A card's shape. */
+val CardShape = RoundedCornerShape(14.dp)
 
 /**
  * The app's one clickable surface: neutral background, white ring when focused, optional selected state in accent.
@@ -84,7 +89,7 @@ fun TvCard(
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
     selected: Boolean = false,
-    shape: Shape = RoundedCornerShape(14.dp),
+    shape: Shape = CardShape,
     color: Color = Palette.surface,
     focusedColor: Color = Palette.surfaceHigh,
     content: @Composable () -> Unit
