@@ -37,8 +37,10 @@
 
     <string name="common_today">Aujourd\'hui</string>
     <string name="common_yesterday">Hier</string>
+    <string name="common_tomorrow">Demain</string>
     <string name="common_today_at">Aujourd\'hui à %1$s</string>
     <string name="common_tomorrow_at">Demain à %1$s</string>
+    <string name="common_yesterday_at">Hier à %1$s</string>
 
     <string name="common_runtime_min">%1$d min</string>
     <string name="common_runtime_h">%1$d h</string>

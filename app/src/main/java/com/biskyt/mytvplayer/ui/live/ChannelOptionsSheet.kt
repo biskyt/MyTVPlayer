@@ -109,7 +109,7 @@ fun ChannelOptionsSheet(ch: ChannelEntity, vm: LiveViewModel, play: (ChannelEnti
                     stringResource(R.string.live_option_switch_help)
                 ) {
                     close()
-                    vm.showGuide(!vm.guideMode)
+                    vm.showGuide(!vm.guideMode, moveFocus = true)
                 }
                 MenuOption(stringResource(R.string.common_change_guide_source), stringResource(R.string.common_change_guide_source_help)) {
                     close()

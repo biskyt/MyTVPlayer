@@ -45,9 +45,10 @@ fun ComposeTestRule.screen(): String = onAllNodes(isRoot(), useUnmergedTree = tr
 fun otherThreads(): String = Thread.getAllStackTraces().filterKeys { it.isAlive && it != Thread.currentThread() }.entries
     .joinToString("\n") { (t, stack) -> "${t.name} ${t.state}: " + stack.take(8).joinToString(" < ") }
 
-/** The text of whatever has focus ("" for focus on something without text). */
+/** The text of what has focus; for the TV guide (one focus stop), what its highlight is on (its description). */
 fun ComposeTestRule.focusedText(): String = onAllNodes(isFocused()).fetchSemanticsNodes().joinToString(" | ") { node ->
-    node.config.getOrNull(SemanticsProperties.Text)?.joinToString().orEmpty()
+    node.config.getOrNull(SemanticsProperties.Text)?.joinToString()
+        ?: node.config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString().orEmpty()
 }
 
 /**

@@ -49,17 +49,36 @@ private fun formats(): DateFormats = formats?.takeIf { it.locale == AppText.loca
 /** "Mon 19 Oct". */
 val dateFormat: DateTimeFormatter get() = formats().date
 
-/** When something starts, relative to [now]: "Today 20:00", "Tomorrow 06:30", "Wed 21:00" or "Wed 3 Dec 21:00". */
+/**
+ * When something starts, relative to [now]: "Today 20:00", "Tomorrow 06:30", "Yesterday 22:00", "Wed 21:00" or
+ * "Wed 3 Dec 21:00".
+ */
 fun formatDayTime(epochMs: Long, now: Long = System.currentTimeMillis()): String {
-    val zone = ZoneId.systemDefault()
-    val date = Instant.ofEpochMilli(epochMs).atZone(zone).toLocalDate()
+    val date = localDate(epochMs)
     val time = formatTime(epochMs)
-    return when (val days = ChronoUnit.DAYS.between(Instant.ofEpochMilli(now).atZone(zone).toLocalDate(), date)) {
+    return when (val days = daysFrom(epochMs, now)) {
         0L -> appString(R.string.common_today_at, time)
         1L -> appString(R.string.common_tomorrow_at, time)
+        -1L -> appString(R.string.common_yesterday_at, time)
         else -> "${(if (days in 2L..6L) formats().day else dateFormat).format(date)} $time"
     }
 }
+
+/** Which day [epochMs] falls on, relative to [now]: "Today", "Tomorrow", "Yesterday", "Wed" or "Wed 3 Dec". */
+fun formatDay(epochMs: Long, now: Long = System.currentTimeMillis()): String = when (val days = daysFrom(epochMs, now)) {
+    0L -> appString(R.string.common_today)
+    1L -> appString(R.string.common_tomorrow)
+    -1L -> appString(R.string.common_yesterday)
+    else -> (if (days in 2L..6L) formats().day else dateFormat).format(localDate(epochMs))
+}
+
+/** Whether [epochMs] is on the same local day as [now]. */
+fun isToday(epochMs: Long, now: Long = System.currentTimeMillis()): Boolean = daysFrom(epochMs, now) == 0L
+
+private fun localDate(epochMs: Long) = Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()).toLocalDate()
+
+/** Local days from [now]'s day to [epochMs]'s (negative before it). */
+private fun daysFrom(epochMs: Long, now: Long): Long = ChronoUnit.DAYS.between(localDate(now), localDate(epochMs))
 
 fun formatCount(n: Int): String = "%,d".format(AppText.locale, n)
 

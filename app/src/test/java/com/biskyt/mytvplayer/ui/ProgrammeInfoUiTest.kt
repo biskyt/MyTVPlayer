@@ -1,10 +1,15 @@
 package com.biskyt.mytvplayer.ui
 
 import androidx.compose.runtime.remember
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.pressKey
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.data.ChannelFilter
 import com.biskyt.mytvplayer.testutil.FakeProvider
@@ -12,6 +17,7 @@ import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.addHomeTv
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
+import com.biskyt.mytvplayer.testutil.focusedText
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.testutil.waitForText
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
@@ -26,6 +32,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /** What the guide says about a programme (its episode and description), and channel cards in search. */
+@OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "+w960dp-h540dp-tvdpi")
 class ProgrammeInfoUiTest {
@@ -75,7 +82,9 @@ class ProgrammeInfoUiTest {
         show(Screen.Live(ChannelFilter.All, guide = true))
         waitFor("The Garden Planners")
         waitFor("Two neighbours turn a bare yard")
-        compose.onAllNodes(hasText("The Garden Planners") and hasClickAction())[0].performSemanticsAction(SemanticsActions.OnLongClick)
+        // The options of the programme the highlight is on (the remote's Menu button, as holding OK).
+        compose.waitAdvancingClock { compose.focusedText().contains("The Garden Planners") }
+        compose.onRoot().performKeyInput { pressKey(Key.Menu) }
         waitFor("Spring Planting · S2 E5")
         compose.waitAdvancingClock(stepMs = 50) { count("Two neighbours turn a bare yard") >= 2 }
     }
@@ -84,10 +93,15 @@ class ProgrammeInfoUiTest {
     fun `moving on in the TV guide, the last programme's description goes at once`() {
         show(Screen.Live(ChannelFilter.All, guide = true))
         waitFor("Two neighbours turn a bare yard")
-        // A frame or two only: the next one's is read once focus has rested there a moment.
+        // Frames only: the next one's is read once the highlight has rested there a moment.
+        compose.waitAdvancingClock { compose.focusedText().contains("The Garden Planners") }
         compose.mainClock.autoAdvance = false
-        compose.onAllNodes(hasText("Next on one.uk") and hasClickAction())[0].performSemanticsAction(SemanticsActions.RequestFocus)
-        repeat(3) { compose.mainClock.advanceTimeByFrame() }
+        compose.onRoot().performKeyInput { pressKey(Key.DirectionRight) } // on to the next programme
+        // A few frames for the press to land, far short of the 300 ms before a description is read.
+        repeat(4) {
+            compose.mainClock.advanceTimeByFrame()
+            compose.waitForIdle() // what each frame starts (not the clock: the next one's details wait on it)
+        }
         assertEquals(0, count("Two neighbours turn a bare yard"))
         compose.mainClock.autoAdvance = true
     }
