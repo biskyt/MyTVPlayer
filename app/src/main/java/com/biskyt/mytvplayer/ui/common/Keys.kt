@@ -53,6 +53,9 @@ private fun handlePress(e: KeyEvent, matches: Boolean, action: () -> Unit): Bool
 /** Buttons that act on whatever is open: OK, Guide (else the TV's own guide) and the options buttons. */
 private val actingKeys = selectKeys + optionsKeys + Key.Guide
 
+/** OK, Guide or an options button: see [actingKeys]. */
+fun Key.isActing(): Boolean = this in actingKeys
+
 /**
  * Ignores the rest of OK, Guide and options presses that began before this window appeared (a panel opened by holding
  * one): their repeats and release would otherwise press what has focus here, or reach the TV (Guide: its own guide).
@@ -67,7 +70,10 @@ fun Modifier.ignoreHeldButtons(): Modifier = ignoreHeld(actingKeys)
 @Composable
 fun Modifier.ignoreHeldSelect(): Modifier = ignoreHeld(selectKeys)
 
-/** Ignores the repeats and release of any of [keys] whose press this content didn't see begin. */
+/**
+ * Ignores the repeats and release of any of [keys] whose press this content didn't see begin. (The app's own window
+ * does the same in MainActivity.dispatchKeyEvent, where a release Compose drops would otherwise reach the TV.)
+ */
 @Composable
 private fun Modifier.ignoreHeld(keys: Set<Key>): Modifier {
     val pressedHere = remember { mutableSetOf<Key>() }

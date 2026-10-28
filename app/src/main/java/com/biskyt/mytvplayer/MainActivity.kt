@@ -1,19 +1,23 @@
 package com.biskyt.mytvplayer
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.Window
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.ui.input.key.Key
 import androidx.core.content.IntentCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.biskyt.mytvplayer.ui.AppRoot
 import com.biskyt.mytvplayer.ui.common.hasTouchScreen
+import com.biskyt.mytvplayer.ui.common.isActing
 
 class MainActivity : ComponentActivity() {
     private val touch by lazy { hasTouchScreen() }
@@ -43,9 +47,32 @@ class MainActivity : ComponentActivity() {
         intent.openedFile()?.let { container.openedFile.value = it }
     }
 
+    /** OK, Options and Guide presses that began in this window (see [dispatchKeyEvent]). */
+    private val pressedHere = mutableSetOf<Int>()
+
+    /**
+     * The rest of an OK, Options or Guide press that began in another window is kept from the TV and from this window:
+     * a panel (a window of its own) acted on that press and closed, e.g. Options pressed in the player's Audio panel.
+     * The TV would act on its release (Options: its own menu), and this window on its repeats.
+     */
+    // (Activity's own, public method: lint takes androidx's ComponentActivity override of it for a restricted one.)
+    @SuppressLint("RestrictedApi")
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (Key(event.keyCode).isActing()) {
+            when {
+                event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 -> pressedHere += event.keyCode
+                event.action == KeyEvent.ACTION_DOWN -> if (event.keyCode !in pressedHere) return true
+                event.action == KeyEvent.ACTION_UP -> if (!pressedHere.remove(event.keyCode)) return true
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     // Back from a picker or another app, the bars may have come back.
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        // Another window (a panel) has the keys now: a press begun here ends there, so it's no longer this window's.
+        if (!hasFocus) pressedHere.clear()
         if (hasFocus && touch) window.hideSystemBars()
     }
 }
