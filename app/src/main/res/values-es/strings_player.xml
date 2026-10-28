@@ -77,4 +77,5 @@
     <string name="player_error_http_server">El servidor de la transmisión tiene un problema (error %1$d). Puede que esté caído por ahora.</string>
     <string name="player_error_http_other">El servidor de la transmisión respondió con el error %1$d.</string>
     <string name="player_about_programme">Sobre este programa</string>
+    <string name="player_description">Descripción</string>
 </resources>

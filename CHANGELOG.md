@@ -2,6 +2,9 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.8.0
+- **An episode's description in the player:** More › Description shows it over the video, without stopping playback.
+
 ## 1.7.1
 - Fixed: the Options button pressed in the player's Audio or Subtitles panel could also open the TV's own menu.
 - Fixed: at the very end of a live programme, the player's controls could say "0 min left".

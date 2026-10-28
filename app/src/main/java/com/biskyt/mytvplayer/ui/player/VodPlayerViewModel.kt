@@ -52,7 +52,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
     override val failureMessage = R.string.player_failure_vod
 
     private var playlist: PlaylistEntity? = null
-    private var current: Playing? = null
+    private var current by mutableStateOf<Playing?>(null)
     private var tickJob: Job? = null
 
     /** What is playing, with what its progress row needs. */
@@ -70,7 +70,10 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
     private val favouriteId = series ?: screen.itemId
     private var favourite by mutableStateOf(false)
 
-    override fun menuActions(): List<ItemAction> = listOf(
+    override val description: String? get() = current?.episode?.plot
+
+    override fun menuActions(): List<ItemAction> = listOfNotNull(
+        description?.let { ItemAction.Run(appString(R.string.player_description)) { sheet = Sheet.DESCRIPTION } },
         ItemAction.Run(favouriteLabel(favourite)) {
             val add = !favourite
             viewModelScope.launch {
@@ -141,6 +144,8 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         // place. And before playback starts, so nothing waits between starting it and the controls coming up.
         val known = c.vod.progress(p.id, playing.kind, playing.itemId)
         current = playing
+        // The last episode's description, open as the next one starts, goes with it.
+        if (sheet == Sheet.DESCRIPTION) sheet = null
         playedMs = 0
         // Something already started counts at once: only a new start waits.
         onCarryOn = known != null && known.positionMs > 0 && !known.finished

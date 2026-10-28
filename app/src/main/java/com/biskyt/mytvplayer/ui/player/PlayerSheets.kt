@@ -85,7 +85,8 @@ fun PlayerSheet(sheet: PlaybackViewModel.Sheet, vm: PlaybackViewModel) {
     val nav = LocalNavigator.current
     val close = { vm.sheet = null }
     SidePanel(onDismiss = close, dim = false) {
-        val first = rememberFirstFocus()
+        // Again when More opens another sheet in its place.
+        val first = rememberFirstFocus(sheet)
         LazyColumn(Modifier.panelKeys(vm), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             when (sheet) {
                 PlaybackViewModel.Sheet.AUDIO -> {
@@ -149,6 +150,10 @@ fun PlayerSheet(sheet: PlaybackViewModel.Sheet, vm: PlaybackViewModel) {
                     item { Header(programmeTitle(p.title), formatRange(p.startMs, p.stopMs)) }
                     // Focusable, so the remote's keys (Back, play/pause) reach the panel.
                     item { Column(first.focusable()) { ProgrammeAbout(p, maxLines = 18) } }
+                }
+                PlaybackViewModel.Sheet.DESCRIPTION -> vm.description?.let { text ->
+                    item { Header(stringResource(R.string.player_description), null) }
+                    item { Column(first.focusable()) { Muted(text, maxLines = 18) } }
                 }
             }
         }

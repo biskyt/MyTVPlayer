@@ -69,11 +69,14 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     /** The programme the About sheet tells of (live TV's, on now). */
     open val about: ChannelProgramme? get() = null
 
+    /** What the Description sheet shows (an episode's plot); null where there's none. */
+    open val description: String? get() = null
+
     /** Set when playback should end and the screen close. */
     var exit by mutableStateOf(false)
         private set
 
-    enum class Sheet { AUDIO, SUBTITLES, MORE, ABOUT }
+    enum class Sheet { AUDIO, SUBTITLES, MORE, ABOUT, DESCRIPTION }
 
     /**
      * What can be done with what's playing, at the top of the More menu; read while drawing it, so labels follow state
