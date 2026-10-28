@@ -3,8 +3,6 @@ package com.biskyt.mytvplayer.ui.player
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -16,7 +14,6 @@ import com.biskyt.mytvplayer.data.programmeTitle
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
-import com.biskyt.mytvplayer.ui.common.LocalTouch
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.formatRuntime
@@ -67,6 +64,5 @@ private fun CatchupControls(vm: CatchupPlayerViewModel, buttons: FocusRequester,
             PillButton(stringResource(R.string.common_from_start), vm::fromStart)
             PillButton(stringResource(R.string.player_watch_live), vm::watchLive)
         }
-        if (!LocalTouch.current) Muted(stringResource(R.string.player_hint_skip), Modifier.align(Alignment.CenterHorizontally))
     }
 }

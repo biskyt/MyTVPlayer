@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -31,6 +32,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -73,6 +75,7 @@ import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.AppIcons
 import com.biskyt.mytvplayer.ui.common.ChannelLogo
+import com.biskyt.mytvplayer.ui.common.Clock
 import com.biskyt.mytvplayer.ui.common.FlashLabel
 import com.biskyt.mytvplayer.ui.common.LocalOverVideo
 import com.biskyt.mytvplayer.ui.common.LocalTouch
@@ -82,6 +85,7 @@ import com.biskyt.mytvplayer.ui.common.ProgrammeAbout
 import com.biskyt.mytvplayer.ui.common.ProgressLine
 import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.digit
+import com.biskyt.mytvplayer.ui.common.formatRuntime
 import com.biskyt.mytvplayer.ui.common.formatTime
 import com.biskyt.mytvplayer.ui.common.ignoreHeldSelect
 import com.biskyt.mytvplayer.ui.common.numberLabel
@@ -120,6 +124,7 @@ internal fun PlayerFrame(
     val root = remember { FocusRequester() }
     val buttons = remember { FocusRequester() }
     var videoFocused by remember { mutableStateOf(false) }
+    val acted = remember { arrayOfNulls<Key>(1) }
 
     if (vm.exit) {
         LaunchedEffect(Unit) { nav.pop() }
@@ -153,17 +158,13 @@ internal fun PlayerFrame(
             .focusRequester(root)
             .onFocusChanged { videoFocused = it.isFocused }
             .wakeKeys(vm)
-            // While a control button has focus the D-pad and OK belong to it; every other key (channel, digits, media)
-            // still works.
-            .onKeyEvent { e ->
-                if (e.type == KeyEventType.KeyDown &&
-                    (videoFocused || e.key !in buttonKeys)
-                ) {
-                    handleKey(e, vm, buttons)
-                } else {
-                    false
-                }
+            // A fresh press is a press of its own, even if the last one's release went to another window (a panel),
+            // or a button took it.
+            .onPreviewKeyEvent { e ->
+                if (e.type == KeyEventType.KeyDown && e.nativeKeyEvent.repeatCount == 0) acted[0] = null
+                false
             }
+            .onKeyEvent { e -> playerKey(e, vm, buttons, videoFocused, acted) }
             .focusable()
             // Touch: any touch keeps the controls up; a tap on the video itself shows or hides them.
             .onAnyTouch {
@@ -194,6 +195,12 @@ internal fun PlayerFrame(
         if (vm.overlay == OverlayState.CONTROLS) {
             // With the video focused (Up from the buttons), left and right skip: the bar shows its handle (no remote: none).
             CompositionLocalProvider(LocalBarSelected provides (videoFocused && !LocalTouch.current)) { controls(buttons, root) }
+            Clock(
+                Modifier.align(Alignment.TopEnd).padding(top = 27.dp, end = 56.dp)
+                    .clip(RoundedCornerShape(9.dp)).background(PanelShade).padding(horizontal = 14.dp, vertical = 6.dp),
+                MaterialTheme.typography.headlineSmall,
+                Palette.text
+            )
             // A touch screen has no remote with a Back button in reach: this goes back to the list.
             if (LocalTouch.current) {
                 RoundButton(
@@ -251,11 +258,23 @@ private fun Modifier.wakeKeys(vm: PlaybackViewModel): Modifier {
 /** Focus goes back to the video when nothing's over it (play/pause is the controls' own: see [ControlsBar]). */
 @Composable
 private fun FocusFollowsOverlay(vm: PlaybackViewModel, root: FocusRequester) {
-    LaunchedEffect(vm.overlay, vm.sheet, vm.focusPlayPause) {
-        val toButtons = vm.overlay == OverlayState.CONTROLS && vm.focusPlayPause
+    LaunchedEffect(vm.overlay, vm.sheet, vm.controlsFocus) {
+        val toButtons = vm.overlay == OverlayState.CONTROLS && vm.controlsFocus != PlaybackViewModel.ControlsFocus.VIDEO
         if (vm.sheet == null && vm.overlay != OverlayState.GUIDE && !toButtons) runCatching { root.requestFocus() }
     }
 }
+
+/**
+ * A remote key on its way out of the controls: while a control button has focus the D-pad and OK belong to it; every
+ * other key (channel, digits, media) still works. The release of a press the player acted on ([acted]) is the
+ * player's too, else the TV acts on it (the Options button's, with focus moved to More, would open the TV's menu).
+ */
+private fun playerKey(e: KeyEvent, vm: PlaybackViewModel, buttons: FocusRequester, videoFocused: Boolean, acted: Array<Key?>): Boolean =
+    when {
+        e.type == KeyEventType.KeyUp -> (e.key == acted[0]).also { acted[0] = null }
+        e.type != KeyEventType.KeyDown -> false
+        else -> (videoFocused || e.key !in buttonKeys) && handleKey(e, vm, buttons).also { if (it) acted[0] = e.key }
+    }
 
 /** Remote keys on the video: left/right skip (and scrub, held), down with controls showing moves into the buttons. */
 private fun handleKey(e: KeyEvent, vm: PlaybackViewModel, buttons: FocusRequester): Boolean {
@@ -347,7 +366,16 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
                 }
             }
         }
-        nn?.now?.let { current -> Timeline(formatTime(current.startMs), nn.progress(now), formatTime(current.stopMs)) }
+        nn?.now?.let { current ->
+            // Whole minutes, rounded up: "1 min left" until it ends.
+            val left = ((current.stopMs - now + MINUTE_MS - 1) / MINUTE_MS * 60).toInt().coerceAtLeast(0)
+            Timeline(
+                formatTime(current.startMs),
+                nn.progress(now),
+                formatTime(current.stopMs),
+                after = stringResource(R.string.common_time_left, formatRuntime(left))
+            )
+        }
         ControlsBar(vm, buttons, root) {
             PillButton(stringResource(R.string.player_channel_guide), vm::openGuide)
             if (details?.description != null || details?.subtitle != null) {
@@ -361,15 +389,15 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
                 )
             }
         }
-        // Remote keys: no use on a touch screen.
-        if (!LocalTouch.current) {
-            val hint = if (vm.upDownZaps) R.string.player_hint_zap_up_down else R.string.player_hint_zap_channel_buttons
-            Muted(stringResource(hint), Modifier.align(Alignment.CenterHorizontally))
-        }
     }
 }
 
 private val PANEL_FADE = 80.dp
+
+/** Behind the controls (and the clock): dark enough for text over a bright picture, light enough to see it through. */
+private const val MINUTE_MS = 60_000L
+
+private val PanelShade = Color(0xBF080A0D)
 
 /** Whether the remote is on the progress bar (the video has focus, so left and right skip): a film's shows its handle. */
 internal val LocalBarSelected = compositionLocalOf { false }
@@ -384,7 +412,7 @@ internal fun ControlsPanel(content: @Composable ColumnScope.() -> Unit) {
                 .onPlainTap {} // a tap beside a button keeps the controls up, rather than hiding them
                 // Fades in above the top line, then dark behind every line however tall the controls are, so the text
                 // reads over a bright picture too.
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xBF080A0D)), endY = fadePx))
+                .background(Brush.verticalGradient(listOf(Color.Transparent, PanelShade), endY = fadePx))
                 .padding(start = 56.dp, end = 56.dp, top = PANEL_FADE, bottom = 36.dp)
         ) {
             CompositionLocalProvider(LocalOverVideo provides true) {
@@ -394,10 +422,7 @@ internal fun ControlsPanel(content: @Composable ColumnScope.() -> Unit) {
     }
 }
 
-/**
- * Start time, progress bar, end time; while scrubbing, a marker at [scrub] (the same scale as [fraction]), else at
- * [fraction] when [handle] (the bar is selected).
- */
+/** Start time, the [SeekBar], end time, and [after] it when given. */
 @Composable
 internal fun Timeline(
     start: String,
@@ -405,25 +430,36 @@ internal fun Timeline(
     end: String,
     scrub: Float? = null,
     handle: Boolean = false,
+    after: String? = null,
     onSeek: ((Float) -> Unit)? = null
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Muted(start)
-        // Touch: a tap or a drag along the bar picks where to play from (a taller strip than the bar, for fingers).
-        val latest by rememberUpdatedState(onSeek)
-        val seek = if (onSeek == null) {
-            Modifier
-        } else {
-            Modifier.pointerInput(Unit) {
-                detectTapGestures { latest?.invoke(it.x / size.width) }
-            }.pointerInput(Unit) {
-                detectHorizontalDragGestures { change, _ -> latest?.invoke(change.position.x / size.width) }
-            }
-        }
-        Box(Modifier.weight(1f).then(seek).padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
-            ProgressLine(fraction, Modifier.fillMaxWidth(), height = 6.dp, marker = scrub ?: fraction.takeIf { handle })
-        }
+        SeekBar(fraction, scrub, handle, onSeek, Modifier.weight(1f))
         Muted(end)
+        after?.let { Muted(it) }
+    }
+}
+
+/**
+ * The progress bar: while scrubbing, a marker at [scrub] (the same scale as [fraction]), else at [fraction] when
+ * [handle] (the bar is selected). Touch: a tap or a drag along it ([onSeek]) picks where to play from.
+ */
+@Composable
+internal fun SeekBar(fraction: Float, scrub: Float?, handle: Boolean, onSeek: ((Float) -> Unit)?, modifier: Modifier) {
+    // A taller strip than the bar, for fingers.
+    val latest by rememberUpdatedState(onSeek)
+    val seek = if (onSeek == null) {
+        Modifier
+    } else {
+        Modifier.pointerInput(Unit) {
+            detectTapGestures { latest?.invoke(it.x / size.width) }
+        }.pointerInput(Unit) {
+            detectHorizontalDragGestures { change, _ -> latest?.invoke(change.position.x / size.width) }
+        }
+    }
+    Box(modifier.then(seek).padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
+        ProgressLine(fraction, Modifier.fillMaxWidth(), height = 6.dp, marker = scrub ?: fraction.takeIf { handle })
     }
 }
 
@@ -432,9 +468,22 @@ internal fun Timeline(
  * Play/pause ([buttons]) takes focus as the controls come up (unless they came up for skipping).
  */
 @Composable
-internal fun ControlsBar(vm: PlaybackViewModel, buttons: FocusRequester, root: FocusRequester, leading: @Composable RowScope.() -> Unit) {
+internal fun ControlsBar(
+    vm: PlaybackViewModel,
+    buttons: FocusRequester,
+    root: FocusRequester,
+    leading: @Composable RowScope.() -> Unit = {}
+) {
+    val more = remember { FocusRequester() }
     // As they come up (when what's playing is known), and again when a panel over them closes.
-    LaunchedEffect(vm.sheet) { if (vm.sheet == null && vm.focusPlayPause) runCatching { buttons.requestFocus() } }
+    LaunchedEffect(vm.sheet, vm.controlsFocus, vm.optionsPresses) {
+        if (vm.sheet != null) return@LaunchedEffect
+        when (vm.controlsFocus) {
+            PlaybackViewModel.ControlsFocus.PLAY_PAUSE -> runCatching { buttons.requestFocus() }
+            PlaybackViewModel.ControlsFocus.MORE -> runCatching { more.requestFocus() }
+            PlaybackViewModel.ControlsFocus.VIDEO -> Unit
+        }
+    }
     Row(
         // The OK that brought the controls up is still down: its release (and repeats) mustn't press play/pause too.
         Modifier.ignoreHeldSelect().onPreviewKeyEvent { e ->
@@ -468,7 +517,7 @@ internal fun ControlsBar(vm: PlaybackViewModel, buttons: FocusRequester, root: F
         Box(Modifier.weight(1f))
         PillButton(stringResource(R.string.player_audio), { vm.sheet = PlaybackViewModel.Sheet.AUDIO })
         PillButton(stringResource(R.string.player_subtitles), { vm.sheet = PlaybackViewModel.Sheet.SUBTITLES })
-        PillButton(stringResource(R.string.player_more), { vm.sheet = PlaybackViewModel.Sheet.MORE })
+        PillButton(stringResource(R.string.player_more), { vm.sheet = PlaybackViewModel.Sheet.MORE }, Modifier.focusRequester(more))
     }
 }
 

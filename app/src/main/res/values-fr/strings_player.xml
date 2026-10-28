@@ -8,13 +8,8 @@
     <string name="player_more">Plus</string>
     <string name="player_channel_guide">Guide chaîne</string>
     <string name="player_watch_live">Voir le direct</string>
-    <string name="player_next_episode">Épisode suivant</string>
     <string name="player_up_next">À SUIVRE · %1$s</string>
     <string name="player_catchup_behind_live">Replay · %1$s de retard sur le direct</string>
-
-    <string name="player_hint_skip">▲ puis ◀ ▶ pour avancer ou reculer (maintenir pour défiler) · Retour pour masquer</string>
-    <string name="player_hint_zap_up_down">▲ ▼ changer de chaîne · Retour pour masquer</string>
-    <string name="player_hint_zap_channel_buttons">CH + − changer de chaîne · ▲ puis ◀ ▶ pour avancer ou reculer · Retour pour masquer</string>
     <string name="player_guide_hint">◀ ▶ autres chaînes · OK pour regarder</string>
     <string name="player_guide_previous">Précédente</string>
     <string name="player_guide_next">Suivante</string>
