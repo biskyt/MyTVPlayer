@@ -15,8 +15,6 @@
     <string name="player_guide_next">Próximo</string>
 
     <string name="player_skipping_unavailable">Não é possível pular aqui</string>
-    <string name="player_sleep_timer_minutes">Timer de desligamento: %1$d min</string>
-    <string name="player_sleep_timer_off">Timer de desligamento: desativado</string>
     <string name="player_audio_switched">Áudio: %1$s</string>
     <string name="player_audio_switch_failed">Não foi possível mudar o áudio para %1$s</string>
     <string name="player_subtitles_switched">Legendas: %1$s</string>

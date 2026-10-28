@@ -271,6 +271,9 @@ private fun FocusFollowsOverlay(vm: PlaybackViewModel, root: FocusRequester) {
  */
 private fun playerKey(e: KeyEvent, vm: PlaybackViewModel, buttons: FocusRequester, videoFocused: Boolean, acted: Array<Key?>): Boolean =
     when {
+        // Back is the player's whole press, acting once on release as the system's Back does (held, it doesn't stop
+        // playback too): left to Compose, its press would first move focus out of the buttons, to the bar.
+        e.key == Key.Back -> true.also { if (e.type == KeyEventType.KeyUp) vm.back() }
         e.type == KeyEventType.KeyUp -> (e.key == acted[0]).also { acted[0] = null }
         e.type != KeyEventType.KeyDown -> false
         else -> (videoFocused || e.key !in buttonKeys) && handleKey(e, vm, buttons).also { if (it) acted[0] = e.key }

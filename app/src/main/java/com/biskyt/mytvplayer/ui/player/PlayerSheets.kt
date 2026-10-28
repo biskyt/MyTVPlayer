@@ -35,7 +35,6 @@ import com.biskyt.mytvplayer.ui.common.ScheduleList
 import com.biskyt.mytvplayer.ui.common.SidePanel
 import com.biskyt.mytvplayer.ui.common.TouchStepButtons
 import com.biskyt.mytvplayer.ui.common.TvCard
-import com.biskyt.mytvplayer.ui.common.cycle
 import com.biskyt.mytvplayer.ui.common.displayLanguage
 import com.biskyt.mytvplayer.ui.common.formatRange
 import com.biskyt.mytvplayer.ui.common.perform
@@ -133,15 +132,6 @@ fun PlayerSheet(sheet: PlaybackViewModel.Sheet, vm: PlaybackViewModel) {
                             vm.picture = next
                             vm.flash(nextLabel)
                         }
-                    }
-                    item {
-                        val next = listOf(0, 15, 30, 60, 90, 120).cycle(vm.sleepMinutes)
-                        val sleep = if (vm.sleepMinutes == 0) {
-                            stringResource(R.string.player_sleep_timer_off)
-                        } else {
-                            stringResource(R.string.player_sleep_timer_minutes, vm.sleepMinutes)
-                        }
-                        Choice(sleep, false) { vm.setSleepTimer(next) }
                     }
                     item { Muted(stringResource(R.string.player_audio_output, vm.audioLabel), maxLines = 2) }
                     item { Muted(videoInfo(vm.tracks), maxLines = 2) }

@@ -15,8 +15,6 @@
     <string name="player_guide_next">Siguiente</string>
 
     <string name="player_skipping_unavailable">No se puede saltar aquí</string>
-    <string name="player_sleep_timer_minutes">Temporizador: %1$d min</string>
-    <string name="player_sleep_timer_off">Temporizador: desactivado</string>
     <string name="player_audio_switched">Audio: %1$s</string>
     <string name="player_audio_switch_failed">No se pudo cambiar el audio a %1$s</string>
     <string name="player_subtitles_switched">Subtítulos: %1$s</string>

@@ -2,6 +2,10 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.8.1
+- Fixed: Back with the player's controls showing moved to the progress bar instead of hiding the controls.
+- The sleep timer is gone from the player's More menu.
+
 ## 1.8.0
 - **An episode's description in the player:** More › Description shows it over the video, without stopping playback.
 

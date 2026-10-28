@@ -15,8 +15,6 @@
     <string name="player_guide_next">Suivante</string>
 
     <string name="player_skipping_unavailable">Impossible d\'avancer ou de reculer ici</string>
-    <string name="player_sleep_timer_minutes">Mise en veille : %1$d min</string>
-    <string name="player_sleep_timer_off">Mise en veille : désactivée</string>
     <string name="player_audio_switched">Audio : %1$s</string>
     <string name="player_audio_switch_failed">Impossible de passer l\'audio en %1$s</string>
     <string name="player_subtitles_switched">Sous-titres : %1$s</string>

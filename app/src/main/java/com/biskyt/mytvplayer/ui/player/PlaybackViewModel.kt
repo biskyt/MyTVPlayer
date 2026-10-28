@@ -33,7 +33,7 @@ import kotlinx.coroutines.launch
 
 /**
  * What every player screen shares, live TV or on demand: the engine, the overlay and side sheets, remote keys,
- * skipping, retries, the sleep timer and stopping when the app goes to the background.
+ * skipping, retries and stopping when the app goes to the background.
  */
 abstract class PlaybackViewModel(protected val c: AppContainer, private val appContext: Context) : ViewModel() {
     var engine by mutableStateOf<PlaybackEngine?>(null)
@@ -60,8 +60,6 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     var audioLabel by mutableStateOf("")
         private set
     var picture by mutableStateOf(PictureMode.FIT)
-    var sleepMinutes by mutableStateOf(0)
-        private set
 
     /** Which side sheet is open over the video (null = none). */
     var sheet by mutableStateOf<Sheet?>(null)
@@ -97,7 +95,6 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     private var dimJob: Job? = null
     private var retryJob: Job? = null
     private var messageJob: Job? = null
-    private var sleepJob: Job? = null
     private val retries = RetryBudget(MAX_RETRIES)
 
     // How long the stream has played since its last failure: once it has really played a while, failures get fresh
@@ -481,18 +478,6 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     open fun retry() {
         resetForNewStream()
         engine?.player?.prepare()
-    }
-
-    fun setSleepTimer(minutes: Int) {
-        sleepJob?.cancel()
-        sleepMinutes = minutes
-        if (minutes > 0) {
-            sleepJob = viewModelScope.launch {
-                delay(minutes * 60_000L)
-                stop()
-            }
-            flash(appString(R.string.player_sleep_timer_minutes, minutes))
-        }
     }
 
     private var trackJob: Job? = null
