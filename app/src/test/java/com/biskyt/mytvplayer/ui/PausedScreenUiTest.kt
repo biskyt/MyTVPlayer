@@ -131,7 +131,8 @@ class PausedScreenUiTest {
     @Test
     fun `keys in a panel put the dimming off too, and dimming closes the panel`() {
         paused()
-        press(NativeKeyEvent.KEYCODE_MENU) // the More panel, a window of its own
+        press(NativeKeyEvent.KEYCODE_MENU) // the controls, on More
+        press(NativeKeyEvent.KEYCODE_DPAD_CENTER) // the More panel, a window of its own
         compose.waitForText("Sleep timer")
         pass(90_000)
         press(NativeKeyEvent.KEYCODE_DPAD_DOWN)

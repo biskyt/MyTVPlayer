@@ -3,6 +3,7 @@ package com.biskyt.mytvplayer.ui.player
 import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -270,10 +271,14 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
                 openGuide()
             }
             PlayerAction.CloseGuide -> closeGuide()
-            PlayerAction.OpenMenu -> {
-                // From the Menu button with the channel guide open: the menu takes its place.
+            PlayerAction.ShowOptions -> {
+                // The controls, with More picked out (OK opens it); from the channel guide or a panel (Audio,
+                // Subtitles), they take its place.
+                sheet = null
                 if (overlay == OverlayState.GUIDE) closeGuide()
-                sheet = Sheet.MORE
+                showControls()
+                controlsFocus = ControlsFocus.MORE
+                optionsPresses++ // focus goes back to More, even from another button
             }
             PlayerAction.CloseMenu -> sheet = null
             PlayerAction.None -> return false
@@ -388,8 +393,17 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     /** Whether up and down change channel (live TV, if set to; else only the channel buttons do). */
     val upDownZaps: Boolean get() = isLive && ::settings.isInitialized && settings.zapWithUpDown
 
-    /** Whether the controls showing put focus on play/pause; not when they came up for skipping (◀ ▶ keep skipping). */
-    var focusPlayPause by mutableStateOf(true) // the controls are up as playback starts
+    /**
+     * Where focus goes as the controls show: play/pause; More (the remote's Options button: OK then opens it); or the
+     * video, when they came up for skipping (◀ ▶ keep skipping).
+     */
+    var controlsFocus by mutableStateOf(ControlsFocus.PLAY_PAUSE) // the controls are up as playback starts
+        private set
+
+    enum class ControlsFocus { PLAY_PAUSE, MORE, VIDEO }
+
+    /** Counts the Options button's presses: each puts focus on More again. */
+    var optionsPresses by mutableIntStateOf(0)
         private set
 
     /**
@@ -433,7 +447,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     fun showControls(keepOverlay: Boolean = false, forSkip: Boolean = false) {
         if (overlay != OverlayState.CONTROLS && (!keepOverlay || overlay == OverlayState.NONE)) {
             overlay = OverlayState.CONTROLS
-            focusPlayPause = !forSkip
+            controlsFocus = if (forSkip) ControlsFocus.VIDEO else ControlsFocus.PLAY_PAUSE
         }
         hideJob?.cancel()
         hideJob = viewModelScope.launch {

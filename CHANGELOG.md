@@ -2,6 +2,15 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.7.0
+- **The player's controls show the time of day** in the top corner, and for a film or episode how far in you are, how
+  long it is and how long is left ("12:34 / 45:00" and "32:26 left"); on live TV, how long the programme has left.
+- **The Options button on the remote brings up the controls with More picked out**, so OK opens it (and you can still
+  move to the other buttons).
+- **The controls are tidier and sit lower:** the hints about the remote's buttons are gone, and so are From the start
+  and Next episode on films and episodes (the next episode still starts by itself at the end).
+- Fixed: going on to the next episode could, very rarely, save it as watched.
+
 ## 1.6.0
 - **Carry on watching shows posters**, like the other rows on Home, with what's left in short: "S1E2 22m" for an
   episode, "1h 5m" for a film.

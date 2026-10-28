@@ -9,16 +9,10 @@
     <string name="player_more">More</string>
     <string name="player_channel_guide">Channel guide</string>
     <string name="player_watch_live">Watch live</string>
-    <string name="player_next_episode">Next episode</string>
     <!-- Above the next programme's title, in capitals as a small heading. %1$s: its start time, e.g. 21:00 -->
     <string name="player_up_next">UP NEXT · %1$s</string>
     <!-- Catch-up controls. %1$s: how far behind, e.g. "1h 5m" -->
     <string name="player_catchup_behind_live">Catch-up · %1$s behind live</string>
-
-    <!-- Remote control hints under the controls (TV only). ▲ ▼ ◀ ▶ are the remote's arrow buttons, CH + − its channel buttons, Back its Back button. -->
-    <string name="player_hint_skip">▲ then ◀ ▶ to skip (hold to scrub) · Back hides this</string>
-    <string name="player_hint_zap_up_down">▲ ▼ change channel · Back hides this</string>
-    <string name="player_hint_zap_channel_buttons">CH + − change channel · ▲ then ◀ ▶ to skip · Back hides this</string>
     <!-- Channel guide panel beside the video. ◀ ▶ and OK are remote buttons. -->
     <string name="player_guide_hint">◀ ▶ other channels · OK to watch</string>
     <string name="player_guide_previous">Previous</string>

@@ -49,7 +49,9 @@ sealed interface PlayerAction {
     data object StopAndExit : PlayerAction
     data object OpenGuide : PlayerAction
     data object CloseGuide : PlayerAction
-    data object OpenMenu : PlayerAction
+
+    /** The controls, with More picked out (OK then opens it). */
+    data object ShowOptions : PlayerAction
     data object CloseMenu : PlayerAction
     data object None : PlayerAction
 }
@@ -62,18 +64,18 @@ enum class OverlayState { NONE, CONTROLS, GUIDE }
  * left/right always skip (by the user's settings); the channel buttons zap on live TV, and up/down too when
  * [upDownZaps] (else, with nothing open, they show the controls); OK pauses and shows the controls, but on live TV
  * with [upDownZaps] it only shows them (there's no other easy way to); Back closes the topmost overlay or stops
- * playback; Menu opens the More menu, or closes it when [menuOpen].
+ * playback; Menu brings up the controls on More (OK opens it), or closes the More menu when [menuOpen].
  * The media buttons (play/pause, rewind, fast forward, stop) work whatever is open.
  */
 class KeyActionMapper(private val skipBackMs: Long, private val skipForwardMs: Long, private val upDownZaps: Boolean = false) {
 
     fun map(key: RemoteKey, overlay: OverlayState, isLive: Boolean, digit: Int = 0, menuOpen: Boolean = false): PlayerAction {
         if (overlay == OverlayState.GUIDE) {
-            // The guide panel handles its own navigation; Back/Guide close it, Menu opens the More menu in its place,
+            // The guide panel handles its own navigation; Back/Guide close it, Menu brings up the controls in its place,
             // and the media buttons still work.
             return when (key) {
                 RemoteKey.BACK, RemoteKey.GUIDE -> PlayerAction.CloseGuide
-                RemoteKey.MENU -> PlayerAction.OpenMenu
+                RemoteKey.MENU -> PlayerAction.ShowOptions
                 else -> if (key.isMedia) map(key, OverlayState.NONE, isLive) else PlayerAction.None
             }
         }
@@ -99,7 +101,7 @@ class KeyActionMapper(private val skipBackMs: Long, private val skipForwardMs: L
             RemoteKey.PLAY -> PlayerAction.Play
             RemoteKey.PAUSE -> PlayerAction.Pause
             RemoteKey.GUIDE -> if (isLive) PlayerAction.OpenGuide else PlayerAction.None
-            RemoteKey.MENU -> if (menuOpen) PlayerAction.CloseMenu else PlayerAction.OpenMenu
+            RemoteKey.MENU -> if (menuOpen) PlayerAction.CloseMenu else PlayerAction.ShowOptions
             RemoteKey.DIGIT -> if (isLive) PlayerAction.Digit(digit) else PlayerAction.None
         }
     }

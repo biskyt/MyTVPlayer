@@ -30,10 +30,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -125,15 +127,15 @@ private fun IconPill(icon: androidx.compose.ui.graphics.vector.ImageVector, labe
     }
 }
 
+/** The time of day, updated each minute: in the top bar, and over the video while the player's controls show. */
 @Composable
-private fun Clock() {
+fun Clock(
+    modifier: Modifier = Modifier.padding(horizontal = 8.dp),
+    style: TextStyle = MaterialTheme.typography.titleSmall,
+    color: Color = Palette.textMuted
+) {
     val now by rememberMinuteClock()
-    Text(
-        formatTime(now),
-        style = MaterialTheme.typography.titleSmall,
-        color = Palette.textMuted,
-        modifier = Modifier.padding(horizontal = 8.dp)
-    )
+    Text(formatTime(now), style = style, color = color, modifier = modifier)
 }
 
 /** Screen with the top bar above [content]. */

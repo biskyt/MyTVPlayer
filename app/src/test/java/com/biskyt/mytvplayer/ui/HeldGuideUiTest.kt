@@ -19,6 +19,7 @@ import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -72,15 +73,17 @@ class HeldGuideUiTest {
     }
 
     @Test
-    fun `the rest of the menu press that opened the menu over the guide stays in the app`() {
+    fun `the rest of the menu press that brought up the controls over the guide stays in the app`() {
         player()
         guide(NativeKeyEvent.ACTION_DOWN)
         guide(NativeKeyEvent.ACTION_UP)
         compose.waitAdvancingClock { vm.overlay == OverlayState.GUIDE }
         assertTrue("pressed", key(NativeKeyEvent.KEYCODE_MENU, NativeKeyEvent.ACTION_DOWN))
-        compose.waitAdvancingClock { vm.sheet == PlaybackViewModel.Sheet.MORE }
+        compose.waitAdvancingClock { vm.overlay == OverlayState.CONTROLS }
         assertTrue("held", key(NativeKeyEvent.KEYCODE_MENU, NativeKeyEvent.ACTION_DOWN, repeat = 1))
         assertTrue("let go", key(NativeKeyEvent.KEYCODE_MENU, NativeKeyEvent.ACTION_UP))
-        assertEquals("still open", PlaybackViewModel.Sheet.MORE, vm.sheet)
+        assertEquals("still up", OverlayState.CONTROLS, vm.overlay)
+        assertEquals("on More", PlaybackViewModel.ControlsFocus.MORE, vm.controlsFocus)
+        assertNull("no panel", vm.sheet)
     }
 }

@@ -46,8 +46,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         private set
 
     /** The episode after this one, if any. */
-    var nextEpisode by mutableStateOf<EpisodeInfo?>(null)
-        private set
+    private var nextEpisode: EpisodeInfo? = null
 
     override val isLive = false
     override val failureMessage = R.string.player_failure_vod
@@ -138,16 +137,15 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
     }
 
     private suspend fun play(p: PlaylistEntity, playing: Playing, url: String, fromStart: Boolean) {
-        current = playing
-        // At once: a save while the read below waits mustn't count this one by the last one's playing.
-        playedMs = 0
-        onCarryOn = false
-        resetForNewStream()
-        val engine = engine ?: return
-        // Read before playback starts, so nothing waits between starting it and the controls coming up.
+        // Read before this one becomes current: a save meanwhile (Back, or the timer) is still the last one's, at its own
+        // place. And before playback starts, so nothing waits between starting it and the controls coming up.
         val known = c.vod.progress(p.id, playing.kind, playing.itemId)
+        current = playing
+        playedMs = 0
         // Something already started counts at once: only a new start waits.
         onCarryOn = known != null && known.positionMs > 0 && !known.finished
+        resetForNewStream()
+        val engine = engine ?: return
         engine.play(url, hls = null)
         // Resume unless it was nearly finished (or the user asked to start over).
         val saved = if (fromStart) null else known
@@ -232,18 +230,12 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         if (nextEpisode == null) stop() else playNext()
     }
 
-    fun playNext() {
+    private fun playNext() {
         val p = playlist ?: return
         val next = nextEpisode ?: return
         val seriesId = screen.seriesId ?: return
         save()
         viewModelScope.launch { startEpisode(p, seriesId, next.id, fromStart = true) }
-    }
-
-    fun startOver() {
-        cancelScrub()
-        engine?.player?.seekTo(0)
-        showControls()
     }
 
     override fun stop() {

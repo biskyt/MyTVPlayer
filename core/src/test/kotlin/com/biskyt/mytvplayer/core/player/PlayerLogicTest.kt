@@ -64,10 +64,10 @@ class PlayerLogicTest {
     }
 
     @Test
-    fun `menu opens the more menu, and closes it when open`() {
-        assertEquals(PlayerAction.OpenMenu, mapper.map(RemoteKey.MENU, NONE, isLive = true))
-        assertEquals(PlayerAction.OpenMenu, mapper.map(RemoteKey.MENU, GUIDE, isLive = true)) // in the guide's place
-        assertEquals(PlayerAction.OpenMenu, mapper.map(RemoteKey.MENU, CONTROLS, isLive = true))
+    fun `menu brings up the controls on more, and closes the more menu when open`() {
+        assertEquals(PlayerAction.ShowOptions, mapper.map(RemoteKey.MENU, NONE, isLive = true))
+        assertEquals(PlayerAction.ShowOptions, mapper.map(RemoteKey.MENU, GUIDE, isLive = true)) // in the guide's place
+        assertEquals(PlayerAction.ShowOptions, mapper.map(RemoteKey.MENU, CONTROLS, isLive = true))
         assertEquals(PlayerAction.CloseMenu, mapper.map(RemoteKey.MENU, CONTROLS, isLive = false, menuOpen = true))
     }
 

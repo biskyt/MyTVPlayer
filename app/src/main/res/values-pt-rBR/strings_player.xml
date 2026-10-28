@@ -8,13 +8,8 @@
     <string name="player_more">Mais</string>
     <string name="player_channel_guide">Guia do canal</string>
     <string name="player_watch_live">Ao vivo</string>
-    <string name="player_next_episode">Próximo ep.</string>
     <string name="player_up_next">A SEGUIR · %1$s</string>
     <string name="player_catchup_behind_live">Reprise · %1$s atrás do ao vivo</string>
-
-    <string name="player_hint_skip">▲ e depois ◀ ▶ para pular (segure para percorrer) · Voltar oculta isto</string>
-    <string name="player_hint_zap_up_down">▲ ▼ mudam de canal · Voltar oculta isto</string>
-    <string name="player_hint_zap_channel_buttons">CH + − mudam de canal · ▲ e depois ◀ ▶ para pular · Voltar oculta isto</string>
     <string name="player_guide_hint">◀ ▶ outros canais · OK para assistir</string>
     <string name="player_guide_previous">Anterior</string>
     <string name="player_guide_next">Próximo</string>
