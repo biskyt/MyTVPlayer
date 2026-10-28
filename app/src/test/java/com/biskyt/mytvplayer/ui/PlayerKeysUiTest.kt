@@ -93,7 +93,7 @@ class PlayerKeysUiTest {
         press(Key.Menu)
         waitForFocus("More")
         press(Key.DirectionCenter)
-        waitFor("Sleep timer")
+        waitFor("Picture:")
     }
 
     @Test
@@ -141,7 +141,7 @@ class PlayerKeysUiTest {
         press(Key.MediaFastForward)
         // The panel closes and the player answers (live TV here can't skip).
         waitFor("Skipping isn't available here")
-        waitGone("Sleep timer")
+        waitGone("Picture:")
         openMore()
         press(Key.MediaStop)
         compose.waitAdvancingClock { navigator.current.screen is Screen.Live } // stopped, back where it was opened from
@@ -180,7 +180,7 @@ class PlayerKeysUiTest {
             compose.onAllNodes(hasText("other channels", substring = true) or hasText("Previous", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        assertTrue(compose.onAllNodes(hasText("Sleep timer", substring = true)).fetchSemanticsNodes().isEmpty())
+        assertTrue(compose.onAllNodes(hasText("Picture:", substring = true)).fetchSemanticsNodes().isEmpty())
     }
 
     @Test
@@ -193,7 +193,7 @@ class PlayerKeysUiTest {
         waitGone("Now on one.uk")
         openMore()
         press(Key.Menu)
-        waitGone("Sleep timer")
+        waitGone("Picture:")
         assertTrue(navigator.current.screen is Screen.Player) // still playing
     }
 
@@ -206,7 +206,7 @@ class PlayerKeysUiTest {
         press(Key.Menu)
         waitForFocus("More")
         waitGone("Now on one.uk")
-        assertTrue("the panel isn't open yet", compose.onAllNodes(hasText("Sleep timer")).fetchSemanticsNodes().isEmpty())
+        assertTrue("the panel isn't open yet", compose.onAllNodes(hasText("Picture:", substring = true)).fetchSemanticsNodes().isEmpty())
     }
 
     @Test

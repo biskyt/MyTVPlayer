@@ -20,9 +20,6 @@
 
     <!-- Short messages shown over the video for a moment -->
     <string name="player_skipping_unavailable">Skipping isn\'t available here</string>
-    <!-- %1$d: minutes -->
-    <string name="player_sleep_timer_minutes">Sleep timer: %1$d min</string>
-    <string name="player_sleep_timer_off">Sleep timer: Off</string>
     <!-- %1$s: the audio track's name (language, label) -->
     <string name="player_audio_switched">Audio: %1$s</string>
     <string name="player_audio_switch_failed">Couldn\'t switch the audio to %1$s</string>
