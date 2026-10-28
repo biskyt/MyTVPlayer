@@ -20,4 +20,8 @@
     <string name="home_up_next_after">À suivre après %1$s</string>
     <string name="home_favourite_series">Séries favorites</string>
     <string name="home_favourite_movies">Films favoris</string>
+    <string name="home_episode_code">S%1$dÉ%2$d</string>
+    <string name="home_left_m">%1$d min</string>
+    <string name="home_left_h">%1$d h</string>
+    <string name="home_left_h_m">%1$d h %2$d min</string>
 </resources>

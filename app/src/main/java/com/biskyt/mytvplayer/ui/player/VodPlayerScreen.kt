@@ -55,6 +55,7 @@ private fun Position(vm: VodPlayerViewModel) {
         fraction(vm.positionSec),
         if (dur > 0) formatDuration(dur * 1000) else "",
         scrub?.let { fraction(it / 1000) },
+        handle = LocalBarSelected.current,
         onSeek = if (dur > 0) ({ vm.scrubTo(0L..dur * 1000, it) }) else null
     )
 }

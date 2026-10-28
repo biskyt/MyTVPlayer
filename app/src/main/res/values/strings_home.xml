@@ -30,4 +30,10 @@
     <!-- Home rows of the favourite series and movies, below Recently watched -->
     <string name="home_favourite_series">Favourite series</string>
     <string name="home_favourite_movies">Favourite movies</string>
+    <!-- An episode on a Carry on watching card, short: season and episode, as "S1E2" -->
+    <string name="home_episode_code">S%1$dE%2$d</string>
+    <!-- Time left on a Carry on watching card, short: minutes; hours and minutes -->
+    <string name="home_left_m">%1$dm</string>
+    <string name="home_left_h">%1$dh</string>
+    <string name="home_left_h_m">%1$dh %2$dm</string>
 </resources>
