@@ -2,6 +2,10 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.7.1
+- Fixed: the Options button pressed in the player's Audio or Subtitles panel could also open the TV's own menu.
+- Fixed: at the very end of a live programme, the player's controls could say "0 min left".
+
 ## 1.7.0
 - **The player's controls show the time of day** in the top corner, and for a film or episode how far in you are, how
   long it is and how long is left ("12:34 / 45:00" and "32:26 left"); on live TV, how long the programme has left.

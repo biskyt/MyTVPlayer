@@ -367,13 +367,13 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
             }
         }
         nn?.now?.let { current ->
-            // Whole minutes, rounded up: "1 min left" until it ends.
-            val left = ((current.stopMs - now + MINUTE_MS - 1) / MINUTE_MS * 60).toInt().coerceAtLeast(0)
+            // Whole minutes, rounded up: "1 min left" until it ends (and nothing once it has, until the guide moves on).
+            val minutesLeft = (current.stopMs - now + MINUTE_MS - 1) / MINUTE_MS
             Timeline(
                 formatTime(current.startMs),
                 nn.progress(now),
                 formatTime(current.stopMs),
-                after = stringResource(R.string.common_time_left, formatRuntime(left))
+                after = if (minutesLeft > 0) stringResource(R.string.common_time_left, formatRuntime((minutesLeft * 60).toInt())) else null
             )
         }
         ControlsBar(vm, buttons, root) {
@@ -394,9 +394,9 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
 
 private val PANEL_FADE = 80.dp
 
-/** Behind the controls (and the clock): dark enough for text over a bright picture, light enough to see it through. */
 private const val MINUTE_MS = 60_000L
 
+/** Behind the controls (and the clock): dark enough for text over a bright picture, light enough to see it through. */
 private val PanelShade = Color(0xBF080A0D)
 
 /** Whether the remote is on the progress bar (the video has focus, so left and right skip): a film's shows its handle. */
