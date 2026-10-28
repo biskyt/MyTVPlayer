@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -191,7 +192,8 @@ internal fun PlayerFrame(
         }
         vm.error?.let { ErrorBox(it, vm) }
         if (vm.overlay == OverlayState.CONTROLS) {
-            controls(buttons, root)
+            // With the video focused (Up from the buttons), left and right skip: the bar shows its handle (no remote: none).
+            CompositionLocalProvider(LocalBarSelected provides (videoFocused && !LocalTouch.current)) { controls(buttons, root) }
             // A touch screen has no remote with a Back button in reach: this goes back to the list.
             if (LocalTouch.current) {
                 RoundButton(
@@ -369,6 +371,9 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
 
 private val PANEL_FADE = 80.dp
 
+/** Whether the remote is on the progress bar (the video has focus, so left and right skip): a film's shows its handle. */
+internal val LocalBarSelected = compositionLocalOf { false }
+
 /** The shaded panel at the bottom of the video that holds the controls. */
 @Composable
 internal fun ControlsPanel(content: @Composable ColumnScope.() -> Unit) {
@@ -379,7 +384,7 @@ internal fun ControlsPanel(content: @Composable ColumnScope.() -> Unit) {
                 .onPlainTap {} // a tap beside a button keeps the controls up, rather than hiding them
                 // Fades in above the top line, then dark behind every line however tall the controls are, so the text
                 // reads over a bright picture too.
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE6080A0D)), endY = fadePx))
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xBF080A0D)), endY = fadePx))
                 .padding(start = 56.dp, end = 56.dp, top = PANEL_FADE, bottom = 36.dp)
         ) {
             CompositionLocalProvider(LocalOverVideo provides true) {
@@ -389,9 +394,19 @@ internal fun ControlsPanel(content: @Composable ColumnScope.() -> Unit) {
     }
 }
 
-/** Start time, progress bar, end time; while scrubbing, a marker at [scrub] (the same scale as [fraction]). */
+/**
+ * Start time, progress bar, end time; while scrubbing, a marker at [scrub] (the same scale as [fraction]), else at
+ * [fraction] when [handle] (the bar is selected).
+ */
 @Composable
-internal fun Timeline(start: String, fraction: Float, end: String, scrub: Float? = null, onSeek: ((Float) -> Unit)? = null) {
+internal fun Timeline(
+    start: String,
+    fraction: Float,
+    end: String,
+    scrub: Float? = null,
+    handle: Boolean = false,
+    onSeek: ((Float) -> Unit)? = null
+) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Muted(start)
         // Touch: a tap or a drag along the bar picks where to play from (a taller strip than the bar, for fingers).
@@ -406,7 +421,7 @@ internal fun Timeline(start: String, fraction: Float, end: String, scrub: Float?
             }
         }
         Box(Modifier.weight(1f).then(seek).padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
-            ProgressLine(fraction, Modifier.fillMaxWidth(), height = 6.dp, marker = scrub)
+            ProgressLine(fraction, Modifier.fillMaxWidth(), height = 6.dp, marker = scrub ?: fraction.takeIf { handle })
         }
         Muted(end)
     }

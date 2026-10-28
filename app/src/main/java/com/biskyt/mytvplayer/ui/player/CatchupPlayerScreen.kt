@@ -55,9 +55,13 @@ private fun CatchupControls(vm: CatchupPlayerViewModel, buttons: FocusRequester,
         }
         if (p != null) {
             fun fraction(t: Long) = ((t - p.startMs).toFloat() / (p.stopMs - p.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
-            Timeline(formatTime(p.startMs), fraction(vm.at), formatTime(p.stopMs), scrub?.let(::fraction)) {
-                vm.scrubTo(p.startMs..p.stopMs, it)
-            }
+            Timeline(
+                formatTime(p.startMs),
+                fraction(vm.at),
+                formatTime(p.stopMs),
+                scrub?.let(::fraction),
+                handle = LocalBarSelected.current
+            ) { vm.scrubTo(p.startMs..p.stopMs, it) }
         }
         ControlsBar(vm, buttons, root) {
             PillButton(stringResource(R.string.common_from_start), vm::fromStart)

@@ -2,6 +2,14 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.6.0
+- **Carry on watching shows posters**, like the other rows on Home, with what's left in short: "S1E2 22m" for an
+  episode, "1h 5m" for a film.
+- **Only what you've watched for 30 seconds goes on Carry on watching**, so a quick look at the start of something
+  doesn't add it (anything already started, or played to the end, still counts at once).
+- **The player's controls are lighter** on the picture, and the progress bar of a film, episode or catch-up programme
+  shows a handle when it's selected (Up from the buttons), where left and right skip.
+
 ## 1.5.0
 - **A TV guide that's easy to get around:** the highlight now moves one channel or one programme per press, held
   buttons included, however long the channel list or full the guide. Right goes on through the whole guide (no more

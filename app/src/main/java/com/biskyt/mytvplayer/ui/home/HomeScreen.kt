@@ -2,9 +2,8 @@ package com.biskyt.mytvplayer.ui.home
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,14 +19,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.data.ChannelFilter
@@ -52,6 +50,8 @@ import com.biskyt.mytvplayer.ui.common.MoveHint
 import com.biskyt.mytvplayer.ui.common.MoveLayout
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.NowNextLoader
+import com.biskyt.mytvplayer.ui.common.OneLine
+import com.biskyt.mytvplayer.ui.common.POSTER_WIDTH
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.Poster
 import com.biskyt.mytvplayer.ui.common.PosterCard
@@ -62,15 +62,14 @@ import com.biskyt.mytvplayer.ui.common.TabScaffold
 import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.channelActions
 import com.biskyt.mytvplayer.ui.common.collectIds
-import com.biskyt.mytvplayer.ui.common.formatDuration
 import com.biskyt.mytvplayer.ui.common.guideNowNext
 import com.biskyt.mytvplayer.ui.common.moveAction
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
-import com.biskyt.mytvplayer.ui.common.shortEpisodeLabel
 import com.biskyt.mytvplayer.ui.common.titledRow
 import com.biskyt.mytvplayer.ui.common.vodActions
 import com.biskyt.mytvplayer.ui.common.vodDetails
+import com.biskyt.mytvplayer.ui.theme.Palette
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -331,30 +330,54 @@ private fun ChannelCardRow(
     }
 }
 
-/** Movies and episodes part-watched (or the next episode up): a poster-sized card each, with how much is left. */
+/** Movies and episodes part-watched (or the next episode up): a poster card each, with how much is left. */
 @Composable
 private fun CarryOnRow(items: List<WatchProgressEntity>, onOptions: (WatchProgressEntity) -> Unit, onPlay: (WatchProgressEntity) -> Unit) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-        items(items, key = { "${it.kind}${it.itemId}" }) { p ->
-            TvCard(onClick = { onPlay(p) }, onLongClick = { onOptions(p) }, modifier = Modifier.width(272.dp)) {
-                Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Poster(p.imageUrl, p.title, 64.dp)
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(p.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        if (p.finished) {
-                            // A finished episode with another after it: the card leads on to that one.
-                            Muted(stringResource(R.string.home_up_next_after, shortEpisodeLabel(p.season, p.episode)))
-                        } else {
-                            if (p.season != null) Muted(shortEpisodeLabel(p.season, p.episode) + (p.episodeTitle?.let { " · $it" } ?: ""))
-                            Muted(stringResource(R.string.common_time_left, formatDuration(p.remainingMs)))
-                            ProgressLine(p.fraction, Modifier.fillMaxWidth())
-                        }
-                    }
-                }
+        items(items, key = { "${it.kind}${it.itemId}" }) { p -> CarryOnCard(p, Modifier, { onOptions(p) }) { onPlay(p) } }
+    }
+}
+
+/** A movie or episode carried on: its poster with how far it got, its title, and what's left or up next. */
+@Composable
+private fun CarryOnCard(p: WatchProgressEntity, modifier: Modifier, onLongClick: () -> Unit, onClick: () -> Unit) {
+    TvCard(onClick = onClick, onLongClick = onLongClick, color = Palette.background, modifier = modifier) {
+        Column(Modifier.padding(6.dp).width(POSTER_WIDTH), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Box {
+                Poster(p.imageUrl, p.title, POSTER_WIDTH)
+                // (Not before it has been started: an episode up next.)
+                if (!p.finished && p.positionMs > 0) ProgressLine(p.fraction, Modifier.align(Alignment.BottomCenter).padding(6.dp))
             }
+            OneLine(p.title, MaterialTheme.typography.labelLarge)
+            Muted(
+                when {
+                    // A finished episode with another after it: the card leads on to that one.
+                    p.finished -> stringResource(R.string.home_up_next_after, episodeCode(p))
+                    p.season != null && p.episode != null -> "${episodeCode(p)} ${shortLeft(p.remainingMs)}"
+                    else -> shortLeft(p.remainingMs)
+                }
+            )
         }
     }
 }
+
+/** An episode, short, as a card has room for: "S1E2". */
+@Composable
+private fun episodeCode(p: WatchProgressEntity) = stringResource(R.string.home_episode_code, p.season ?: 0, p.episode ?: 0)
+
+/** Time left, short, as a card has room for: "22m", "1h", "1h 5m" (whole minutes, rounded up). */
+@Composable
+private fun shortLeft(ms: Long): String {
+    val minutes = ((ms + MS_PER_MINUTE - 1) / MS_PER_MINUTE).toInt()
+    return when {
+        minutes < MINUTES_PER_HOUR -> stringResource(R.string.home_left_m, minutes)
+        minutes % MINUTES_PER_HOUR == 0 -> stringResource(R.string.home_left_h, minutes / MINUTES_PER_HOUR)
+        else -> stringResource(R.string.home_left_h_m, minutes / MINUTES_PER_HOUR, minutes % MINUTES_PER_HOUR)
+    }
+}
+
+private const val MS_PER_MINUTE = 60_000L
+private const val MINUTES_PER_HOUR = 60
 
 /** The title of Home's row of favourite movies or series ([type]). */
 @StringRes
