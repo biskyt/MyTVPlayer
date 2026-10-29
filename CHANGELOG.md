@@ -1,48 +1,38 @@
 # Changelog
 
-Each version's section becomes its GitHub release notes, so it is written for the people using the app.
+Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
+English, one bullet of one sentence per change.
 
 ## 1.8.2
-- **Carry on watching shows the next episode once you've watched one:** its own card, with its episode and running
-  time, in place of "Up next after".
+- When you finish an episode, Carry on watching now shows the next one.
 
 ## 1.8.1
-- Fixed: Back with the player's controls showing moved to the progress bar instead of hiding the controls.
-- The sleep timer is gone from the player's More menu.
+- Back now hides the player's controls instead of selecting the progress bar.
+- The sleep timer has been removed.
 
 ## 1.8.0
-- **An episode's description in the player:** More › Description shows it over the video, without stopping playback.
+- Episodes now have a Description option in the player's More menu.
 
 ## 1.7.1
-- Fixed: the Options button pressed in the player's Audio or Subtitles panel could also open the TV's own menu.
-- Fixed: at the very end of a live programme, the player's controls could say "0 min left".
+- The Options button in the player's Audio or Subtitles menu no longer opens the TV's own menu too.
+- Live TV no longer shows "0 min left" at the very end of a programme.
 
 ## 1.7.0
-- **The player's controls show the time of day** in the top corner, and for a film or episode how far in you are, how
-  long it is and how long is left ("12:34 / 45:00" and "32:26 left"); on live TV, how long the programme has left.
-- **The Options button on the remote brings up the controls with More picked out**, so OK opens it (and you can still
-  move to the other buttons).
-- **The controls are tidier and sit lower:** the hints about the remote's buttons are gone, and so are From the start
-  and Next episode on films and episodes (the next episode still starts by itself at the end).
-- Fixed: going on to the next episode could, very rarely, save it as watched.
+- The player's controls now show the time of day and how much time is left.
+- The remote's Options button now shows the player's controls with More selected.
+- The button hints and the From the start and Next episode buttons are gone from the player.
+- Moving on to the next episode no longer marks it as watched by mistake.
 
 ## 1.6.0
-- **Carry on watching shows posters**, like the other rows on Home, with what's left in short: "S1E2 22m" for an
-  episode, "1h 5m" for a film.
-- **Only what you've watched for 30 seconds goes on Carry on watching**, so a quick look at the start of something
-  doesn't add it (anything already started, or played to the end, still counts at once).
-- **The player's controls are lighter** on the picture, and the progress bar of a film, episode or catch-up programme
-  shows a handle when it's selected (Up from the buttons), where left and right skip.
+- Carry on watching now shows posters.
+- Something only goes on Carry on watching once you have watched it for 30 seconds.
+- The player's controls cover less of the picture, and the progress bar shows a handle when selected.
 
 ## 1.5.0
-- **A TV guide that's easy to get around:** the highlight now moves one channel or one programme per press, held
-  buttons included, however long the channel list or full the guide. Right goes on through the whole guide (no more
-  stopping after a few hours), Left comes back along the same channel, and the highlight stays in the guide at its
-  start and end. Up from the first channel or Back takes you to the filter, and from there to the categories.
-- **Which day you're looking at:** the guide's time bar names the day (Today, Tomorrow or the date), with a line
-  where a new day starts, and the programme details above the guide say the day too when it isn't today.
-- The **List** and **TV guide** buttons keep the highlight on themselves, so you can switch back and forth.
-- **All channels** shows how many channels there are, as the other categories do.
+- The TV guide is easier to move around with the remote.
+- The TV guide now shows which day you are looking at.
+- The List and TV guide buttons stay selected when you press them.
+- All channels now shows how many channels there are.
 
 ## 1.4.1
 - **The TV guide keeps the highlight in it:** opening the guide with its button no longer sends the highlight to the

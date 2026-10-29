@@ -39,7 +39,8 @@ See also:
 3. Run `/simplify`, then `/code-review`, then apply their fixes.
 4. Bump `versionCode` (+1) and `versionName` in `app/build.gradle.kts`, for every PR that changes the app, released or
    not: the patch number for fixes and small changes, the minor for a notable feature (1.1.0: languages).
-5. Add a `## x.y.z` section at the top of `CHANGELOG.md`, written for people using the app.
+5. Add a `## x.y.z` section at the top of `CHANGELOG.md`, written for people using the app: plain English, one
+   bullet of one sentence per change (the owner, 2026-10-29).
    - A release's notes are its section plus those of any unreleased versions since the last release
      (`.github/scripts/release-notes.sh`). For Play's "What's new" (500 characters), `play-notes.py` keeps the whole
      bullets that fit in about 420 and adds a link to the full notes, so put the change users notice most first.
