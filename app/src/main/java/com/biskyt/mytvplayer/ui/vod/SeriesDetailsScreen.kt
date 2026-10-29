@@ -116,7 +116,11 @@ class SeriesDetailsViewModel(
         val show = series
         val episodes = details?.episodes.orEmpty()
         c.appScope.launch {
-            if (watched) c.vod.markEpisodeWatched(playlistId, seriesId, show, episodes, e) else c.vod.forgetEpisode(playlistId, e.id)
+            if (watched) {
+                c.vod.markEpisodeWatched(playlistId, seriesId, show, episodes, e)
+            } else {
+                c.vod.forgetEpisode(playlistId, e.id, episodes.indexOf(e).takeIf { it >= 0 }?.let { episodes.getOrNull(it + 1) })
+            }
         }
     }
 
@@ -191,7 +195,7 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
         // One partly watched can be counted as watched, or started again (its progress forgotten).
         val actions = listOfNotNull(
             if (saved?.finished != true) markWatched(false, set) else null,
-            if (saved != null) markWatched(true, set) else null
+            if (saved?.started == true) markWatched(true, set) else null
         )
         ItemActionsPanel(episodeName(e), actions, close)
     }
@@ -249,7 +253,7 @@ private fun EpisodeRow(e: EpisodeInfo, progress: WatchProgressEntity?, modifier:
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(episodeName(e), style = MaterialTheme.typography.titleSmall, maxLines = 1)
                 e.plot?.let { Muted(it) }
-                if (progress != null && !progress.finished && progress.durationMs > 0) {
+                if (progress != null && !progress.finished && progress.started && progress.durationMs > 0) {
                     ProgressLine(progress.fraction, Modifier.width(220.dp).padding(top = 4.dp))
                 }
             }

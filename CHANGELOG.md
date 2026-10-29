@@ -2,6 +2,10 @@
 
 Each version's section becomes its GitHub release notes, so it is written for the people using the app.
 
+## 1.8.2
+- **Carry on watching shows the next episode once you've watched one:** its own card, with its episode and running
+  time, in place of "Up next after".
+
 ## 1.8.1
 - Fixed: Back with the player's controls showing moved to the progress bar instead of hiding the controls.
 - The sleep timer is gone from the player's More menu.

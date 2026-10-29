@@ -267,9 +267,11 @@ private fun TileOptions(tile: HomeTile, vm: HomeViewModel, pid: Long, onDismiss:
         is HomeTile.CarryOn -> {
             val p = tile.p
             val series = p.seriesId
+            // An episode watched, or the next one up after it.
+            val next = p.finished || series != null && !p.started
             val actions = listOf(
                 ItemAction.Open(
-                    stringResource(if (p.finished) R.string.home_play_next_episode else R.string.home_resume),
+                    stringResource(if (next) R.string.home_play_next_episode else R.string.home_resume),
                     Screen.VodPlayer(p.playlistId, p.itemId, series, continueSeries = true)
                 ),
                 if (series == null) {
@@ -346,15 +348,19 @@ private fun CarryOnCard(p: WatchProgressEntity, modifier: Modifier, onLongClick:
             Box {
                 Poster(p.imageUrl, p.title, POSTER_WIDTH)
                 // (Not before it has been started: an episode up next.)
-                if (!p.finished && p.positionMs > 0) ProgressLine(p.fraction, Modifier.align(Alignment.BottomCenter).padding(6.dp))
+                if (!p.finished && p.started) ProgressLine(p.fraction, Modifier.align(Alignment.BottomCenter).padding(6.dp))
             }
             OneLine(p.title, MaterialTheme.typography.labelLarge)
             Muted(
                 when {
-                    // A finished episode with another after it: the card leads on to that one.
+                    // A finished episode with another after it that has no card of its own (saved before 1.8.2, or
+                    // watched already): the card leads on to that one.
                     p.finished -> stringResource(R.string.home_up_next_after, episodeCode(p))
-                    p.season != null && p.episode != null -> "${episodeCode(p)} ${shortLeft(p.remainingMs)}"
-                    else -> shortLeft(p.remainingMs)
+                    // (The next one up, its running time not known: no time.)
+                    p.season != null && p.episode != null ->
+                        if (p.durationMs > 0) "${episodeCode(p)} ${shortLeft(p.remainingMs)}" else episodeCode(p)
+                    p.durationMs > 0 -> shortLeft(p.remainingMs)
+                    else -> ""
                 }
             )
         }

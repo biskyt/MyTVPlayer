@@ -36,9 +36,11 @@ class HomeCarryOnUiTest {
     private val provider = FakeProvider()
     private val app = ApplicationProvider.getApplicationContext<TestApp>()
 
+    private var pid = 0L
+
     @Before
     fun setUp() = runBlocking {
-        val pid = app.container.addHomeTv(provider, vod = true)
+        pid = app.container.addHomeTv(provider, vod = true)
         val now = System.currentTimeMillis()
         // A film: 100 minutes, 10 in.
         app.container.vod.saveProgress(
@@ -64,6 +66,26 @@ class HomeCarryOnUiTest {
 
     @After
     fun tearDown() = provider.close()
+
+    @Test
+    fun `a watched episode's card is the next episode, not started`() {
+        runBlocking {
+            val p = app.container.playlists.get(pid)!!
+            val next = app.container.vod.seriesDetails(p, 77).episodes.first { it.id == 9003L }
+            app.container.vod.saveProgress(
+                WatchProgressEntity(
+                    pid, VOD_EPISODE, 9002, positionMs = 1_440_000, durationMs = 1_440_000, updatedAt = System.currentTimeMillis() + 5,
+                    title = "Line of Duty", imageUrl = null, seriesId = 77, season = 1, episode = 2, hasNext = true
+                ),
+                next = next
+            )
+        }
+        val navigator = navigators.new(Screen.Home)
+        compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
+        // Its code and running time (unknown here: none), and no "Up next after".
+        compose.waitAdvancingClock(50) { compose.onAllNodes(hasText("S2E1")).fetchSemanticsNodes().isNotEmpty() }
+        assertEquals(0, compose.onAllNodes(hasText("Up next", substring = true)).fetchSemanticsNodes().size)
+    }
 
     @Test
     fun `a card says its episode and the time left, or a film's time left`() {

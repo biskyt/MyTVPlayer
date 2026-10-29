@@ -382,6 +382,42 @@ class RepositoriesTest {
     }
 
     @Test
+    fun `a watched episode's card becomes the next episode's`() = runBlocking {
+        val id = addPlaylist()
+        val p = playlists.get(id)!!
+        vod.sync(p)
+        val episodes = vod.seriesDetails(p, 77).episodes
+        fun watched(item: Long, at: Long, hasNext: Boolean) =
+            WatchProgressEntity(id, VOD_EPISODE, item, 3_500_000, 3_600_000, at, "Show", "poster", seriesId = 77, hasNext = hasNext)
+        suspend fun card() = vod.observeCarryOn(id).first().single()
+
+        // Episode 1 watched: its card is episode 2's, not started, with its running time.
+        vod.saveProgress(watched(9001, 10, hasNext = true), next = episodes[1])
+        val up = card()
+        assertEquals(9002L, up.itemId)
+        assertEquals(0L, up.positionMs)
+        assertEquals(3_500_000L, up.durationMs)
+        assertEquals(listOf("Show", "poster", 1, 2), listOf(up.title, up.imageUrl, up.season, up.episode))
+        // The credits play on, saved again: episode 2 stays the card.
+        vod.saveProgress(watched(9001, 20, hasNext = true), next = episodes[1])
+        assertEquals(9002L, card().itemId)
+
+        // Episode 1 counted as unwatched after all: episode 2, never started, goes with it.
+        vod.forgetEpisode(id, 9001, next = episodes[1])
+        assertTrue(vod.observeCarryOn(id).first().isEmpty())
+        vod.saveProgress(watched(9001, 25, hasNext = true), next = episodes[1])
+
+        // Started already: it keeps where it got.
+        vod.saveProgress(WatchProgressEntity(id, VOD_EPISODE, 9002, 60_000, 3_500_000, 30, "Show", null, seriesId = 77))
+        vod.saveProgress(watched(9001, 40, hasNext = true), next = episodes[1])
+        assertEquals(9002L to 60_000L, card().let { it.itemId to it.positionMs })
+
+        // The last episode watched: no card.
+        vod.saveProgress(watched(9003, 50, hasNext = false), next = null)
+        assertTrue(vod.observeCarryOn(id).first().isEmpty())
+    }
+
+    @Test
     fun `search finds channels, programmes, movies and series`() = runBlocking {
         val id = addPlaylist()
         playlists.syncChannels(id)
