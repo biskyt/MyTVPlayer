@@ -168,6 +168,9 @@ data class WatchProgressEntity(
     val hasNext: Boolean = false
 ) {
     val finished: Boolean get() = durationMs > 0 && positionMs >= durationMs * FINISHED_FRACTION
+
+    /** Not yet, for the episode up next after one watched: its row is there for "Carry on watching". */
+    val started: Boolean get() = positionMs > 0
     val fraction: Float get() = if (durationMs > 0) positionMs.toFloat() / durationMs else 0f
     val remainingMs: Long get() = (durationMs - positionMs).coerceAtLeast(0)
 

@@ -135,13 +135,37 @@ class VodRepository(private val db: AppDatabase, private val playlists: Playlist
 
     fun observeCarryOn(playlistId: Long, limit: Int = 12) = vod.observeCarryOn(playlistId, limit, WatchProgressEntity.FINISHED_FRACTION)
 
-    /** Saves progress; [trim] (when playback stops) also drops the oldest rows beyond the cap, in the same write. */
-    suspend fun saveProgress(p: WatchProgressEntity, trim: Boolean = false) {
-        if (!trim) return vod.saveProgress(p)
+    /**
+     * Saves progress; [trim] (when playback stops) also drops the oldest rows beyond the cap, in the same write. A
+     * finished episode with [next] after it puts that one on "Carry on watching" in its place ([upNext]).
+     */
+    suspend fun saveProgress(p: WatchProgressEntity, trim: Boolean = false, next: EpisodeInfo? = null) {
+        val up = next?.takeIf { p.finished }
+        if (!trim && up == null) return vod.saveProgress(p)
         db.withTransaction {
             vod.saveProgress(p)
-            vod.trimProgress(p.playlistId, KEEP_PROGRESS)
+            if (up != null) upNext(p, up)
+            if (trim) vod.trimProgress(p.playlistId, KEEP_PROGRESS)
         }
+    }
+
+    /**
+     * After [watched], its series' card is [next]: a row just newer than it, not started (or, started already, where
+     * it got). Each later save of [watched] (the credits play on) writes it again, so it stays the newer.
+     */
+    private suspend fun upNext(watched: WatchProgressEntity, next: EpisodeInfo) {
+        val saved = vod.progress(watched.playlistId, VOD_EPISODE, next.id)
+        if (saved?.finished == true) return
+        val row = saved ?: watched.copy(
+            itemId = next.id,
+            positionMs = 0,
+            durationMs = next.runningMs ?: 0,
+            season = next.season,
+            episode = next.number,
+            episodeTitle = next.title.ifBlank { null },
+            hasNext = false
+        )
+        vod.saveProgress(row.copy(updatedAt = watched.updatedAt + 1))
     }
 
     /** Takes a movie, or a whole series, off "Carry on watching": forgets how far it got (for a series, every episode). */
@@ -157,13 +181,14 @@ class VodRepository(private val db: AppDatabase, private val playlists: Playlist
      */
     suspend fun markEpisodeWatched(playlistId: Long, seriesId: Long, show: SeriesEntity?, episodes: List<EpisodeInfo>, e: EpisodeInfo) {
         val index = episodes.indexOfFirst { it.id == e.id }
+        val next = if (index < 0) null else episodes.getOrNull(index + 1)
         val rows = vod.seriesProgress(playlistId, seriesId)
         val latest = rows.filter { it.itemId != e.id }.maxByOrNull { it.updatedAt }
         val latestIndex = latest?.let { l -> episodes.indexOfFirst { it.id == l.itemId } } ?: -1
         val now = System.currentTimeMillis()
         // Its running time if known (else any: only the share played counts).
         val duration = rows.firstOrNull { it.itemId == e.id }?.durationMs?.takeIf { it > 0 }
-            ?: e.durationSec?.takeIf { it > 0 }?.times(1_000L) ?: 1L
+            ?: e.runningMs ?: 1L
         val row = WatchProgressEntity(
             playlistId = playlistId,
             kind = VOD_EPISODE,
@@ -178,13 +203,18 @@ class VodRepository(private val db: AppDatabase, private val playlists: Playlist
             season = e.season,
             episode = e.number,
             episodeTitle = e.title.ifBlank { null },
-            hasNext = index in 0 until episodes.lastIndex
+            hasNext = next != null
         )
-        saveProgress(row, trim = true)
+        // The next one is up only if this is now the latest watched.
+        saveProgress(row, trim = true, next = next?.takeIf { latestIndex <= index })
     }
 
     /** Forgets how far one episode got: it shows as unwatched. */
-    suspend fun forgetEpisode(playlistId: Long, episodeId: Long) = vod.deleteEpisodeProgress(playlistId, episodeId)
+    suspend fun forgetEpisode(playlistId: Long, episodeId: Long, next: EpisodeInfo? = null) = db.withTransaction {
+        vod.deleteEpisodeProgress(playlistId, episodeId)
+        // The one up after it goes too, if it never started.
+        next?.let { vod.deleteUpNext(playlistId, it.id) }
+    }
 
     // --- details (fetched when opened) ---
 
@@ -304,3 +334,6 @@ class VodRepository(private val db: AppDatabase, private val playlists: Playlist
         const val FIND_LIMIT = 500
     }
 }
+
+/** An episode's running time, if the provider gives it. */
+private val EpisodeInfo.runningMs: Long? get() = durationSec?.takeIf { it > 0 }?.times(1_000L)

@@ -765,6 +765,10 @@ interface VodDao {
 
     @Query("DELETE FROM watch_progress WHERE playlistId = :pid AND kind = 'episode' AND itemId = :id")
     suspend fun deleteEpisodeProgress(pid: Long, id: Long)
+
+    /** An episode's row only while it's up next, not started. */
+    @Query("DELETE FROM watch_progress WHERE playlistId = :pid AND kind = 'episode' AND itemId = :id AND positionMs = 0")
+    suspend fun deleteUpNext(pid: Long, id: Long)
 }
 
 /** Everything a backup holds (see BackupRepository), read and replaced as a whole. */

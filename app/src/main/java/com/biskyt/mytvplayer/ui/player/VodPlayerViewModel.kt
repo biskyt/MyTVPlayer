@@ -148,7 +148,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         if (sheet == Sheet.DESCRIPTION) sheet = null
         playedMs = 0
         // Something already started counts at once: only a new start waits.
-        onCarryOn = known != null && known.positionMs > 0 && !known.finished
+        onCarryOn = known != null && known.started && !known.finished
         resetForNewStream()
         val engine = engine ?: return
         engine.play(url, hls = null)
@@ -226,7 +226,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         val row = snapshot() ?: return
         if (!countsAsWatching(playedMs, onCarryOn, row.finished)) return
         onCarryOn = true
-        c.appScope.launch { c.vod.saveProgress(row, trim) }
+        c.appScope.launch { c.vod.saveProgress(row, trim, nextEpisode) }
     }
 
     /** At the end: a movie closes; an episode is saved as watched and the next one starts. */
