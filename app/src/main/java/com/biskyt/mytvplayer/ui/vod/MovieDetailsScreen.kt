@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,7 @@ import com.biskyt.mytvplayer.data.db.WatchProgressEntity
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
+import com.biskyt.mytvplayer.ui.common.LocalTopBarInset
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.Poster
@@ -135,13 +137,22 @@ internal fun DetailsLayout(backdropUrl: String?, posterUrl: String?, title: Stri
             val request = remember(backdropUrl) {
                 ImageRequest.Builder(context).data(backdropUrl).size(BACKDROP_WIDTH, BACKDROP_WIDTH * 9 / 16).allowRgb565(true).build()
             }
-            AsyncImage(request, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(), alpha = 0.35f)
+            AsyncImage(
+                request,
+                null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().testTag("backdrop"),
+                alpha = 0.35f
+            )
             Box(
                 Modifier.fillMaxSize()
                     .background(Brush.horizontalGradient(listOf(Palette.background, Palette.background.copy(alpha = 0.6f))))
             )
         }
-        Row(Modifier.padding(horizontal = 72.dp, vertical = 56.dp), horizontalArrangement = Arrangement.spacedBy(40.dp)) {
+        Row(
+            Modifier.padding(start = 72.dp, end = 72.dp, top = LocalTopBarInset.current + 8.dp, bottom = 56.dp),
+            horizontalArrangement = Arrangement.spacedBy(40.dp)
+        ) {
             Poster(posterUrl, title, 240.dp)
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.widthIn(max = 760.dp).fillMaxHeight()) {
                 content()
