@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.8.3
+- The menu bar now shows on film and series pages.
+
 ## 1.8.2
 - When you finish an episode, Carry on watching now shows the next one.
 
