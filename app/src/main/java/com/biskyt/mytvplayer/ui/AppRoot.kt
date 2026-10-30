@@ -30,6 +30,8 @@ import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import com.biskyt.mytvplayer.ui.common.SyncToast
+import com.biskyt.mytvplayer.ui.common.Tab
+import com.biskyt.mytvplayer.ui.common.TabScaffold
 import com.biskyt.mytvplayer.ui.common.onGuideKey
 import com.biskyt.mytvplayer.ui.guide.GuideMatchingScreen
 import com.biskyt.mytvplayer.ui.guide.GuideSourcesScreen
@@ -167,8 +169,9 @@ internal fun ScreenContent(screen: Screen) {
         is Screen.Live -> LiveScreen(screen.filter, screen.guide)
         is Screen.Movies -> VodBrowseScreen(CAT_MOVIE, screen.filter)
         is Screen.Series -> VodBrowseScreen(CAT_SERIES, screen.filter)
-        is Screen.MovieDetails -> MovieDetailsScreen(screen)
-        is Screen.SeriesDetails -> SeriesDetailsScreen(screen)
+        // With the top bar, as the tab screens draw it, under their tab.
+        is Screen.MovieDetails -> TabScaffold(Tab.MOVIES) { MovieDetailsScreen(screen) }
+        is Screen.SeriesDetails -> TabScaffold(Tab.SERIES) { SeriesDetailsScreen(screen) }
         is Screen.VodPlayer -> VodPlayerScreen(screen)
         is Screen.Search -> SearchScreen(screen.query)
         is Screen.Player -> PlayerScreen(screen)
