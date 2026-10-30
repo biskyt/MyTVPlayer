@@ -102,10 +102,10 @@ fun TopBar(selected: Tab?) {
         }
         Box(Modifier.weight(1f))
         Clock()
-        IconPill(AppIcons.Search, stringResource(R.string.common_search)) { nav.push(Screen.Search()) }
-        IconPill(AppIcons.Settings, stringResource(R.string.common_settings)) { nav.push(Screen.Settings) }
+        IconPill(AppIcons.Search, stringResource(R.string.common_search)) { nav.open(Screen.Search()) }
+        IconPill(AppIcons.Settings, stringResource(R.string.common_settings)) { nav.open(Screen.Settings) }
         if (active != null) {
-            TvCard(onClick = { nav.push(Screen.Playlists) }, shape = RoundedCornerShape(50)) {
+            TvCard(onClick = { nav.open(Screen.Playlists) }, shape = RoundedCornerShape(50)) {
                 Row(
                     Modifier.padding(start = 6.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -138,12 +138,16 @@ fun Clock(
     Text(formatTime(now), style = style, color = color, modifier = modifier)
 }
 
+/** Between the top bar and the screen below it. */
+val TabScaffoldGap = 20.dp
+
 /** Screen with the top bar above [content]. */
 @Composable
 fun TabScaffold(tab: Tab?, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxSize().background(Palette.background)) {
+    // (On the app's background, painted once below every screen.)
+    Column(modifier.fillMaxSize()) {
         TopBar(tab)
-        Column(Modifier.padding(top = 20.dp).fillMaxSize(), content = content)
+        Column(Modifier.padding(top = TabScaffoldGap).fillMaxSize(), content = content)
     }
 }
 

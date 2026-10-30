@@ -104,6 +104,13 @@ class Navigator(start: Screen) {
         stack += NavEntry(screen, nextId++)
     }
 
+    /** Shows [screen]: back to it if it's on the stack already (never a second copy), else over this one. */
+    fun open(screen: Screen) {
+        val at = stack.indexOfLast { it.screen == screen }
+        if (at < 0) return push(screen)
+        while (stack.lastIndex > at) drop(stack.removeAt(stack.lastIndex))
+    }
+
     /** Returns false when there is nothing left to go back to. */
     fun pop(): Boolean {
         if (stack.size <= 1) return false

@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.8.4
+- The menu bar now shows on the Settings pages too.
+
 ## 1.8.3
 - The menu bar now shows on film and series pages.
 

@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,7 +32,8 @@ import com.biskyt.mytvplayer.data.db.CAT_SERIES
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import com.biskyt.mytvplayer.ui.common.SyncToast
 import com.biskyt.mytvplayer.ui.common.Tab
-import com.biskyt.mytvplayer.ui.common.TabScaffold
+import com.biskyt.mytvplayer.ui.common.TabScaffoldGap
+import com.biskyt.mytvplayer.ui.common.TopBar
 import com.biskyt.mytvplayer.ui.common.onGuideKey
 import com.biskyt.mytvplayer.ui.guide.GuideMatchingScreen
 import com.biskyt.mytvplayer.ui.guide.GuideSourcesScreen
@@ -93,7 +95,7 @@ fun AppRoot() {
         }
         // A backup file opened with MyTVPlayer from another app: Backup & restore offers to restore it.
         LaunchedEffect(nav) {
-            container.openedFile.filterNotNull().collect { if (nav.current.screen != Screen.Backup) nav.push(Screen.Backup) }
+            container.openedFile.filterNotNull().collect { nav.open(Screen.Backup) }
         }
         val activity = LocalActivity.current
         BackHandler {
@@ -104,13 +106,14 @@ fun AppRoot() {
                 else -> activity?.finish()
             }
         }
+        val hasPlaylist = s.activePlaylistId != 0L
         Box(
             Modifier.fillMaxSize().background(Palette.background)
                 // Clear of a phone's camera cutout (TVs have none).
                 .windowInsetsPadding(WindowInsets.displayCutout)
-                .guideButton(nav, hasPlaylist = s.activePlaylistId != 0L)
+                .guideButton(nav, hasPlaylist)
         ) {
-            NavHost(nav) { screen -> ScreenContent(screen) }
+            NavHost(nav) { screen -> ScreenContent(screen, hasPlaylist) }
             SyncToast(nav, Modifier.align(Alignment.BottomEnd).padding(24.dp))
         }
     }
@@ -161,17 +164,50 @@ private suspend fun needsVod(c: AppContainer, p: PlaylistEntity) = p.hasVod && (
  */
 internal fun guideButtonOpensGuide(screen: Screen) = !screen.isPlayback && !screen.isSetup && screen !is Screen.Live
 
+/**
+ * [screen], with the top bar: on every screen but playback and set-up (first launch, or anything before there is a
+ * playlist, such as restoring a backup from the welcome screen).
+ */
 @Composable
-internal fun ScreenContent(screen: Screen) {
+internal fun ScreenContent(screen: Screen, hasPlaylist: Boolean = true) {
+    if (screen.drawsOwnTopBar) return ScreenBody(screen)
+    // The screen stays in one place with or without the bar, so it keeps its state as the bar comes (a backup restored
+    // during set-up adds the first playlist) or goes.
+    val bar = !screen.isPlayback && !screen.isSetup && hasPlaylist
+    Column(Modifier.fillMaxSize()) {
+        if (bar) TopBar(screen.tab)
+        Box(Modifier.weight(1f).padding(top = if (bar) TabScaffoldGap else 0.dp)) { ScreenBody(screen) }
+    }
+}
+
+/** The tab screens draw the top bar themselves (Live TV's number keys cover its tabs too). Every screen is listed. */
+private val Screen.drawsOwnTopBar: Boolean
+    get() = when (this) {
+        Screen.Home, is Screen.Live, is Screen.Movies, is Screen.Series, is Screen.Search, is Screen.Catchup -> true
+        Screen.Welcome, is Screen.Player, is Screen.VodPlayer, is Screen.CatchupPlayer, is Screen.MovieDetails,
+        is Screen.SeriesDetails, Screen.Settings, Screen.Playlists, is Screen.PlaylistEdit, is Screen.Categories,
+        Screen.PlaybackSettings, Screen.Appearance, Screen.GuideSources, is Screen.GuideMatching, Screen.Backup,
+        Screen.About, Screen.Licences -> false
+    }
+
+/** The tab a screen comes under in the top bar, if any. */
+private val Screen.tab: Tab?
+    get() = when (this) {
+        is Screen.MovieDetails -> Tab.MOVIES
+        is Screen.SeriesDetails -> Tab.SERIES
+        else -> null
+    }
+
+@Composable
+private fun ScreenBody(screen: Screen) {
     when (screen) {
         Screen.Welcome -> WelcomeScreen()
         Screen.Home -> HomeScreen()
         is Screen.Live -> LiveScreen(screen.filter, screen.guide)
         is Screen.Movies -> VodBrowseScreen(CAT_MOVIE, screen.filter)
         is Screen.Series -> VodBrowseScreen(CAT_SERIES, screen.filter)
-        // With the top bar, as the tab screens draw it, under their tab.
-        is Screen.MovieDetails -> TabScaffold(Tab.MOVIES) { MovieDetailsScreen(screen) }
-        is Screen.SeriesDetails -> TabScaffold(Tab.SERIES) { SeriesDetailsScreen(screen) }
+        is Screen.MovieDetails -> MovieDetailsScreen(screen)
+        is Screen.SeriesDetails -> SeriesDetailsScreen(screen)
         is Screen.VodPlayer -> VodPlayerScreen(screen)
         is Screen.Search -> SearchScreen(screen.query)
         is Screen.Player -> PlayerScreen(screen)

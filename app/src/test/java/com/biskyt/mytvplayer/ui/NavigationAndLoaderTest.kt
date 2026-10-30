@@ -34,6 +34,19 @@ class NavigationAndLoaderTest {
     }
 
     @Test
+    fun `open goes back to a screen already open rather than stacking a copy`() {
+        val nav = Navigator(Screen.Home)
+        nav.open(Screen.Playlists)
+        nav.push(Screen.PlaylistEdit(7))
+        nav.open(Screen.Playlists) // the top bar's playlist button, from the playlist's settings
+        assertEquals(listOf(Screen.Home, Screen.Playlists), nav.stack.map { it.screen })
+        nav.open(Screen.Search("News"))
+        nav.open(Screen.Search()) // a new search over one with a query
+        assertEquals(Screen.Search(), nav.current.screen)
+        assertEquals(4, nav.stack.size)
+    }
+
+    @Test
     fun `the guide button opens the guide except while watching or setting up`() {
         assertTrue(guideButtonOpensGuide(Screen.Home))
         assertTrue(guideButtonOpensGuide(Screen.Settings))

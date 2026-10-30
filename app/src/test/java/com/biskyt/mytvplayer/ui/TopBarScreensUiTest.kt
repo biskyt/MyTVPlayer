@@ -24,7 +24,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** The top bar (tabs, search, settings) is on a film's or series' page too, and not while something plays. */
+/** The top bar (tabs, search, settings) is on every screen but playback and first-run set-up. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "+w960dp-h540dp-tvdpi")
 class TopBarScreensUiTest {
@@ -45,9 +45,9 @@ class TopBarScreensUiTest {
     @After
     fun tearDown() = provider.close()
 
-    private fun show(screen: Screen): Navigator {
+    private fun show(screen: Screen, hasPlaylist: Boolean = true): Navigator {
         val navigator = navigators.new(screen)
-        compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
+        compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it, hasPlaylist) } } }
         return navigator
     }
 
@@ -64,6 +64,38 @@ class TopBarScreensUiTest {
 
     @Test
     fun `a series' page has the top bar`() = hasTopBar(Screen.SeriesDetails(playlistId, 77), "Line of Duty")
+
+    @Test
+    fun `settings has the top bar`() = hasTopBar(Screen.Settings, "Playlists")
+
+    @Test
+    fun `a playlist's settings have the top bar`() = hasTopBar(Screen.PlaylistEdit(playlistId), "Home TV")
+
+    @Test
+    fun `languages and categories have the top bar`() = hasTopBar(Screen.Categories(playlistId), "ENTERTAINMENT")
+
+    @Test
+    fun `appearance has the top bar`() = hasTopBar(Screen.Appearance, "Appearance")
+
+    @Test
+    fun `backup has the top bar`() = hasTopBar(Screen.Backup, "Back up")
+
+    @Test
+    fun `guide matching has the top bar`() = hasTopBar(Screen.GuideMatching(playlistId), "UK: CHANNEL ONE HD")
+
+    @Test
+    fun `first-run set-up has no top bar`() {
+        show(Screen.PlaylistEdit(null, firstRun = true))
+        compose.settle()
+        assertEquals(0, topBars())
+    }
+
+    @Test
+    fun `before there is a playlist there is no top bar`() {
+        show(Screen.Backup, hasPlaylist = false)
+        compose.settle()
+        assertEquals(0, topBars())
+    }
 
     @Test
     fun `playback has no top bar`() {

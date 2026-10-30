@@ -466,7 +466,7 @@ fun GuideMatchingScreen(playlistId: Long, streamId: Long?) {
     val items = vm.channels.collectAsLazyPagingItems()
 
     Column(
-        Modifier.fillMaxSize().background(Palette.background).padding(horizontal = 56.dp, vertical = 32.dp),
+        Modifier.fillMaxSize().padding(horizontal = 56.dp, vertical = 32.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
