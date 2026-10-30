@@ -4,6 +4,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.testutil.FakeProvider
@@ -51,7 +52,8 @@ class CategoryTypesUiTest {
         val navigator = navigators.new(Screen.Categories(playlistId))
         compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
         compose.waitForText("UK | ENTERTAINMENT", stepMs = 50)
-        compose.onNode(hasText("Movies") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
+        // The page's Movies, below the top bar's tab of the same name.
+        compose.onAllNodes(hasText("Movies") and hasClickAction()).onLast().performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForText("French", stepMs = 50) // the movies' languages
         compose.waitForText("FR | FILMS", stepMs = 50) // and the first one's categories
     }

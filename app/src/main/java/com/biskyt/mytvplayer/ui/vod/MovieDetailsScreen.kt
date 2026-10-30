@@ -128,7 +128,7 @@ internal fun ResumeBar(progress: WatchProgressEntity?) {
 /** Backdrop faded behind, poster on the left, [content] on the right. Shared by movies and series. */
 @Composable
 internal fun DetailsLayout(backdropUrl: String?, posterUrl: String?, title: String, content: @Composable ColumnScope.() -> Unit) {
-    Box(Modifier.fillMaxSize().background(Palette.background)) {
+    Box(Modifier.fillMaxSize()) {
         if (backdropUrl != null) {
             // Faded behind a gradient, so a third of the screen's resolution is plenty (and a ninth of the memory).
             val context = LocalContext.current

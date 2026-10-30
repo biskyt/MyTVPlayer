@@ -172,7 +172,11 @@ class CategoriesViewModel(private val c: AppContainer, private val playlistId: L
             CAT_LIVE in changed -> c.sync.refresh(playlistId)
             changed.isNotEmpty() -> c.sync.refreshVod(playlistId)
         }
+        changed.clear()
     }
+
+    /** However the screen is left (a tab in the top bar too), what changed downloads; [finish] runs it once. */
+    override fun onCleared() = finish(firstRun = false)
 
     /** Focus goes to the first group once, when the screen opens (not each time filtering changes the first group). */
     var firstFocusPending = true
@@ -204,7 +208,7 @@ fun CategoriesScreen(playlistId: Long, firstRun: Boolean) {
     BackHandler(onBack = done)
 
     Column(
-        Modifier.fillMaxSize().background(Palette.background).padding(horizontal = 72.dp, vertical = 36.dp),
+        Modifier.fillMaxSize().padding(horizontal = 72.dp, vertical = 36.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

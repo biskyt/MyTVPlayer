@@ -337,7 +337,7 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
     val vm = appViewModel(key = "edit-$id") { PlaylistEditViewModel(it, id) }
     val nav = LocalNavigator.current
     Column(
-        Modifier.fillMaxSize().background(Palette.background).padding(horizontal = 96.dp, vertical = 40.dp),
+        Modifier.fillMaxSize().padding(horizontal = 96.dp, vertical = 40.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(
