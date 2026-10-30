@@ -104,7 +104,7 @@ class Navigator(start: Screen) {
         stack += NavEntry(screen, nextId++)
     }
 
-    /** Shows [screen]: back to it if it's on the stack already (never a second copy), else over this one. */
+    /** Shows [screen]: back to an equal one if it's on the stack already, else over this one (a new search too). */
     fun open(screen: Screen) {
         val at = stack.indexOfLast { it.screen == screen }
         if (at < 0) return push(screen)

@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -140,6 +141,9 @@ fun Clock(
 
 /** Between the top bar and the screen below it. */
 val TabScaffoldGap = 20.dp
+
+/** On a page drawn behind the top bar (its art showing through), how far down its content must start: 0 without. */
+val LocalTopBarInset = compositionLocalOf { 0.dp }
 
 /** Screen with the top bar above [content]. */
 @Composable

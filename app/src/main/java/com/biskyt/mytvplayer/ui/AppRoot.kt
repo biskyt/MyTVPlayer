@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -19,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -30,6 +32,7 @@ import com.biskyt.mytvplayer.data.Settings
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
+import com.biskyt.mytvplayer.ui.common.LocalTopBarInset
 import com.biskyt.mytvplayer.ui.common.SyncToast
 import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TabScaffoldGap
@@ -95,7 +98,7 @@ fun AppRoot() {
         }
         // A backup file opened with MyTVPlayer from another app: Backup & restore offers to restore it.
         LaunchedEffect(nav) {
-            container.openedFile.filterNotNull().collect { nav.open(Screen.Backup) }
+            container.openedFile.filterNotNull().collect { if (nav.current.screen != Screen.Backup) nav.push(Screen.Backup) }
         }
         val activity = LocalActivity.current
         BackHandler {
@@ -174,11 +177,35 @@ internal fun ScreenContent(screen: Screen, hasPlaylist: Boolean = true) {
     // The screen stays in one place with or without the bar, so it keeps its state as the bar comes (a backup restored
     // during set-up adds the first playlist) or goes.
     val bar = !screen.isPlayback && !screen.isSetup && hasPlaylist
+    if (bar && screen.drawsBehindTopBar) return BehindTopBar(screen.tab) { ScreenBody(screen) }
     Column(Modifier.fillMaxSize()) {
         if (bar) TopBar(screen.tab)
         Box(Modifier.weight(1f).padding(top = if (bar) TabScaffoldGap else 0.dp)) { ScreenBody(screen) }
     }
 }
+
+/**
+ * The top bar over [content], which fills the screen behind it (a title's art showing through) and starts its own
+ * content [LocalTopBarInset] down: the bar is measured first, for that.
+ */
+@Composable
+private fun BehindTopBar(tab: Tab?, content: @Composable () -> Unit) = SubcomposeLayout(Modifier.fillMaxSize()) { constraints ->
+    val loose = constraints.copy(minWidth = 0, minHeight = 0)
+    val bar = subcompose(Slot.BAR) { TopBar(tab) }.map { it.measure(loose) }
+    val inset = (bar.maxOfOrNull { it.height } ?: 0) + TabScaffoldGap.roundToPx()
+    val body = subcompose(Slot.BODY) { CompositionLocalProvider(LocalTopBarInset provides inset.toDp(), content = content) }
+        .map { it.measure(constraints) }
+    layout(constraints.maxWidth, constraints.maxHeight) {
+        body.forEach { it.place(0, 0) }
+        bar.forEach { it.place(0, 0) }
+    }
+}
+
+private enum class Slot { BAR, BODY }
+
+/** The pages with a title's art behind them, which shows behind the top bar too. */
+private val Screen.drawsBehindTopBar: Boolean
+    get() = this is Screen.MovieDetails || this is Screen.SeriesDetails
 
 /** The tab screens draw the top bar themselves (Live TV's number keys cover its tabs too). Every screen is listed. */
 private val Screen.drawsOwnTopBar: Boolean

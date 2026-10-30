@@ -2,6 +2,8 @@ package com.biskyt.mytvplayer.ui
 
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.testutil.FakeProvider
@@ -17,6 +19,7 @@ import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -61,6 +64,17 @@ class TopBarScreensUiTest {
 
     @Test
     fun `a film's page has the top bar`() = hasTopBar(Screen.MovieDetails(playlistId, 501), "Dune")
+
+    @Test
+    fun `a film's art goes behind the top bar, its details below it`() {
+        hasTopBar(Screen.MovieDetails(playlistId, 501), "Dune")
+        compose.waitAdvancingClock { compose.onAllNodes(hasTestTag("backdrop")).fetchSemanticsNodes().isNotEmpty() }
+        val art = compose.onNode(hasTestTag("backdrop")).fetchSemanticsNode().boundsInRoot
+        val bar = compose.onNode(hasContentDescription("Search")).fetchSemanticsNode().boundsInRoot
+        val title = compose.onNode(hasText("Dune")).fetchSemanticsNode().boundsInRoot
+        assertEquals("the art starts at the top", 0f, art.top)
+        assertTrue("the details start below the bar", title.top > bar.bottom)
+    }
 
     @Test
     fun `a series' page has the top bar`() = hasTopBar(Screen.SeriesDetails(playlistId, 77), "Line of Duty")

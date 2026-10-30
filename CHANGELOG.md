@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.8.5
+- A film's or series' picture now shows behind the menu bar on its page.
+- Opening a backup file from another app no longer closes what you had open.
+
 ## 1.8.4
 - The menu bar now shows on the Settings pages too.
 
