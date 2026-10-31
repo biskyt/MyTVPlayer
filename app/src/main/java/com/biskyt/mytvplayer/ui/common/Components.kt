@@ -240,6 +240,8 @@ fun PosterCard(
     card: VodCard,
     modifier: Modifier = Modifier,
     favourite: Boolean = false,
+    /** A line under the year, such as the category of a search result. */
+    detail: String? = null,
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
@@ -248,6 +250,7 @@ fun PosterCard(
             FavouriteBadge(favourite) { Poster(card.imageUrl, card.title, POSTER_WIDTH) }
             OneLine(card.title, MaterialTheme.typography.labelLarge)
             Muted(card.year?.toString() ?: " ")
+            if (detail != null) OneLine(detail, MaterialTheme.typography.bodyMedium, color = Palette.textMuted)
         }
     }
 }

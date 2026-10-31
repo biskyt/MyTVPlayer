@@ -4,6 +4,8 @@ Each version's section becomes its GitHub release notes, so it is written for th
 English, one bullet of one sentence per change.
 
 ## 1.8.10
+- Search results for films and series now show their category, because the same title is often in several categories.
+- When you go back to the search results from a result, the focus is on that result again.
 - On some TVs, such as the Chromecast with Google TV, Up and Down now leave a text box, such as the search box, after the keyboard closes.
 
 ## 1.8.9

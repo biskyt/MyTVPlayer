@@ -578,6 +578,14 @@ data class GuideCoverage(val withGuide: Int, val noGuide: Int)
 /** A poster in a movie or series grid: only what the grid shows, so paging holds as little as possible. */
 data class VodCard(val id: Long, val title: String, val year: Int?, val imageUrl: String?)
 
+/**
+ * A movie or series found by a search, with the name of its category ([category]; blank for an M3U title with no
+ * group, null if its category is gone). The same film is often in several categories (languages, qualities).
+ */
+data class VodHit(val id: Long, val title: String, val year: Int?, val imageUrl: String?, val category: String?) {
+    val card get() = VodCard(id, title, year, imageUrl)
+}
+
 private const val MOVIE_CARD = "SELECT streamId AS id, title, year, posterUrl AS imageUrl"
 private const val SERIES_CARD = "SELECT seriesId AS id, title, year, coverUrl AS imageUrl"
 
@@ -650,11 +658,24 @@ interface VodDao {
     @Query("SELECT (SELECT COUNT(*) FROM movie WHERE playlistId = :pid) + (SELECT COUNT(*) FROM series WHERE playlistId = :pid)")
     suspend fun titleCount(pid: Long): Int
 
-    @Query("$MOVIE_CARD FROM movie WHERE playlistId = :pid AND title $LIKE_Q ORDER BY position, title LIMIT :limit")
-    suspend fun searchMovies(pid: Long, q: String, limit: Int): List<VodCard>
+    // The titles first, then the category of each one found: not for every title that matches a short query.
+    @Query(
+        """SELECT h.id, h.title, h.year, h.imageUrl, c.name AS category FROM (
+             SELECT streamId AS id, title, year, posterUrl AS imageUrl, categoryId, position FROM movie
+             WHERE playlistId = :pid AND title $LIKE_Q ORDER BY position, title LIMIT :limit
+           ) h LEFT JOIN category c ON c.playlistId = :pid AND c.type = '$CAT_MOVIE' AND c.categoryId = h.categoryId
+           ORDER BY h.position, h.title"""
+    )
+    suspend fun searchMovies(pid: Long, q: String, limit: Int): List<VodHit>
 
-    @Query("$SERIES_CARD FROM series WHERE playlistId = :pid AND title $LIKE_Q ORDER BY position, title LIMIT :limit")
-    suspend fun searchSeries(pid: Long, q: String, limit: Int): List<VodCard>
+    @Query(
+        """SELECT h.id, h.title, h.year, h.imageUrl, c.name AS category FROM (
+             SELECT seriesId AS id, title, year, coverUrl AS imageUrl, categoryId, position FROM series
+             WHERE playlistId = :pid AND title $LIKE_Q ORDER BY position, title LIMIT :limit
+           ) h LEFT JOIN category c ON c.playlistId = :pid AND c.type = '$CAT_SERIES' AND c.categoryId = h.categoryId
+           ORDER BY h.position, h.title"""
+    )
+    suspend fun searchSeries(pid: Long, q: String, limit: Int): List<VodHit>
 
     // Whole lists, used by tests (screens page).
     @Query("SELECT * FROM movie WHERE playlistId = :pid ORDER BY position, title")

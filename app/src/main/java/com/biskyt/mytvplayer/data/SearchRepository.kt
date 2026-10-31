@@ -3,15 +3,15 @@ package com.biskyt.mytvplayer.data
 import com.biskyt.mytvplayer.data.db.AppDatabase
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.ProgrammeHit
-import com.biskyt.mytvplayer.data.db.VodCard
+import com.biskyt.mytvplayer.data.db.VodHit
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
 data class SearchResults(
     val channels: List<ChannelEntity> = emptyList(),
     val programmes: List<ProgrammeHit> = emptyList(),
-    val movies: List<VodCard> = emptyList(),
-    val series: List<VodCard> = emptyList()
+    val movies: List<VodHit> = emptyList(),
+    val series: List<VodHit> = emptyList()
 ) {
     val isEmpty: Boolean get() = channels.isEmpty() && programmes.isEmpty() && movies.isEmpty() && series.isEmpty()
 }
