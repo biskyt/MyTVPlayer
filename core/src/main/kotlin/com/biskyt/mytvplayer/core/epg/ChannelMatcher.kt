@@ -1,6 +1,7 @@
 package com.biskyt.mytvplayer.core.epg
 
 import java.util.PriorityQueue
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
@@ -18,13 +19,19 @@ data class EpgMatch(val candidate: EpgCandidate, val score: Double)
  * ignored when rarer ones exist, and the string-distance check only runs on the best few candidates.
  */
 class ChannelMatcher(candidates: List<EpgCandidate>) {
-    private class Entry(val candidate: EpgCandidate, val tokens: Set<String>) {
+    /** [index]: the candidate's place in the list, which decides between equal ranks. */
+    private class Entry(val index: Int, val candidate: EpgCandidate, val tokens: Set<String>) {
         val shifts = tokens.shifts()
         val numbers = tokens.numbers()
         var weight = 0.0
     }
 
-    private val entries = candidates.map { c -> Entry(c, ChannelNames.tokens(c.normalized)) }
+    // Sorted, so that the order (which decides between equal candidates) does not depend on the order of the input.
+    private val entries = candidates.sortedWith(compareBy({ it.sourceId }, { it.xmlId }, { it.displayName }))
+        .mapIndexed { i, c -> Entry(i, c, ChannelNames.tokens(c.normalized)) }
+
+    /** One [Shared] kept for the next name; a second caller at the same time uses its own. */
+    private val spare = AtomicReference<Shared?>()
     private val byXmlId = entries.groupBy { it.candidate.xmlId.lowercase() }
     private val byNormalized = entries.groupBy { it.candidate.normalized }
     private val byToken = HashMap<String, MutableList<Entry>>().also { index ->
@@ -51,16 +58,22 @@ class ChannelMatcher(candidates: List<EpgCandidate>) {
 
     /** Best automatic match, or null when nothing reaches [threshold]. */
     fun autoMatch(channelName: String, providerEpgId: String?, threshold: Double = AUTO_THRESHOLD): EpgMatch? =
-        suggestions(channelName, providerEpgId, limit = 1).firstOrNull()?.takeIf { it.score >= threshold }
+        // A candidate below the threshold cannot be the match, so the search leaves it out early.
+        suggestions(channelName, providerEpgId, limit = 1, floor = max(threshold, MIN_SUGGESTION)).firstOrNull()
+            ?.takeIf { it.score >= threshold }
 
-    fun suggestions(channelName: String, providerEpgId: String?, limit: Int = 5): List<EpgMatch> {
+    fun suggestions(channelName: String, providerEpgId: String?, limit: Int = 5): List<EpgMatch> =
+        suggestions(channelName, providerEpgId, limit, MIN_SUGGESTION)
+
+    /** The best [limit] candidates that score at least [floor]. */
+    private fun suggestions(channelName: String, providerEpgId: String?, limit: Int, floor: Double): List<EpgMatch> {
         val results = LinkedHashMap<EpgCandidate, Double>()
         providerEpgId?.lowercase()?.let { id -> byXmlId[id]?.forEach { results[it.candidate] = 1.0 } }
 
         val norm = ChannelNames.normalize(channelName)
         if (norm.isNotEmpty()) {
             byNormalized[norm]?.forEach { results.putIfAbsent(it.candidate, EXACT_NAME_SCORE) }
-            fuzzy(norm, results)
+            fuzzy(norm, results, floor)
         }
         return results.entries.sortedByDescending { it.value }.take(limit).map { EpgMatch(it.key, it.value) }
     }
@@ -74,21 +87,30 @@ class ChannelMatcher(candidates: List<EpgCandidate>) {
         val callSigns = tokens.filterTo(HashSet(), ::isCallSign)
     }
 
-    private fun fuzzy(norm: String, results: MutableMap<EpgCandidate, Double>) {
+    private fun fuzzy(norm: String, results: MutableMap<EpgCandidate, Double>, floor: Double) {
         val q = Query(norm)
         // Words like "tv" or "sport" appear in thousands of guide channels; only use them if nothing rarer matches.
         val buckets = q.tokens.mapNotNull { t -> byToken[t]?.let { t to it } }
         val useful = buckets.filter { it.second.size <= commonTokenSize }.ifEmpty { buckets }
-        val shared = HashMap<Entry, Double>()
-        for ((t, bucket) in useful) {
-            val w = weights.getValue(t)
-            for (e in bucket) shared.merge(e, w, Double::plus)
+        val shared = spare.getAndSet(null) ?: Shared(entries.size)
+        try {
+            for ((t, bucket) in useful) {
+                val w = weights.getValue(t)
+                for (e in bucket) shared.add(e.index, w)
+            }
+            // Rank by the weight of the rarer shared words, then score the best few on all their words.
+            scoreBest(q, best(shared, q.weight), results, floor)
+        } finally {
+            shared.clear()
+            spare.compareAndSet(null, shared)
         }
-        // Rank by the weight of the rarer shared words, then score the best few on all their words.
-        for (e in best(shared, q.weight)) {
+    }
+
+    private fun scoreBest(q: Query, best: List<Entry>, results: MutableMap<EpgCandidate, Double>, floor: Double) {
+        for (e in best) {
             if (e.candidate in results) continue
-            val score = score(q, e)
-            if (score >= MIN_SUGGESTION) results[e.candidate] = score
+            val score = score(q, e, floor)
+            if (score >= floor) results[e.candidate] = score
         }
     }
 
@@ -96,26 +118,57 @@ class ChannelMatcher(candidates: List<EpgCandidate>) {
      * The [FUZZY_CANDIDATES] entries sharing the most (by weight, relative to both names' weight), best first. Kept in
      * a small heap rather than sorting every entry: a common word can be shared by thousands.
      */
-    private fun best(shared: Map<Entry, Double>, queryWeight: Double): List<Entry> {
+    private fun best(shared: Shared, queryWeight: Double): List<Entry> {
         val heap = PriorityQueue(FUZZY_CANDIDATES + 1, byRank)
-        for ((e, w) in shared) {
-            val rank = w / (queryWeight + e.weight)
+        for (k in 0 until shared.count) {
+            val i = shared.touched[k]
+            val e = entries[i]
+            val rank = shared.weight[i] / (queryWeight + e.weight)
             if (heap.size < FUZZY_CANDIDATES) {
                 heap += Ranked(e, rank)
-            } else if (rank > heap.peek().rank) {
+                continue
+            }
+            // The same order as byRank, without an object for the many entries that rank lower.
+            val top = heap.peek()
+            if (rank > top.rank || (rank == top.rank && e.index < top.entry.index)) {
                 heap.poll()
                 heap += Ranked(e, rank)
             }
         }
-        return heap.sortedByDescending { it.rank }.map { it.entry }
+        return heap.sortedWith(byRank.reversed()).map { it.entry }
     }
 
     private class Ranked(val entry: Entry, val rank: Double)
 
-    /** Unboxed: compared a few times per shared entry, for every channel matched. */
-    private val byRank = Comparator<Ranked> { a, b -> a.rank.compareTo(b.rank) }
+    /**
+     * The weight of the words each entry shares with one channel name, by entry index, and which entries have any.
+     * Arrays reused for every name: a map for each name was a third of the matching time.
+     */
+    private class Shared(size: Int) {
+        val weight = DoubleArray(size)
+        val touched = IntArray(size)
+        var count = 0
 
-    private fun score(q: Query, e: Entry): Double {
+        fun add(index: Int, w: Double) {
+            if (weight[index] == 0.0) touched[count++] = index // word weights are always more than 0
+            weight[index] += w
+        }
+
+        fun clear() {
+            for (k in 0 until count) weight[touched[k]] = 0.0
+            count = 0
+        }
+    }
+
+    /** Unboxed: compared a few times per shared entry, for every channel matched. */
+    private val byRank = Comparator<Ranked> { a, b ->
+        // Equal ranks: the earlier candidate counts as better, so every run gives the same matches.
+        val byValue = a.rank.compareTo(b.rank)
+        if (byValue != 0) byValue else b.entry.index.compareTo(a.entry.index)
+    }
+
+    /** The score of [e] for [q]. If the score cannot reach [floor], it is [NO_SCORE], and the slow name comparison is skipped. */
+    private fun score(q: Query, e: Entry, floor: Double): Double {
         var common = 0.0
         var sharesCallSign = false
         var sharedWords = 0
@@ -125,16 +178,21 @@ class ChannelMatcher(candidates: List<EpgCandidate>) {
             sharedWords++
             if (t in q.callSigns) sharesCallSign = true
         }
-        var score = 0.6 * (2 * common / (q.weight + e.weight)) + 0.4 * jaroWinkler(q.norm, e.candidate.normalized)
         // "Sports 1" is not "Sports 10"; a number on one side only ("NBC 4" vs "NBC") is a smaller doubt.
         val numbersAgree = q.numbers == e.numbers
         val oneSided = q.numbers.isEmpty() || e.numbers.isEmpty()
         // A shared call sign, with something else in common (the network, the city), is the same station whatever the
         // virtual channel number; "+1" is still an hour later.
         val sameStation = sharesCallSign && sharedWords >= 2 && q.shifts == e.shifts && (numbersAgree || oneSided)
-        if (q.shifts != e.shifts) score *= 0.5
-        if (!numbersAgree && !sameStation) score *= if (oneSided) 0.85 else 0.6
-        return if (sameStation) max(score, CALL_SIGN_SCORE) else score
+        val words = 0.6 * (2 * common / (q.weight + e.weight)) // a val: the local function then does not box it
+        fun final(names: Double): Double {
+            var score = words + 0.4 * names
+            if (q.shifts != e.shifts) score *= 0.5
+            if (!numbersAgree && !sameStation) score *= if (oneSided) 0.85 else 0.6
+            return if (sameStation) max(score, CALL_SIGN_SCORE) else score
+        }
+        // The name similarity is at most 1.0. If the score cannot reach the floor with 1.0, do not compare the names.
+        return if (final(1.0) < floor) NO_SCORE else final(jaroWinkler(q.norm, e.candidate.normalized))
     }
 
     companion object {
@@ -147,6 +205,7 @@ class ChannelMatcher(candidates: List<EpgCandidate>) {
         private const val CALL_SIGN_SCORE = 0.96
         private const val CALL_SIGN_MAX_GUIDES = 3
         private const val MIN_SUGGESTION = 0.4
+        private const val NO_SCORE = -1.0
         private const val FUZZY_CANDIDATES = 40
         private const val COMMON_TOKEN_MIN = 200
         private const val COMMON_TOKEN_DIVISOR = 20

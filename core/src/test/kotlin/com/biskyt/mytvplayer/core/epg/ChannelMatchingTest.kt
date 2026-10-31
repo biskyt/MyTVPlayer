@@ -132,4 +132,25 @@ class ChannelMatchingTest {
         assertTrue(listOf("UK", "EXYU", "LAT").all { it in CategoryLanguageDetector.groups })
         assertTrue("KP" !in CategoryLanguageDetector.groups)
     }
+
+    @Test
+    fun `equal candidates are chosen in a fixed order, whatever the order given`() {
+        // 60 guide channels that share "kite kids" equally: only 40 are scored, and they must be the first 40 by id.
+        val many = (0 until 60).map { candidate("kite%02d".format(it), "Kite Kids Z${'a' + it % 26}${'a' + it / 26}") }
+        fun ids(list: List<EpgCandidate>) = ChannelMatcher(list).suggestions("Kite Kids", null, limit = 60).map { it.candidate.xmlId }
+        val chosen = ids(many)
+        assertEquals((0 until 40).map { "kite%02d".format(it) }, chosen.sorted())
+        assertEquals(chosen, ids(many.reversed()))
+    }
+
+    @Test
+    fun `an automatic match is the best suggestion that reaches the threshold`() {
+        val names = listOf("UK: ARENA SPRTS 1 FHD", "Kite Kids", "Doc Planet +1", "NBC 4 (WNBC) New York", "Nothing Like It", "Arena")
+        for (name in names) {
+            for (threshold in listOf(0.3, ChannelMatcher.AUTO_THRESHOLD, ChannelMatcher.MISSING_THRESHOLD)) {
+                val best = matcher.suggestions(name, null, limit = 1).firstOrNull()?.takeIf { it.score >= threshold }
+                assertEquals("$name at $threshold", best, matcher.autoMatch(name, null, threshold))
+            }
+        }
+    }
 }
