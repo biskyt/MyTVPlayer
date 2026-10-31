@@ -24,7 +24,7 @@ import com.biskyt.mytvplayer.data.Settings
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
 import com.biskyt.mytvplayer.player.PlaybackEngine
 import com.biskyt.mytvplayer.player.PlaybackError
-import com.biskyt.mytvplayer.player.failureReason
+import com.biskyt.mytvplayer.player.explainFailure
 import com.biskyt.mytvplayer.ui.common.ItemAction
 import com.biskyt.mytvplayer.ui.common.formatDuration
 import kotlinx.coroutines.Job
@@ -164,7 +164,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             playingSince = 0
             if (!retries.take()) {
                 val url = engine?.currentUrl
-                fail(reason = failureReason(e, url, engine?.sentNothing(url) == true), url = url)
+                fail(reason = explainFailure(e, engine?.sentNothing(url) == true), url = url)
                 return
             }
             if (e.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
@@ -201,7 +201,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             it.player.addAnalyticsListener(audioFormatListener)
             it.onStalled = listener::onPlayerError
             it.onUnsupported =
-                { url -> fail(appString(R.string.player_unsupported_format), failureReason(null, url), url.ifEmpty { null }) }
+                { url -> fail(appString(R.string.player_unsupported_format), url = url.ifEmpty { null }) }
             engine = it
         }
     }

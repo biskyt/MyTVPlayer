@@ -16,18 +16,8 @@ import java.net.UnknownHostException
  */
 data class PlaybackError(val message: String, val reason: String? = null, val address: String? = null)
 
-/** "Stream from lb.example.net.", naming where a stream comes from (lenient, like the player, about odd addresses). */
-fun streamSource(url: String?): String? = url?.let { android.net.Uri.parse(it).host }?.let { appString(R.string.player_stream_source, it) }
-
 /** A stream that buffered for a long while without getting any further (see PlaybackEngine). */
 const val ERROR_CODE_STALLED = PlaybackException.CUSTOM_ERROR_CODE_BASE
-
-/**
- * Why a stream did not play ([e], when the player said). Without [e], where it comes from. The error shows the full
- * address too (see [displayAddress]), so the server is not named twice.
- */
-fun failureReason(e: PlaybackException?, url: String?, sentNothing: Boolean = false): String? =
-    e?.let { explainFailure(it, sentNothing) } ?: streamSource(url)
 
 /**
  * A stream's address to show: Xtream addresses carry the account's user name and password ("/movie/user/pass/501.mkv",

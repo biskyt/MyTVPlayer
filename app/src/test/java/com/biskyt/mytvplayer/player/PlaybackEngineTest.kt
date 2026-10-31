@@ -39,8 +39,8 @@ class PlaybackEngineTest {
         // SmoothStreaming isn't included.
         engine.play("https://example.invalid/channel.ism/Manifest", hls = null)
         assertEquals(1, unsupported)
-        // The message names where it comes from.
-        assertEquals("Stream from example.invalid.", streamSource(unsupportedUrl))
+        // The error shows its address.
+        assertEquals("https://example.invalid/channel.ism/Manifest", unsupportedUrl)
     }
 
     @Test
