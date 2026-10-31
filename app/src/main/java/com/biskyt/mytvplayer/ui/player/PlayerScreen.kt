@@ -47,6 +47,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -487,7 +488,27 @@ internal fun ControlsBar(
             PlaybackViewModel.ControlsFocus.VIDEO -> Unit
         }
     }
-    Row(
+    Layout(
+        content = {
+            ButtonRow(leading)
+            // Play/pause between the skips, the middle of these: Stop goes after them, on its own.
+            ButtonRow {
+                RoundButton(AppIcons.Rewind, stringResource(R.string.common_skip_back)) { vm.onKey(RemoteKey.LEFT) }
+                RoundButton(
+                    if (vm.isPlaying) AppIcons.Pause else AppIcons.Play,
+                    stringResource(if (vm.isPlaying) R.string.player_pause else R.string.common_play),
+                    primary = true,
+                    modifier = Modifier.focusRequester(buttons)
+                ) { vm.togglePlayPause() }
+                RoundButton(AppIcons.Forward, stringResource(R.string.common_skip_forward)) { vm.onKey(RemoteKey.RIGHT) }
+            }
+            RoundButton(AppIcons.Stop, stringResource(R.string.player_stop)) { vm.stop() }
+            ButtonRow {
+                PillButton(stringResource(R.string.player_audio), { vm.sheet = PlaybackViewModel.Sheet.AUDIO })
+                PillButton(stringResource(R.string.player_subtitles), { vm.sheet = PlaybackViewModel.Sheet.SUBTITLES })
+                PillButton(stringResource(R.string.player_more), { vm.sheet = PlaybackViewModel.Sheet.MORE }, Modifier.focusRequester(more))
+            }
+        },
         // The OK that brought the controls up is still down: its release (and repeats) mustn't press play/pause too.
         Modifier.ignoreHeldSelect().onPreviewKeyEvent { e ->
             val upDown = e.key == Key.DirectionUp || e.key == Key.DirectionDown
@@ -502,27 +523,37 @@ internal fun ControlsBar(
                     e.key == Key.DirectionUp && runCatching { root.requestFocus() }.isSuccess
                 }
             }
-        },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        leading()
-        Box(Modifier.weight(1f))
-        RoundButton(AppIcons.Rewind, stringResource(R.string.common_skip_back)) { vm.onKey(RemoteKey.LEFT) }
-        RoundButton(
-            if (vm.isPlaying) AppIcons.Pause else AppIcons.Play,
-            stringResource(if (vm.isPlaying) R.string.player_pause else R.string.common_play),
-            primary = true,
-            modifier = Modifier.focusRequester(buttons)
-        ) { vm.togglePlayPause() }
-        RoundButton(AppIcons.Forward, stringResource(R.string.common_skip_forward)) { vm.onKey(RemoteKey.RIGHT) }
-        RoundButton(AppIcons.Stop, stringResource(R.string.player_stop)) { vm.stop() }
-        Box(Modifier.weight(1f))
-        PillButton(stringResource(R.string.player_audio), { vm.sheet = PlaybackViewModel.Sheet.AUDIO })
-        PillButton(stringResource(R.string.player_subtitles), { vm.sheet = PlaybackViewModel.Sheet.SUBTITLES })
-        PillButton(stringResource(R.string.player_more), { vm.sheet = PlaybackViewModel.Sheet.MORE }, Modifier.focusRequester(more))
+        }
+    ) { measurables, constraints ->
+        val placeables = measurables.map { it.measure(constraints.copy(minWidth = 0)) }
+        val width = constraints.maxWidth
+        val height = placeables.maxOf { it.height }
+        val xs = controlsX(width, BUTTON_GAP.roundToPx(), placeables.map { it.width })
+        layout(width, height) {
+            // (Relative: mirrored for right-to-left languages, as the rows inside are.)
+            placeables.forEachIndexed { i, p -> p.placeRelative(xs[i], (height - p.height) / 2) }
+        }
     }
 }
+
+/**
+ * Where the controls' four groups start across [width], from their [widths]: the left buttons, the skips around
+ * play/pause, Stop, and the right buttons. Play/pause in the middle, or as near as the groups either side leave room for; with no room, one
+ * after another (the last cut off at the edge, as a row is), never over each other.
+ */
+internal fun controlsX(width: Int, gap: Int, widths: List<Int>): IntArray {
+    val (start, middle, stop) = widths
+    val end = widths[3]
+    val x = ((width - middle) / 2).coerceAtMost(width - end - gap - stop - gap - middle).coerceAtLeast(start + gap)
+    val stopX = x + middle + gap
+    return intArrayOf(0, x, stopX, maxOf(width - end, stopX + stop + gap))
+}
+
+@Composable
+private fun ButtonRow(content: @Composable RowScope.() -> Unit) =
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(BUTTON_GAP), content = content)
+
+private val BUTTON_GAP = 12.dp
 
 @Composable
 private fun RoundButton(icon: ImageVector, label: String, primary: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
