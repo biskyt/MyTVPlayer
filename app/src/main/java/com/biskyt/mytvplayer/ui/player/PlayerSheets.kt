@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
@@ -42,6 +44,7 @@ import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberSchedule
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
+import kotlinx.coroutines.delay
 
 /** The channel guide beside the video (agreed side-overlay design); ◀ ▶ previews other channels' guides. */
 @Composable
@@ -133,8 +136,25 @@ fun PlayerSheet(sheet: PlaybackViewModel.Sheet, vm: PlaybackViewModel) {
                             vm.flash(nextLabel)
                         }
                     }
+                    item { Choice(stringResource(R.string.player_stream_info), false) { vm.sheet = PlaybackViewModel.Sheet.STREAM_INFO } }
                     item { Muted(stringResource(R.string.player_audio_output, vm.audioLabel), maxLines = 2) }
                     item { Muted(videoInfo(vm.tracks), maxLines = 2) }
+                }
+                PlaybackViewModel.Sheet.STREAM_INFO -> {
+                    item { Header(stringResource(R.string.player_stream_info), null) }
+                    // Focusable, so the remote's keys (Back, play/pause) reach the panel. Long addresses wrap.
+                    item {
+                        // Read again each second while open: the buffer and the formats change as the stream plays.
+                        val lines by produceState(streamInfo(engine, vm.audioLabel), engine) {
+                            while (true) {
+                                delay(INFO_REFRESH_MS)
+                                value = streamInfo(engine, vm.audioLabel)
+                            }
+                        }
+                        Column(first.focusable(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            lines.forEach { Muted(it, maxLines = 6) }
+                        }
+                    }
                 }
                 PlaybackViewModel.Sheet.ABOUT -> vm.about?.let { p ->
                     item { Header(programmeTitle(p.title), formatRange(p.startMs, p.stopMs)) }
@@ -188,3 +208,5 @@ private fun videoInfo(tracks: Tracks): String {
             ?: return appString(R.string.player_video_unknown)
     return appString(R.string.player_video_info, f.width, f.height, f.sampleMimeType?.substringAfter('/') ?: "?")
 }
+
+private const val INFO_REFRESH_MS = 1_000L

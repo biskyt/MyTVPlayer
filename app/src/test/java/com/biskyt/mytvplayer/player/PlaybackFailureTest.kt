@@ -5,6 +5,7 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
 import com.biskyt.mytvplayer.testutil.PlainApp
 import java.net.UnknownHostException
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -53,5 +54,21 @@ class PlaybackFailureTest {
         says(failure(PlaybackException.ERROR_CODE_UNSPECIFIED), "couldn't play it (unspecified)")
         // An odd but playable address still names its server.
         assertTrue(streamSource("http://srv.example:8080/live/a b|c.ts") == "Stream from srv.example.")
+    }
+
+    @Test
+    fun `an address is shown without the account's login`() {
+        assertEquals(
+            "http://srv.example:8080/movie/•••/•••/160597.mkv",
+            displayAddress("http://srv.example:8080/movie/070748/6115/160597.mkv")
+        )
+        assertEquals("http://srv.example/live/•••/•••/101.ts", displayAddress("http://srv.example/live/me/secret/101.ts"))
+        assertEquals(
+            "http://srv.example/timeshift.php?username=•••&password=•••&stream=7",
+            displayAddress("http://srv.example/timeshift.php?username=me&password=secret&stream=7")
+        )
+        assertEquals("http://srv.example:80/•••/•••/12345.ts", displayAddress("http://srv.example:80/me/secret/12345.ts"))
+        assertEquals("http://srv.example:80/•••/•••/12345", displayAddress("http://srv.example:80/me/secret/12345"))
+        assertEquals("https://cdn.example/news/live.m3u8", displayAddress("https://cdn.example/news/live.m3u8"))
     }
 }
