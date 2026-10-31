@@ -54,7 +54,6 @@
     <string name="player_catchup_nothing_to_start_over">En este momento no hay nada que ver desde el inicio en este canal.</string>
     <string name="player_unsupported_format">Usa un formato de transmisión que MyTVPlayer no puede reproducir.</string>
 
-    <string name="player_stream_source">Transmisión desde %1$s.</string>
     <string name="player_error_dns">No se encuentra el servidor de la transmisión: puede que su dirección ya no exista.</string>
     <string name="player_error_stalled">El servidor de la transmisión la envió demasiado lento para empezar. Puede que esté saturado.</string>
     <string name="player_error_timeout">El servidor de la transmisión no respondió. Puede que esté caído o saturado.</string>

@@ -54,7 +54,6 @@
     <string name="player_catchup_nothing_to_start_over">Rien à revoir depuis le début sur cette chaîne pour le moment.</string>
     <string name="player_unsupported_format">Ce flux utilise un format que MyTVPlayer ne peut pas lire.</string>
 
-    <string name="player_stream_source">Flux provenant de %1$s.</string>
     <string name="player_error_dns">Le serveur du flux est introuvable : son adresse n\'existe peut-être plus.</string>
     <string name="player_error_stalled">Le serveur du flux l\'a envoyé trop lentement pour démarrer. Il est peut-être surchargé.</string>
     <string name="player_error_timeout">Le serveur du flux n\'a pas répondu. Il est peut-être hors service ou surchargé.</string>

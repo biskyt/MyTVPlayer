@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.8.11
+- Back on the home screen now also takes the app off the recent apps list when it closes the app.
+- The "unsupported format" error no longer names the stream's server twice.
+
 ## 1.8.10
 - Search results for films and series now show their category, because the same title is often in several categories.
 - When you go back to the search results from a result, the focus is on that result again.

@@ -106,7 +106,8 @@ fun AppRoot() {
                 nav.pop() -> Unit
                 nav.current.screen != Screen.Home && nav.current.screen != Screen.Welcome && nav.current.screen !is Screen.PlaylistEdit ->
                     nav.reset(Screen.Home)
-                else -> activity?.finish()
+                // Closes the app, and takes it off the recent apps too: Back from Home means "close".
+                else -> activity?.finishAndRemoveTask()
             }
         }
         val hasPlaylist = s.activePlaylistId != 0L

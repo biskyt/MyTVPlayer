@@ -82,8 +82,7 @@
     <string name="player_catchup_nothing_to_start_over">There\'s nothing to start over on this channel right now.</string>
     <string name="player_unsupported_format">This uses a stream format MyTVPlayer can\'t play.</string>
 
-    <!-- Playback errors: why (shown under the message above). %1$s: the server's host name, e.g. lb.example.net -->
-    <string name="player_stream_source">Stream from %1$s.</string>
+    <!-- Playback errors: why (shown under the message above) -->
     <string name="player_error_dns">The stream\'s server can\'t be found: its address may no longer exist.</string>
     <string name="player_error_stalled">The stream\'s server sent it too slowly to start. It may be busy.</string>
     <string name="player_error_timeout">The stream\'s server didn\'t answer. It may be down or busy.</string>
