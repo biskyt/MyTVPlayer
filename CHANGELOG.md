@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.8.8
+- Matching channels to the TV guide is about twice as fast.
+- Each guide update now matches the same channels to the same guide channels.
+
 ## 1.8.7
 - Large TV guides load much faster.
 
