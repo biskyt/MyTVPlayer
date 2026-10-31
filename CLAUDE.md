@@ -14,6 +14,8 @@ See also:
 - `CHANGELOG.md`: what changed in each version.
 
 ## Standing instructions from the owner
+- **Write in plain English.** Use the `plain-english` skill (`.claude/skills/plain-english/SKILL.md`) for all
+  documentation, code comments that explain behaviour, commit messages, PR descriptions and release notes.
 - **Run `/simplify` and `/code-review` before every commit.**
   - Apply their findings, or note why one is skipped.
   - Never commit first and review afterwards.
