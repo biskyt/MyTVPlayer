@@ -67,6 +67,7 @@
     <string name="player_error_decode_media">Este TV box no puede decodificar el contenido de la transmisión (%1$s).</string>
     <string name="player_error_decode">Este TV box no puede decodificar el video o el audio de la transmisión.</string>
     <string name="player_error_parsing">La transmisión envió datos que MyTVPlayer no puede leer (un formato no compatible o dañado).</string>
+    <string name="player_error_empty">El servidor de la transmisión envió un archivo vacío. Puede que ya no tenga esta transmisión: prueba otra copia o vuelve a intentarlo más tarde.</string>
     <string name="player_error_behind_live">La transmisión se quedaba atrás de su punto en vivo.</string>
     <string name="player_error_io">La transmisión dejó de llegar: falló la conexión con su servidor.</string>
     <string name="player_error_other">El reproductor no pudo reproducirlo (%1$s).</string>
@@ -76,4 +77,10 @@
     <string name="player_error_http_other">El servidor de la transmisión respondió con el error %1$d.</string>
     <string name="player_about_programme">Sobre este programa</string>
     <string name="player_description">Descripción</string>
+    <string name="player_stream_info">Información de la transmisión</string>
+    <string name="player_info_address">Dirección: %1$s</string>
+    <string name="player_info_video">Vídeo: %1$s</string>
+    <string name="player_info_audio">Pista de audio: %1$s</string>
+    <string name="player_info_buffer">En el búfer: %1$d s</string>
+    <string name="player_info_unknown">aún no se sabe</string>
 </resources>

@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.8.9
+- The player's More panel has a new Stream info item that shows the stream's address, its video and audio details, and its buffer.
+- When a stream fails, the error now shows the stream's address, without your login.
+- When a server sends an empty file, the error now says so, in place of an unsupported format.
+- A playlist's addresses have "http://" and "https://" buttons, so you do not have to type them with the remote.
+
 ## 1.8.8
 - Matching channels to the TV guide is about twice as fast.
 - Each guide update now matches the same channels to the same guide channels.

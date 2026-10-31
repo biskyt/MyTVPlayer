@@ -71,6 +71,7 @@ import com.biskyt.mytvplayer.core.player.isMedia
 import com.biskyt.mytvplayer.core.player.passedOnByPanels
 import com.biskyt.mytvplayer.data.programmeTitle
 import com.biskyt.mytvplayer.player.PlaybackError
+import com.biskyt.mytvplayer.player.displayAddress
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
@@ -585,6 +586,8 @@ private fun ErrorBox(error: PlaybackError, vm: PlaybackViewModel) {
         ) {
             Text(error.message, style = MaterialTheme.typography.titleLarge)
             error.reason?.let { Muted(it, maxLines = 4) }
+            // The address, so that the viewer can report it. It is not translated, and the login in it is hidden.
+            error.address?.let { Muted(displayAddress(it), maxLines = 3) }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 PillButton(stringResource(R.string.common_retry), vm::retry, retry, primary = true)
                 PillButton(stringResource(R.string.player_back), vm::stop)

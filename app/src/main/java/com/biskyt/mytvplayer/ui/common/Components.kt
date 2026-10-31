@@ -126,6 +126,8 @@ fun PillButton(
     modifier: Modifier = Modifier,
     primary: Boolean = false,
     selected: Boolean = false,
+    /** Smaller, for a choice beside a label. */
+    compact: Boolean = false,
     leading: (@Composable () -> Unit)? = null
 ) {
     val accent = LocalAccent.current
@@ -152,7 +154,15 @@ fun PillButton(
         ),
         border = ClickableSurfaceDefaults.border(focusedBorder = FocusRing)
     ) {
-        Row(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        val padding = if (compact) {
+            Modifier.padding(
+                horizontal = 12.dp,
+                vertical = 4.dp
+            )
+        } else {
+            Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+        }
+        Row(padding, verticalAlignment = Alignment.CenterVertically) {
             if (leading != null) {
                 leading()
                 Box(Modifier.width(8.dp))

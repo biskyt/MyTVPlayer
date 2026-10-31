@@ -9,6 +9,7 @@ import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
+import androidx.media3.common.ParserException
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
@@ -18,11 +19,14 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.mediacodec.MediaCodecAdapter
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.LoadEventInfo
+import androidx.media3.exoplayer.source.MediaLoadData
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
 import com.biskyt.mytvplayer.R
@@ -32,6 +36,7 @@ import com.biskyt.mytvplayer.core.player.SubtitlePolicy
 import com.biskyt.mytvplayer.core.player.TextTrack
 import com.biskyt.mytvplayer.data.BufferSize
 import com.biskyt.mytvplayer.data.Settings
+import java.io.IOException
 
 /**
  * Builds and drives one ExoPlayer for a playback session.
@@ -42,6 +47,40 @@ import com.biskyt.mytvplayer.data.Settings
  */
 @OptIn(UnstableApi::class)
 class PlaybackEngine(private val context: Context, private val settings: Settings) {
+
+    /**
+     * The address of the last load, read from the start, whose reply had no data. A server can answer "OK" with an empty
+     * file, for example when it no longer has the film. The player then reports a format it cannot read, which is
+     * misleading. The player's load events run on the main thread, as do the questions about them.
+     */
+    private var emptyReply: String? = null
+
+    /** Notes each load from the start of an address that ended with no data, from the player's own load events. */
+    private val replySizes = object : AnalyticsListener {
+        override fun onLoadCompleted(eventTime: AnalyticsListener.EventTime, info: LoadEventInfo, data: MediaLoadData) =
+            note(info, empty = info.bytesLoaded == 0L)
+
+        override fun onLoadError(
+            eventTime: AnalyticsListener.EventTime,
+            info: LoadEventInfo,
+            data: MediaLoadData,
+            error: IOException,
+            wasCanceled: Boolean
+        ) = note(info, empty = info.bytesLoaded == 0L && error is ParserException) // not a timeout: a reply that was read
+
+        private fun note(info: LoadEventInfo, empty: Boolean) {
+            if (info.dataSpec.position != 0L) return
+            val url = info.dataSpec.uri.toString()
+            if (empty) {
+                emptyReply = url
+            } else if (emptyReply == url) {
+                emptyReply = null
+            }
+        }
+    }
+
+    /** Whether the last reply for [url], read from the start, had no data at all. */
+    fun sentNothing(url: String?) = url != null && url == emptyReply
 
     private val http = DefaultHttpDataSource.Factory()
         .setUserAgent(USER_AGENT)
@@ -117,6 +156,7 @@ class PlaybackEngine(private val context: Context, private val settings: Setting
     }
 
     init {
+        player.addAnalyticsListener(replySizes)
         player.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) = watchForStall()
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) = watchForStall()
@@ -260,14 +300,15 @@ class PlaybackEngine(private val context: Context, private val settings: Setting
             .build()
     }
 
-    private companion object {
-        const val TAG = "PlaybackEngine"
-        const val MB = 1024 * 1024
+    companion object {
+        private const val TAG = "PlaybackEngine"
+        private const val MB = 1024 * 1024
 
         /** Buffering this long without getting any further counts as a failure. */
-        const val STALL_MS = 20_000L
-        const val STALL_CHECK_MS = 5_000L
+        private const val STALL_MS = 20_000L
+        private const val STALL_CHECK_MS = 5_000L
 
+        /** The name of an encoded (passthrough) audio format, such as "Dolby Atmos"; null for other formats. */
         fun encodedName(mime: String?): String? = when (mime) {
             MimeTypes.AUDIO_AC3 -> "Dolby Digital"
             MimeTypes.AUDIO_E_AC3 -> "Dolby Digital Plus"

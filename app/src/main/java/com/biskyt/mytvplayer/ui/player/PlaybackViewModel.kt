@@ -47,10 +47,12 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     var error by mutableStateOf<PlaybackError?>(null)
         private set
 
-    /** Stops on an error: [message] says what happened and what to do, [reason] why (when known). */
-    /** Shows the error [message] ([failureMessage] when there's none to tell), and why: [reason]. */
-    protected fun fail(message: String? = null, reason: String? = null) {
-        error = PlaybackError(message ?: appString(failureMessage), reason)
+    /**
+     * Shows the error [message] ([failureMessage] when there is none to tell), and why it happened ([reason]). For a stream
+     * that failed, [url] is its address: the error shows it, and the reason names its server.
+     */
+    protected fun fail(message: String? = null, reason: String? = null, url: String? = null) {
+        error = PlaybackError(message ?: appString(failureMessage), reason, url)
         wake() // an error isn't left under the dimming
     }
     var message by mutableStateOf<String?>(null)
@@ -74,7 +76,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     var exit by mutableStateOf(false)
         private set
 
-    enum class Sheet { AUDIO, SUBTITLES, MORE, ABOUT, DESCRIPTION }
+    enum class Sheet { AUDIO, SUBTITLES, MORE, ABOUT, DESCRIPTION, STREAM_INFO }
 
     /**
      * What can be done with what's playing, at the top of the More menu; read while drawing it, so labels follow state
@@ -161,7 +163,8 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             playedMs = 0
             playingSince = 0
             if (!retries.take()) {
-                fail(reason = failureReason(e, engine?.currentUrl))
+                val url = engine?.currentUrl
+                fail(reason = failureReason(e, url, engine?.sentNothing(url) == true), url = url)
                 return
             }
             if (e.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
@@ -197,7 +200,8 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             it.player.addListener(listener)
             it.player.addAnalyticsListener(audioFormatListener)
             it.onStalled = listener::onPlayerError
-            it.onUnsupported = { url -> fail(appString(R.string.player_unsupported_format), failureReason(null, url)) }
+            it.onUnsupported =
+                { url -> fail(appString(R.string.player_unsupported_format), failureReason(null, url), url.ifEmpty { null }) }
             engine = it
         }
     }

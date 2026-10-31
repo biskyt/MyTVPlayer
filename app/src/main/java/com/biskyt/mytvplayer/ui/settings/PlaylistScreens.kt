@@ -377,7 +377,9 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
             }
             Field(
                 stringResource(if (vm.m3u) R.string.settings_playlist_address else R.string.settings_playlist_server),
-                Modifier.weight(1f)
+                Modifier.weight(1f),
+                schemeOf = vm.server,
+                onScheme = { vm.server = withScheme(vm.server, it) }
             ) {
                 TvTextField(
                     vm.server,
@@ -392,7 +394,12 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
         }
         if (vm.m3u) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Field(stringResource(R.string.settings_playlist_movies), Modifier.weight(1f)) {
+                Field(
+                    stringResource(R.string.settings_playlist_movies),
+                    Modifier.weight(1f),
+                    schemeOf = vm.moviesUrl,
+                    onScheme = { vm.moviesUrl = withScheme(vm.moviesUrl, it) }
+                ) {
                     TvTextField(
                         vm.moviesUrl,
                         { vm.moviesUrl = it },
@@ -403,7 +410,12 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
                         onNext = { seriesEdit.value = true }
                     )
                 }
-                Field(stringResource(R.string.settings_playlist_series), Modifier.weight(1f)) {
+                Field(
+                    stringResource(R.string.settings_playlist_series),
+                    Modifier.weight(1f),
+                    schemeOf = vm.seriesUrl,
+                    onScheme = { vm.seriesUrl = withScheme(vm.seriesUrl, it) }
+                ) {
                     TvTextField(
                         vm.seriesUrl,
                         { vm.seriesUrl = it },
@@ -473,12 +485,40 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
     }
 }
 
+/**
+ * A labelled box. For an address ([onScheme] given), "http://" and "https://" buttons beside the label put that start on
+ * [schemeOf]: typing it on a TV remote is slow. The one the address starts with is shown selected.
+ */
 @Composable
-private fun Field(label: String, modifier: Modifier, content: @Composable () -> Unit) {
+private fun Field(
+    label: String,
+    modifier: Modifier,
+    schemeOf: String? = null,
+    onScheme: ((String) -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = Palette.textMuted)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = Palette.textMuted, modifier = Modifier.weight(1f))
+            if (onScheme != null) {
+                for (scheme in SCHEMES) {
+                    PillButton(scheme, {
+                        onScheme(scheme)
+                    }, selected = schemeOf.orEmpty().trimStart().startsWith(scheme, ignoreCase = true), compact = true)
+                }
+            }
+        }
         content()
     }
+}
+
+private val SCHEMES = listOf("http://", "https://")
+
+/** [address] starting with [scheme] ("http://" or "https://"), in place of the start it had, if any. */
+internal fun withScheme(address: String, scheme: String): String {
+    val rest = address.trim()
+    val old = SCHEMES.firstOrNull { rest.startsWith(it, ignoreCase = true) }
+    return scheme + if (old == null) rest else rest.substring(old.length)
 }
 
 /** An inactive playlist's initial: a mid grey, darker than the text, so the active one's accent stands out. */

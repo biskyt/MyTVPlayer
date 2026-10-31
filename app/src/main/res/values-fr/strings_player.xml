@@ -67,6 +67,7 @@
     <string name="player_error_decode_media">Ce boîtier TV ne peut pas décoder le contenu du flux (%1$s).</string>
     <string name="player_error_decode">Ce boîtier TV ne peut pas décoder la vidéo ou l\'audio du flux.</string>
     <string name="player_error_parsing">Le flux a envoyé des données que MyTVPlayer ne peut pas lire (format non pris en charge ou endommagé).</string>
+    <string name="player_error_empty">Le serveur du flux a envoyé un fichier vide. Il n\'a peut-être plus ce flux : essayez une autre copie, ou réessayez plus tard.</string>
     <string name="player_error_behind_live">Le flux prenait sans cesse du retard sur le direct.</string>
     <string name="player_error_io">Le flux a cessé d\'arriver : la connexion à son serveur a échoué.</string>
     <string name="player_error_other">Le lecteur n\'a pas pu le lire (%1$s).</string>
@@ -76,4 +77,10 @@
     <string name="player_error_http_other">Le serveur du flux a répondu avec l\'erreur %1$d.</string>
     <string name="player_about_programme">À propos de ce programme</string>
     <string name="player_description">Description</string>
+    <string name="player_stream_info">Infos sur le flux</string>
+    <string name="player_info_address">Adresse : %1$s</string>
+    <string name="player_info_video">Vidéo : %1$s</string>
+    <string name="player_info_audio">Piste audio : %1$s</string>
+    <string name="player_info_buffer">En mémoire tampon : %1$d s</string>
+    <string name="player_info_unknown">pas encore connu</string>
 </resources>

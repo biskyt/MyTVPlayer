@@ -57,6 +57,8 @@ class StreamFormatTest {
         // fails as unreadable).
         assertTrue(provider.requests.toString(), provider.requests.count { it.startsWith("/live/me/secret/101.ts") } > 1)
         assertTrue(provider.requests.toString(), provider.requests.any { it.startsWith("/live/me/secret/101.m3u8") })
+        // The error shows the address of the stream that failed last, so that the viewer can report it.
+        assertEquals(provider.url + "live/me/secret/101.m3u8", vm.error?.address)
         vm.engine?.release()
     }
 
