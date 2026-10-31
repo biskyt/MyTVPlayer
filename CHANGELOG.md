@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.8.10
+- On some TVs, such as the Chromecast with Google TV, Up and Down now leave a text box, such as the search box, after the keyboard closes.
+
 ## 1.8.9
 - The player's More panel has a new Stream info item that shows the stream's address, its video and audio details, and its buffer.
 - When a stream fails, the error now shows the stream's address, without your login.
