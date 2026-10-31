@@ -21,7 +21,8 @@ data class XmltvProgramme(
 /**
  * Streaming XMLTV reader. Every `<channel>` can be reported (they are small and needed for matching), but
  * `<programme>` elements are only built when [wantProgrammes] accepts the channel id and the programme
- * overlaps [windowStartMs]..[windowEndMs]; everything else is skipped without allocating.
+ * overlaps [windowStartMs]..[windowEndMs]. A byte scan ([ProgrammeFilter]) removes the other programmes before the
+ * parser reads them.
  *
  * The caller supplies the [XmlPullParser] so Android can use the framework parser and tests can use kxml2.
  */
@@ -56,7 +57,8 @@ class XmltvParser(
         channelsOnly: Boolean
     ) {
         val p = newParser()
-        p.setInput(input, null)
+        // Programmes not wanted, or outside the window, are removed before the parser reads them: most of a big guide.
+        p.setInput(if (channelsOnly) input else ProgrammeFilter(input, wantProgrammes, ::inWindow), null)
         var seenChannel = false
         while (true) {
             when (p.next()) {
@@ -81,10 +83,12 @@ class XmltvParser(
         val id = p.getAttributeValue(null, "channel")
         val start = if (id != null && wantProgrammes(id)) parseTime(p.getAttributeValue(null, "start")) else null
         if (id == null || start == null) return p.skipElement()
-        // A stop at or before the start is a mistake in the guide: taken as no stop.
-        val end = parseTime(p.getAttributeValue(null, "stop"))?.takeIf { it > start } ?: (start + DEFAULT_LENGTH_MS)
-        if (end <= windowStartMs || start >= windowEndMs) p.skipElement() else onProgramme(readProgramme(p, id, start, end))
+        val end = endOf(start, parseTime(p.getAttributeValue(null, "stop")))
+        if (inWindow(start, end)) onProgramme(readProgramme(p, id, start, end)) else p.skipElement()
     }
+
+    /** Whether a programme from [startMs] to [endMs] (see [endOf]) is in the window. */
+    private fun inWindow(startMs: Long, endMs: Long) = endMs > windowStartMs && startMs < windowEndMs
 
     private fun readChannel(p: XmlPullParser): XmltvChannel? {
         val id = p.getAttributeValue(null, "id")
@@ -153,6 +157,9 @@ class XmltvParser(
 
     companion object {
         private const val DEFAULT_LENGTH_MS = 30 * 60_000L
+
+        /** A programme's end. A stop at or before the start is a mistake in the guide: taken as no stop. */
+        internal fun endOf(startMs: Long, stopMs: Long?) = stopMs?.takeIf { it > startMs } ?: (startMs + DEFAULT_LENGTH_MS)
 
         /**
          * Parses XMLTV times such as `20261018180000 +0100`, also without seconds or with the offset written `+01:00`;
