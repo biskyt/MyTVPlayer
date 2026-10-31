@@ -1,7 +1,9 @@
 package com.biskyt.mytvplayer.ui
 
 import androidx.compose.runtime.remember
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onRoot
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.testutil.FakeProvider
@@ -23,7 +25,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** A film's controls: the time of day in the corner; no From the start or Next episode buttons, and no key hints. */
+/** A film's controls: the time of day in the corner; play/pause in the middle; no From the start or Next episode buttons, and no key hints. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "+w960dp-h540dp-tvdpi")
 class VodControlsUiTest {
@@ -58,5 +60,9 @@ class VodControlsUiTest {
         assertEquals(0, shown("From the start"))
         assertEquals(0, shown("Next episode"))
         assertEquals(0, shown("Back hides this", substring = true))
+        // Play/pause in the middle of the screen.
+        val play = compose.onNode(hasContentDescription("Pause") or hasContentDescription("Play")).fetchSemanticsNode().boundsInRoot
+        val screen = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        assertEquals(screen.center.x, play.center.x, 1f)
     }
 }
