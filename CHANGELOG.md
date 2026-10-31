@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.8.7
+- Large TV guides load much faster.
+
 ## 1.8.6
 - The play button is now in the middle of the player's controls.
 
