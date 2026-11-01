@@ -113,7 +113,7 @@
     <!-- %1$d: the HTTP error code -->
     <string name="player_error_http_other">The stream\'s server answered with error %1$d.</string>
     <string name="player_about_programme">About this programme</string>
-    <string name="player_description">Description</string>
+    <string name="player_description">Episode description</string>
     <!-- The Stream info panel. %1$s: technical details (codecs, sizes, rates), not translated -->
     <string name="player_stream_info">Stream info</string>
     <string name="player_info_address">Address: %1$s</string>

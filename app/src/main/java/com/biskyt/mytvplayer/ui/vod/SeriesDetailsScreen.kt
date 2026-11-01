@@ -52,6 +52,9 @@ import com.biskyt.mytvplayer.ui.common.markWatched
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.common.shortEpisodeLabel
+import com.biskyt.mytvplayer.ui.player.DescribedEpisode
+import com.biskyt.mytvplayer.ui.player.EpisodeDescriptionPanel
+import com.biskyt.mytvplayer.ui.player.episodeDescriptionAction
 import com.biskyt.mytvplayer.ui.player.episodeName
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
@@ -104,6 +107,9 @@ class SeriesDetailsViewModel(
 
     /** The episode whose options are open (holding OK on it). */
     var optionsFor by mutableStateOf<EpisodeInfo?>(null)
+
+    /** The episode whose description is open (from its options). */
+    var describing by mutableStateOf<EpisodeInfo?>(null)
 
     /**
      * Marks [e] watched (saved as played to the end, as the player saves it, so "Carry on watching" moves on past it)
@@ -185,20 +191,28 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
             }
         }
     }
-    vm.optionsFor?.let { e ->
-        val close = { vm.optionsFor = null }
-        val saved = progress[e.id]
-        val set = { watched: Boolean ->
-            vm.setWatched(e, watched)
-            close()
-        }
-        // One partly watched can be counted as watched, or started again (its progress forgotten).
-        val actions = listOfNotNull(
-            if (saved?.finished != true) markWatched(false, set) else null,
-            if (saved?.started == true) markWatched(true, set) else null
-        )
-        ItemActionsPanel(episodeName(e), actions, close)
+    vm.optionsFor?.let { e -> EpisodeOptions(vm, e, progress[e.id]) }
+    vm.describing?.let { e -> EpisodeDescriptionPanel(DescribedEpisode(show.title, e)) { vm.describing = null } }
+}
+
+/** An episode's options (holding OK on it): its description, and marking it watched or unwatched. */
+@Composable
+private fun EpisodeOptions(vm: SeriesDetailsViewModel, e: EpisodeInfo, saved: WatchProgressEntity?) {
+    val close = { vm.optionsFor = null }
+    val set = { watched: Boolean ->
+        vm.setWatched(e, watched)
+        close()
     }
+    // One partly watched can be counted as watched, or started again (its progress forgotten).
+    val actions = listOfNotNull(
+        episodeDescriptionAction(e) {
+            close()
+            vm.describing = e
+        },
+        if (saved?.finished != true) markWatched(false, set) else null,
+        if (saved?.started == true) markWatched(true, set) else null
+    )
+    ItemActionsPanel(episodeName(e), actions, close)
 }
 
 /** Focus for Play as the page opens and whenever where to carry on changes, unless the remote is in the episode list. */

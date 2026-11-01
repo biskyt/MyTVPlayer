@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.8.13
+- An episode's options and the player's More menu have "Episode description": what the episode is about and when it was first shown.
+
 ## 1.8.12
 - The TV guide now fits the screen, so the selected programme no longer goes past the right edge when you move right.
 

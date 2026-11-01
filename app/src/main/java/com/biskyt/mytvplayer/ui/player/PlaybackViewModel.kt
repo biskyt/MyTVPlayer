@@ -69,8 +69,8 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     /** The programme the About sheet tells of (live TV's, on now). */
     open val about: ChannelProgramme? get() = null
 
-    /** What the Description sheet shows (an episode's plot); null where there's none. */
-    open val description: String? get() = null
+    /** The episode the Episode description sheet tells of (see EpisodeDescription); null where there's none. */
+    open val described: DescribedEpisode? get() = null
 
     /** Set when playback should end and the screen close. */
     var exit by mutableStateOf(false)

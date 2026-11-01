@@ -36,4 +36,5 @@
     <string name="vod_season">Season %1$d</string>
     <!-- An episode the provider gave no title. %1$d: its number. -->
     <string name="vod_episode">Episode %1$d</string>
+    <string name="vod_first_shown">First shown %1$s</string>
 </resources>

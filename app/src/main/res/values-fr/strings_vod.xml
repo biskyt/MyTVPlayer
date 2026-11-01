@@ -23,4 +23,5 @@
     <string name="vod_watched">Vu</string>
     <string name="vod_season">Saison %1$d</string>
     <string name="vod_episode">Épisode %1$d</string>
+    <string name="vod_first_shown">Première diffusion le %1$s</string>
 </resources>
