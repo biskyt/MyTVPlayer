@@ -6,10 +6,14 @@ import com.biskyt.mytvplayer.appString
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -67,8 +71,14 @@ class SyncManager(
     val state: StateFlow<SyncState> = _state.asStateFlow()
 
     init {
-        // Not the playlist in use at start: only a switch to another.
-        scope.launch { settings.activePlaylistId.drop(1).collect { updateOutOfDateGuides(it) } }
+        // Not the playlist in use at start: only a switch to another (from any screen), which stops the old one's work.
+        // collectLatest: a further switch also stops this one's guide update.
+        scope.launch {
+            settings.activePlaylistId.drop(1).collectLatest { id ->
+                running?.takeIf { it.first != id }?.second?.cancel()
+                updateOutOfDateGuides(id)
+            }
+        }
     }
 
     /** Refreshes a playlist's channels, then the guide, then movies and series (the slowest, so last). */
@@ -77,14 +87,21 @@ class SyncManager(
     fun refreshAll(): Job = scope.launch { refreshAllNow() }
 
     /**
-     * Every playlist's channels, movies and series, then the guides of the playlist in use that are out of date (as
-     * they are a day on; one just loaded, e.g. by switching to the playlist, isn't loaded again).
+     * The playlist in use: its channels, movies and series, then its guides that are out of date (as they are a day on;
+     * one just loaded, e.g. by switching to the playlist, isn't loaded again). Playlists not in use are left alone.
      */
     suspend fun refreshAllNow() {
-        val ids = playlists.allIds()
-        ids.forEach { refreshNow(it, includeGuide = false) }
-        inUse().forEach { updateOutOfDateGuides(it) }
+        inUse().forEach {
+            refreshNow(it, includeGuide = false)
+            updateOutOfDateGuides(it)
+        }
     }
+
+    /**
+     * After switching to [playlistId] on the Playlists screen: updates its channels, movies and series (its guides, and
+     * stopping the old one's work, follow the setting: see init).
+     */
+    fun switchTo(playlistId: Long): Job = scope.launch { refreshNow(playlistId, includeGuide = false) }
 
     /** Looks for guides for channels without one. A failure also shows in [state]. */
     suspend fun matchMissingGuides(): Result<MatchResult> =
@@ -99,29 +116,61 @@ class SyncManager(
      */
     suspend fun refreshNow(playlistId: Long, includeGuide: Boolean = true): Result<Map<Long, String>> =
         attempt(R.string.data_refresh_failed) {
-            val name = playlists.get(playlistId)?.name.orEmpty()
-            _state.value = SyncState.Channels(name, 0)
-            playlists.syncChannels(playlistId) { _state.value = SyncState.Channels(name, it) }
-            val guideErrors = if (includeGuide) importGuide(listOf(playlistId)) else emptyMap()
-            // Read again (by syncVod): updating the channels stores to the playlist (its account, M3U state).
-            syncVod(playlistId)
-            guideErrors
+            ifInUse(playlistId) { refreshPlaylist(playlistId, includeGuide) }.orEmpty()
         }
+
+    private suspend fun refreshPlaylist(playlistId: Long, includeGuide: Boolean): Map<Long, String> {
+        val name = playlists.get(playlistId)?.name.orEmpty()
+        _state.value = SyncState.Channels(name, 0)
+        playlists.syncChannels(playlistId) { _state.value = SyncState.Channels(name, it) }
+        val guideErrors = if (includeGuide) importGuide(listOf(playlistId)) else emptyMap()
+        // Read again (by syncVod): updating the channels stores to the playlist (its account, M3U state).
+        syncVod(playlistId)
+        return guideErrors
+    }
 
     /**
      * Updates the guide of the playlist in use now, with this update's own outcome (another refresh may change [state]
      * straight after): the error of each guide that couldn't be loaded, by source id. With [only], just that guide is
      * downloaded (e.g. one just added); the others are used as last loaded.
      */
-    suspend fun updateGuide(only: Long? = null): Result<Map<Long, String>> =
-        attempt(R.string.common_guide_update_failed) { importGuide(inUse(), only) }
+    suspend fun updateGuide(only: Long? = null): Result<Map<Long, String>> = attempt(R.string.common_guide_update_failed) {
+        inUse().firstOrNull()?.let { id -> ifInUse(id) { importGuide(listOf(id), only) } }.orEmpty()
+    }
 
-    /** Updates those of [playlistId]'s guides that are out of date, if any (as [updateGuide]). */
-    suspend fun updateOutOfDateGuides(playlistId: Long): Result<Map<Long, String>> =
-        attempt(R.string.common_guide_update_failed) { importGuide(listOf(playlistId), outOfDate = true) }
+    /** Updates those of [playlistId]'s guides that are out of date, if any (as [updateGuide]); none if it's not in use. */
+    suspend fun updateOutOfDateGuides(playlistId: Long): Result<Map<Long, String>> = attempt(R.string.common_guide_update_failed) {
+        ifInUse(playlistId) { importGuide(listOf(playlistId), outOfDate = true) }.orEmpty()
+    }
 
     /** Only movies and series (after their categories change). */
-    fun refreshVod(playlistId: Long): Job = scope.launch { guarded(R.string.data_vod_failed) { syncVod(playlistId) } }
+    fun refreshVod(playlistId: Long): Job = scope.launch {
+        guarded(R.string.data_vod_failed) { ifInUse(playlistId) { syncVod(playlistId) } }
+    }
+
+    /** The playlist whose work is running now, and that work: a switch to another playlist stops it. */
+    @Volatile private var running: Pair<Long, Job>? = null
+
+    /**
+     * [block], the work for [playlistId], when it's the playlist in use (null, without running it, for one that isn't:
+     * those are left alone). A switch to another playlist stops it (see init), and the caller then gets null: the work
+     * runs in a job of its own, so the caller (e.g. the daily refresh's housekeeping after it) carries on.
+     */
+    private suspend fun <T> ifInUse(playlistId: Long, block: suspend () -> T): T? {
+        if (settings.current().activePlaylistId != playlistId) return null
+        val job = scope.async { block() }
+        val work = playlistId to job
+        running = work
+        try {
+            return job.await()
+        } catch (e: CancellationException) {
+            if (job.isCancelled && currentCoroutineContext().isActive) return null // stopped by a switch
+            throw e
+        } finally {
+            job.cancel() // the caller stopped waiting: the work stops too (a no-op once it has finished)
+            if (running === work) running = null
+        }
+    }
 
     private suspend fun syncVod(playlistId: Long) {
         val p = playlists.get(playlistId) ?: return

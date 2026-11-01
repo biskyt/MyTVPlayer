@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.8.14
+- Only the playlist in use is updated now: a playlist you are not using no longer loads its channels, guide, films or series.
+- Switching to another playlist stops the old one's update and updates the new one.
+- Home now starts on the first card of Carry on watching, and removing a card there keeps you in that row.
+
 ## 1.8.13
 - An episode's options and the player's More menu have "Episode description": what the episode is about and when it was first shown.
 
