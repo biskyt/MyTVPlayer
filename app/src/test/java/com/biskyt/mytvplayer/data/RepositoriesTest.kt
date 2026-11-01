@@ -93,6 +93,18 @@ class RepositoriesTest {
     }
 
     @Test
+    fun `a new playlist's Global sections are chosen too, and Canada's and Nordic ones are named`() = runBlocking {
+        provider.categories +=
+            listOf("5" to "GLOBAL: [24/7] MOVIES", "6" to "CAN: LOCALS", "7" to "SCAN: NORDIC KIDS", "8" to "SPT: BOXING")
+        val id = addPlaylist()
+        val cats = db.categories().all(id, CAT_LIVE).associateBy { it.categoryId }
+        assertEquals(listOf("GLOBAL", "CA", "NORDIC", null), listOf("5", "6", "7", "8").map { cats.getValue(it).lang })
+        assertTrue("Global, with the TV's own UK", cats.getValue("5").included)
+        assertFalse(cats.getValue("6").included)
+        assertFalse(cats.getValue("8").included)
+    }
+
+    @Test
     fun `a TV whose country the provider lacks falls back to its language`() = runBlocking {
         val us =
             PlaylistRepository(

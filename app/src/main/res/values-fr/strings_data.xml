@@ -65,6 +65,8 @@
     <string name="data_lang_cn">Chinois</string>
     <string name="data_lang_kr">Coréen</string>
     <string name="data_lang_jp">Japonais</string>
+    <string name="data_lang_global">International</string>
+    <string name="data_lang_nordic">Nordique</string>
     <string name="data_lang_other">Autres</string>
 
     <string name="data_accent_mint">Menthe</string>

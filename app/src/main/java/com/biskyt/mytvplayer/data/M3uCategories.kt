@@ -29,7 +29,7 @@ object M3uCategories {
         if (e.country == null && e.language == null) return name.ifEmpty { UNGROUPED }
         return ids.getOrPut(Key(name, e.country, e.language)) {
             val group = CategoryLanguageDetector.groupFor(e.country, e.language)
-            (if (group == null || CategoryLanguageDetector.detect(name) != null) name else "$name$TAG$group").ifEmpty { UNGROUPED }
+            (if (group == null || CategoryLanguageDetector.detectAsBefore(name) != null) name else "$name$TAG$group").ifEmpty { UNGROUPED }
         }
     }
 

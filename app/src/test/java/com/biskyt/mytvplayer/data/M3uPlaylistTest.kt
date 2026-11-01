@@ -181,6 +181,8 @@ class M3uPlaylistTest {
             http://stream.example/sports.m3u8
             #EXTINF:-1 group-title="Live: Weather",Plain Weather
             http://stream.example/weather.m3u8
+            #EXTINF:-1 tvg-country="GB" group-title="GLOBAL: Movies",Global Movies
+            http://stream.example/global.m3u8
         """.trimIndent()
         provider.vodM3u = """
             #EXTM3U
@@ -202,6 +204,9 @@ class M3uPlaylistTest {
         assertEquals("UK", live.single { it.name == "Live: Music" }.lang)
         assertEquals("UK | Sports", live.single { it.name == "UK | Sports" }.categoryId)
         assertEquals("Live: Weather", live.single { it.name == "Live: Weather" }.categoryId)
+        // A name only known since 1.8.15 keeps the id it had (with its channels' country), but files as its name says.
+        val global = live.single { it.name == "GLOBAL: Movies" }
+        assertEquals("GLOBAL" to true, global.lang to (global.categoryId != "GLOBAL: Movies"))
         // Films too: the French one isn't chosen on a UK TV.
         val films = db.categories().all(id, CAT_MOVIE)
         assertEquals(listOf("FR" to false, "UK" to true), films.map { it.lang to it.included }.sortedBy { it.first })

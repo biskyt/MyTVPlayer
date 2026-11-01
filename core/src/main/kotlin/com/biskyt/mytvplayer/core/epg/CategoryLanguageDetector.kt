@@ -62,22 +62,63 @@ object CategoryLanguageDetector {
     /** Whether [code] is a language/country code providers put in front of names ("EN", "UK", "FRA"…). */
     fun isLanguageCode(code: String): Boolean = code.uppercase().let { it in aliases || it in groups }
 
-    fun detect(categoryName: String): String? {
-        val m = leading.find(categoryName)
-        if (m != null) {
-            val code = m.groupValues[1].uppercase()
-            (aliases[code] ?: code.takeIf { it in groups })?.let { return it }
-        }
-        val name = padded(categoryName)
-        return words.firstOrNull { name.contains(it.first) }?.second
+    fun detect(categoryName: String): String? = detectIn(categoryName, more = true)
+
+    /**
+     * [detect] as it was up to 1.8.14. M3U category ids are made with it (see M3uCategories), so a name it newly
+     * detects keeps its id, and with it its choices, favourites and progress.
+     */
+    fun detectAsBefore(categoryName: String): String? = detectIn(categoryName, more = false)
+
+    /** The rules up to 1.8.14 (codes, then words), then with [more] those since (codes, then words). */
+    private fun detectIn(categoryName: String, more: Boolean): String? {
+        val code = leading.find(categoryName)?.groupValues?.get(1)?.uppercase()
+        val name by lazy(LazyThreadSafetyMode.NONE) { padded(categoryName) }
+        return code?.let { aliases[it] ?: it.takeIf { c -> c in groups } }
+            ?: words.firstOrNull { name.contains(it.first) }?.second
+            ?: if (!more) {
+                null
+            } else {
+                code?.let { moreAliases[it] ?: it.takeIf { c -> c in moreCountries } }
+                    ?: moreWords.firstOrNull { name.contains(it.first) }?.second
+            }
     }
 
-    /** Category groups that share a language, the first being where it's mostly watched (for defaults, and below). */
+    /** Groups for "Global" and "Nordic" sections, named by the app as the others in [groups] are. */
+    const val GLOBAL = "GLOBAL"
+    const val NORDIC = "NORDIC"
+
+    /** Every group the app names itself (others are country codes, named by their country). */
+    val namedGroups: Set<String> = groups + GLOBAL + NORDIC
+
+    /**
+     * Since 1.8.15: more of the codes providers put in front of names. Only codes with one meaning in IPTV sections:
+     * not "IR" (Ireland and Iran), "IS" (Israel and Iceland), "LV" (Latin and Latvia), "HR" (horse racing), "MU"
+     * (music) or "SK" (Slovakia and South Korea) or "KO" (Kosovo and Korean). A country code is named by its country (see groupLabel).
+     */
+    private val moreAliases = mapOf(
+        "GLOBAL" to GLOBAL, "MULTI" to GLOBAL, "INT" to GLOBAL, "SCAN" to NORDIC, "CAN" to "CA", "QC" to "CA", "ISR" to "IL",
+        "BH" to "EXYU", "BIH" to "EXYU", "MK" to "EXYU", "SRB" to "EXYU", "LA" to "LAT",
+    )
+    private val moreCountries = setOf("NZ", "AT", "CH", "CZ", "CY", "HU", "ID", "PH", "HK", "IL")
+
+    // Since 1.8.15: languages named anywhere in the name ("AS: TAMIL", "IR: PERSIAN MOVIES").
+    private val moreWords: List<Pair<String, String>> = listOf(
+        "Hebrew" to "IL", "Persian" to "IR", "Farsi" to "IR", "Tamil" to "IN", "Telugu" to "IN", "Telegu" to "IN",
+        "Malayalam" to "IN", "Punjabi" to "IN", "Kannada" to "IN", "Bollywood" to "IN", "Bengali" to "IN",
+        "Nordic" to NORDIC, "Scandinavian" to NORDIC, "African" to "AF",
+    ).map { (name, code) -> padded(name) to code }
+
+    /**
+     * Category groups that share a language, the first being where it's mostly watched (for defaults, and below). Only
+     * add to the end of a list, and no new languages: [groupFor] gives M3U category ids, which must stay the same.
+     */
     val languageGroups: Map<String, List<String>> = mapOf(
-        "en" to listOf("UK", "US", "CA", "AU", "IE"), "fr" to listOf("FR", "BE"), "de" to listOf("DE"),
+        "en" to listOf("UK", "US", "CA", "AU", "IE"), "fr" to listOf("FR", "BE"), "de" to listOf("DE", "AT", "CH"),
         "es" to listOf("ES", "MX", "LAT"), "it" to listOf("IT"), "pt" to listOf("PT", "BR"), "nl" to listOf("NL", "BE"),
         "pl" to listOf("PL"), "tr" to listOf("TR"), "ar" to listOf("AR"), "el" to listOf("GR"), "ro" to listOf("RO"),
-        "sv" to listOf("SE"), "nb" to listOf("NO"), "no" to listOf("NO"), "da" to listOf("DK"), "fi" to listOf("FI"),
+        "sv" to listOf("SE", NORDIC), "nb" to listOf("NO", NORDIC), "no" to listOf("NO", NORDIC), "da" to listOf("DK", NORDIC),
+        "fi" to listOf("FI", NORDIC),
         "ru" to listOf("RU"), "hi" to listOf("IN"), "sq" to listOf("AL"), "zh" to listOf("CN"), "ko" to listOf("KR"), "ja" to listOf("JP"),
     )
 

@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import com.biskyt.mytvplayer.AppText
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
+import com.biskyt.mytvplayer.core.epg.CategoryLanguageDetector
 import com.biskyt.mytvplayer.core.xtream.XtreamException
 import com.biskyt.mytvplayer.core.xtream.XtreamException.Reason
 import com.biskyt.mytvplayer.data.db.CategoryCount
@@ -47,7 +48,7 @@ fun groupLabel(code: String?): String = when {
     else -> code
 }
 
-/** The groups CategoryLanguageDetector.groups names, by code. */
+/** The groups CategoryLanguageDetector.namedGroups names, by code. */
 internal val groupLabels: Map<String, Int> = mapOf(
     "UK" to R.string.data_lang_uk, "US" to R.string.data_lang_us, "CA" to R.string.data_lang_ca,
     "AU" to R.string.data_lang_au, "IE" to R.string.data_lang_ie, "FR" to R.string.data_lang_fr,
@@ -60,6 +61,7 @@ internal val groupLabels: Map<String, Int> = mapOf(
     "DK" to R.string.data_lang_dk, "FI" to R.string.data_lang_fi, "RU" to R.string.data_lang_ru,
     "LAT" to R.string.data_lang_lat, "MX" to R.string.data_lang_mx, "AF" to R.string.data_lang_af,
     "CN" to R.string.data_lang_cn, "KR" to R.string.data_lang_kr, "JP" to R.string.data_lang_jp,
+    CategoryLanguageDetector.GLOBAL to R.string.data_lang_global, CategoryLanguageDetector.NORDIC to R.string.data_lang_nordic,
 )
 
 /** The name of an accent colour offered in Settings (an AccentPalette.Preset id). */

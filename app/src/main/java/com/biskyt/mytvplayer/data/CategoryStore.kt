@@ -26,8 +26,11 @@ class CategoryStore(private val db: AppDatabase, private val locale: () -> Local
     // Two-letter names ("TV", "SD") would read as country codes, so those go under "Other".
     private fun genreGroup(c: XtreamCategory, groupByName: Boolean) = c.name.takeIf { groupByName && it.length > 2 }
 
-    /** Filed under a group from its entries' tvg-country/tvg-language (see M3uCategories), else as its name says. */
-    private fun detectedGroup(c: XtreamCategory) = M3uCategories.groupOf(c.id) ?: CategoryLanguageDetector.detect(c.name)
+    /**
+     * As its name says, else from its entries' tvg-country/tvg-language (see M3uCategories). (A name the rules up to
+     * 1.8.14 knew has no tvg group in its id: only a name known since, such as "GLOBAL: Movies", can have both.)
+     */
+    private fun detectedGroup(c: XtreamCategory) = CategoryLanguageDetector.detect(c.name) ?: M3uCategories.groupOf(c.id)
 
     /**
      * Saves the provider's categories of one [type], keeping the user's choices for ones already known.
@@ -43,11 +46,7 @@ class CategoryStore(private val db: AppDatabase, private val locale: () -> Local
         val detected = remote.map(::detectedGroup)
         val langs = remote.mapIndexed { i, c -> detected[i] ?: genreGroup(c, groupByName) }
         val isNew: (Int) -> Boolean = if (existing.isEmpty()) {
-            val defaults = defaultGroups(langs.filterNotNullTo(HashSet()))
-
-            // Nothing matches the TV's country or language (e.g. a playlist of genres, "Live: News", with no
-            // countries at all): what names no country is chosen, so there's something to watch.
-            fun(i: Int) = langs[i] in defaults || (defaults.isEmpty() && detected[i] == null)
+            firstChoice(langs, detected)
         } else {
             val includes = includesNew(existing.values, groupByName)
             fun(i: Int) = includes(remote[i])
@@ -91,7 +90,21 @@ class CategoryStore(private val db: AppDatabase, private val locale: () -> Local
         val wanted = includedLangs(known, groupByName)
         val undetected = known.filter { detectedGroup(XtreamCategory(it.categoryId, it.name)) == null }
         val allUndetected = undetected.isNotEmpty() && undetected.all { it.included }
-        return { c -> langOf(c, groupByName) in wanted || (allUndetected && detectedGroup(c) == null) }
+        return { c ->
+            val detected = detectedGroup(c)
+            (detected ?: genreGroup(c, groupByName)) in wanted || (allUndetected && detected == null)
+        }
+    }
+
+    /**
+     * Which of a new playlist's categories (by their [langs] and [detected] groups) are chosen to start with: the
+     * default groups, and "Global" sections (in no one language). When nothing matches the TV's country or language
+     * (e.g. a playlist of genres, "Live: News", with no countries at all), what names no country, so there's
+     * something to watch.
+     */
+    private fun firstChoice(langs: List<String?>, detected: List<String?>): (Int) -> Boolean {
+        val defaults = defaultGroups(langs.filterNotNullTo(HashSet()))
+        return { i -> langs[i] in defaults || langs[i] == CategoryLanguageDetector.GLOBAL || (defaults.isEmpty() && detected[i] == null) }
     }
 
     /**
