@@ -111,6 +111,11 @@ See also:
 
 ## Gotchas learned the hard way
 - **Android regex is ICU, not Java.** A bare `}` in a regex passes on the JVM (where Robolectric runs) but crashes on devices. That crashed M3U setup in 0.9.5. `RegexPortabilityTest` (one in core, one in app, sharing core's `RegexPortability` test fixture) checks every `Regex(...)` literal. Escape braces.
+- **`core` is checked against the app's minSdk by Animal Sniffer, not by lint.** Lint does not check API levels in a
+  plain JVM module. So a Java API newer than minSdk compiles and passes the JVM tests, then crashes older devices
+  (`LocalDate.EPOCH` needs Android 14; issue 94). `:core:animalsnifferMain` checks core's classes against the
+  `gummy-bears-api-<minSdk>` signature, and `:core:test` runs it. `minSdk` is in `gradle/libs.versions.toml`, for the
+  app and the check. The check does not cover core's libraries (OkHttp, coroutines, serialization).
 - **Robolectric UI tests:**
   - **Compose rules:** use `createUiComposeRule()` / `createUiComposeRule<Activity>()` from `testutil/ComposeRules.kt`, not `createComposeRule()`.
     - The plain rule runs effects on an unconfined dispatcher. Room flows collected with `collectAsState` then resume on Room's `arch_disk_io` threads and race the main thread's recomposition, so updates get lost now and then.

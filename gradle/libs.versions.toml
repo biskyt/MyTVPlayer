@@ -1,4 +1,6 @@
 [versions]
+# The app's minSdk. Core's Animal Sniffer signature (gummy-bears-api-<minSdk>) uses it too.
+minSdk = "28"
 agp = "8.11.1"
 kotlin = "2.2.0"
 ksp = "2.2.0-2.0.2"
@@ -29,6 +31,9 @@ ktlint = "13.0.0"
 kover = "0.9.1"
 kxml = "2.3.0"
 
+animalsniffer = "2.0.1"
+# Android API signatures for Animal Sniffer (core's check against minSdk).
+gummyBears = "0.16.0"
 [libraries]
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
@@ -83,6 +88,7 @@ roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = 
 roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
 
 [plugins]
+animalsniffer = { id = "ru.vyarus.animalsniffer", version.ref = "animalsniffer" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

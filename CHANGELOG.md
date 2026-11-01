@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.8.19
+- The app no longer closes when you open some series on Android versions before 14 (it happened when an episode had a "first shown" date).
+
 ## 1.8.18
 - Adult categories in live TV, films and series now have their own "Adult" group, which is never chosen by default (choose it again in Languages & categories if you want it).
 
