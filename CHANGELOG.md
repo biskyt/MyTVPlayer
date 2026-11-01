@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.8.12
+- The TV guide now fits the screen, so the selected programme no longer goes past the right edge when you move right.
+
 ## 1.8.11
 - Back on the home screen now also takes the app off the recent apps list when it closes the app.
 - The "unsupported format" error no longer names the stream's server twice.

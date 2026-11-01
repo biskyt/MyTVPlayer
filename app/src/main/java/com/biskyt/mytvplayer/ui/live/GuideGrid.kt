@@ -6,6 +6,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -110,12 +112,18 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 private const val HALF_HOUR = 30 * 60_000L
 private const val HOUR = 2 * HALF_HOUR
-private const val WINDOW_MS = 5 * HALF_HOUR // 2.5 hours on screen
 
-// Programmes are fetched in 6-hour chunks starting on 3-hour boundaries, so the 2.5-hour window always fits in one
-// chunk and moving it by an hour usually needs no new query (and no rows blanking while they reload).
+// The window is as many half hours as the screen has room for (see [span]): on a TV, an hour and a half.
+private const val MIN_HALF_HOURS = 2
+
+// Programmes are fetched in 6-hour chunks starting on 3-hour boundaries, so the window always fits in one chunk and
+// moving it by an hour usually needs no new query (and no rows blanking while they reload).
 private const val CHUNK_STEP = 3 * HOUR
 private const val CHUNK_MS = 6 * HOUR
+
+/** At most what always fits in one chunk, from the latest half hour in it that the window can start on. */
+private const val MAX_HALF_HOURS = ((CHUNK_MS - CHUNK_STEP + HALF_HOUR) / HALF_HOUR).toInt()
+
 private const val DAY_MS = 24 * HOUR
 private const val SHOWN_ROWS = 300
 private const val NEW_LIST_MS = 5_000L
@@ -201,15 +209,13 @@ private class GuideRows(
 
     /** A row's programmes in the window (as shown), and which of them is on [time] (-1 when there are none). */
     fun inWindow(ch: ChannelEntity, time: Long): Pair<List<ChannelProgramme>, Int> {
-        val visible = visibleIn(programmes(ch).orEmpty(), window.start)
+        val visible = visibleIn(programmes(ch).orEmpty(), window.start, window.end)
         return visible to cellAt(visible, time)
     }
 }
 
-private fun visibleIn(programmes: List<ChannelProgramme>, windowStart: Long): List<ChannelProgramme> {
-    val windowEnd = windowStart + WINDOW_MS
-    return programmes.filter { it.stopMs > windowStart && it.startMs < windowEnd }
-}
+private fun visibleIn(programmes: List<ChannelProgramme>, windowStart: Long, windowEnd: Long): List<ChannelProgramme> =
+    programmes.filter { it.stopMs > windowStart && it.startMs < windowEnd }
 
 /** The programme on [time], else the next one after it, else the last: what a highlight on [time] shows. */
 internal fun cellAt(visible: List<ChannelProgramme>, time: Long): Int =
@@ -230,6 +236,7 @@ private fun timeOn(visible: List<ChannelProgramme>, j: Int, windowStart: Long): 
     return maxOf(visible[j].startMs, windowStart, earlier).takeIf { cellAt(visible, it) == j }
 }
 
+/** The narrowest a minute is drawn: the window's half hours are stretched to fill the width. */
 private val DpPerMinute = 6.dp
 private val ChannelColumn = 288.dp
 private val arrowKeys = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight)
@@ -267,8 +274,6 @@ fun GuideGrid(
     val open by rememberUpdatedState<(ChannelEntity, ChannelProgramme?) -> Unit> { ch, p -> openProgramme(nav, ch, p, play) }
     val highlight = remember(rows, items) { GuideHighlight(cursor, rows, window, items, vm, scope, entry, up) { ch, p -> open(ch, p) } }
     var hasFocus by remember { mutableStateOf(false) }
-    val windowStart = window.start
-    val midnight = remember(windowStart) { midnightIn(windowStart) }
     val noGuide = stringResource(R.string.common_no_guide)
     // After a guide update, reload the rows already shown (keeping them on screen meanwhile).
     LaunchedEffect(guideVersion) { rows.guide().refreshAll() }
@@ -307,48 +312,72 @@ fun GuideGrid(
         if (cursor.row >= items.itemCount && items.itemCount > 0) highlight.place(items.itemCount - 1)
     }
 
-    Column(Modifier.fillMaxSize()) {
-        FocusedInfo(highlight, now)
-        TimeHeader(windowStart, midnight, now) { dir -> window.move(dir, null) { cursor.time = it } }
-        val nowLine = (now - windowStart) / 60_000f
-        GridFocus(
-            label = { highlight.at()?.let { (ch, p) -> cellTitle(ch, p, now, noGuide.takeIf { rows.hasProgrammes(ch) }) } },
-            modifier = Modifier.fillMaxSize()
-                .focusRequester(entry)
-                .onFocusChanged { hasFocus = it.isFocused }
-                .ignoreHeldSelect()
-                .onOptionsKey(highlight::options)
-                .onKeyEvent(highlight::onKey)
-                .focusable()
-        ) {
-            LazyColumn(
-                state = vm.listState,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(bottom = 40.dp)
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val span = span(window.start, maxWidth)
+        // Before the rows are drawn: the highlight's steps and the window's moves go by this length too.
+        window.length = span.length
+        val midnight = remember(span) { midnightIn(span) }
+        Column(Modifier.fillMaxSize()) {
+            FocusedInfo(highlight, now)
+            TimeHeader(span, midnight, now) { dir -> window.move(dir, null) { cursor.time = it } }
+            GridFocus(
+                label = { highlight.at()?.let { (ch, p) -> cellTitle(ch, p, now, noGuide.takeIf { rows.hasProgrammes(ch) }) } },
+                modifier = Modifier.fillMaxSize()
+                    .focusRequester(entry)
+                    .onFocusChanged { hasFocus = it.isFocused }
+                    .ignoreHeldSelect()
+                    .onOptionsKey(highlight::options)
+                    .onKeyEvent(highlight::onKey)
+                    .focusable()
             ) {
-                items(count = items.itemCount, key = items.itemKey { it.streamId }) { index ->
-                    val ch = items[index] ?: return@items
-                    LaunchedEffect(ch.streamId, rows.loaderFor(ch)) { rows.request(ch) }
-                    // Derived per row, so moving the highlight only recomposes the rows it leaves and enters.
-                    val time by remember(index) { derivedStateOf { cursor.time.takeIf { cursor.row == index } } }
-                    // The highlight's channel, for the list and coming back (also when it got here before the row did).
-                    if (time != null && cursor.placed) LaunchedEffect(ch.streamId) { vm.focusMoved(ch.streamId, index) }
-                    GuideRow(
-                        ch = ch,
-                        favourite = ch.streamId in favourites,
-                        programmes = rows.programmes(ch),
-                        windowStart = windowStart,
-                        now = now,
-                        highlight = time?.takeIf { hasFocus },
-                        onTap = { p -> highlight.tap(index, ch, p) },
-                        onLongTap = { p -> highlight.longTap(index, ch, p) }
-                    )
+                LazyColumn(
+                    state = vm.listState,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    contentPadding = PaddingValues(bottom = 40.dp)
+                ) {
+                    items(count = items.itemCount, key = items.itemKey { it.streamId }) { index ->
+                        val ch = items[index] ?: return@items
+                        LaunchedEffect(ch.streamId, rows.loaderFor(ch)) { rows.request(ch) }
+                        // Derived per row, so moving the highlight only recomposes the rows it leaves and enters.
+                        val time by remember(index) { derivedStateOf { cursor.time.takeIf { cursor.row == index } } }
+                        // The highlight's channel, for the list and coming back (also when it got here before the row did).
+                        if (time != null && cursor.placed) LaunchedEffect(ch.streamId) { vm.focusMoved(ch.streamId, index) }
+                        GuideRow(
+                            ch = ch,
+                            favourite = ch.streamId in favourites,
+                            programmes = rows.programmes(ch),
+                            span = span,
+                            now = now,
+                            highlight = time?.takeIf { hasFocus },
+                            onTap = { p -> highlight.tap(index, ch, p) },
+                            onLongTap = { p -> highlight.longTap(index, ch, p) }
+                        )
+                    }
                 }
+                if (now in span.start..span.end) DayLine(span, now, LocalAccent.current.color)
+                midnight?.let { DayLine(span, it, Palette.textDim) }
             }
-            if (nowLine in 0f..(WINDOW_MS / 60_000f)) DayLine(nowLine, LocalAccent.current.color)
-            midnight?.let { DayLine((it - windowStart) / 60_000f, Palette.textDim) }
         }
     }
+}
+
+/** The window as drawn: from [start], [halfHours] long, with a minute [perMinute] wide. */
+@Immutable
+private data class Span(val start: Long, val halfHours: Int, val perMinute: Dp) {
+    val length get() = halfHours * HALF_HOUR
+    val end get() = start + length
+
+    fun width(ms: Long) = perMinute * (ms / 60_000f)
+}
+
+/**
+ * The window from [start] in [width]: as many half hours as fit beside the channel names, stretched to fill the rest.
+ * (A window wider than the screen had programmes off its edge, and the highlight could go there.)
+ */
+private fun span(start: Long, width: Dp): Span {
+    val times = maxOf(width - ChannelColumn, DpPerMinute * (MIN_HALF_HOURS * 30))
+    val halfHours = (times / (DpPerMinute * 30)).toInt().coerceAtMost(MAX_HALF_HOURS)
+    return Span(start, halfHours, times / (halfHours * 30f))
 }
 
 /**
@@ -500,17 +529,17 @@ private fun cellTitle(ch: ChannelEntity, p: ChannelProgramme?, now: Long, noGuid
     else -> noGuide.orEmpty()
 }
 
-/** Local midnight within the window starting at [windowStart], if there is one. */
-private fun midnightIn(windowStart: Long): Long? {
+/** Local midnight within the window [span], if there is one. */
+private fun midnightIn(span: Span): Long? {
     val zone = ZoneId.systemDefault()
-    val next = Instant.ofEpochMilli(windowStart).atZone(zone).toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
-    return next.takeIf { it < windowStart + WINDOW_MS }
+    val next = Instant.ofEpochMilli(span.start).atZone(zone).toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+    return next.takeIf { it < span.end }
 }
 
-/** A line down the grid [minutes] into the window: now, or where a day begins. */
+/** A line down the grid at the time [at] in the window: now, or where a day begins. */
 @Composable
-private fun DayLine(minutes: Float, color: Color) {
-    Box(Modifier.offset(x = ChannelColumn + DpPerMinute * minutes).width(2.dp).fillMaxHeight().background(color))
+private fun DayLine(span: Span, at: Long, color: Color) {
+    Box(Modifier.offset(x = ChannelColumn + span.width(at - span.start)).width(2.dp).fillMaxHeight().background(color))
 }
 
 @Composable
@@ -534,14 +563,14 @@ private fun FocusedInfo(highlight: GuideHighlight, now: Long) {
 }
 
 @Composable
-private fun TimeHeader(windowStart: Long, midnight: Long?, now: Long, onMove: (dir: Int) -> Unit) {
+private fun TimeHeader(span: Span, midnight: Long?, now: Long, onMove: (dir: Int) -> Unit) {
     Row(Modifier.fillMaxWidth().height(if (LocalTouch.current) 48.dp else 30.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.width(ChannelColumn).padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             // A touch screen has no ◀ ▶ to reach past the edge: buttons move the window instead.
             TouchStepButtons(stringResource(R.string.live_guide_earlier), stringResource(R.string.live_guide_later), onMove)
         }
-        for (i in 0 until 5) {
-            val time = windowStart + i * HALF_HOUR
+        for (i in 0 until span.halfHours) {
+            val time = span.start + i * HALF_HOUR
             // A new day starts here: its name instead of 00:00. The first time says the day, too ("Today 20:00"), so
             // the times say how far ahead (or back) the guide is.
             val newDay = midnight?.takeIf { it >= time && it < time + HALF_HOUR }
@@ -555,7 +584,7 @@ private fun TimeHeader(windowStart: Long, midnight: Long?, now: Long, onMove: (d
                 color = if (newDay != null) Palette.text else Palette.textMuted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.width(DpPerMinute * 30).padding(start = 8.dp)
+                modifier = Modifier.width(span.width(HALF_HOUR)).padding(start = 8.dp)
             )
         }
     }
@@ -566,14 +595,13 @@ private fun GuideRow(
     ch: ChannelEntity,
     favourite: Boolean,
     programmes: List<ChannelProgramme>?,
-    windowStart: Long,
+    span: Span,
     now: Long,
     /** The highlight's time when it's on this row (and the grid has focus). */
     highlight: Long?,
     onTap: (ChannelProgramme?) -> Unit,
     onLongTap: (ChannelProgramme?) -> Unit
 ) {
-    val windowEnd = windowStart + WINDOW_MS
     Row(Modifier.fillMaxWidth().height(60.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.width(ChannelColumn).padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(ch.numberLabel, style = MaterialTheme.typography.bodyMedium, color = Palette.textDim, modifier = Modifier.width(44.dp))
@@ -588,11 +616,11 @@ private fun GuideRow(
             )
             CatchupMark(ch, Modifier.padding(start = 4.dp))
         }
-        val visible = remember(programmes, windowStart) { visibleIn(programmes.orEmpty(), windowStart) }
+        val visible = remember(programmes, span) { visibleIn(programmes.orEmpty(), span.start, span.end) }
         if (visible.isEmpty()) {
             // One cell for the whole window, so the row can still be highlighted and played.
             Cell(
-                DpPerMinute * (WINDOW_MS / 60_000f),
+                span.width(span.length),
                 live = true,
                 highlighted = highlight != null,
                 cellTitle(ch, null, now, stringResource(R.string.common_no_guide).takeIf { programmes != null }),
@@ -601,13 +629,13 @@ private fun GuideRow(
             )
         } else {
             val highlighted = highlight?.let { cellAt(visible, it) }
-            var cursor = windowStart
+            var cursor = span.start
             visible.forEachIndexed { i, p ->
-                val start = maxOf(p.startMs, windowStart)
-                if (start > cursor) Spacer(Modifier.width(DpPerMinute * ((start - cursor) / 60_000f)))
-                val end = minOf(p.stopMs, windowEnd)
+                val start = maxOf(p.startMs, span.start)
+                if (start > cursor) Spacer(Modifier.width(span.width(start - cursor)))
+                val end = minOf(p.stopMs, span.end)
                 Cell(
-                    DpPerMinute * ((end - start) / 60_000f),
+                    span.width(end - start),
                     p.isLive(now),
                     i == highlighted,
                     cellTitle(ch, p, now, noGuide = null),
@@ -664,6 +692,10 @@ internal class GuideWindow(
     var start by mutableLongStateOf(anchor)
         private set
 
+    /** How long it is: the half hours the screen has room for (set as the grid is laid out, see [span]). */
+    var length = MAX_HALF_HOURS * HALF_HOUR
+    val end get() = start + length
+
     /**
      * Before "now" as of the last move: past programmes of catch-up channels are then fetched from the provider. Time
      * passing doesn't count (the guide left open past the half hour mustn't start asking the provider).
@@ -687,7 +719,7 @@ internal class GuideWindow(
             }
             return true
         }
-        val (next, target) = nextWindow(start, dir, p, catchup.days ?: 0) ?: return false
+        val (next, target) = nextWindow(start, length, dir, p, catchup.days ?: 0) ?: return false
         anchor = now() / HALF_HOUR * HALF_HOUR
         start = next
         then(target)
@@ -761,14 +793,14 @@ internal class GuideCatchup(private val c: AppContainer, private val scope: Coro
  * The window after moving past its edge from [p] in direction [dir]: at least an hour, and far enough to show the
  * time just beyond [p]; with the time focus goes to. Null at the limits (now minus [catchupDays], three days ahead).
  */
-private fun nextWindow(windowStart: Long, dir: Int, p: ChannelProgramme?, catchupDays: Int): Pair<Long, Long>? {
-    val target = if (dir > 0) p?.stopMs ?: (windowStart + WINDOW_MS) else (p?.startMs ?: windowStart) - 1
+private fun nextWindow(windowStart: Long, length: Long, dir: Int, p: ChannelProgramme?, catchupDays: Int): Pair<Long, Long>? {
+    val target = if (dir > 0) p?.stopMs ?: (windowStart + length) else (p?.startMs ?: windowStart) - 1
     val wanted = if (dir > 0) {
-        maxOf(windowStart + HOUR, target / HALF_HOUR * HALF_HOUR - WINDOW_MS + HALF_HOUR)
+        maxOf(windowStart + HOUR, target / HALF_HOUR * HALF_HOUR - length + HALF_HOUR)
     } else {
         minOf(windowStart - HOUR, target / HALF_HOUR * HALF_HOUR)
     }
     val now = System.currentTimeMillis() / HALF_HOUR * HALF_HOUR
     val next = wanted.coerceIn(now - catchupDays * DAY_MS, now + 3 * DAY_MS)
-    return if (next == windowStart) null else next to target.coerceIn(next, next + WINDOW_MS - 1)
+    return if (next == windowStart) null else next to target.coerceIn(next, next + length - 1)
 }

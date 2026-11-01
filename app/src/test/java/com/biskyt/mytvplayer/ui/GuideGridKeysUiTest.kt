@@ -6,6 +6,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasAnyChild
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onRoot
@@ -92,6 +93,14 @@ class GuideGridKeysUiTest {
         (compose.focusedText() == text).also { if (!it) press(key) }
     }
 
+    /** The programme [title] is on the screen in full (not cut off at its edge): the highlight on it can be seen. */
+    private fun assertOnScreen(title: String) {
+        compose.settle()
+        val cell = compose.onNode(hasAnyChild(hasText(title)) and hasClickAction()).fetchSemanticsNode()
+        val shown = cell.boundsInRoot.width
+        assertTrue("$title: $shown of its ${cell.size.width} shown", cell.size.width > 0 && shown >= cell.size.width - 1)
+    }
+
     /** A remote button held down: the key and [repeats] repeats, as fast as a remote sends them (no frame between). */
     private fun hold(code: Int, repeats: Int) {
         for (r in 0..repeats) compose.topRoot().performKeyPress(KeyEvent(NativeKeyEvent(0, 0, NativeKeyEvent.ACTION_DOWN, code, r)))
@@ -124,7 +133,11 @@ class GuideGridKeysUiTest {
         press(Key.DirectionDown)
         compose.waitAdvancingClock(50) { compose.focusedText() == "Now on c3.uk" }
         pressUntil(Key.DirectionRight, "Next on c3.uk")
-        for (k in 1..12) pressUntil(Key.DirectionRight, "Later $k on c3.uk")
+        assertOnScreen("Next on c3.uk")
+        for (k in 1..12) {
+            pressUntil(Key.DirectionRight, "Later $k on c3.uk")
+            assertOnScreen("Later $k on c3.uk")
+        }
         // Back to the start, one programme at a time, without leaving the row.
         for (k in 11 downTo 1) pressUntil(Key.DirectionLeft, "Later $k on c3.uk")
         pressUntil(Key.DirectionLeft, "Next on c3.uk")
