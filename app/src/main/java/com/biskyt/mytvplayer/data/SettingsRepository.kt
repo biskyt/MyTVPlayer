@@ -39,7 +39,9 @@ data class Settings(
     val zapWithUpDown: Boolean = false,
     val lastChannelId: Long = 0,
     val accent: Int = AccentPalette.DEFAULT,
-    val largeText: Boolean = false
+    val largeText: Boolean = false,
+    /** Show in the top bar whether Android reports a VPN (see VpnMonitor). */
+    val warnVpn: Boolean = false
 ) {
     val effectiveSubtitleLanguage: String get() = subtitleLanguage.ifEmpty { Locale.getDefault().language }
 }
@@ -61,6 +63,7 @@ class SettingsRepository(private val context: Context) {
         val lastChannel = longPreferencesKey("last_channel")
         val accent = intPreferencesKey("accent")
         val largeText = booleanPreferencesKey("large_text")
+        val warnVpn = booleanPreferencesKey("warn_vpn")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { it.toSettings() }.distinctUntilChanged()
@@ -111,6 +114,7 @@ class SettingsRepository(private val context: Context) {
             lastChannelId = this[K.lastChannel] ?: d.lastChannelId,
             accent = this[K.accent] ?: d.accent,
             largeText = this[K.largeText] ?: d.largeText,
+            warnVpn = this[K.warnVpn] ?: d.warnVpn,
         )
     }
 
@@ -132,6 +136,7 @@ class SettingsRepository(private val context: Context) {
             prefs[K.lastChannel] = s.lastChannelId
             prefs[K.accent] = s.accent
             prefs[K.largeText] = s.largeText
+            prefs[K.warnVpn] = s.warnVpn
         }
     }
 

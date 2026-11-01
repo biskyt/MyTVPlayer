@@ -89,4 +89,6 @@
     <string name="common_move">Mover</string>
     <string name="common_move_hint">%1$s para moverlo, OK para guardar, Atrás para cancelar</string>
     <string name="common_move_hint_touch">Toca las flechas para moverlo, tócalo para dejarlo ahí, Atrás para cancelar</string>
+    <string name="common_vpn_on">VPN activa</string>
+    <string name="common_vpn_off">VPN no conectada</string>
 </resources>

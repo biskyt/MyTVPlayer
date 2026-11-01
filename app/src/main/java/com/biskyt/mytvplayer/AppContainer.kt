@@ -33,6 +33,7 @@ import com.biskyt.mytvplayer.data.SearchRepository
 import com.biskyt.mytvplayer.data.SettingsRepository
 import com.biskyt.mytvplayer.data.SyncManager
 import com.biskyt.mytvplayer.data.VodRepository
+import com.biskyt.mytvplayer.data.VpnMonitor
 import com.biskyt.mytvplayer.data.db.AppDatabase
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
@@ -72,6 +73,7 @@ class AppContainer(context: Context) {
     val search = SearchRepository(db)
     val catchup = CatchupRepository(playlists)
     val sync = SyncManager(appScope, playlists, vod, epg, settings)
+    val vpn = VpnMonitor(context, appScope)
     val backup = BackupRepository(db, settings, epg, sync)
     val backupFile = BackupFile(context)
     val crashLog = CrashLog(context.filesDir, BuildConfig.VERSION_NAME)

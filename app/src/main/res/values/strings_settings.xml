@@ -243,4 +243,6 @@
     <string name="settings_playlist_save">Save</string>
     <string name="settings_playlist_test">Test connection</string>
     <string name="settings_playlist_delete">Delete playlist</string>
+    <string name="settings_warn_vpn">Warn if VPN is not connected</string>
+    <string name="settings_warn_vpn_help">Shows in the top bar whether Android reports a VPN on this device. A VPN set up on your router or on another device cannot be detected.</string>
 </resources>

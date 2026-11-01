@@ -109,6 +109,7 @@ fun TopBar(selected: Tab?) {
             )
         }
         Box(Modifier.weight(1f))
+        if (settings?.warnVpn == true) VpnBadge()
         Clock()
         IconPill(AppIcons.Search, stringResource(R.string.common_search)) { nav.open(Screen.Search()) }
         IconPill(AppIcons.Settings, stringResource(R.string.common_settings)) { nav.open(Screen.Settings) }
@@ -125,6 +126,36 @@ fun TopBar(selected: Tab?) {
                 }
             }
         }
+    }
+}
+
+/** Whether a VPN is connected (setting "Warn if VPN is not connected"): quiet when it is, a warning when not. */
+@Composable
+private fun VpnBadge() {
+    val container = LocalContext.current.container
+    val connected by container.vpn.connected.collectAsState()
+    val accent = LocalAccent.current.color
+    val (background, text, icon) = if (connected) {
+        Triple(Palette.surface, Palette.textMuted, accent)
+    } else {
+        Triple(Palette.warning, Palette.background, Palette.background)
+    }
+    Row(
+        Modifier.clip(RoundedCornerShape(50)).background(background).padding(start = 10.dp, end = 14.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            AppIcons.Shield,
+            contentDescription = null,
+            tint = icon,
+            modifier = Modifier.size(20.dp)
+        )
+        Text(
+            stringResource(if (connected) R.string.common_vpn_on else R.string.common_vpn_off),
+            style = MaterialTheme.typography.labelMedium,
+            color = text,
+            modifier = Modifier.padding(start = 6.dp)
+        )
     }
 }
 
