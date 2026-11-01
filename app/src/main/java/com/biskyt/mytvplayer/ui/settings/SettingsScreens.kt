@@ -115,6 +115,7 @@ fun SettingsScreen() {
                 nav.push(Screen.Appearance)
             })
         }
+        item { VpnWarningRow() }
         item {
             SettingRow(stringResource(R.string.settings_backup_title), stringResource(R.string.settings_backup_help), {
                 nav.push(Screen.Backup)
@@ -126,6 +127,16 @@ fun SettingsScreen() {
         }
         item { SupportSection() }
     }
+}
+
+/** "Warn if VPN is not connected" (see VpnMonitor): shown in the top bar. */
+@Composable
+private fun VpnWarningRow() {
+    val vm = appViewModel { SettingsViewModel(it) }
+    val on = vm.settings.collectAsState().value?.warnVpn ?: return
+    SettingRow(stringResource(R.string.settings_warn_vpn), stringResource(R.string.settings_warn_vpn_help), {
+        vm.update { it.copy(warnVpn = !it.warnVpn) }
+    }) { Toggle(on) }
 }
 
 @Composable
@@ -279,9 +290,6 @@ fun AppearanceScreen() {
         SettingRow(stringResource(R.string.settings_large_text), stringResource(R.string.settings_large_text_help), {
             vm.update { it.copy(largeText = !it.largeText) }
         }) { Toggle(s.largeText) }
-        SettingRow(stringResource(R.string.settings_warn_vpn), stringResource(R.string.settings_warn_vpn_help), {
-            vm.update { it.copy(warnVpn = !it.warnVpn) }
-        }) { Toggle(s.warnVpn) }
     }
 }
 

@@ -3,7 +3,12 @@ package com.biskyt.mytvplayer.ui
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.compose.runtime.remember
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.testutil.FakeProvider
 import com.biskyt.mytvplayer.testutil.Navigators
@@ -89,6 +94,17 @@ class VpnBadgeUiTest {
         network(vpn = true)
         compose.waitForText("VPN on")
         network(vpn = null)
+        compose.waitForText("VPN not connected")
+    }
+
+    @Test
+    fun `the setting is in the main settings list`() {
+        val navigator = navigators.new(Screen.Settings)
+        compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
+        compose.waitForText("Playlists")
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Warn if VPN is not connected"))
+        compose.onNode(hasText("Warn if VPN is not connected") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitAdvancingClock { runBlocking { app.container.settings.current().warnVpn } }
         compose.waitForText("VPN not connected")
     }
 }
