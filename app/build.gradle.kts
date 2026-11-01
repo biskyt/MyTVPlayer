@@ -13,10 +13,10 @@ android {
 
     defaultConfig {
         applicationId = "com.biskyt.mytvplayer"
-        minSdk = 28
+        minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = 36
-        versionCode = 74
-        versionName = "1.8.18"
+        versionCode = 75
+        versionName = "1.8.19"
         ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a") }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

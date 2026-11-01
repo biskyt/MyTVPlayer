@@ -82,7 +82,8 @@ private fun yearOf(date: String?): Int? = date?.let { yearPattern.find(it)?.valu
  */
 private fun dateOf(text: String?): LocalDate? = text?.trim()?.let(isoDate::find)?.takeIf { it.range.first == 0 }
     ?.let { runCatching { LocalDate.parse(it.value) }.getOrNull() } // a day that doesn't exist ("2023-02-30")
-    ?.takeIf { it != LocalDate.EPOCH }
+    // Not LocalDate.EPOCH: Android added that only in API 34, and it crashed series pages on older TVs (issue 94).
+    ?.takeIf { it.toEpochDay() != 0L }
 
 private val isoDate = Regex("""\d{4}-\d{2}-\d{2}""")
 
