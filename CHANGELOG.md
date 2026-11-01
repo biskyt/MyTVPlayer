@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.8.17
+- "Warn if VPN is not connected" is now in the main Settings list, not in Appearance.
+
 ## 1.8.16
 - A new setting in Appearance, "Warn if VPN is not connected", shows in the top bar whether Android reports a VPN on the device.
 
