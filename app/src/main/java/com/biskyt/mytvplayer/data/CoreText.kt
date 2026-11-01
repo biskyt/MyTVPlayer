@@ -62,6 +62,7 @@ internal val groupLabels: Map<String, Int> = mapOf(
     "LAT" to R.string.data_lang_lat, "MX" to R.string.data_lang_mx, "AF" to R.string.data_lang_af,
     "CN" to R.string.data_lang_cn, "KR" to R.string.data_lang_kr, "JP" to R.string.data_lang_jp,
     CategoryLanguageDetector.GLOBAL to R.string.data_lang_global, CategoryLanguageDetector.NORDIC to R.string.data_lang_nordic,
+    CategoryLanguageDetector.ADULT to R.string.data_lang_adult,
 )
 
 /** The name of an accent colour offered in Settings (an AccentPalette.Preset id). */

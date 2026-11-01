@@ -93,6 +93,35 @@ class RepositoriesTest {
     }
 
     @Test
+    fun `adult sections are an Adult group, never chosen to start with, in live TV, films and series`() = runBlocking {
+        provider.categories += listOf("5" to "18: FOR ADULTS [1080p]", "6" to "UK | XXX")
+        provider.movieCategories += listOf("13" to "GLOBAL: FOR ADULTS [1080p]", "14" to "ADULT MOVIES")
+        provider.seriesCategories += listOf("22" to "Adults 18+")
+        val id = addPlaylist()
+        vod.sync(playlists.get(id)!!)
+        val adult = listOf(CAT_LIVE to "5", CAT_LIVE to "6", CAT_MOVIE to "13", CAT_MOVIE to "14", CAT_SERIES to "22").map { (type, cat) ->
+            db.categories().all(id, type).single { it.categoryId == cat }
+        }
+        assertEquals(List(5) { "ADULT" to false }, adult.map { it.lang to it.included })
+    }
+
+    @Test
+    fun `an adult section included by default before 1_8_18 is left out once, then as the user chooses`() = runBlocking {
+        provider.movieCategories += listOf("13" to "GLOBAL: FOR ADULTS [1080p]")
+        val id = addPlaylist()
+        // As 1.8.17 stored it: a Global film section, included by default.
+        db.openHelper.writableDatabase.execSQL("UPDATE category SET lang = 'GLOBAL' WHERE playlistId = $id AND categoryId = '13'")
+        db.categories().setIncluded(id, CAT_MOVIE, listOf("13"), true)
+        vod.sync(playlists.get(id)!!)
+        suspend fun adult() = db.categories().all(id, CAT_MOVIE).single { it.categoryId == "13" }
+        assertEquals("ADULT" to false, adult().lang to adult().included)
+        // Chosen again, it stays chosen.
+        db.categories().setIncluded(id, CAT_MOVIE, listOf("13"), true)
+        vod.sync(playlists.get(id)!!)
+        assertTrue(adult().included)
+    }
+
+    @Test
     fun `a new playlist's Global sections are chosen too, and Canada's and Nordic ones are named`() = runBlocking {
         provider.categories +=
             listOf("5" to "GLOBAL: [24/7] MOVIES", "6" to "CAN: LOCALS", "7" to "SCAN: NORDIC KIDS", "8" to "SPT: BOXING")

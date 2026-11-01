@@ -67,6 +67,7 @@
     <string name="data_lang_jp">Japonês</string>
     <string name="data_lang_global">Global</string>
     <string name="data_lang_nordic">Nórdico</string>
+    <string name="data_lang_adult">Adulto</string>
     <string name="data_lang_other">Outros</string>
 
     <string name="data_accent_mint">Menta</string>

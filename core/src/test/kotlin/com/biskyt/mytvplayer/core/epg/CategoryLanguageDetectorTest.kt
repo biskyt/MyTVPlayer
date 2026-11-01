@@ -1,6 +1,7 @@
 package com.biskyt.mytvplayer.core.epg
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -38,7 +39,6 @@ class CategoryLanguageDetectorTest {
             "HR: HORSE RACING [1080p]",
             "MU: MUSIC CONCERTS [1080p]",
             "SPT: SPORT UFC [1080p]",
-            "18: FOR ADULTS [1080p]",
             "KO: KBS [1080p]",
         ).forEach { assertNull(it, CategoryLanguageDetector.detect(it)) }
     }
@@ -49,5 +49,28 @@ class CategoryLanguageDetectorTest {
         assertNull(CategoryLanguageDetector.detectAsBefore("GLOBAL: MOVIES"))
         assertNull(CategoryLanguageDetector.detectAsBefore("Tamil Movies"))
         assertEquals("UK", CategoryLanguageDetector.detectAsBefore("UK | NEWS"))
+    }
+
+    @Test
+    fun `adult sections are Adult, whatever their language`() {
+        listOf(
+            "18: FOR ADULTS [1080p]", "GLOBAL: FOR ADULTS [1080p]", "UK | XXX", "Adult Movies", "Adults 18+", "|EN| PORN",
+            "LAT | +18 ADULTOS", "FR: ADULTES", "DE: ERWACHSENE",
+        )
+            .forEach { assertEquals(it, "ADULT", CategoryLanguageDetector.detect(it)) }
+        // Not words that only contain them, nor an 18 that isn't a section code.
+        listOf(
+            "UK: ADULTSWIM",
+            "UK | 18 TO PARTY",
+            "FR: XXXL SPORT",
+            "US | ADULT SWIM",
+            "Adult Animation",
+            "Young Adult Books",
+            "UK | MOVIES 2018+",
+        ).forEach {
+            assertNotEquals(it, "ADULT", CategoryLanguageDetector.detect(it))
+        }
+        // M3U ids keep the old rules.
+        assertNull(CategoryLanguageDetector.detectAsBefore("18: FOR ADULTS"))
     }
 }

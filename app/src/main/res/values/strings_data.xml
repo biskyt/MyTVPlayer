@@ -87,6 +87,7 @@
     <string name="data_lang_jp">Japanese</string>
     <string name="data_lang_global">Global</string>
     <string name="data_lang_nordic">Nordic</string>
+    <string name="data_lang_adult">Adult</string>
     <!-- Categories with no language or country. -->
     <string name="data_lang_other">Other</string>
 
