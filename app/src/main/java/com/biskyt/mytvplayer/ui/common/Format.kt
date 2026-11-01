@@ -7,8 +7,10 @@ import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
 import java.text.DateFormat
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.time.temporal.ChronoUnit
 import java.util.Date
 import java.util.Locale
@@ -22,6 +24,9 @@ fun formatDateTime(epochMs: Long): String =
 
 /** A date written out in the app's language, e.g. "12 Mar 2027". */
 fun formatDate(epochMs: Long): String = DateFormat.getDateInstance(DateFormat.MEDIUM, AppText.locale).format(Date(epochMs))
+
+/** A calendar day written out in the app's language, e.g. "12 Mar 2027". */
+fun formatDate(date: LocalDate): String = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(AppText.locale).format(date)
 
 /** A language's name in the app's language, as a label ("fr" → "French", "Français" → "Anglais"), or [tag] when unknown. */
 fun displayLanguage(tag: String): String =

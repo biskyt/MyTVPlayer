@@ -84,9 +84,9 @@ class FakeProvider(private val now: Long = System.currentTimeMillis()) : Dispatc
     var seriesInfo: (String) -> String = {
         """{"seasons":[{"season_number":1,"name":"Series 1"},{"season_number":2,"name":"Series 2"}],
            "info":{"plot":"Anti-corruption.","genre":"Crime","episode_run_time":"60"},
-           "episodes":{"1":[{"id":"9001","episode_num":1,"title":"Episode 1","container_extension":"mkv","season":1,"info":{"plot":"First.","duration_secs":3600}},
+           "episodes":{"1":[{"id":"9001","episode_num":1,"title":"Episode 1","container_extension":"mkv","season":1,"info":{"plot":"First.","air_date":"2014-06-26","duration_secs":3600}},
                             {"id":"9002","episode_num":2,"title":"Episode 2","container_extension":"mkv","season":1,"info":{"duration_secs":3500}}],
-                       "2":[{"id":"9003","episode_num":1,"title":"Episode 1","container_extension":"mp4","season":2}]}}"""
+                       "2":[{"id":"9003","episode_num":1,"title":"Episode 1","container_extension":"mp4","season":2,"info":{"releasedate":"2014-07-03"}}]}}"""
     }
 
     /**

@@ -75,7 +75,7 @@
     <string name="player_error_http_server">Le serveur du flux rencontre un problème (erreur %1$d). Il est peut-être hors service pour le moment.</string>
     <string name="player_error_http_other">Le serveur du flux a répondu avec l\'erreur %1$d.</string>
     <string name="player_about_programme">À propos de ce programme</string>
-    <string name="player_description">Description</string>
+    <string name="player_description">Description de l\'épisode</string>
     <string name="player_stream_info">Infos sur le flux</string>
     <string name="player_info_address">Adresse : %1$s</string>
     <string name="player_info_video">Vidéo : %1$s</string>

@@ -61,7 +61,9 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         val itemId: Long,
         val title: String,
         val imageUrl: String?,
-        val episode: EpisodeInfo? = null
+        val episode: EpisodeInfo? = null,
+        /** The show of [episode] (null when no longer listed). */
+        val show: String? = null
     )
 
     /** The movie, or the series of the episode: what "Add to favourites" applies to. */
@@ -70,10 +72,10 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
     private val favouriteId = series ?: screen.itemId
     private var favourite by mutableStateOf(false)
 
-    override val description: String? get() = current?.episode?.plot
+    override val described: DescribedEpisode? get() = current?.let { p -> p.episode?.let { DescribedEpisode(p.show, it) } }
 
     override fun menuActions(): List<ItemAction> = listOfNotNull(
-        description?.let { ItemAction.Run(appString(R.string.player_description)) { sheet = Sheet.DESCRIPTION } },
+        current?.episode?.let { episodeDescriptionAction(it) { sheet = Sheet.DESCRIPTION } },
         ItemAction.Run(favouriteLabel(favourite)) {
             val add = !favourite
             viewModelScope.launch {
@@ -135,7 +137,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         subtitle = episodeLabel(e)
         nextEpisode = episodes.getOrNull(index + 1)
         // Saved for Carry on watching: the provider's words only, never the app's (they'd stay in today's language).
-        val playing = Playing(VOD_EPISODE, e.id, show?.title ?: e.title, show?.coverUrl ?: e.imageUrl, e)
+        val playing = Playing(VOD_EPISODE, e.id, show?.title ?: e.title, show?.coverUrl ?: e.imageUrl, e, show?.title)
         play(p, playing, c.vod.episodeUrl(p, e.id, e.extension), fromStart)
     }
 

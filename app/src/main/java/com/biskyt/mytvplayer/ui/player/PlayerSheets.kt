@@ -161,9 +161,9 @@ fun PlayerSheet(sheet: PlaybackViewModel.Sheet, vm: PlaybackViewModel) {
                     // Focusable, so the remote's keys (Back, play/pause) reach the panel.
                     item { Column(first.focusable()) { ProgrammeAbout(p, maxLines = 18) } }
                 }
-                PlaybackViewModel.Sheet.DESCRIPTION -> vm.description?.let { text ->
-                    item { Header(stringResource(R.string.player_description), null) }
-                    item { Column(first.focusable()) { Muted(text, maxLines = 18) } }
+                PlaybackViewModel.Sheet.DESCRIPTION -> vm.described?.let { d ->
+                    // Focusable, so the remote's keys (Back, play/pause) reach the panel.
+                    item { EpisodeDescription(d, first.focusable()) }
                 }
             }
         }

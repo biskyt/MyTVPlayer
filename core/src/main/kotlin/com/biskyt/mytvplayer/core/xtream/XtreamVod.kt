@@ -1,5 +1,6 @@
 package com.biskyt.mytvplayer.core.xtream
 
+import java.time.LocalDate
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -54,7 +55,9 @@ data class EpisodeInfo(
     val extension: String,
     val plot: String?,
     val durationSec: Int?,
-    val imageUrl: String?
+    val imageUrl: String?,
+    /** When it was first shown, if the provider says. */
+    val airDate: LocalDate? = null
 )
 
 data class SeriesDetails(val info: VodDetails, val seasons: List<SeasonInfo>, val episodes: List<EpisodeInfo>)
@@ -72,6 +75,16 @@ private fun JsonObject.firstUrl(key: String): String? = when (val v = this[key])
 private val yearPattern = Regex("""(19|20)\d{2}""")
 
 private fun yearOf(date: String?): Int? = date?.let { yearPattern.find(it)?.value?.toInt() }
+
+/**
+ * A date such as "2023-01-15" (or "2023-01-15 21:00:00"); null when it isn't one, or is 1 January 1970 (some panels'
+ * placeholder for none).
+ */
+private fun dateOf(text: String?): LocalDate? = text?.trim()?.let(isoDate::find)?.takeIf { it.range.first == 0 }
+    ?.let { runCatching { LocalDate.parse(it.value) }.getOrNull() } // a day that doesn't exist ("2023-02-30")
+    ?.takeIf { it != LocalDate.EPOCH }
+
+private val isoDate = Regex("""\d{4}-\d{2}-\d{2}""")
 
 internal fun JsonElement.toMovie(): XtreamMovie? {
     val o = this as? JsonObject ?: return null
@@ -153,7 +166,8 @@ internal fun JsonElement.toSeriesDetails(): SeriesDetails? {
             extension = e.str("container_extension") ?: "mp4",
             plot = info?.str("plot"),
             durationSec = info?.int("duration_secs"),
-            imageUrl = info?.str("movie_image")
+            imageUrl = info?.str("movie_image"),
+            airDate = dateOf(info?.str("air_date")) ?: dateOf(info?.str("releasedate"))
         )
     }.sortedWith(compareBy({ it.season }, { it.number }))
     // Some panels list no seasons, only episodes: derive them.
