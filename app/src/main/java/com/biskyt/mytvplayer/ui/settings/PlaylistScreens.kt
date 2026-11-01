@@ -62,8 +62,10 @@ class PlaylistsViewModel(private val c: AppContainer) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList<PlaylistEntity>() to 0L)
 
     fun activate(p: PlaylistEntity, then: () -> Unit) = viewModelScope.launch {
-        c.settings.update { it.copy(activePlaylistId = p.id) }
-        if (p.isStale()) c.sync.refresh(p.id)
+        if (p.id != state.value.second) {
+            c.settings.update { it.copy(activePlaylistId = p.id) }
+            c.sync.switchTo(p.id)
+        }
         then()
     }
 
@@ -155,7 +157,8 @@ fun PlaylistsScreen() {
                         }
                     }
                 }
-                PillButton(stringResource(R.string.settings_playlist_update_now), { vm.update(p) })
+                // Only the playlist in use is updated (see SyncManager).
+                if (isActive) PillButton(stringResource(R.string.settings_playlist_update_now), { vm.update(p) })
                 PillButton(stringResource(R.string.settings_playlist_edit), { nav.push(Screen.PlaylistEdit(p.id)) })
             }
         }

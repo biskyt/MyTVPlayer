@@ -1,7 +1,10 @@
 package com.biskyt.mytvplayer.ui
 
 import androidx.compose.runtime.remember
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.data.db.VOD_EPISODE
 import com.biskyt.mytvplayer.data.db.VOD_MOVIE
@@ -11,7 +14,10 @@ import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.addHomeTv
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
+import com.biskyt.mytvplayer.testutil.focusedText
+import com.biskyt.mytvplayer.testutil.settle
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
+import com.biskyt.mytvplayer.testutil.waitForText
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -94,5 +100,20 @@ class HomeCarryOnUiTest {
         compose.waitAdvancingClock(50) { compose.onAllNodes(hasText("S1E2 22m")).fetchSemanticsNodes().isNotEmpty() }
         assertEquals(0, compose.onAllNodes(hasText("Second", substring = true)).fetchSemanticsNodes().size)
         assertTrue(compose.onAllNodes(hasText("1h 30m")).fetchSemanticsNodes().isNotEmpty())
+    }
+
+    @Test
+    fun `Home opens on the first card of Carry on watching, and focus stays in the row when a card is removed`() {
+        val navigator = navigators.new(Screen.Home)
+        compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
+        // The newest first: the episode, then the film.
+        compose.waitAdvancingClock(50) { compose.focusedText().contains("Line of Duty") }
+        compose.onNode(hasText("Line of Duty") and hasClickAction()).performSemanticsAction(SemanticsActions.OnLongClick)
+        compose.waitForText("Remove from Carry on watching")
+        compose.onNode(hasText("Remove from Carry on watching") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
+        // The card now in its place, not the row below.
+        compose.waitAdvancingClock(50) { compose.focusedText().contains("Dune") }
+        compose.settle()
+        assertTrue(compose.focusedText(), compose.focusedText().contains("Dune"))
     }
 }

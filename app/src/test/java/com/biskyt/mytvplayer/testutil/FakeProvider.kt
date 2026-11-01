@@ -33,6 +33,9 @@ class FakeProvider(private val now: Long = System.currentTimeMillis()) : Dispatc
     /** How long a series' details (get_series_info) take to arrive. */
     var seriesInfoDelayMs = 0L
 
+    /** How long the channel list (get_live_streams) takes to arrive. Under 5 s: [close] waits that long at most. */
+    var streamsDelayMs = 0L
+
     data class Stream(
         val id: Long,
         val num: Int,
@@ -196,7 +199,7 @@ class FakeProvider(private val now: Long = System.currentTimeMillis()) : Dispatc
                             """"stream_icon":"${it.logo}","epg_channel_id":${it.epgId?.let { e -> "\"$e\"" } ?: "null"},""" +
                             """"tv_archive":${if (it.archiveDays > 0) 1 else 0},"tv_archive_duration":"${it.archiveDays}"}"""
                     },
-                )
+                ).setBodyDelay(streamsDelayMs, java.util.concurrent.TimeUnit.MILLISECONDS)
             }
             url.queryParameter("action") == "get_simple_data_table" ->
                 MockResponse().setBody(catchupListing()).setBodyDelay(catchupDelayMs, java.util.concurrent.TimeUnit.MILLISECONDS)

@@ -127,7 +127,7 @@ open class MyTvApp : Application(), SingletonImageLoader.Factory {
 
 val Context.container: AppContainer get() = (applicationContext as MyTvApp).container
 
-/** Daily refresh of every playlist's channels and the TV guide. */
+/** Daily refresh of the playlist in use: its channels, films and series, and its TV guide. */
 class RefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val c = applicationContext.container

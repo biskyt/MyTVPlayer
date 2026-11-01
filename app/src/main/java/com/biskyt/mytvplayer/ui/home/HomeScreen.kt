@@ -9,11 +9,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -21,6 +22,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -112,9 +115,10 @@ class HomeViewModel(private val c: AppContainer) : ViewModel() {
         c.vod.setFavourite(playlistId.value, type, id, favourite)
     }
 
+    /** Null until read: Home's first focus waits for it (the row comes first). */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val carryOn = activePlaylist.flatMapLatest { c.vod.observeCarryOn(it) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val carryOn: StateFlow<List<WatchProgressEntity>?> = activePlaylist.flatMapLatest { c.vod.observeCarryOn(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Which channels, movies and series are favourites, for their options. */
     val favouriteSets = c.favourites
@@ -137,28 +141,22 @@ fun HomeScreen() {
     val nav = LocalNavigator.current
     val favourites by vm.favourites.collectAsState()
     val recent by vm.recent.collectAsState()
-    val carryOn by vm.carryOn.collectAsState()
+    val carryOnRead by vm.carryOn.collectAsState()
+    val carryOn = carryOnRead.orEmpty()
     // States, read where used: shown() below must see a row change after its card is taken off.
     val favouriteVod = VOD_TYPES.associateWith { vm.favouriteVod.getValue(it).collectAsState() }
     val pid = vm.playlistId.collectAsState().value
-    // Again after a card is taken off its row (focus would otherwise go with it): back to the first card.
-    var refocus by remember { mutableIntStateOf(0) }
-    val first = rememberFirstFocus((favourites != null) to refocus)
+    // On the first card of the first row, once the rows are read.
+    val first = rememberFirstFocus(favourites != null && carryOnRead != null)
+    // After a card is taken off its row (focus would otherwise go with it): see Refocus.
+    var refocus by remember { mutableStateOf<Refocus?>(null) }
+    val again = remember { FocusRequester() }
+    LaunchedEffect(refocus) { if (refocus != null) runCatching { again.requestFocus() } }
     var options by remember { mutableStateOf<HomeTile?>(null) }
     val scope = rememberCoroutineScope()
-    fun shown(tile: HomeTile) = when (tile) {
-        is HomeTile.Channel -> (
-            if (tile.list ==
-                ChannelFilter.Recent
-            ) {
-                recent
-            } else {
-                favourites.orEmpty()
-            }
-            ).any { it.streamId == tile.ch.streamId }
-        is HomeTile.CarryOn -> carryOn.any { it.kind == tile.p.kind && it.itemId == tile.p.itemId }
-        is HomeTile.Vod -> favouriteVod.getValue(tile.type).value.any { it.id == tile.card.id }
-    }
+
+    // (Reads the states, so a change shows in a snapshotFlow.)
+    fun shown(tile: HomeTile) = tile.isIn(recent, favourites.orEmpty(), carryOnRead.orEmpty()) { favouriteVod.getValue(it).value }
 
     MoveBackHandler(vm.mover)
     TabScaffold(Tab.HOME) {
@@ -170,23 +168,33 @@ fun HomeScreen() {
                 item {
                     Column {
                         SectionTitle(stringResource(R.string.home_carry_on))
-                        CarryOnRow(carryOn, { options = HomeTile.CarryOn(it) }) {
+                        CarryOnRow(carryOn, first, refocus?.carryOn, again, { options = HomeTile.CarryOn(it) }) {
                             nav.push(Screen.VodPlayer(pid, it.itemId, it.seriesId, continueSeries = true))
                         }
                     }
                 }
             }
             item {
+                // The first row unless Carry on watching has cards.
+                val onTop = (if (carryOn.isEmpty()) first else Modifier).then(
+                    if (refocus?.carryOn ==
+                        null
+                    ) {
+                        Modifier.focusRequester(again)
+                    } else {
+                        Modifier
+                    }
+                )
                 Column {
                     SectionTitle(stringResource(R.string.home_on_now))
                     MoveHint(vm.mover, CAT_LIVE, MoveLayout.ROW)
                     val favs = favourites
                     when {
                         favs == null -> Unit
-                        favs.isEmpty() -> EmptyFavourites(first) { nav.reset(Screen.Live()) }
+                        favs.isEmpty() -> EmptyFavourites(onTop) { nav.reset(Screen.Live()) }
                         else -> ChannelCardRow(favs, vm.nowNext, {
                             options = HomeTile.Channel(it, ChannelFilter.Favourites)
-                        }, first, vm.mover) {
+                        }, onTop, vm.mover) {
                             nav.push(Screen.Player(pid, it.streamId, ChannelFilter.Favourites))
                         }
                     }
@@ -217,9 +225,36 @@ fun HomeScreen() {
     options?.let { tile ->
         TileOptions(tile, vm, pid) { removed ->
             options = null
-            if (removed) scope.launch { snapshotFlow { shown(tile) }.first { !it }.also { refocus++ } }
+            if (removed) {
+                val index = (tile as? HomeTile.CarryOn)?.let { t ->
+                    carryOn.indexOfFirst { it.kind == t.p.kind && it.itemId == t.p.itemId }
+                }
+                scope.launch {
+                    snapshotFlow { shown(tile) }.first { !it }
+                    val left = carryOnRead.orEmpty().size
+                    refocus = Refocus(if (index != null && left > 0) minOf(index, left - 1) else null)
+                }
+            }
         }
     }
+}
+
+/**
+ * Where focus goes after a card is taken off Home: the card now in its place on Carry on watching ([carryOn], its
+ * index), or else the first channel on now. Not a data class: each removal is a new one, so focus moves each time.
+ */
+private class Refocus(val carryOn: Int?)
+
+/** Whether this card is still on its row. */
+private fun HomeTile.isIn(
+    recent: List<ChannelEntity>,
+    favourites: List<ChannelEntity>,
+    carryOn: List<WatchProgressEntity>,
+    favouriteVod: (String) -> List<VodCard>
+): Boolean = when (this) {
+    is HomeTile.Channel -> (if (list == ChannelFilter.Recent) recent else favourites).any { it.streamId == ch.streamId }
+    is HomeTile.CarryOn -> carryOn.any { it.kind == p.kind && it.itemId == p.itemId }
+    is HomeTile.Vod -> favouriteVod(type).any { it.id == card.id }
 }
 
 /**
@@ -334,9 +369,21 @@ private fun ChannelCardRow(
 
 /** Movies and episodes part-watched (or the next episode up): a poster card each, with how much is left. */
 @Composable
-private fun CarryOnRow(items: List<WatchProgressEntity>, onOptions: (WatchProgressEntity) -> Unit, onPlay: (WatchProgressEntity) -> Unit) {
+private fun CarryOnRow(
+    items: List<WatchProgressEntity>,
+    /** The first card's (Home opens on it). */
+    first: Modifier,
+    /** The card focus goes to after one is taken off, by its place, and how it is focused. */
+    againAt: Int?,
+    again: FocusRequester,
+    onOptions: (WatchProgressEntity) -> Unit,
+    onPlay: (WatchProgressEntity) -> Unit
+) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-        items(items, key = { "${it.kind}${it.itemId}" }) { p -> CarryOnCard(p, Modifier, { onOptions(p) }) { onPlay(p) } }
+        itemsIndexed(items, key = { _, p -> "${p.kind}${p.itemId}" }) { i, p ->
+            val focus = (if (i == 0) first else Modifier).then(if (i == againAt) Modifier.focusRequester(again) else Modifier)
+            CarryOnCard(p, focus, { onOptions(p) }) { onPlay(p) }
+        }
     }
 }
 
