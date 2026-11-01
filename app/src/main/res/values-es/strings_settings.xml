@@ -178,4 +178,6 @@
     <string name="settings_playlist_save">Guardar</string>
     <string name="settings_playlist_test">Probar conexión</string>
     <string name="settings_playlist_delete">Borrar lista</string>
+    <string name="settings_warn_vpn">Avisar si la VPN no está conectada</string>
+    <string name="settings_warn_vpn_help">Muestra en la barra superior si Android indica una VPN en este dispositivo. No se puede detectar una VPN configurada en el router o en otro dispositivo.</string>
 </resources>

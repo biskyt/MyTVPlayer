@@ -279,6 +279,9 @@ fun AppearanceScreen() {
         SettingRow(stringResource(R.string.settings_large_text), stringResource(R.string.settings_large_text_help), {
             vm.update { it.copy(largeText = !it.largeText) }
         }) { Toggle(s.largeText) }
+        SettingRow(stringResource(R.string.settings_warn_vpn), stringResource(R.string.settings_warn_vpn_help), {
+            vm.update { it.copy(warnVpn = !it.warnVpn) }
+        }) { Toggle(s.warnVpn) }
     }
 }
 

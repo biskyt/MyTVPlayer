@@ -138,4 +138,6 @@
     <!-- While a favourite is moved. %1$s is the arrows that move it, e.g. "◀ ▶" -->
     <string name="common_move_hint">%1$s to move it, OK to save, Back to cancel</string>
     <string name="common_move_hint_touch">Tap the arrows to move it, tap it to keep it there, Back to cancel</string>
+    <string name="common_vpn_on">VPN on</string>
+    <string name="common_vpn_off">VPN not connected</string>
 </resources>

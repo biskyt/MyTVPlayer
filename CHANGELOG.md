@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.8.16
+- A new setting in Appearance, "Warn if VPN is not connected", shows in the top bar whether Android reports a VPN on the device.
+
 ## 1.8.15
 - Categories marked "GLOBAL" or "MULTI" now have their own "Global" language group, which is chosen by default with your own language.
 - More categories are filed under their country instead of "Other", for example Canada, New Zealand, Nordic, Czech, Hungarian, Israeli and Indian sections.

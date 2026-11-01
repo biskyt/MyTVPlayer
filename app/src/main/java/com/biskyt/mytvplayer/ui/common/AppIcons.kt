@@ -21,6 +21,15 @@ object AppIcons {
         }
     }.build()
 
+    val Shield = icon("shield", false) {
+        moveTo(12f, 3f)
+        lineTo(19f, 6f)
+        verticalLineTo(11f)
+        curveTo(19f, 15.5f, 16f, 19f, 12f, 21f)
+        curveTo(8f, 19f, 5f, 15.5f, 5f, 11f)
+        verticalLineTo(6f)
+        close()
+    }
     val Play = icon("play", true) {
         moveTo(7f, 5f)
         lineTo(19f, 12f)

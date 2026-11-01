@@ -178,4 +178,6 @@
     <string name="settings_playlist_save">Enregistrer</string>
     <string name="settings_playlist_test">Tester la connexion</string>
     <string name="settings_playlist_delete">Supprimer la playlist</string>
+    <string name="settings_warn_vpn">Avertir si le VPN n\'est pas connecté</string>
+    <string name="settings_warn_vpn_help">Indique dans la barre du haut si Android signale un VPN sur cet appareil. Un VPN configuré sur votre box ou sur un autre appareil ne peut pas être détecté.</string>
 </resources>
