@@ -18,7 +18,7 @@ import org.robolectric.annotation.Config
 class CoreTextTest {
     @Test
     fun `every language group has its heading`() {
-        assertEquals(CategoryLanguageDetector.groups, groupLabels.keys)
+        assertEquals(CategoryLanguageDetector.namedGroups, groupLabels.keys)
         assertEquals("English (UK)", groupLabel("UK"))
         assertEquals("English (Ireland)", groupLabel("IE"))
         assertEquals("Balkan", groupLabel("EXYU"))
