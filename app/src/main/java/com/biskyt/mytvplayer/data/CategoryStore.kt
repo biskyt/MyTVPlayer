@@ -59,7 +59,7 @@ class CategoryStore(private val db: AppDatabase, private val locale: () -> Local
                 categoryId = c.id,
                 name = c.name,
                 lang = langs[i],
-                included = old?.included ?: (!switchedOff && (isNew(i) || (vod && langs[i] == null))),
+                included = included(old, langs[i], !switchedOff && (isNew(i) || (vod && langs[i] == null))),
                 // An inherited place only once the old category has gone, so the two don't share it.
                 sortOrder = old?.takeIf { it.categoryId == c.id || it.categoryId !in remoteIds }?.sortOrder ?: (existing.size + i),
                 channelCount = old?.channelCount ?: 0,
@@ -94,6 +94,16 @@ class CategoryStore(private val db: AppDatabase, private val locale: () -> Local
             val detected = detectedGroup(c)
             (detected ?: genreGroup(c, groupByName)) in wanted || (allUndetected && detected == null)
         }
+    }
+
+    /**
+     * Whether a category is included: as chosen before ([old]), or else [byDefault]. Adult sections are never included by
+     * default; one that only now counts as adult (from 1.8.18) is left out once, as it may have been included by
+     * default before.
+     */
+    private fun included(old: CategoryEntity?, lang: String?, byDefault: Boolean): Boolean {
+        val adult = lang == CategoryLanguageDetector.ADULT
+        return old?.included?.takeUnless { adult && old.lang != lang } ?: (byDefault && !adult)
     }
 
     /**

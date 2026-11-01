@@ -62,7 +62,8 @@ object CategoryLanguageDetector {
     /** Whether [code] is a language/country code providers put in front of names ("EN", "UK", "FRA"…). */
     fun isLanguageCode(code: String): Boolean = code.uppercase().let { it in aliases || it in groups }
 
-    fun detect(categoryName: String): String? = detectIn(categoryName, more = true)
+    /** The category's group: [ADULT] for adult sections, whatever their language, else its language or country. */
+    fun detect(categoryName: String): String? = ADULT.takeIf { adult.containsMatchIn(categoryName) } ?: detectIn(categoryName, more = true)
 
     /**
      * [detect] as it was up to 1.8.14. M3U category ids are made with it (see M3uCategories), so a name it newly
@@ -84,12 +85,22 @@ object CategoryLanguageDetector {
             }
     }
 
-    /** Groups for "Global" and "Nordic" sections, named by the app as the others in [groups] are. */
+    /** Groups for "Global", "Nordic" and adult sections, named by the app as the others in [groups] are. */
     const val GLOBAL = "GLOBAL"
     const val NORDIC = "NORDIC"
 
+    /** Adult sections ("18: FOR ADULTS", "XXX MOVIES"): never chosen by default (see CategoryStore). */
+    const val ADULT = "ADULT"
+
     /** Every group the app names itself (others are country codes, named by their country). */
-    val namedGroups: Set<String> = groups + GLOBAL + NORDIC
+    val namedGroups: Set<String> = groups + GLOBAL + NORDIC + ADULT
+
+    // Whole words in the app's languages (not "Adult Swim", "Adult Animation" or "Young Adult": cartoons and books),
+    // "18+" or "+18" (not in "2018+"), or an "18" section code ("18: ...").
+    private val adult = Regex(
+        """(?i)(?<!young )\b(adults?|adultos|adultes|adulti|adulto|erwachsene|xxx|porn)\b(?! ?(swim|animation))""" +
+            """|\b18\s*\+|\+\s*18\b|^\W*18\s*[|:\-\]/)]"""
+    )
 
     /**
      * Since 1.8.15: more of the codes providers put in front of names. Only codes with one meaning in IPTV sections:

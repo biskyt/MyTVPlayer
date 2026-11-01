@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.8.18
+- Adult categories in live TV, films and series now have their own "Adult" group, which is never chosen by default (choose it again in Languages & categories if you want it).
+
 ## 1.8.17
 - "Warn if VPN is not connected" is now in the main Settings list, not in Appearance.
 
