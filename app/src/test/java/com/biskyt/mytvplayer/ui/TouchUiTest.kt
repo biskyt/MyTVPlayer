@@ -12,6 +12,7 @@ import androidx.compose.ui.test.printToString
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.data.ChannelFilter
 import com.biskyt.mytvplayer.testutil.FakeProvider
+import com.biskyt.mytvplayer.testutil.LocalMidday
 import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.addHomeTv
@@ -37,6 +38,8 @@ class TouchUiTest {
 
     @get:Rule(order = Navigators.ORDER)
     val navigators = Navigators()
+
+    @get:Rule val midday = LocalMidday() // at midnight the guide's header shows the day's name, not the time
 
     private val provider = FakeProvider()
     private val app = ApplicationProvider.getApplicationContext<TestApp>()
