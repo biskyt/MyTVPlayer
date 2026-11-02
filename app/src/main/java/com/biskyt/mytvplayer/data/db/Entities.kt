@@ -262,7 +262,9 @@ data class EpgSourceEntity(
     val enabled: Boolean = true,
     val lastImportAt: Long = 0,
     val channelCount: Int = 0,
-    val lastError: String? = null
+    val lastError: String? = null,
+    /** When the last programme of the channels matched to it ends, as of its last full import (0: not known). */
+    @ColumnInfo(defaultValue = "0") val programmesUntil: Long = 0
 )
 
 /** A guide switched on for a playlist: only its playlists' channels are matched to it, and it's updated only for them. */

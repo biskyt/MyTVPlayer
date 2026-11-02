@@ -60,6 +60,7 @@ import com.biskyt.mytvplayer.ui.common.AppIcons
 import com.biskyt.mytvplayer.ui.common.ChannelLogo
 import com.biskyt.mytvplayer.ui.common.FilterField
 import com.biskyt.mytvplayer.ui.common.Muted
+import com.biskyt.mytvplayer.ui.common.NowNext
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.SidePanel
 import com.biskyt.mytvplayer.ui.common.StatusPanel
@@ -70,7 +71,10 @@ import com.biskyt.mytvplayer.ui.common.WorkRunner
 import com.biskyt.mytvplayer.ui.common.WorkStatus
 import com.biskyt.mytvplayer.ui.common.formatCount
 import com.biskyt.mytvplayer.ui.common.formatDateTime
+import com.biskyt.mytvplayer.ui.common.formatRange
+import com.biskyt.mytvplayer.ui.common.guideNowNext
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
+import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.settings.SettingsPage
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
@@ -254,6 +258,7 @@ fun GuideSourcesScreen() {
                         Column(Modifier.weight(1f)) {
                             Text(s.name, style = MaterialTheme.typography.titleMedium)
                             Muted(sourceDetails(row, playlist))
+                            if (s.programmesUntil > 0) ProgrammesUntil(s.programmesUntil)
                             s.lastError?.let {
                                 Text(
                                     stringResource(R.string.live_guide_last_failed, GuideError.text(it)),
@@ -271,6 +276,18 @@ fun GuideSourcesScreen() {
         }
     }
     if (adding) AddGuidePanel(vm, sources.map { it.source }) { adding = false }
+}
+
+/** When a guide's programmes end, in the warning colour once that is past: the guide is out of date. */
+@Composable
+private fun ProgrammesUntil(untilMs: Long) {
+    val now by rememberMinuteClock()
+    Text(
+        stringResource(R.string.live_guide_programmes_until, formatDateTime(untilMs)),
+        style = MaterialTheme.typography.bodyMedium,
+        color = if (untilMs < now) Palette.warning else Palette.textMuted,
+        maxLines = 1
+    )
 }
 
 /** Adding a guide: a free one for a country (the TV's own first), or any XMLTV address. Closes once one is added. */
@@ -368,6 +385,9 @@ class GuideMatchingViewModel(private val c: AppContainer, private val playlistId
         private set
     var mapping by mutableStateOf<MappingInfo?>(null)
         private set
+
+    /** What is on the selected channel now, from the guide chosen for it (reloaded when the guide changes). */
+    val nowNext = guideNowNext(viewModelScope, c) { playlistId }
     var search by mutableStateOf("")
     var choices by mutableStateOf<List<GuideChoice>>(emptyList())
         private set
@@ -400,6 +420,7 @@ class GuideMatchingViewModel(private val c: AppContainer, private val playlistId
         selectJob?.cancel() // quick changes of channel must not show an earlier channel's suggestions
         selectJob = viewModelScope.launch {
             mapping = c.epg.mappingInfo(playlistId, listOf(ch.streamId)).firstOrNull()
+            nowNext.request(ch.streamId)
             choices = suggestionsFor(ch)
         }
     }
@@ -434,6 +455,8 @@ class GuideMatchingViewModel(private val c: AppContainer, private val playlistId
         viewModelScope.launch {
             block(ch)
             mapping = c.epg.mappingInfo(playlistId, listOf(ch.streamId)).firstOrNull()
+            // The new choice's programmes load shortly after (then the guide changes, and it reloads): until then, nothing.
+            nowNext.entries.remove(ch.streamId)
             busy = false
         }
     }
@@ -464,6 +487,7 @@ fun GuideMatchingScreen(playlistId: Long, streamId: Long?) {
     val counts by vm.counts.collectAsState()
     val filter by vm.filter.collectAsState()
     val items = vm.channels.collectAsLazyPagingItems()
+    vm.nowNext.PauseWhenHidden()
 
     Column(
         Modifier.fillMaxSize().padding(horizontal = 56.dp, vertical = 32.dp),
@@ -538,6 +562,26 @@ private fun StatusChip(row: MatchRow) {
     )
 }
 
+/** The guide chosen for the channel, and what is on now in it ([nowNext]: null until loaded). */
+@Composable
+private fun CurrentGuide(m: MappingInfo, nowNext: NowNext?) {
+    val name = (m.displayName ?: m.xmlId).toString()
+    val src = m.sourceName ?: ""
+    Muted(
+        if (m.offsetMinutes == 0) {
+            stringResource(R.string.live_guide_current, name, src)
+        } else {
+            stringResource(R.string.live_guide_current_shifted, name, src, m.offsetMinutes / 60)
+        }
+    )
+    val now = nowNext?.now
+    when {
+        nowNext == null -> Unit
+        now == null -> Muted(stringResource(R.string.live_guide_on_now_none))
+        else -> Muted(stringResource(R.string.live_guide_on_now, now.title, formatRange(now.startMs, now.stopMs)))
+    }
+}
+
 @Composable
 private fun ChoicePanel(vm: GuideMatchingViewModel, modifier: Modifier) {
     val ch = vm.selected
@@ -552,20 +596,11 @@ private fun ChoicePanel(vm: GuideMatchingViewModel, modifier: Modifier) {
         Muted(stringResource(R.string.live_guide_choose_for))
         Text(ch.name, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
         val m = vm.mapping
-        Muted(
-            when {
-                m == null || m.sourceId == null -> stringResource(R.string.live_guide_current_none)
-                else -> {
-                    val name = (m.displayName ?: m.xmlId).toString()
-                    val src = m.sourceName ?: ""
-                    if (m.offsetMinutes == 0) {
-                        stringResource(R.string.live_guide_current, name, src)
-                    } else {
-                        stringResource(R.string.live_guide_current_shifted, name, src, m.offsetMinutes / 60)
-                    }
-                }
-            }
-        )
+        if (m?.sourceId == null) {
+            Muted(stringResource(R.string.live_guide_current_none))
+        } else {
+            CurrentGuide(m, vm.nowNext.entries[ch.streamId])
+        }
         TvTextField(
             vm.search,
             vm::onSearch,

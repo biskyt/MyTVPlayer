@@ -2,4 +2,5 @@
 <!-- US English overrides: only strings whose wording differs from the UK source in values/. -->
 <resources>
     <string name="live_option_channel_guide_help">Upcoming programs</string>
+    <string name="live_guide_programmes_until">Programs up to %1$s</string>
 </resources>

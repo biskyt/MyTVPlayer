@@ -18,7 +18,9 @@ internal class ProgrammeFilter(
     private val input: InputStream,
     private val keep: (String) -> Boolean,
     /** Whether a programme from a start to an end time is in the window. */
-    private val inWindow: (startMs: Long, endMs: Long) -> Boolean
+    private val inWindow: (startMs: Long, endMs: Long) -> Boolean,
+    /** Told the end of each programme of a wanted channel, kept or not (see [XmltvParser.latestEndMs]). */
+    private val onWantedEnd: (endMs: Long) -> Unit = {}
 ) : InputStream() {
     private var buf = ByteArray(BUFFER)
 
@@ -150,24 +152,33 @@ internal class ProgrammeFilter(
     /** Whether to keep the programme whose start tag is [start]..[end]: its channel is wanted, and it is in the window. */
     private fun keepTag(start: Int, end: Int): Boolean {
         val id = attribute(CHANNEL, start, end)
-        return (id < 0 || keepChannel(valueStart(id), valueEnd(id))) && inWindow(start, end)
+        // null: no channel id, or one that can't be read here (the parser then decides).
+        val wanted = if (id < 0) null else keepChannel(valueStart(id), valueEnd(id))
+        return wanted != false && inWindow(start, end, wanted == true)
     }
 
-    private fun keepChannel(from: Int, to: Int): Boolean {
+    /** Whether the channel is wanted; null when its id can't be read here. */
+    private fun keepChannel(from: Int, to: Int): Boolean? {
         val length = to - from
         if (length == lastId.size && regionEquals(lastId, from)) return lastKept
-        val id = ascii(from, to) ?: return true
+        val id = ascii(from, to) ?: return null
         lastId = buf.copyOfRange(from, to)
         lastKept = keep(id)
         return lastKept
     }
 
-    /** As [XmltvParser] finds it; true when a time can't be read here (the parser then decides). */
-    private fun inWindow(start: Int, end: Int): Boolean {
+    /**
+     * As [XmltvParser] finds it; true when a time can't be read here (the parser then decides). For a programme of a
+     * [wanted] channel, also tells [onWantedEnd] when it ends.
+     */
+    private fun inWindow(start: Int, end: Int, wanted: Boolean): Boolean {
         val startMs = time(attribute(START, start, end)) ?: return true
         val stop = attribute(STOP, start, end)
         val stopMs = time(stop)
-        return (stop >= 0 && stopMs == null) || inWindow(startMs, XmltvParser.endOf(startMs, stopMs))
+        if (stop >= 0 && stopMs == null) return true
+        val endMs = XmltvParser.endOf(startMs, stopMs)
+        if (wanted) onWantedEnd(endMs)
+        return inWindow(startMs, endMs)
     }
 
     private fun time(value: Long): Long? = if (value < 0) null else XmltvParser.parseTime(ascii(valueStart(value), valueEnd(value)))

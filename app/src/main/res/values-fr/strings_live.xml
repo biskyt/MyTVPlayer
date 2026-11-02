@@ -99,6 +99,9 @@
     <string name="live_guide_current_none">Actuellement : aucun guide</string>
     <string name="live_guide_current">Actuellement : %1$s (%2$s)</string>
     <string name="live_guide_current_shifted">Actuellement : %1$s (%2$s) · décalé de %3$d h</string>
+    <string name="live_guide_programmes_until">Programmes jusqu’au %1$s</string>
+    <string name="live_guide_on_now">En ce moment : %1$s (%2$s)</string>
+    <string name="live_guide_on_now_none">Rien en ce moment dans ce guide</string>
     <string name="live_guide_search_hint">Rechercher dans toutes les chaînes des guides</string>
     <string name="live_guide_match_score">Similaire à %1$d %%</string>
     <string name="live_guide_no_results">Aucune chaîne de guide trouvée. Essayez une recherche plus courte, ou ajoutez une autre source de guide.</string>

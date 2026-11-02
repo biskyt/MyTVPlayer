@@ -131,4 +131,24 @@ class XmltvParserTest {
         val p = parse(guide.toByteArray()).second.single()
         assertEquals(30 * 60_000L, p.stopMs - p.startMs)
     }
+
+    @Test
+    fun `the latest end is of the wanted channels' programmes, outside the window too`() {
+        // The window is one hour on the 18th. arena1's last programme starts at 21:00 UTC, after it, and has no stop
+        // time, so it ends a default length later.
+        val start = XmltvParser.parseTime("20261018180000 +0100")!!
+        val parser = XmltvParser({ KXmlParser() }, start, start + 3_600_000L)
+        runBlocking { parser.parse(ByteArrayInputStream(xml.toByteArray()), { it == "arena1.uk" }, null) {} }
+        assertEquals(XmltvParser.endOf(XmltvParser.parseTime("20261018210000")!!, null), parser.latestEndMs)
+
+        // Kite Kids alone: its one programme ends at 18:30; arena1's later ones are not counted.
+        val kite = XmltvParser({ KXmlParser() })
+        runBlocking { kite.parse(ByteArrayInputStream(xml.toByteArray()), { it == "kite.uk" }, null) {} }
+        assertEquals(XmltvParser.parseTime("20261018183000 +0100"), kite.latestEndMs)
+
+        // No wanted channel: nothing known.
+        val none = XmltvParser({ KXmlParser() })
+        runBlocking { none.parse(ByteArrayInputStream(xml.toByteArray()), { false }, null) {} }
+        assertNull(none.latestEndMs)
+    }
 }

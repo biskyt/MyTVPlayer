@@ -637,7 +637,10 @@ class EpgRepository(
         val late = ArrayList<EpgChannelEntity>()
         if (!sourceFile(sourceId).exists()) return late
         if (xmlIds.isEmpty() && known == null) {
-            if (!onlyThese) epg.clearProgrammes(sourceId) // nothing uses this guide any more
+            if (!onlyThese) {
+                epg.clearProgrammes(sourceId) // nothing uses this guide any more
+                epg.setProgrammesUntil(sourceId, 0)
+            }
             return late
         }
         val now = clock()
@@ -650,8 +653,9 @@ class EpgRepository(
                 }
             }
         }
+        val parser = parser(now - KEEP_PAST_MS, now + KEEP_FUTURE_MS)
         open(sourceId, onProgress).use { input ->
-            parser(now - KEEP_PAST_MS, now + KEEP_FUTURE_MS).parse(input, wantProgrammes = {
+            parser.parse(input, wantProgrammes = {
                 it in xmlIds
             }, onChannel = onChannel, onProgramme = { p ->
                 batch += ProgrammeEntity(
@@ -664,10 +668,16 @@ class EpgRepository(
             })
         }
         if (batch.isNotEmpty()) epg.insertProgrammes(batch)
-        if (onlyThese) {
-            xmlIds.chunked(MAX_SQL_ARGS).forEach { epg.deleteOlderProgrammes(sourceId, it, now) }
-        } else {
-            epg.deleteOlderProgrammes(sourceId, now)
+        // When its matched channels' programmes end ("Programmes up to" on the guide sources screen), with the clean-up.
+        val until = parser.latestEndMs ?: 0
+        db.withTransaction {
+            if (onlyThese) {
+                xmlIds.chunked(MAX_SQL_ARGS).forEach { epg.deleteOlderProgrammes(sourceId, it, now) }
+                epg.raiseProgrammesUntil(sourceId, until)
+            } else {
+                epg.deleteOlderProgrammes(sourceId, now)
+                epg.setProgrammesUntil(sourceId, until)
+            }
         }
         return late
     }

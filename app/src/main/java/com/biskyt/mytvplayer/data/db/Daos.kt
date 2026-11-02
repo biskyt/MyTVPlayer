@@ -345,6 +345,13 @@ interface EpgDao {
     @Query("UPDATE epg_source SET lastImportAt = :at WHERE id = :id")
     suspend fun setLastImport(id: Long, at: Long)
 
+    @Query("UPDATE epg_source SET programmesUntil = :until WHERE id = :id")
+    suspend fun setProgrammesUntil(id: Long, until: Long)
+
+    /** After loading programmes for some more channels: they can only add to when the guide's programmes end. */
+    @Query("UPDATE epg_source SET programmesUntil = MAX(programmesUntil, :until) WHERE id = :id")
+    suspend fun raiseProgrammesUntil(id: Long, until: Long)
+
     @Query("UPDATE epg_source SET lastError = :error WHERE id = :id")
     suspend fun setSourceError(id: Long, error: String?)
 
@@ -811,7 +818,7 @@ interface BackupDao {
     /** For older versions, which read [EpgSourceEntity.enabled]: on if any playlist uses it. */
     @Query(
         """SELECT id, name, url, playlistId, EXISTS (SELECT 1 FROM playlist_epg_source l WHERE l.sourceId = s.id) AS enabled,
-                  lastImportAt, channelCount, lastError
+                  lastImportAt, channelCount, lastError, programmesUntil
            FROM epg_source s ORDER BY id"""
     )
     suspend fun epgSources(): List<EpgSourceEntity>

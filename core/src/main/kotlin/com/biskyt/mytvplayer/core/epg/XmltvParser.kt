@@ -32,6 +32,13 @@ class XmltvParser(
     private val windowEndMs: Long = Long.MAX_VALUE
 ) {
     /**
+     * When the last programme of the wanted channels ends, from all of [parse]'s input, inside the window or not (null:
+     * none yet). A guide whose last programme ends before now is out of date.
+     */
+    var latestEndMs: Long? = null
+        private set
+
+    /**
      * Blocking read; call from an IO dispatcher. Callbacks may suspend (e.g. to write a batch to the database).
      * Without [onChannel], channels are skipped unread.
      */
@@ -58,7 +65,7 @@ class XmltvParser(
     ) {
         val p = newParser()
         // Programmes not wanted, or outside the window, are removed before the parser reads them: most of a big guide.
-        p.setInput(if (channelsOnly) input else ProgrammeFilter(input, wantProgrammes, ::inWindow), null)
+        p.setInput(if (channelsOnly) input else ProgrammeFilter(input, wantProgrammes, ::inWindow, ::noteEnd), null)
         var seenChannel = false
         while (true) {
             when (p.next()) {
@@ -84,11 +91,17 @@ class XmltvParser(
         val start = if (id != null && wantProgrammes(id)) parseTime(p.getAttributeValue(null, "start")) else null
         if (id == null || start == null) return p.skipElement()
         val end = endOf(start, parseTime(p.getAttributeValue(null, "stop")))
+        noteEnd(end)
         if (inWindow(start, end)) onProgramme(readProgramme(p, id, start, end)) else p.skipElement()
     }
 
     /** Whether a programme from [startMs] to [endMs] (see [endOf]) is in the window. */
     private fun inWindow(startMs: Long, endMs: Long) = endMs > windowStartMs && startMs < windowEndMs
+
+    /** A programme of a wanted channel ends at [endMs] (told by [ProgrammeFilter] too, so some twice). */
+    private fun noteEnd(endMs: Long) {
+        if (endMs > (latestEndMs ?: Long.MIN_VALUE)) latestEndMs = endMs
+    }
 
     private fun readChannel(p: XmlPullParser): XmltvChannel? {
         val id = p.getAttributeValue(null, "id")

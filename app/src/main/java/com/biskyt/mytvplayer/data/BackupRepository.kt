@@ -156,7 +156,7 @@ class BackupRepository(
                 backup.channels,
                 backup.favourites,
                 backup.vodFavourites,
-                backup.epgSources.map { it.copy(lastImportAt = 0, channelCount = 0, lastError = null) },
+                backup.epgSources.map { it.copy(lastImportAt = 0, channelCount = 0, lastError = null, programmesUntil = 0) },
                 backup.guideLinks(),
                 backup.guideChoices,
                 backup.progress

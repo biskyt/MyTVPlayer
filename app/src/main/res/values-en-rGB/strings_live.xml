@@ -3,4 +3,5 @@
      device (a same-language match beats the unqualified values). Same text as values/. -->
 <resources>
     <string name="live_option_channel_guide_help">Upcoming programmes</string>
+    <string name="live_guide_programmes_until">Programmes up to %1$s</string>
 </resources>
