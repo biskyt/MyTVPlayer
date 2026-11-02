@@ -168,4 +168,17 @@ class MigrationTest {
             assertEquals(listOf(1L to 10L, 1L to 30L, 2L to 30L), links)
         }
     }
+
+    @Test
+    fun `version 8 to 9 keeps guides, with when their programmes end not known yet`() {
+        helper.createDatabase("migration-test-9", 8).use { db ->
+            db.execSQL("INSERT INTO epg_source (id, name, url, enabled, lastImportAt, channelCount) VALUES (10, 'g', 'http://g', 1, 5, 7)")
+        }
+        helper.runMigrationsAndValidate("migration-test-9", 9, true).use { db ->
+            db.query("SELECT name, lastImportAt, channelCount, programmesUntil FROM epg_source WHERE id = 10").use {
+                it.moveToFirst()
+                assertEquals(listOf("g", "5", "7", "0"), List(4) { i -> it.getString(i) })
+            }
+        }
+    }
 }

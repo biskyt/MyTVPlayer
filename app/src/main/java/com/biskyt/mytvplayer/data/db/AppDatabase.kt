@@ -9,7 +9,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    version = 8,
+    version = 9,
     exportSchema = true,
     // 2: M3U playlists (playlist.kind; channel.streamUrl/userAgent/referrer).
     // 3: movies and series (category.type; movie, series, watch_progress, vod_favourite).
@@ -19,13 +19,15 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     //    (channel.catchupType/catchupSource).
     // 7: the user's order of favourites (favourite.position, vod_favourite.position).
     // 8: guides switched on per playlist (playlist_epg_source; see MIGRATION_7_8).
+    // 9: when each guide's programmes end (epg_source.programmesUntil).
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
         AutoMigration(from = 3, to = 4),
         AutoMigration(from = 4, to = 5),
         AutoMigration(from = 5, to = 6),
-        AutoMigration(from = 6, to = 7)
+        AutoMigration(from = 6, to = 7),
+        AutoMigration(from = 8, to = 9)
     ],
     entities = [
         PlaylistEntity::class, CategoryEntity::class, ChannelEntity::class, FavouriteEntity::class, RecentEntity::class,
