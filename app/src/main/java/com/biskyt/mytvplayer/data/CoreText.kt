@@ -83,12 +83,43 @@ private val accentNames = mapOf(
 /** A programme's title, or the app's "No title" (in its language) for one its guide gave none. */
 fun programmeTitle(title: String): String = title.ifBlank { appString(R.string.common_no_title) }
 
-/** A category's name as the playlist gives it, or the app's "No category" (in its language) for entries in none. */
-fun categoryLabel(name: String): String = name.ifEmpty { appString(R.string.data_ungrouped) }
+/**
+ * A category's name as the playlist gives it, or the app's "No category" (in its language) for entries in none. An adult
+ * category ([lang] is [CategoryLanguageDetector.ADULT]) is named [adultLabel], so they all start with "XXX".
+ */
+fun categoryLabel(name: String, lang: String?): String = when {
+    name.isEmpty() -> appString(R.string.data_ungrouped)
+    lang == CategoryLanguageDetector.ADULT -> adultLabel(name)
+    else -> name
+}
 
-val CategoryEntity.label: String get() = categoryLabel(name)
+/**
+ * An adult category's name with "XXX" in place of the provider's section code, so adult categories of all types sort
+ * together near the end: "18: FOR ADULTS" is "XXX: FOR ADULTS", and "GLOBAL: XXX MOVIES" is "XXX MOVIES".
+ */
+fun adultLabel(name: String): String {
+    val rest = name.replaceFirst(sectionCode, "").ifBlank { name }
+    return if (startsWithXxx.containsMatchIn(rest)) rest else "XXX: $rest"
+}
 
-val CategoryCount.label: String get() = categoryLabel(name)
+/**
+ * The group that tells apart categories with the same [categoryLabel]: [lang], but an adult category's own section code,
+ * which its label leaves out ("UK | XXX" and "DE | XXX" are "XXX · English (UK)" and "XXX · German").
+ */
+fun labelGroup(name: String, lang: String?): String? =
+    if (lang == CategoryLanguageDetector.ADULT) sectionCode.find(name)?.groupValues?.get(1) ?: lang else lang
+
+// A short code and its separator at the start: "18: ", "GLOBAL | ", "UK - ".
+private val sectionCode = Regex("""^\W*([\p{L}\d+]{1,8})\s*[|:\-\]/)]\s*""")
+private val startsWithXxx = Regex("""(?i)^\W*xxx\b""")
+
+val CategoryEntity.label: String get() = categoryLabel(name, lang)
+
+val CategoryEntity.labelGroup: String? get() = labelGroup(name, lang)
+
+val CategoryCount.label: String get() = categoryLabel(name, lang)
+
+val CategoryCount.labelGroup: String? get() = labelGroup(name, lang)
 
 /**
  * A guide failing, in the app's own words: the server refusing it ([status]), or the download not being saved (null).

@@ -2,10 +2,11 @@
 <resources>
     <string name="parental_title">Contrôle parental</string>
     <string name="parental_help">Catégories restreintes, et un code PIN pour les afficher</string>
-    <string name="parental_intro">Les catégories restreintes ont un cadenas. Les catégories pour adultes sont restreintes dès le départ. Restreignez une catégorie depuis ses options (maintenez OK), ou un groupe entier dans Langues et catégories.</string>
+    <string name="parental_intro">Les catégories restreintes ont un cadenas. Pour restreindre une catégorie, ouvrez ses options (maintenez OK).</string>
     <string name="parental_hide_recent">Masquer les chaînes restreintes de Vus récemment</string>
     <string name="parental_hide_carry_on">Masquer les films et séries restreints de Continuer à regarder</string>
     <string name="parental_hide_search">Masquer les chaînes, programmes, films et séries restreints de la recherche</string>
+    <string name="parental_forget_help">Tant que cette option est activée, MyTVPlayer ne garde pas ce que vous regardez dans les catégories restreintes.</string>
     <string name="parental_pin_none">Aucun code PIN : les catégories restreintes s’affichent sans code.</string>
     <string name="parental_pin_set_help">Les catégories restreintes restent masquées jusqu’à la saisie du code PIN, et sont masquées à nouveau quand vous quittez l’appli.</string>
     <string name="parental_set_pin">Définir un code PIN</string>
@@ -22,6 +23,4 @@
     <string name="parental_restrict_help">Masquez-la jusqu’à la saisie du code PIN (Paramètres › Contrôle parental)</string>
     <string name="parental_unrestrict">Retirer la restriction</string>
     <string name="parental_unrestrict_help">Affichez-la sans code PIN</string>
-    <string name="parental_restrict_group">Restreint</string>
-    <string name="parental_restrict_group_help">Toutes les catégories de %1$s</string>
 </resources>

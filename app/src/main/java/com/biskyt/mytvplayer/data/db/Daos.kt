@@ -98,8 +98,8 @@ interface CategoryDao {
     @Query("UPDATE category SET included = :included WHERE playlistId = :pid AND type = :type AND categoryId IN (:ids)")
     suspend fun setIncluded(pid: Long, type: String, ids: List<String>, included: Boolean)
 
-    @Query("UPDATE category SET restricted = :restricted WHERE playlistId = :pid AND type = :type AND categoryId IN (:ids)")
-    suspend fun setRestricted(pid: Long, type: String, ids: List<String>, restricted: Boolean)
+    @Query("UPDATE category SET restricted = :restricted WHERE playlistId = :pid AND type = :type AND categoryId = :id")
+    suspend fun setRestricted(pid: Long, type: String, id: String, restricted: Boolean)
 
     @Query(
         """UPDATE category SET channelCount = CASE type
@@ -125,6 +125,8 @@ private const val P_LOCKED = "(SELECT locked FROM parental)"
 private const val P_RECENT = "(SELECT locked OR hideRecent FROM parental)"
 private const val P_CARRY_ON = "(SELECT locked OR hideCarryOn FROM parental)"
 private const val P_SEARCH = "(SELECT locked OR hideSearch FROM parental)"
+private const val P_HIDE_RECENT = "(SELECT hideRecent FROM parental)"
+private const val P_HIDE_CARRY_ON = "(SELECT hideCarryOn FROM parental)"
 
 // Restricted categories of :pid, as a list SQLite builds once per query (not a lookup for each item).
 private const val RESTRICTED_OF = "SELECT categoryId FROM category WHERE playlistId = :pid AND restricted = 1 AND type ="
@@ -137,6 +139,12 @@ private const val MOVIE_RESTRICTED = "movie.categoryId IN $RESTRICTED_MOVIE"
 private const val M_RESTRICTED = "m.categoryId IN $RESTRICTED_MOVIE"
 private const val SERIES_RESTRICTED = "series.categoryId IN $RESTRICTED_SERIES"
 private const val S_RESTRICTED = "s.categoryId IN $RESTRICTED_SERIES"
+
+/** A watch_progress row (unaliased) of a restricted movie, or of an episode of a restricted series, of playlist :pid. */
+private const val PROGRESS_RESTRICTED =
+    "EXISTS (SELECT 1 FROM movie m WHERE watch_progress.kind = '$VOD_MOVIE' AND m.playlistId = :pid" +
+        " AND m.streamId = watch_progress.itemId AND $M_RESTRICTED)" +
+        " OR EXISTS (SELECT 1 FROM series s WHERE s.playlistId = :pid AND s.seriesId = watch_progress.seriesId AND $S_RESTRICTED)"
 
 /** A channel (the table unnamed) that may be shown: not restricted while locked. */
 private const val CHANNEL_OPEN = "NOT ($P_LOCKED AND $CHANNEL_RESTRICTED)"
@@ -322,6 +330,34 @@ interface ParentalDao {
 
     @Query("SELECT * FROM parental")
     suspend fun get(): ParentalEntity?
+
+    /**
+     * Forgets what was watched in playlist [pid]'s restricted categories. With hideRecent on, it forgets recently watched
+     * channels. With hideCarryOn on, it forgets how far films and episodes got.
+     */
+    @Transaction
+    suspend fun forgetRestricted(pid: Long) {
+        forgetRecent(pid)
+        forgetProgress(pid)
+    }
+
+    /** [forgetRestricted] for every playlist. */
+    @Transaction
+    suspend fun forgetRestricted() = playlistIds().forEach { forgetRestricted(it) }
+
+    @Query("SELECT id FROM playlist")
+    suspend fun playlistIds(): List<Long>
+
+    @Query(
+        """DELETE FROM recent WHERE playlistId = :pid AND $P_HIDE_RECENT
+           AND EXISTS (SELECT 1 FROM channel c WHERE c.playlistId = :pid AND c.streamId = recent.streamId AND $C_RESTRICTED)"""
+    )
+    suspend fun forgetRecent(pid: Long)
+
+    @Query(
+        """DELETE FROM watch_progress WHERE playlistId = :pid AND $P_HIDE_CARRY_ON AND ($PROGRESS_RESTRICTED)"""
+    )
+    suspend fun forgetProgress(pid: Long)
 }
 
 /** A category and how many of something it has. */
@@ -645,9 +681,17 @@ data class VodCard(val id: Long, val title: String, val year: Int?, val imageUrl
 
 /**
  * A movie or series found by a search, with the name of its category ([category]; blank for an M3U title with no
- * group, null if its category is gone). The same film is often in several categories (languages, qualities).
+ * group, null if its category is gone) and that category's group ([categoryLang]). The same film is often in several
+ * categories (languages, qualities).
  */
-data class VodHit(val id: Long, val title: String, val year: Int?, val imageUrl: String?, val category: String?) {
+data class VodHit(
+    val id: Long,
+    val title: String,
+    val year: Int?,
+    val imageUrl: String?,
+    val category: String?,
+    val categoryLang: String?
+) {
     val card get() = VodCard(id, title, year, imageUrl)
 }
 
@@ -725,7 +769,7 @@ interface VodDao {
 
     // The titles first, then the category of each one found: not for every title that matches a short query.
     @Query(
-        """SELECT h.id, h.title, h.year, h.imageUrl, c.name AS category FROM (
+        """SELECT h.id, h.title, h.year, h.imageUrl, c.name AS category, c.lang AS categoryLang FROM (
              SELECT streamId AS id, title, year, posterUrl AS imageUrl, categoryId, position FROM movie
              WHERE playlistId = :pid AND NOT ($P_SEARCH AND $MOVIE_RESTRICTED) AND title $LIKE_Q ORDER BY position, title LIMIT :limit
            ) h LEFT JOIN category c ON c.playlistId = :pid AND c.type = '$CAT_MOVIE' AND c.categoryId = h.categoryId
@@ -734,7 +778,7 @@ interface VodDao {
     suspend fun searchMovies(pid: Long, q: String, limit: Int): List<VodHit>
 
     @Query(
-        """SELECT h.id, h.title, h.year, h.imageUrl, c.name AS category FROM (
+        """SELECT h.id, h.title, h.year, h.imageUrl, c.name AS category, c.lang AS categoryLang FROM (
              SELECT seriesId AS id, title, year, coverUrl AS imageUrl, categoryId, position FROM series
              WHERE playlistId = :pid AND NOT ($P_SEARCH AND $SERIES_RESTRICTED) AND title $LIKE_Q ORDER BY position, title LIMIT :limit
            ) h LEFT JOIN category c ON c.playlistId = :pid AND c.type = '$CAT_SERIES' AND c.categoryId = h.categoryId
@@ -831,12 +875,10 @@ interface VodDao {
      * finished and the last one. [finished] is [WatchProgressEntity.FINISHED_FRACTION].
      */
     @Query(
-        """SELECT * FROM watch_progress w WHERE playlistId = :pid
-           AND NOT ($P_CARRY_ON AND (
-             EXISTS (SELECT 1 FROM movie m WHERE w.kind = 'movie' AND m.playlistId = :pid AND m.streamId = w.itemId AND $M_RESTRICTED)
-             OR EXISTS (SELECT 1 FROM series s WHERE s.playlistId = :pid AND s.seriesId = w.seriesId AND $S_RESTRICTED)))
+        """SELECT * FROM watch_progress WHERE playlistId = :pid
+           AND NOT ($P_CARRY_ON AND ($PROGRESS_RESTRICTED))
            AND (NOT (durationMs > 0 AND positionMs >= durationMs * :finished) OR hasNext)
-           AND (seriesId IS NULL OR updatedAt = (SELECT MAX(x.updatedAt) FROM watch_progress x WHERE x.playlistId = w.playlistId AND x.seriesId = w.seriesId))
+           AND (seriesId IS NULL OR updatedAt = (SELECT MAX(x.updatedAt) FROM watch_progress x WHERE x.playlistId = watch_progress.playlistId AND x.seriesId = watch_progress.seriesId))
            ORDER BY updatedAt DESC LIMIT :limit"""
     )
     fun observeCarryOn(pid: Long, limit: Int, finished: Double): Flow<List<WatchProgressEntity>>

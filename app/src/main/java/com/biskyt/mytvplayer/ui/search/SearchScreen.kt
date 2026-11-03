@@ -211,7 +211,7 @@ fun SearchScreen(initialQuery: String = "") {
                             hit.card,
                             returnFocus(key),
                             favourite = hit.id in favourites,
-                            detail = hit.category?.let(::categoryLabel),
+                            detail = hit.category?.let { categoryLabel(it, hit.categoryLang) },
                             onLongClick = { picked = Picked.Vod(type, hit.card) }
                         ) {
                             open(key, vodDetails(pid, type, hit.id))

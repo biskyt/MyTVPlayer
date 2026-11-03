@@ -96,8 +96,11 @@ class ChannelRepository(private val db: AppDatabase) {
         positions.forEach { (id, position) -> favourites.setPosition(playlistId, id, position) }
     }
 
-    suspend fun markWatched(playlistId: Long, streamId: Long) {
+    /** Puts a channel on "Recently watched", unless it's restricted and those are hidden there (parental controls). */
+    suspend fun markWatched(playlistId: Long, streamId: Long) = db.withTransaction {
         favourites.touchRecent(RecentEntity(playlistId, streamId, System.currentTimeMillis()))
+        // Before the trim, so a restricted channel doesn't push out one that is kept.
+        db.parental().forgetRecent(playlistId)
         favourites.trimRecent(playlistId, RECENT_LIMIT)
     }
 

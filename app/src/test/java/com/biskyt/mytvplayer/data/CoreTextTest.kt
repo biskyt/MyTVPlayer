@@ -6,6 +6,7 @@ import com.biskyt.mytvplayer.core.ui.AccentPalette
 import com.biskyt.mytvplayer.core.xtream.XtreamException
 import com.biskyt.mytvplayer.core.xtream.XtreamException.Reason
 import com.biskyt.mytvplayer.testutil.PlainApp
+import com.biskyt.mytvplayer.ui.common.distinctLabels
 import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -26,6 +27,39 @@ class CoreTextTest {
         // Other countries by their name, and anything else (a language's name) as it is.
         assertEquals("Austria", groupLabel("AT"))
         assertEquals("Swahili", groupLabel("Swahili"))
+    }
+
+    @Test
+    fun `adult categories are all named with XXX first, in place of the provider's section code`() {
+        val adult = CategoryLanguageDetector.ADULT
+        assertEquals("XXX: FOR ADULTS", categoryLabel("18: FOR ADULTS", adult))
+        assertEquals("XXX MOVIES", categoryLabel("GLOBAL: XXX MOVIES", adult))
+        assertEquals("XXX: ADULT MOVIES", categoryLabel("GLOBAL | ADULT MOVIES", adult))
+        assertEquals("XXX", categoryLabel("UK | XXX", adult))
+        assertEquals("XXX: 18+ Movies", categoryLabel("18+ Movies", adult))
+        // Others keep the playlist's name.
+        assertEquals("18: FOR ADULTS", categoryLabel("18: FOR ADULTS", null))
+        assertEquals("UK | NEWS", categoryLabel("UK | NEWS", "UK"))
+    }
+
+    @Test
+    fun `category columns list categories from A to Z by the names shown, adult ones near the end`() {
+        val names = listOf(
+            "UK | NEWS" to "UK",
+            "18: FOR ADULTS" to CategoryLanguageDetector.ADULT,
+            "UK | ENTERTAINMENT" to "UK",
+            "Zoo" to null
+        )
+        val shown = distinctLabels(names, { categoryLabel(it.first, it.second) }, { it.second }) { _, label -> label }
+        assertEquals(listOf("UK | ENTERTAINMENT", "UK | NEWS", "XXX: FOR ADULTS", "Zoo"), shown)
+    }
+
+    @Test
+    fun `adult categories with the same name are told apart by their provider's code`() {
+        val adult = CategoryLanguageDetector.ADULT
+        val names = listOf("UK | XXX", "DE | XXX")
+        val shown = distinctLabels(names, { categoryLabel(it, adult) }, { labelGroup(it, adult) }) { _, label -> label }
+        assertEquals(listOf("XXX · English (UK)", "XXX · German"), shown)
     }
 
     @Test

@@ -314,7 +314,7 @@ class M3uPlaylistTest {
         // No name saved: the app names it ("No category", in its language) when shown. A playlist's own "Other" stays
         // its own.
         assertEquals("", M3uCategories.category(none).name)
-        assertEquals("No category", categoryLabel(M3uCategories.category(none).name))
+        assertEquals("No category", categoryLabel(M3uCategories.category(none).name, null))
         assertEquals("SE", M3uCategories.groupOf(noneSe))
         assertEquals("Other", M3uCategories.idOf(entry("Other")))
         assertEquals(null, M3uCategories.oldId("Other"))

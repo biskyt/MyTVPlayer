@@ -24,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,7 +36,6 @@ import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.AppText
 import com.biskyt.mytvplayer.R
-import com.biskyt.mytvplayer.container
 import com.biskyt.mytvplayer.data.db.CAT_LIVE
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.CategoryEntity
@@ -52,14 +50,12 @@ import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.FilterField
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.PillButton
-import com.biskyt.mytvplayer.ui.common.PinGateHost
 import com.biskyt.mytvplayer.ui.common.RestrictedMark
 import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.Toggle
 import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.formatCount
 import com.biskyt.mytvplayer.ui.common.matchesFilter
-import com.biskyt.mytvplayer.ui.common.rememberPinGate
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
@@ -160,11 +156,6 @@ class CategoriesViewModel(private val c: AppContainer, private val playlistId: L
         if (ids.isEmpty()) return
         changed += t
         c.db.withTransaction { ids.chunked(MAX_SQL_ARGS).forEach { c.db.categories().setIncluded(playlistId, t, it, included) } }
-    }
-
-    /** Every category of group [code] (of the type shown), whatever the filter: restricted, or not (parental controls). */
-    fun setGroupRestricted(code: String?, restricted: Boolean) = viewModelScope.launch {
-        c.parental.setRestricted(playlistId, type.value, ofType().filter { it.lang == code }.map { it.categoryId }, restricted)
     }
 
     fun toggleCategory(cat: CategoryEntity) = viewModelScope.launch {
@@ -319,7 +310,7 @@ fun CategoriesScreen(playlistId: Long, firstRun: Boolean) {
     }
 }
 
-/** The right-hand list: the categories of the group selected on the left, and switches for the whole group. */
+/** The right-hand list: the categories of the group selected on the left, and "select all" and "none" for them. */
 @Composable
 private fun GroupCategories(vm: CategoriesViewModel, categories: List<CategoryEntity>, query: String, modifier: Modifier) {
     val selected = vm.selectedGroup
@@ -334,10 +325,6 @@ private fun GroupCategories(vm: CategoriesViewModel, categories: List<CategoryEn
                 SelectAllRow(stringResource(R.string.settings_categories_all_in, groupLabel(selected))) {
                     vm.setGroup(selected, it)
                 }
-            }
-            item {
-                val restricted = categories.filter { it.lang == selected }.let { g -> g.isNotEmpty() && g.all { it.restricted } }
-                RestrictGroupRow(groupLabel(selected), restricted) { vm.setGroupRestricted(selected, it) }
             }
         }
         items(shown, key = { it.categoryId }) { cat ->
@@ -362,33 +349,6 @@ private fun GroupCategories(vm: CategoriesViewModel, categories: List<CategoryEn
             }
         }
     }
-}
-
-/**
- * "Restricted" for every category in group [label] (parental controls), on when all of them are. Removing it needs the
- * PIN, when one is set.
- */
-@Composable
-private fun RestrictGroupRow(label: String, restricted: Boolean, set: (Boolean) -> Unit) {
-    val parental = LocalContext.current.container.parental
-    val gate = rememberPinGate()
-    TvCard(onClick = {
-        gate.run(restricted && parental.hasPin.value) { set(!restricted) }
-    }, color = Palette.surface, modifier = Modifier.fillMaxWidth()) {
-        Row(
-            Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Toggle(restricted)
-            RestrictedMark()
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.parental_restrict_group), style = MaterialTheme.typography.bodyLarge)
-                Muted(stringResource(R.string.parental_restrict_group_help, label))
-            }
-        }
-    }
-    PinGateHost(gate)
 }
 
 /** "Select all" ([all] names it) and "select none" for the list below. */

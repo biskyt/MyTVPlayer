@@ -4,6 +4,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.data.db.CAT_LIVE
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.ParentalEntity
+import com.biskyt.mytvplayer.data.db.RecentEntity
 import com.biskyt.mytvplayer.data.db.VOD_MOVIE
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
 import com.biskyt.mytvplayer.testutil.FakeProvider
@@ -14,6 +15,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -30,8 +32,8 @@ import org.robolectric.annotation.Config
 
 /**
  * Parental controls: adult categories start restricted; restricted channels, movies and series are left out while
- * locked (a PIN set and not entered), and from recently watched, "Carry on watching" and search while those settings
- * are on.
+ * locked (a PIN set and not entered), and from search while that setting is on. What is watched in them is not kept for
+ * recently watched or "Carry on watching" while those settings are on.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class)
@@ -51,7 +53,7 @@ class ParentalTest {
         ParentalEntity(locked = locked, hideRecent = recent, hideCarryOn = carryOn, hideSearch = search)
 
     /** UK | ENTERTAINMENT (channels 101 and 103) restricted. */
-    private suspend fun restrictEntertainment(id: Long) = c.parental.setRestricted(id, CAT_LIVE, listOf("1"), true)
+    private suspend fun restrictEntertainment(id: Long) = c.parental.setRestricted(id, CAT_LIVE, "1", true)
 
     @Test
     fun `a PIN is kept hashed, and only the same PIN matches`() {
@@ -69,7 +71,7 @@ class ParentalTest {
         suspend fun restricted() = c.db.categories().all(id, CAT_LIVE).associate { it.categoryId to it.restricted }
         assertEquals(mapOf("1" to false, "2" to false, "3" to false, "4" to false, "5" to true), restricted())
 
-        c.parental.setRestricted(id, CAT_LIVE, listOf("5"), false)
+        c.parental.setRestricted(id, CAT_LIVE, "5", false)
         restrictEntertainment(id)
         c.playlists.syncChannels(id)
         assertEquals(mapOf("1" to true, "2" to false, "3" to false, "4" to false, "5" to false), restricted())
@@ -97,36 +99,123 @@ class ParentalTest {
         assertEquals(all, c.db.channels().idsAll(id))
     }
 
+    /** Waits until [check] is true: what is forgotten after a settings change goes in the background. */
+    private suspend fun eventually(check: suspend () -> Boolean) = withTimeout(5_000) {
+        while (!check()) delay(20)
+    }
+
     @Test
-    fun `recently watched and search leave restricted channels out while their settings are on`() = runBlocking {
+    fun `search leaves restricted channels out while its setting is on`() = runBlocking {
         val id = c.addHomeTv(provider)
         restrictEntertainment(id)
-        c.channels.markWatched(id, 101)
-        c.channels.markWatched(id, 102)
         stateIs(state())
-        assertEquals(listOf(102L), c.db.channels().idsRecent(id))
         assertEquals(listOf<Long>(), c.db.channels().search(id, "ONE", 10).map { it.streamId })
 
-        c.settings.update { it.copy(hideRestrictedRecent = false, hideRestrictedSearch = false) }
-        stateIs(state(recent = false, search = false))
-        assertEquals(listOf(102L, 101L), c.db.channels().idsRecent(id))
+        c.settings.update { it.copy(hideRestrictedSearch = false) }
+        stateIs(state(search = false))
         assertEquals(listOf(101L), c.db.channels().search(id, "ONE", 10).map { it.streamId })
     }
 
     @Test
-    fun `carry on watching leaves restricted movies out while its setting is on`() = runBlocking {
-        val id = c.addHomeTv(provider, vod = true)
-        c.parental.setRestricted(id, CAT_MOVIE, listOf("10"), true) // UK | MOVIES: 501 and 502
-        listOf(501L, 701L).forEachIndexed { i, movie ->
-            c.vod.saveProgress(WatchProgressEntity(id, VOD_MOVIE, movie, 600_000, 3_600_000, 1_000L + i, "t", null))
-        }
-        suspend fun carryOn() = c.db.vod().observeCarryOn(id, 10, WatchProgressEntity.FINISHED_FRACTION).first().map { it.itemId }
+    fun `restricted channels are not kept in recently watched while its setting is on`() = runBlocking {
+        val id = c.addHomeTv(provider)
         stateIs(state())
-        assertEquals(listOf(701L), carryOn())
+        c.channels.markWatched(id, 101)
+        c.channels.markWatched(id, 102)
+        restrictEntertainment(id) // forgets 101, watched before it was restricted
+        c.channels.markWatched(id, 103) // restricted: not kept
+        c.settings.update { it.copy(hideRestrictedRecent = false) }
+        stateIs(state(recent = false))
+        // Turning the setting off shows nothing that was watched in restricted categories.
+        assertEquals(listOf(102L), c.db.channels().idsRecent(id))
+
+        c.channels.markWatched(id, 101)
+        assertEquals(listOf(101L, 102L), c.db.channels().idsRecent(id))
+        // Turning it on again forgets it.
+        c.settings.update { it.copy(hideRestrictedRecent = true) }
+        eventually { c.db.channels().idsRecent(id) == listOf(102L) }
+    }
+
+    @Test
+    fun `turning a hide setting off first forgets restricted history that was kept some other way`() = runBlocking {
+        val id = c.addHomeTv(provider)
+        restrictEntertainment(id)
+        stateIs(state())
+        c.channels.markWatched(id, 102)
+        // As if a sync had moved a watched channel into a restricted category since.
+        c.db.favourites().touchRecent(RecentEntity(id, 101, System.currentTimeMillis()))
+        c.settings.update { it.copy(hideRestrictedRecent = false) }
+        stateIs(state(recent = false))
+        assertEquals(listOf(102L), c.db.channels().idsRecent(id))
+    }
+
+    @Test
+    fun `a restricted channel watched does not push a kept one out of recently watched`() = runBlocking {
+        val id = c.addHomeTv(provider)
+        restrictEntertainment(id)
+        stateIs(state())
+        // A full list (30 is ChannelRepository's limit) of other channels.
+        val kept = (1L..30L).map { 1_000 + it }
+        kept.forEach { c.db.favourites().touchRecent(RecentEntity(id, it, it)) }
+        c.channels.markWatched(id, 101)
+        val left = withContext(Dispatchers.IO) {
+            c.db.query("SELECT streamId FROM recent WHERE playlistId = ?", arrayOf(id)).use { cur ->
+                buildList { while (cur.moveToNext()) add(cur.getLong(0)) }
+            }
+        }
+        assertEquals(kept, left.sorted())
+    }
+
+    @Test
+    fun `a restore with the hide setting off keeps the restricted history from the backup`() = runBlocking {
+        val id = c.addHomeTv(provider, vod = true)
+        c.parental.setRestricted(id, CAT_MOVIE, "10", true) // UK | MOVIES: 501 and 502
+        c.settings.update { it.copy(hideRestrictedCarryOn = false) }
+        stateIs(state(carryOn = false))
+        c.vod.saveProgress(WatchProgressEntity(id, VOD_MOVIE, 501, 600_000, 3_600_000, 1_000, "t", null))
+        val backup = c.backup.export()
+
+        c.settings.update { it.copy(hideRestrictedCarryOn = true) }
+        eventually { c.vod.progress(id, VOD_MOVIE, 501) == null }
+        c.backup.apply(c.backup.read(backup.inputStream()))
+        assertFalse(c.settings.current().hideRestrictedCarryOn)
+        assertEquals(600_000L, c.vod.progress(id, VOD_MOVIE, 501)?.positionMs)
+    }
+
+    @Test
+    fun `restricted movies are not kept for carry on watching while its setting is on`() = runBlocking {
+        val id = c.addHomeTv(provider, vod = true)
+        stateIs(state())
+        c.parental.setRestricted(id, CAT_MOVIE, "10", true) // UK | MOVIES: 501 and 502
+        suspend fun save(movie: Long, at: Long) =
+            c.vod.saveProgress(WatchProgressEntity(id, VOD_MOVIE, movie, 600_000, 3_600_000, at, "t", null))
+        save(501, 1_000)
+        save(701, 1_001)
+        assertEquals(null, c.vod.progress(id, VOD_MOVIE, 501))
+        suspend fun carryOn() = c.db.vod().observeCarryOn(id, 10, WatchProgressEntity.FINISHED_FRACTION).first().map { it.itemId }
 
         c.settings.update { it.copy(hideRestrictedCarryOn = false) }
         stateIs(state(carryOn = false))
+        assertEquals(listOf(701L), carryOn())
+
+        save(501, 1_000)
         assertEquals(listOf(701L, 501L), carryOn())
+        c.settings.update { it.copy(hideRestrictedCarryOn = true) }
+        eventually { c.vod.progress(id, VOD_MOVIE, 501) == null }
+        assertEquals(listOf(701L), carryOn())
+    }
+
+    @Test
+    fun `film search names an adult category with XXX first, as the category lists do`() = runBlocking {
+        provider.movieCategories += listOf("13" to "GLOBAL: ADULT MOVIES")
+        provider.movies += listOf(Triple(901L, "Night Film", "13"))
+        val id = c.addHomeTv(provider, vod = true)
+        // Adult categories are left out to start with: include it and download its films.
+        c.db.categories().setIncluded(id, CAT_MOVIE, listOf("13"), true)
+        c.parental.setRestricted(id, CAT_MOVIE, "13", false)
+        c.vod.sync(c.playlists.get(id)!!)
+        val hit = c.db.vod().searchMovies(id, "Night", 10).single()
+        assertEquals("XXX: ADULT MOVIES", categoryLabel(hit.category!!, hit.categoryLang))
     }
 
     @Test
@@ -159,7 +248,7 @@ class ParentalTest {
     fun `a backup from before parental controls restricts its adult categories`() = runBlocking {
         provider.categories += listOf("5" to "UK | XXX")
         val id = c.addHomeTv(provider)
-        c.parental.setRestricted(id, CAT_LIVE, listOf("5"), false)
+        c.parental.setRestricted(id, CAT_LIVE, "5", false)
         // As 1.8 wrote it: no "restrictions", nothing restricted.
         val json = Json.parseToJsonElement(c.backup.export().decodeToString()).jsonObject
         val old = JsonObject(json - "restrictions").toString().toByteArray()
@@ -167,7 +256,7 @@ class ParentalTest {
         c.backup.apply(c.backup.read(old.inputStream()))
         assertTrue(c.db.categories().all(id, CAT_LIVE).single { it.categoryId == "5" }.restricted)
         // A backup from now keeps the choice.
-        c.parental.setRestricted(id, CAT_LIVE, listOf("5"), false)
+        c.parental.setRestricted(id, CAT_LIVE, "5", false)
         c.backup.apply(c.backup.read(c.backup.export().inputStream()))
         assertFalse(c.db.categories().all(id, CAT_LIVE).single { it.categoryId == "5" }.restricted)
     }

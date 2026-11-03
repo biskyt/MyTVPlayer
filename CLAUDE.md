@@ -102,6 +102,10 @@ See also:
 - **Text the app defines** comes from string resources: `stringResource` in composables, `appString` / `appPlural`
   (AppText.kt) elsewhere.
 - **Text from users, playlists and guides is shown as it is:** playlist, guide, channel and category names, titles.
+  - The one exception (the owner, 2026-11-03): an adult category's section code is replaced by "XXX" (`adultLabel` in
+    `data/CoreText.kt`), so adult categories of every type look the same and sort near the end.
+- **Category columns are in A to Z order** of the names shown (`distinctLabels`), after the fixed entries (the owner,
+  2026-11-03).
 - **Saved data stays language-neutral.** The app saves blank values, ids or codes and names them when shown:
   `programmeTitle`, `categoryLabel` / `.label`, `GuideError.text`, `groupLabel` (in `data/CoreText.kt`) and the episode
   and season names. Never save app words (an English "Other" or "No title" was saved before 1.1.0). `SavedTextTest`

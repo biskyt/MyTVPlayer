@@ -2,7 +2,6 @@ package com.biskyt.mytvplayer.data
 
 import androidx.room.withTransaction
 import com.biskyt.mytvplayer.data.db.AppDatabase
-import com.biskyt.mytvplayer.data.db.MAX_SQL_ARGS
 import com.biskyt.mytvplayer.data.db.ParentalEntity
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -22,7 +21,8 @@ import kotlinx.coroutines.launch
 /**
  * Parental controls. Restricted categories (adult ones by default) are left out of the lists and the TV guide while
  * locked, which is whenever a PIN is set and it hasn't been entered since the app was last left ([lock]). Their items are
- * also left out of recently watched, "Carry on watching" and search when those settings are on.
+ * also left out of search when that setting is on, and what is watched in them isn't kept for recently watched or "Carry
+ * on watching" when those settings are on.
  *
  * The state is kept in the parental table, which the list queries read: Room then reloads every open list when it
  * changes, so unlocking shows the restricted items at once.
@@ -54,7 +54,14 @@ class ParentalRepository(private val db: AppDatabase, private val settings: Sett
             }.distinctUntilChanged().collect { state ->
                 try {
                     // Only a change: a write reloads every open list (they read this row), e.g. at each start.
-                    if (db.parental().get() != state) db.parental().set(state)
+                    if (db.parental().get() != state) {
+                        // Before a hide setting goes off, with it still on: nothing hidden until now shows after.
+                        db.parental().forgetRestricted()
+                        db.parental().set(state)
+                    }
+                    // A hide setting turned on forgets what was already watched in restricted categories. This also
+                    // runs at each start, which catches history kept before 1.9.1.
+                    db.parental().forgetRestricted()
                 } catch (e: IllegalStateException) {
                     // The database closed under an update already cancelled (tests close it as the app ends).
                     if (currentCoroutineContext().isActive) throw e
@@ -71,10 +78,11 @@ class ParentalRepository(private val db: AppDatabase, private val settings: Sett
         return ok
     }
 
-    /** Restricts categories [ids], or removes that (callers ask for the PIN first to remove it, when one is set). */
-    suspend fun setRestricted(playlistId: Long, type: String, ids: List<String>, restricted: Boolean) {
-        // One write, so the lists change once for a whole group.
-        db.withTransaction { ids.chunked(MAX_SQL_ARGS).forEach { db.categories().setRestricted(playlistId, type, it, restricted) } }
+    /** Restricts category [id], or removes that (callers ask for the PIN first to remove it, when one is set). */
+    suspend fun setRestricted(playlistId: Long, type: String, id: String, restricted: Boolean) = db.withTransaction {
+        db.categories().setRestricted(playlistId, type, id, restricted)
+        // What was watched in it goes, as if it had been restricted then (while the hide settings are on).
+        if (restricted) db.parental().forgetRestricted(playlistId)
     }
 
     /** Emits when restricted content is hidden again after it was shown: screens open on it are closed (see AppRoot). */
