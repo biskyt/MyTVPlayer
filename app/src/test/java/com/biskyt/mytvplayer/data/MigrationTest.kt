@@ -204,4 +204,24 @@ class MigrationTest {
             assertEquals(listOf("a" to 1, "b" to 0, "c" to 0), restricted)
         }
     }
+
+    @Test
+    fun `version 10 to 11 keeps progress and adds an empty list of forgotten items`() {
+        helper.createDatabase("migration-test-11", 10).use { db ->
+            db.execSQL(
+                "INSERT INTO watch_progress (playlistId, kind, itemId, positionMs, durationMs, updatedAt, title, hasNext) " +
+                    "VALUES (1, 'movie', 5, 10, 100, 7, 't', 0)"
+            )
+        }
+        helper.runMigrationsAndValidate("migration-test-11", 11, true).use { db ->
+            db.query("SELECT COUNT(*) FROM watch_progress").use {
+                it.moveToFirst()
+                assertEquals(1, it.getInt(0))
+            }
+            db.query("SELECT COUNT(*) FROM sync_tombstone").use {
+                it.moveToFirst()
+                assertEquals(0, it.getInt(0))
+            }
+        }
+    }
 }

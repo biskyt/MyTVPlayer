@@ -197,6 +197,19 @@ data class WatchProgressEntity(
 }
 
 /**
+ * This TV forgot how far a film or an episode got, at [deletedAt]. [kind] is [VOD_MOVIE], [VOD_EPISODE], or
+ * [CAT_SERIES] for a whole series ([itemId] is then the series): the other TVs forget all its episodes, those this TV
+ * never had too. Kept for [KEEP_DAYS] days, so that the other TVs forget it too (see ProgressSync), and not a row
+ * from an older copy takes its place.
+ */
+@Entity(tableName = "sync_tombstone", primaryKeys = ["playlistId", "kind", "itemId"])
+data class SyncTombstoneEntity(val playlistId: Long, val kind: String, val itemId: Long, val deletedAt: Long) {
+    companion object {
+        const val KEEP_DAYS = 60L
+    }
+}
+
+/**
  * A favourite movie or series. [kind] is [CAT_MOVIE] or [CAT_SERIES]. [position]: where the user put it (0, as for
  * favourites from before 1.2.0, keeps the original order: newest first).
  */

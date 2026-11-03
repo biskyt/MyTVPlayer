@@ -65,6 +65,7 @@ class MovieDetailsViewModel(private val c: AppContainer, private val playlistId:
     val favourite = c.vod.observeFavourite(playlistId, CAT_MOVIE, streamId).stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     init {
+        c.progressSync.syncSoon()
         viewModelScope.launch {
             movie = c.vod.movie(playlistId, streamId)
             val p = c.playlists.get(playlistId) ?: return@launch

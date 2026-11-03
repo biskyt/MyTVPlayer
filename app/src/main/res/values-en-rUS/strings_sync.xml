@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- US English overrides: only strings whose wording differs from the UK source in values/. -->
+<resources>
+    <string name="sync_help">Uses your Google Drive to keep your place in movies and episodes the same on all your TVs</string>
+    <string name="sync_intro">Sign in with the same Google account on each TV. MyTVPlayer keeps where you got to in movies and episodes in a hidden folder in your Google Drive. Only MyTVPlayer can see that folder, and it reads nothing else in your Drive.</string>
+</resources>

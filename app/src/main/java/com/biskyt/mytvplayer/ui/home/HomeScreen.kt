@@ -88,6 +88,8 @@ private const val VOD_ROW_LIMIT = 20
 private const val CHANNEL_ROW_LIMIT = 12
 
 class HomeViewModel(private val c: AppContainer) : ViewModel() {
+    fun syncProgress() = c.progressSync.syncSoon()
+
     private val activePlaylist = c.settings.activePlaylistId
     val playlistId = activePlaylist.stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
 
@@ -138,6 +140,8 @@ class HomeViewModel(private val c: AppContainer) : ViewModel() {
 fun HomeScreen() {
     val vm = appViewModel { HomeViewModel(it) }
     vm.nowNext.PauseWhenHidden()
+    // Each time Home shows: what was watched on the user's other TVs (the sync between TVs).
+    LaunchedEffect(Unit) { vm.syncProgress() }
     val nav = LocalNavigator.current
     val favourites by vm.favourites.collectAsState()
     val recent by vm.recent.collectAsState()

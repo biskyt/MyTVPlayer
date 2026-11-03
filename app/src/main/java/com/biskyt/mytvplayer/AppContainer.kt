@@ -8,7 +8,9 @@ import android.os.LocaleList
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -20,6 +22,9 @@ import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
+import com.biskyt.mytvplayer.core.sync.DriveStore
+import com.biskyt.mytvplayer.core.sync.GoogleAuth
+import com.biskyt.mytvplayer.core.sync.SyncException
 import com.biskyt.mytvplayer.data.BackupFile
 import com.biskyt.mytvplayer.data.BackupRepository
 import com.biskyt.mytvplayer.data.CatchupRepository
@@ -30,11 +35,14 @@ import com.biskyt.mytvplayer.data.EpgRepository
 import com.biskyt.mytvplayer.data.Favourites
 import com.biskyt.mytvplayer.data.ParentalRepository
 import com.biskyt.mytvplayer.data.PlaylistRepository
+import com.biskyt.mytvplayer.data.ProgressSync
 import com.biskyt.mytvplayer.data.SearchRepository
 import com.biskyt.mytvplayer.data.SettingsRepository
+import com.biskyt.mytvplayer.data.SyncAccount
 import com.biskyt.mytvplayer.data.SyncManager
 import com.biskyt.mytvplayer.data.VodRepository
 import com.biskyt.mytvplayer.data.VpnMonitor
+import com.biskyt.mytvplayer.data.dataStore
 import com.biskyt.mytvplayer.data.db.AppDatabase
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
@@ -49,6 +57,9 @@ import okhttp3.OkHttpClient
  * gives its own (`http-user-agent`).
  */
 val USER_AGENT = "MyTVPlayer/${BuildConfig.VERSION_NAME} (+https://github.com/biskyt/MyTVPlayer)"
+
+/** Background work that needs the network waits until the TV is online. */
+private val online = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
 /** Hand-wired dependencies: small enough that a DI framework would only add start-up time. */
 class AppContainer(context: Context) {
@@ -70,7 +81,14 @@ class AppContainer(context: Context) {
     private val categoryStore = CategoryStore(db)
     val playlists = PlaylistRepository(db, http, settings, epg, context.cacheDir.resolve("playlists"), categoryStore)
     val channels = ChannelRepository(db)
-    val vod = VodRepository(db, playlists, categoryStore)
+    val progressSync = ProgressSync(
+        db,
+        SyncAccount(context.dataStore),
+        BuildConfig.GOOGLE_CLIENT_ID.takeIf { it.isNotBlank() }?.let { GoogleAuth(http, it, BuildConfig.GOOGLE_CLIENT_SECRET) },
+        appScope,
+        { token -> DriveStore(http, token) }
+    )
+    val vod = VodRepository(db, playlists, categoryStore, progressSync)
     val favourites = Favourites(appScope, settings, channels, vod)
     val search = SearchRepository(db)
     val catchup = CatchupRepository(playlists)
@@ -110,9 +128,7 @@ open class MyTvApp : Application(), SingletonImageLoader.Factory {
     protected open fun installCrashLog() = CrashLog(filesDir, BuildConfig.VERSION_NAME).install()
 
     protected open fun scheduleDailyRefresh() {
-        val request = PeriodicWorkRequestBuilder<RefreshWorker>(1, TimeUnit.DAYS)
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-            .build()
+        val request = PeriodicWorkRequestBuilder<RefreshWorker>(1, TimeUnit.DAYS).setConstraints(online).build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork("daily-refresh", ExistingPeriodicWorkPolicy.KEEP, request)
     }
 
@@ -130,6 +146,30 @@ open class MyTvApp : Application(), SingletonImageLoader.Factory {
 }
 
 val Context.container: AppContainer get() = (applicationContext as MyTvApp).container
+
+/**
+ * Finishes the sync between TVs after the user leaves the app with changes not sent yet (see ProgressSync), so they do
+ * not wait for the next time the app opens. It waits until the TV is online.
+ */
+class ProgressSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result = try {
+        applicationContext.container.progressSync.finish()
+        Result.success()
+    } catch (e: SyncException) {
+        // A few tries, for a connection that comes and goes; the next time the app opens syncs anyway.
+        if (e.reason == SyncException.Reason.SIGNED_OUT || runAttemptCount >= TRIES) Result.success() else Result.retry()
+    }
+
+    companion object {
+        private const val TRIES = 4
+
+        fun start(context: Context) {
+            val request = OneTimeWorkRequestBuilder<ProgressSyncWorker>().setConstraints(online).build()
+            // One at a time: if one waits already, it sends these changes too.
+            WorkManager.getInstance(context).enqueueUniqueWork("progress-sync", ExistingWorkPolicy.KEEP, request)
+        }
+    }
+}
 
 /** Daily refresh of the playlist in use: its channels, films and series, and its TV guide. */
 class RefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {

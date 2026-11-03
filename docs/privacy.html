@@ -38,8 +38,24 @@
     <li><strong>Downloaded lists:</strong> the channel, movie and series lists and TV guide data the app downloads
       from the services you set up.</li>
   </ul>
-  <p>This information is kept in the app's private storage on your device. It is not uploaded anywhere, and it is
-    excluded from Android's automatic cloud backup.</p>
+  <p>This information is kept in the app's private storage on your device. It is not uploaded anywhere (except as
+    described under <a href="#sync">Sync between TVs</a>, if you turn it on), and it is excluded from Android's
+    automatic cloud backup.</p>
+
+  <h2 id="sync">Sync between TVs (optional, off by default)</h2>
+  <p>If you turn on Settings › Sync between TVs and sign in with Google, the app keeps how far you got into movies and
+    episodes in a hidden app folder in <strong>your own Google Drive</strong>, so your other TVs can carry on from the
+    same place. It stores each item's title, picture address, position and the time it was watched, with an id for
+    the playlist that cannot be turned back into its address or user name. Your playlist logins are never stored
+    there.</p>
+  <ul>
+    <li>The app asks Google only for this hidden folder (the <code>drive.appdata</code> permission) and your email
+      address, which it shows on the settings page. It cannot see any other file in your Drive.</li>
+    <li>The data goes from your device to Google directly. The developer has no server and never receives it.</li>
+    <li>Stop syncing deletes this TV's file from the folder and signs the TV out. You can also remove the app's access
+      and its hidden data at any time in your Google account (Drive › Settings › Manage apps).</li>
+    <li>Google's handling of your Drive is covered by Google's privacy policy.</li>
+  </ul>
 
   <h2>Who the app connects to</h2>
   <p>To work, the app connects directly from your device to:</p>
@@ -49,6 +65,7 @@
     <li><strong>TV guide (XMLTV) addresses you add,</strong> and, if you choose them, free country guides from
       iptv-epg.org.</li>
     <li><strong>The free TV lists (biskyt.github.io),</strong> only if you choose the free TV, films and series.</li>
+    <li><strong>Google (sign-in and Google Drive),</strong> only if you turn on Sync between TVs.</li>
     <li><strong>Image servers</strong> named in those lists, to show channel logos and posters, and the stream
       servers the lists point to.</li>
   </ul>

@@ -192,6 +192,13 @@ These are built in already. Keep them when changing the areas they cover.
   - Backup is one plain JSON file with a fixed name, overwritten each time, and no encryption or schedule.
   - Permissions are asked for only when backing up or restoring.
 - **Licences** aren't a reason to avoid the best library.
+- **Sync between TVs** (`data/ProgressSync.kt`, the owner, 2026-11-03):
+  - It is off by default. While it is off, it makes no requests, starts no jobs and writes nothing more.
+  - A sync runs in the background and never holds up a page or playback. Pages show what it brings in through
+    their database lists.
+  - Only one sync runs at a time. A request made while one runs is dropped, not queued.
+  - It does not need to be instant. Saves during playback only mark a change.
+  - Leaving the app with changes not sent finishes the sync in the background (`ProgressSyncWorker`).
 
 ## Open items (as of 1.1.0, released)
 - **Google Play:** each release uploads the `.aab` to closed testing (`alpha`); set-up is in RELEASING.md. Production is

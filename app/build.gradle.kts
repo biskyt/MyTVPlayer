@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -15,10 +17,20 @@ android {
         applicationId = "com.biskyt.mytvplayer"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = 36
-        versionCode = 78
-        versionName = "1.9.1"
+        versionCode = 79
+        versionName = "1.10.0"
         ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a") }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // The Google client for the sync between TVs (RELEASING.md › Sync between TVs): the environment (releases)
+        // or local.properties. Without one, the app hides the sync setting. Google treats a TV client's secret as not
+        // secret: it is in every copy of the app.
+        val local = Properties().apply {
+            rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use { load(it) }
+        }
+        fun google(env: String, key: String) = (System.getenv(env) ?: local.getProperty(key)).orEmpty().replace("\"", "")
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${google("MYTV_GOOGLE_CLIENT_ID", "google.clientId")}\"")
+        buildConfigField("String", "GOOGLE_CLIENT_SECRET", "\"${google("MYTV_GOOGLE_CLIENT_SECRET", "google.clientSecret")}\"")
     }
 
     // Only the languages the app has words for (AppText.languages): libraries' others would add size for nothing.
