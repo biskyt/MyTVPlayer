@@ -28,6 +28,7 @@ import com.biskyt.mytvplayer.data.ChannelRepository
 import com.biskyt.mytvplayer.data.CrashLog
 import com.biskyt.mytvplayer.data.EpgRepository
 import com.biskyt.mytvplayer.data.Favourites
+import com.biskyt.mytvplayer.data.ParentalRepository
 import com.biskyt.mytvplayer.data.PlaylistRepository
 import com.biskyt.mytvplayer.data.SearchRepository
 import com.biskyt.mytvplayer.data.SettingsRepository
@@ -64,6 +65,7 @@ class AppContainer(context: Context) {
         }
         .build()
     val settings = SettingsRepository(context)
+    val parental = ParentalRepository(db, settings, appScope)
     val epg = EpgRepository(db, http, context.filesDir, appScope)
     private val categoryStore = CategoryStore(db)
     val playlists = PlaylistRepository(db, http, settings, epg, context.cacheDir.resolve("playlists"), categoryStore)

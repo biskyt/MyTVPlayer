@@ -116,6 +116,7 @@ fun SettingsScreen() {
             })
         }
         item { VpnWarningRow() }
+        item { ParentalControlsRow() }
         item {
             SettingRow(stringResource(R.string.settings_backup_title), stringResource(R.string.settings_backup_help), {
                 nav.push(Screen.Backup)

@@ -28,6 +28,8 @@ See also:
   - Never skip, disable or quarantine a test.
   - Don't just raise timeouts.
 - **Long waits (CI, test loops, agents) go in the background**, so the conversation isn't blocked.
+- **Release every app change once it is merged** (the owner, 2026-11-03): start `release.yml` after the merge without
+  asking, unless the owner explicitly says not to.
 - **When the owner says "don't release until X", don't merge or release** until they confirm.
 - **Only the app's own text is translated**: see **Languages** below.
 - **Release notes are English only**, on GitHub and in Play's "What's new" (translated Play notes: not worth the work).
@@ -57,8 +59,8 @@ See also:
      commit those unless meant to). The emulator runs are on PRs (or started by hand), and skipped when every
      changed file is one that can't reach the app: `.md`, `docs/`, `store/`, JVM tests and screenshots, or the other
      workflows and their scripts (the list is `paths-ignore` in `emulator.yml`).
-8. Releases are built only for a tag, never for a plain merge to `main`. When the owner wants one, start `release.yml`
-   for `v<versionName>` on `main`. It re-tests, signs and publishes the GitHub release with the APK and SHA256SUMS.
+8. Releases are built only for a tag, never for a plain merge to `main`. After each merged app change (see the standing
+   instructions), start `release.yml` for `v<versionName>` on `main`. It re-tests, signs and publishes the GitHub release with the APK and SHA256SUMS.
    - **From a Claude session, run the workflow by hand:** tag pushes from a cloud session have failed with HTTP 403
      (with either repo name as the remote), while pushes to the working branch work. Use the GitHub MCP tool
      `actions_run_trigger` with method `run_workflow`, `workflow_id` `release.yml` and ref `main`. It tags

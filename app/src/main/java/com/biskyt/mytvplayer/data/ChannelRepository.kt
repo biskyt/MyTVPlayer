@@ -104,6 +104,9 @@ class ChannelRepository(private val db: AppDatabase) {
     /** Takes a channel off "Recently watched". */
     suspend fun removeRecent(playlistId: Long, streamId: Long) = favourites.removeRecent(playlistId, streamId)
 
+    /** The channel, unless it's restricted while locked (parental controls). */
+    suspend fun getOpen(playlistId: Long, streamId: Long) = channels.getOpen(playlistId, streamId)
+
     suspend fun setHidden(playlistId: Long, streamId: Long, hidden: Boolean) {
         channels.setHidden(playlistId, streamId, hidden)
         db.categories().refreshCounts(playlistId, CAT_LIVE)

@@ -5,11 +5,13 @@ import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.AutoMigrationSpec
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.biskyt.mytvplayer.core.epg.CategoryLanguageDetector
 
 @Database(
-    version = 9,
+    version = 10,
     exportSchema = true,
     // 2: M3U playlists (playlist.kind; channel.streamUrl/userAgent/referrer).
     // 3: movies and series (category.type; movie, series, watch_progress, vod_favourite).
@@ -20,6 +22,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     // 7: the user's order of favourites (favourite.position, vod_favourite.position).
     // 8: guides switched on per playlist (playlist_epg_source; see MIGRATION_7_8).
     // 9: when each guide's programmes end (epg_source.programmesUntil).
+    // 10: parental controls (category.restricted, adult categories restricted; parental).
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -27,13 +30,14 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AutoMigration(from = 4, to = 5),
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 6, to = 7),
-        AutoMigration(from = 8, to = 9)
+        AutoMigration(from = 8, to = 9),
+        AutoMigration(from = 9, to = 10, spec = AppDatabase.RestrictAdult::class)
     ],
     entities = [
         PlaylistEntity::class, CategoryEntity::class, ChannelEntity::class, FavouriteEntity::class, RecentEntity::class,
         EpgSourceEntity::class, EpgChannelEntity::class, ProgrammeEntity::class, ChannelEpgMappingEntity::class,
         MovieEntity::class, SeriesEntity::class, EpisodeEntity::class, WatchProgressEntity::class, VodFavouriteEntity::class,
-        PlaylistEpgSourceEntity::class
+        PlaylistEpgSourceEntity::class, ParentalEntity::class
     ]
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -44,6 +48,14 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun epg(): EpgDao
     abstract fun vod(): VodDao
     abstract fun backup(): BackupDao
+    abstract fun parental(): ParentalDao
+
+    /** Version 10: the adult categories that are already stored start restricted, as new ones do. */
+    class RestrictAdult : AutoMigrationSpec {
+        override fun onPostMigrate(db: SupportSQLiteDatabase) {
+            db.execSQL("UPDATE category SET restricted = 1 WHERE lang = '${CategoryLanguageDetector.ADULT}'")
+        }
+    }
 
     /**
      * Gives space back to the system after large deletes (old programmes, removed playlists). SQLite never shrinks the
@@ -64,7 +76,8 @@ abstract class AppDatabase : RoomDatabase() {
         val db = openHelper.writableDatabase
         val tables = db.query(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' " +
-                "AND name NOT IN ('android_metadata', 'room_master_table')"
+                // The parental controls row is the app's state, not backed-up data: kept.
+                "AND name NOT IN ('android_metadata', 'room_master_table', 'parental')"
         ).use { c ->
             List(c.count) {
                 c.moveToNext()

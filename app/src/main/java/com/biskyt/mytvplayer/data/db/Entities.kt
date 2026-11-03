@@ -67,7 +67,23 @@ data class CategoryEntity(
     val sortOrder: Int,
     /** Channels, movies or series in it. */
     val channelCount: Int = 0,
-    @ColumnInfo(defaultValue = CAT_LIVE) val type: String = CAT_LIVE
+    @ColumnInfo(defaultValue = CAT_LIVE) val type: String = CAT_LIVE,
+    /** Restricted (parental controls): adult categories by default. See [ParentalEntity]. */
+    @ColumnInfo(defaultValue = "0") val restricted: Boolean = false
+)
+
+/**
+ * Parental controls, one row kept from the settings and the PIN lock (see ParentalRepository), which list queries read:
+ * items of restricted categories are left out while [locked], and from recently watched, "Carry on watching" and search
+ * when [hideRecent], [hideCarryOn] or [hideSearch] is on. With no row, they are left out everywhere.
+ */
+@Entity(tableName = "parental")
+data class ParentalEntity(
+    @PrimaryKey val id: Int = 0,
+    val locked: Boolean,
+    val hideRecent: Boolean,
+    val hideCarryOn: Boolean,
+    val hideSearch: Boolean
 )
 
 /** A movie from the provider's list. [title] and [year] are cleaned from the provider's name (see VodTitles). */

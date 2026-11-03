@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -34,6 +35,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -41,6 +43,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.R
+import com.biskyt.mytvplayer.container
 import com.biskyt.mytvplayer.data.db.CategoryEntity
 import com.biskyt.mytvplayer.data.groupLabel
 import com.biskyt.mytvplayer.data.label
@@ -174,6 +177,9 @@ fun <F> CategoryColumn(
     onHide: ((CategoryEntity) -> Unit)? = null,
     right: FocusRequester = FocusRequester.Default
 ) {
+    val parental = LocalContext.current.container.parental
+    val gate = rememberPinGate()
+    val scope = rememberCoroutineScope()
     val selectedEntry = remember { FocusRequester() }
     var options by remember { mutableStateOf<CategoryEntity?>(null) }
     val state = rememberLazyListState()
@@ -237,20 +243,27 @@ fun <F> CategoryColumn(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
+                    if (category?.restricted == true) RestrictedMark(Modifier.padding(end = 6.dp))
                     if (count != null) Text(formatCount(count), style = MaterialTheme.typography.bodySmall, color = Palette.textDim)
                 }
             }
         }
     }
     options?.let { cat ->
-        HidePanel(cat, { options = null }) {
+        CategoryOptions(cat, { options = null }, hide = {
             val next = entries.shownAfterHiding(cat)
             next?.let(onSelect)
             onHide?.invoke(cat)
             // Its entry goes, and focus goes to the one now selected (none, if it was the only one).
             next?.let { refocus = Refocus(it) }
-        }
+        }, restrict = { on ->
+            // Removing a restriction needs the PIN, when one is set.
+            gate.run(!on && parental.hasPin.value) {
+                scope.launch { parental.setRestricted(cat.playlistId, cat.type, listOf(cat.categoryId), on) }
+            }
+        })
     }
+    PinGateHost(gate)
 }
 
 /**
@@ -288,14 +301,23 @@ private fun <F> RefocusEffect(request: Refocus<F>?, selected: F, index: () -> In
     }
 }
 
-/** A category's options in the column: hiding it. */
+/** A category's options in the column: hiding it, and restricting it (parental controls) or removing that. */
 @Composable
-private fun HidePanel(cat: CategoryEntity, close: () -> Unit, hide: () -> Unit) {
-    val action = ItemAction.Run(stringResource(R.string.common_hide_category), stringResource(R.string.common_hide_category_help)) {
+private fun CategoryOptions(cat: CategoryEntity, close: () -> Unit, hide: () -> Unit, restrict: (Boolean) -> Unit) {
+    val hideAction = ItemAction.Run(stringResource(R.string.common_hide_category), stringResource(R.string.common_hide_category_help)) {
         close()
         hide()
     }
-    ItemActionsPanel(cat.label, listOf(action), close)
+    val (label, help) = if (cat.restricted) {
+        R.string.parental_unrestrict to R.string.parental_unrestrict_help
+    } else {
+        R.string.parental_restrict to R.string.parental_restrict_help
+    }
+    val restrictAction = ItemAction.Run(stringResource(label), stringResource(help)) {
+        close()
+        restrict(!cat.restricted)
+    }
+    ItemActionsPanel(cat.label, listOf(hideAction, restrictAction), close)
 }
 
 /**

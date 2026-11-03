@@ -47,6 +47,7 @@ import com.biskyt.mytvplayer.ui.common.FilteredCategoryColumn
 import com.biskyt.mytvplayer.ui.common.ItemActionsPanel
 import com.biskyt.mytvplayer.ui.common.KeepInView
 import com.biskyt.mytvplayer.ui.common.ListHeader
+import com.biskyt.mytvplayer.ui.common.LockedCategory
 import com.biskyt.mytvplayer.ui.common.MovableTile
 import com.biskyt.mytvplayer.ui.common.MoveBackHandler
 import com.biskyt.mytvplayer.ui.common.MoveHint
@@ -60,6 +61,7 @@ import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TabScaffold
 import com.biskyt.mytvplayer.ui.common.categoryEntries
 import com.biskyt.mytvplayer.ui.common.collectIds
+import com.biskyt.mytvplayer.ui.common.isLockedCategory
 import com.biskyt.mytvplayer.ui.common.moveAction
 import com.biskyt.mytvplayer.ui.common.openOnShown
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
@@ -193,6 +195,7 @@ fun VodBrowseScreen(type: String, initialFilter: VodFilter?) {
                         Modifier.padding(top = 24.dp),
                         maxLines = 2
                     )
+                    isLockedCategory(categories, (filter as? VodFilter.Category)?.id) -> LockedCategory()
                     vm.filters.settled -> PosterGrid(vm, p?.id ?: 0)
                 }
             }

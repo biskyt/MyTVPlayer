@@ -30,6 +30,18 @@ object AppIcons {
         verticalLineTo(6f)
         close()
     }
+    val Lock = icon("lock", false) {
+        moveTo(6f, 11f)
+        horizontalLineTo(18f)
+        verticalLineTo(20f)
+        horizontalLineTo(6f)
+        close()
+        moveTo(8.5f, 11f)
+        verticalLineTo(7.5f)
+        curveTo(8.5f, 5.5f, 10f, 4f, 12f, 4f)
+        curveTo(14f, 4f, 15.5f, 5.5f, 15.5f, 7.5f)
+        verticalLineTo(11f)
+    }
     val Play = icon("play", true) {
         moveTo(7f, 5f)
         lineTo(19f, 12f)

@@ -41,7 +41,13 @@ data class Settings(
     val accent: Int = AccentPalette.DEFAULT,
     val largeText: Boolean = false,
     /** Show in the top bar whether Android reports a VPN (see VpnMonitor). */
-    val warnVpn: Boolean = false
+    val warnVpn: Boolean = false,
+    /** Parental controls: leave restricted categories out of these (see ParentalRepository). */
+    val hideRestrictedRecent: Boolean = true,
+    val hideRestrictedCarryOn: Boolean = true,
+    val hideRestrictedSearch: Boolean = true,
+    /** The parental controls PIN, salted and hashed (see Pin); empty when none is set. */
+    val pinHash: String = ""
 ) {
     val effectiveSubtitleLanguage: String get() = subtitleLanguage.ifEmpty { Locale.getDefault().language }
 }
@@ -64,6 +70,10 @@ class SettingsRepository(private val context: Context) {
         val accent = intPreferencesKey("accent")
         val largeText = booleanPreferencesKey("large_text")
         val warnVpn = booleanPreferencesKey("warn_vpn")
+        val hideRecent = booleanPreferencesKey("restricted_hide_recent")
+        val hideCarryOn = booleanPreferencesKey("restricted_hide_carry_on")
+        val hideSearch = booleanPreferencesKey("restricted_hide_search")
+        val pinHash = stringPreferencesKey("pin_hash")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { it.toSettings() }.distinctUntilChanged()
@@ -115,6 +125,10 @@ class SettingsRepository(private val context: Context) {
             accent = this[K.accent] ?: d.accent,
             largeText = this[K.largeText] ?: d.largeText,
             warnVpn = this[K.warnVpn] ?: d.warnVpn,
+            hideRestrictedRecent = this[K.hideRecent] ?: d.hideRestrictedRecent,
+            hideRestrictedCarryOn = this[K.hideCarryOn] ?: d.hideRestrictedCarryOn,
+            hideRestrictedSearch = this[K.hideSearch] ?: d.hideRestrictedSearch,
+            pinHash = this[K.pinHash] ?: d.pinHash,
         )
     }
 
@@ -137,6 +151,10 @@ class SettingsRepository(private val context: Context) {
             prefs[K.accent] = s.accent
             prefs[K.largeText] = s.largeText
             prefs[K.warnVpn] = s.warnVpn
+            prefs[K.hideRecent] = s.hideRestrictedRecent
+            prefs[K.hideCarryOn] = s.hideRestrictedCarryOn
+            prefs[K.hideSearch] = s.hideRestrictedSearch
+            prefs[K.pinHash] = s.pinHash
         }
     }
 
