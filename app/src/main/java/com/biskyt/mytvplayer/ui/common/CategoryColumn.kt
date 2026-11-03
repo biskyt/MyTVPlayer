@@ -42,13 +42,16 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.biskyt.mytvplayer.AppText
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.container
 import com.biskyt.mytvplayer.data.db.CategoryEntity
 import com.biskyt.mytvplayer.data.groupLabel
 import com.biskyt.mytvplayer.data.label
+import com.biskyt.mytvplayer.data.labelGroup
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
+import java.text.Collator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -144,19 +147,20 @@ data class CategoryEntry<F>(val filter: F, val label: String, val count: Int? = 
  * from two countries' channels) gets its group's label too, so they can be told apart.
  */
 fun <F> categoryEntries(categories: List<CategoryEntity>, filter: (CategoryEntity) -> F): List<CategoryEntry<F>> =
-    distinctLabels(categories, { it.label }, { it.lang }) { c, label -> CategoryEntry(filter(c), label, c.channelCount, c) }
+    distinctLabels(categories, { it.label }, { it.labelGroup }) { c, label -> CategoryEntry(filter(c), label, c.channelCount, c) }
 
 /**
- * [items] made into [entry]s, each [label] shared by more than one adding its group ([lang]) when it has one and the
- * group isn't the label itself: "News · Sweden".
+ * [items] made into [entry]s in A to Z order of their names, each [label] shared by more than one adding its group
+ * ([lang]) when it has one and the group isn't the label itself: "News · Sweden".
  */
 fun <T, E> distinctLabels(items: List<T>, label: (T) -> String, lang: (T) -> String?, entry: (T, String) -> E): List<E> {
     val labels = items.map(label)
     val shared = labels.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
-    return items.mapIndexed { i, item ->
+    val named = items.mapIndexed { i, item ->
         val group = lang(item)?.takeIf { labels[i] in shared }?.let(::groupLabel)?.takeIf { it != labels[i] }
-        entry(item, group?.let { "${labels[i]} · $it" } ?: labels[i])
+        item to (group?.let { "${labels[i]} · $it" } ?: labels[i])
     }
+    return named.sortedWith(compareBy(Collator.getInstance(AppText.locale)) { it.second }).map { (item, name) -> entry(item, name) }
 }
 
 /**

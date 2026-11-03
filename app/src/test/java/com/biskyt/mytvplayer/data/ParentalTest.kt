@@ -206,6 +206,19 @@ class ParentalTest {
     }
 
     @Test
+    fun `film search names an adult category with XXX first, as the category lists do`() = runBlocking {
+        provider.movieCategories += listOf("13" to "GLOBAL: ADULT MOVIES")
+        provider.movies += listOf(Triple(901L, "Night Film", "13"))
+        val id = c.addHomeTv(provider, vod = true)
+        // Adult categories are left out to start with: include it and download its films.
+        c.db.categories().setIncluded(id, CAT_MOVIE, listOf("13"), true)
+        c.parental.setRestricted(id, CAT_MOVIE, "13", false)
+        c.vod.sync(c.playlists.get(id)!!)
+        val hit = c.db.vod().searchMovies(id, "Night", 10).single()
+        assertEquals("XXX: ADULT MOVIES", categoryLabel(hit.category!!, hit.categoryLang))
+    }
+
+    @Test
     fun `leaving the app after unlocking closes what may show restricted content`() = runBlocking {
         c.parental.setPin("1234") // whoever sets it is let in
         val closed = async(Dispatchers.Default) { withTimeout(5_000) { c.parental.relocked.first() } }

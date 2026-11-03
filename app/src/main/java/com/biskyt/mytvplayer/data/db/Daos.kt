@@ -681,9 +681,17 @@ data class VodCard(val id: Long, val title: String, val year: Int?, val imageUrl
 
 /**
  * A movie or series found by a search, with the name of its category ([category]; blank for an M3U title with no
- * group, null if its category is gone). The same film is often in several categories (languages, qualities).
+ * group, null if its category is gone) and that category's group ([categoryLang]). The same film is often in several
+ * categories (languages, qualities).
  */
-data class VodHit(val id: Long, val title: String, val year: Int?, val imageUrl: String?, val category: String?) {
+data class VodHit(
+    val id: Long,
+    val title: String,
+    val year: Int?,
+    val imageUrl: String?,
+    val category: String?,
+    val categoryLang: String?
+) {
     val card get() = VodCard(id, title, year, imageUrl)
 }
 
@@ -761,7 +769,7 @@ interface VodDao {
 
     // The titles first, then the category of each one found: not for every title that matches a short query.
     @Query(
-        """SELECT h.id, h.title, h.year, h.imageUrl, c.name AS category FROM (
+        """SELECT h.id, h.title, h.year, h.imageUrl, c.name AS category, c.lang AS categoryLang FROM (
              SELECT streamId AS id, title, year, posterUrl AS imageUrl, categoryId, position FROM movie
              WHERE playlistId = :pid AND NOT ($P_SEARCH AND $MOVIE_RESTRICTED) AND title $LIKE_Q ORDER BY position, title LIMIT :limit
            ) h LEFT JOIN category c ON c.playlistId = :pid AND c.type = '$CAT_MOVIE' AND c.categoryId = h.categoryId
@@ -770,7 +778,7 @@ interface VodDao {
     suspend fun searchMovies(pid: Long, q: String, limit: Int): List<VodHit>
 
     @Query(
-        """SELECT h.id, h.title, h.year, h.imageUrl, c.name AS category FROM (
+        """SELECT h.id, h.title, h.year, h.imageUrl, c.name AS category, c.lang AS categoryLang FROM (
              SELECT seriesId AS id, title, year, coverUrl AS imageUrl, categoryId, position FROM series
              WHERE playlistId = :pid AND NOT ($P_SEARCH AND $SERIES_RESTRICTED) AND title $LIKE_Q ORDER BY position, title LIMIT :limit
            ) h LEFT JOIN category c ON c.playlistId = :pid AND c.type = '$CAT_SERIES' AND c.categoryId = h.categoryId

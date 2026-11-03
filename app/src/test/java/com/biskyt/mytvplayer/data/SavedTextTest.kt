@@ -86,8 +86,8 @@ class SavedTextTest {
         AppText.setLanguage(context, "fr")
         assertEquals("Sans titre", programmeTitle(""))
         assertEquals("Line of Duty", programmeTitle("Line of Duty"))
-        assertEquals("Sans catégorie", categoryLabel(""))
-        assertEquals("News", categoryLabel("News"))
-        assertEquals(" ", categoryLabel(" ")) // a playlist's own group of spaces: not the one with none
+        assertEquals("Sans catégorie", categoryLabel("", null))
+        assertEquals("News", categoryLabel("News", null))
+        assertEquals(" ", categoryLabel(" ", null)) // a playlist's own group of spaces: not the one with none
     }
 }

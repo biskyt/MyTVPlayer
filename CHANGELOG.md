@@ -4,6 +4,8 @@ Each version's section becomes its GitHub release notes, so it is written for th
 English, one bullet of one sentence per change.
 
 ## 1.9.1
+- Categories in TV (Catch-up too), Movies and Series are listed from A to Z, after the lists at the top (Favourites, Recently watched, All).
+- Adult categories are named with "XXX" first everywhere in the app, so they are easy to find and come near the end of the lists.
 - While a parental controls hide setting is on, MyTVPlayer no longer keeps what you watch in restricted categories, so turning the setting off shows none of it.
 - You restrict a category only from its options (hold OK): the switch for a whole group in Languages & categories is removed.
 

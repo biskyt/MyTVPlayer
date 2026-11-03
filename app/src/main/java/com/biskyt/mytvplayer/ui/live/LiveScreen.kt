@@ -48,6 +48,7 @@ import com.biskyt.mytvplayer.data.ChannelFilter
 import com.biskyt.mytvplayer.data.db.CAT_LIVE
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.label
+import com.biskyt.mytvplayer.data.labelGroup
 import com.biskyt.mytvplayer.data.programmeTitle
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
@@ -196,7 +197,7 @@ private fun CatchupCategories(vm: LiveViewModel, selected: ChannelFilter, right:
     val all = stringResource(R.string.live_all_catchup)
     val entries = remember(categories, all) {
         listOf<CategoryEntry<ChannelFilter>>(CategoryEntry(ChannelFilter.Catchup, all, categories.sumOf { it.count })) +
-            distinctLabels(categories, { it.label }, { it.lang }) { c, label ->
+            distinctLabels(categories, { it.label }, { it.labelGroup }) { c, label ->
                 CategoryEntry<ChannelFilter>(ChannelFilter.CatchupCategory(c.categoryId), label, c.count)
             }
     }
