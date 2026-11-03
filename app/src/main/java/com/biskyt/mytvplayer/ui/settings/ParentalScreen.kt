@@ -44,15 +44,16 @@ fun ParentalScreen() {
     val scope = rememberCoroutineScope()
     var settingPin by remember { mutableStateOf(false) }
     val hasPin = s.pinHash.isNotEmpty()
+    val forget = stringResource(R.string.parental_forget_help)
     SettingsPage(stringResource(R.string.parental_title)) {
-        item { Muted(stringResource(R.string.parental_intro), maxLines = 3) }
+        item { Muted(stringResource(R.string.parental_intro), maxLines = 2) }
         item {
-            SettingRow(stringResource(R.string.parental_hide_recent), null, {
+            SettingRow(stringResource(R.string.parental_hide_recent), forget, {
                 vm.update { it.copy(hideRestrictedRecent = !it.hideRestrictedRecent) }
             }, rememberFirstFocus()) { Toggle(s.hideRestrictedRecent) }
         }
         item {
-            SettingRow(stringResource(R.string.parental_hide_carry_on), null, {
+            SettingRow(stringResource(R.string.parental_hide_carry_on), forget, {
                 vm.update { it.copy(hideRestrictedCarryOn = !it.hideRestrictedCarryOn) }
             }) { Toggle(s.hideRestrictedCarryOn) }
         }

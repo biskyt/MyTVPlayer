@@ -259,7 +259,7 @@ fun <F> CategoryColumn(
         }, restrict = { on ->
             // Removing a restriction needs the PIN, when one is set.
             gate.run(!on && parental.hasPin.value) {
-                scope.launch { parental.setRestricted(cat.playlistId, cat.type, listOf(cat.categoryId), on) }
+                scope.launch { parental.setRestricted(cat.playlistId, cat.type, cat.categoryId, on) }
             }
         })
     }

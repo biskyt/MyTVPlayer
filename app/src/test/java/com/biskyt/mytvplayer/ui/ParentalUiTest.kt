@@ -48,7 +48,7 @@ class ParentalUiTest {
     fun setUp() = runBlocking {
         val c = app.container
         playlistId = c.addHomeTv(provider)
-        c.parental.setRestricted(playlistId, CAT_LIVE, listOf("1"), true) // Entertainment: channels 101 and 103
+        c.parental.setRestricted(playlistId, CAT_LIVE, "1", true) // Entertainment: channels 101 and 103
         c.parental.setPin("1234")
         c.parental.lock()
     }

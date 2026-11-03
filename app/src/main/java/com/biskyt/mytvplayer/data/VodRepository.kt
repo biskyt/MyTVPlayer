@@ -137,16 +137,15 @@ class VodRepository(private val db: AppDatabase, private val playlists: Playlist
 
     /**
      * Saves progress; [trim] (when playback stops) also drops the oldest rows beyond the cap, in the same write. A
-     * finished episode with [next] after it puts that one on "Carry on watching" in its place ([upNext]).
+     * finished episode with [next] after it puts that one on "Carry on watching" in its place ([upNext]). Nothing is kept
+     * for a restricted film or series while those are hidden from "Carry on watching" (parental controls).
      */
-    suspend fun saveProgress(p: WatchProgressEntity, trim: Boolean = false, next: EpisodeInfo? = null) {
-        val up = next?.takeIf { p.finished }
-        if (!trim && up == null) return vod.saveProgress(p)
-        db.withTransaction {
-            vod.saveProgress(p)
-            if (up != null) upNext(p, up)
-            if (trim) vod.trimProgress(p.playlistId, KEEP_PROGRESS)
-        }
+    suspend fun saveProgress(p: WatchProgressEntity, trim: Boolean = false, next: EpisodeInfo? = null) = db.withTransaction {
+        vod.saveProgress(p)
+        next?.takeIf { p.finished }?.let { upNext(p, it) }
+        // Before the trim, so a restricted item doesn't push out one that is kept.
+        db.parental().forgetProgress(p.playlistId)
+        if (trim) vod.trimProgress(p.playlistId, KEEP_PROGRESS)
     }
 
     /**

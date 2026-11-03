@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.9.1
+- While a parental controls hide setting is on, MyTVPlayer no longer keeps what you watch in restricted categories, so turning the setting off shows none of it.
+- You restrict a category only from its options (hold OK): the switch for a whole group in Languages & categories is removed.
+
 ## 1.9.0
 - New parental controls in Settings: restricted categories (adult ones to start with) are hidden until you enter a PIN, and stay hidden from Recently watched, Carry on watching and search.
 - Restrict a category from its options (hold OK), or a whole group in Languages & categories, where restricted categories have a lock.

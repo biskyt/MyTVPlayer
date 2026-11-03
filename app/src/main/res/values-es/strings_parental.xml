@@ -2,10 +2,11 @@
 <resources>
     <string name="parental_title">Control parental</string>
     <string name="parental_help">Categorías restringidas y un PIN para verlas</string>
-    <string name="parental_intro">Las categorías restringidas tienen un candado. Las categorías para adultos están restringidas desde el principio. Restringe una categoría desde sus opciones (mantén pulsado OK) o un grupo entero en Idiomas y categorías.</string>
+    <string name="parental_intro">Las categorías restringidas tienen un candado. Para restringir una categoría, abre sus opciones (mantén pulsado OK).</string>
     <string name="parental_hide_recent">Ocultar los canales restringidos de Vistos recientemente</string>
     <string name="parental_hide_carry_on">Ocultar las películas y series restringidas de Seguir viendo</string>
     <string name="parental_hide_search">Ocultar los canales, programas, películas y series restringidos de la búsqueda</string>
+    <string name="parental_forget_help">Mientras esté activado, MyTVPlayer no guarda lo que ves en las categorías restringidas.</string>
     <string name="parental_pin_none">No hay PIN: las categorías restringidas se muestran sin él.</string>
     <string name="parental_pin_set_help">Las categorías restringidas se ocultan hasta introducir el PIN, y se ocultan de nuevo al salir de la app.</string>
     <string name="parental_set_pin">Establecer PIN</string>
@@ -22,6 +23,4 @@
     <string name="parental_restrict_help">Ocúltala hasta introducir el PIN (Configuración › Control parental)</string>
     <string name="parental_unrestrict">Quitar la restricción</string>
     <string name="parental_unrestrict_help">Muéstrala sin el PIN</string>
-    <string name="parental_restrict_group">Restringido</string>
-    <string name="parental_restrict_group_help">Todas las categorías de %1$s</string>
 </resources>

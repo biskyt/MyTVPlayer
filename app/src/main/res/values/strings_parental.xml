@@ -3,10 +3,11 @@
     <!-- Parental controls (Settings › Parental controls, restricted categories, the PIN). -->
     <string name="parental_title">Parental controls</string>
     <string name="parental_help">Restricted categories, and a PIN to show them</string>
-    <string name="parental_intro">Restricted categories have a lock. Adult categories are restricted to start with. Restrict a category from its options (hold OK), or a whole group in Languages &amp; categories.</string>
+    <string name="parental_intro">Restricted categories have a lock. To restrict a category, open its options (hold OK).</string>
     <string name="parental_hide_recent">Hide restricted channels from Recently watched</string>
     <string name="parental_hide_carry_on">Hide restricted movies and series from Carry on watching</string>
     <string name="parental_hide_search">Hide restricted channels, programmes, movies and series from search</string>
+    <string name="parental_forget_help">While this is on, MyTVPlayer does not keep what you watch in restricted categories.</string>
     <string name="parental_pin_none">No PIN is set: restricted categories show without one.</string>
     <string name="parental_pin_set_help">Restricted categories stay hidden until the PIN is entered, and are hidden again when you leave the app.</string>
     <string name="parental_set_pin">Set PIN</string>
@@ -23,7 +24,4 @@
     <string name="parental_restrict_help">Hide it until the PIN is entered (Settings › Parental controls)</string>
     <string name="parental_unrestrict">Remove restriction</string>
     <string name="parental_unrestrict_help">Show it without the PIN</string>
-    <string name="parental_restrict_group">Restricted</string>
-    <!-- %1$s is a language or country group, e.g. "Adult" -->
-    <string name="parental_restrict_group_help">Every category in %1$s</string>
 </resources>
