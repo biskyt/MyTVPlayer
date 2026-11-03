@@ -181,4 +181,27 @@ class MigrationTest {
             }
         }
     }
+
+    @Test
+    fun `version 9 to 10 restricts the adult categories already stored`() {
+        helper.createDatabase("migration-test-10", 9).use { db ->
+            db.execSQL(
+                "INSERT INTO playlist (id, name, server, username, password, lastSyncAt, kind) VALUES (1, 'P', 'http://x', 'u', 'p', 0, 'xtream')"
+            )
+            listOf("'a', 'ADULT'", "'b', 'UK'", "'c', NULL").forEachIndexed { i, v ->
+                db.execSQL(
+                    "INSERT INTO category (playlistId, categoryId, lang, name, included, sortOrder, channelCount, type) VALUES (1, $v, 'n', 0, $i, 0, 'live')"
+                )
+            }
+        }
+        helper.runMigrationsAndValidate("migration-test-10", 10, true).use { db ->
+            val restricted = db.query("SELECT categoryId, restricted FROM category ORDER BY categoryId").use {
+                List(it.count) { _ ->
+                    it.moveToNext()
+                    it.getString(0) to it.getInt(1)
+                }
+            }
+            assertEquals(listOf("a" to 1, "b" to 0, "c" to 0), restricted)
+        }
+    }
 }

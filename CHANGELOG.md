@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.9.0
+- New parental controls in Settings: restricted categories (adult ones to start with) are hidden until you enter a PIN, and stay hidden from Recently watched, Carry on watching and search.
+- Restrict a category from its options (hold OK), or a whole group in Languages & categories, where restricted categories have a lock.
+- Backups do not include the PIN, and restoring a backup keeps this TV's PIN and restrictions.
+
 ## 1.8.20
 - Each guide in Settings › TV guide sources now shows "Programmes up to" a date and time, highlighted once that time has passed, so you can see when a provider has stopped updating its guide.
 - TV guide matching now shows what is on now in the guide chosen for a channel, to help you choose the right one.

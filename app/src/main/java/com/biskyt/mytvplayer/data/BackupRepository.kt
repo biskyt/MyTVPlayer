@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.room.withTransaction
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
+import com.biskyt.mytvplayer.core.epg.CategoryLanguageDetector
 import com.biskyt.mytvplayer.data.db.AppDatabase
 import com.biskyt.mytvplayer.data.db.CategoryEntity
 import com.biskyt.mytvplayer.data.db.ChannelEntity
@@ -52,7 +53,9 @@ class Backup(
     val guideChoices: List<ChannelEpgMappingEntity>,
     val progress: List<WatchProgressEntity>,
     /** Which guides are on for which playlists; null from versions before 1.4.0 (see [guideLinks]). */
-    val guideLinks: List<PlaylistEpgSourceEntity>? = null
+    val guideLinks: List<PlaylistEpgSourceEntity>? = null,
+    /** Whether its categories say which are restricted (parental controls): false from versions before 1.9.0. */
+    val restrictions: Boolean = false
 ) {
     /**
      * [guideLinks], or for a backup from before 1.4.0, its guides that were on: a provider's own guide for its playlist,
@@ -93,7 +96,8 @@ class BackupRepository(
                 app = Backup.APP,
                 version = Backup.VERSION,
                 createdAt = System.currentTimeMillis(),
-                settings = current,
+                // Not the parental controls PIN: a short PIN's hash is easy to undo, and the file isn't private.
+                settings = current.copy(pinHash = ""),
                 playlists = db.playlists().all(),
                 categories = dao.categories(),
                 channels = dao.channelChoices(),
@@ -102,7 +106,8 @@ class BackupRepository(
                 epgSources = dao.epgSources(),
                 guideChoices = dao.manualMappings(),
                 progress = dao.progress(),
-                guideLinks = dao.guideLinks()
+                guideLinks = dao.guideLinks(),
+                restrictions = true
             )
         }
         return ByteArrayOutputStream().also { json.encodeToStream(backup, it) }.toByteArray()
@@ -147,12 +152,19 @@ class BackupRepository(
 
     /** The database and settings part of [restore], in one transaction. Returns whether there are any playlists. */
     suspend fun apply(backup: Backup): Boolean {
+        val now = settings.current()
+        // With a PIN set, a restore can't lift restrictions: the ones here stay too, with the hide settings.
+        val keep = if (now.pinHash.isEmpty()) emptySet() else dao.categories().filter { it.restricted }.mapTo(HashSet()) { it.key() }
         db.withTransaction {
             db.clearEveryTable()
             dao.insert(
                 // Never downloaded on this TV: zero times make everything refresh straight away.
                 backup.playlists.map { it.copy(lastSyncAt = 0, vodFeedHash = null) },
-                backup.categories,
+                backup.categories.map { cat ->
+                    // Before 1.9.0 nothing was restricted: adult categories are, as they start.
+                    val adult = !backup.restrictions && cat.lang == CategoryLanguageDetector.ADULT
+                    if (adult || cat.key() in keep) cat.copy(restricted = true) else cat
+                },
                 backup.channels,
                 backup.favourites,
                 backup.vodFavourites,
@@ -164,9 +176,23 @@ class BackupRepository(
         }
         val ids = backup.playlists.map { it.id }
         val active = backup.settings.activePlaylistId.takeIf { it in ids } ?: ids.firstOrNull() ?: 0
-        settings.update { backup.settings.copy(activePlaylistId = active) }
+        // This TV's parental controls PIN stays (backups have none), and with one set, the hide settings too.
+        val restored = backup.settings.copy(activePlaylistId = active, pinHash = now.pinHash)
+        settings.update {
+            if (now.pinHash.isEmpty()) {
+                restored
+            } else {
+                restored.copy(
+                    hideRestrictedRecent = now.hideRestrictedRecent,
+                    hideRestrictedCarryOn = now.hideRestrictedCarryOn,
+                    hideRestrictedSearch = now.hideRestrictedSearch
+                )
+            }
+        }
         return ids.isNotEmpty()
     }
+
+    private fun CategoryEntity.key() = Triple(playlistId, type, categoryId)
 
     private companion object {
         val NOT_A_BACKUP get() = appString(R.string.settings_backup_not_a_backup)

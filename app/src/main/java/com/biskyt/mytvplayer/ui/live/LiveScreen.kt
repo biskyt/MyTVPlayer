@@ -59,6 +59,7 @@ import com.biskyt.mytvplayer.ui.common.FilteredCategoryColumn
 import com.biskyt.mytvplayer.ui.common.FlashLabel
 import com.biskyt.mytvplayer.ui.common.KeepInView
 import com.biskyt.mytvplayer.ui.common.ListHeader
+import com.biskyt.mytvplayer.ui.common.LockedCategory
 import com.biskyt.mytvplayer.ui.common.MovableTile
 import com.biskyt.mytvplayer.ui.common.MoveBackHandler
 import com.biskyt.mytvplayer.ui.common.MoveHint
@@ -76,6 +77,7 @@ import com.biskyt.mytvplayer.ui.common.digit
 import com.biskyt.mytvplayer.ui.common.distinctLabels
 import com.biskyt.mytvplayer.ui.common.formatTime
 import com.biskyt.mytvplayer.ui.common.isGuide
+import com.biskyt.mytvplayer.ui.common.isLockedCategory
 import com.biskyt.mytvplayer.ui.common.numberLabel
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
@@ -139,9 +141,12 @@ fun LiveScreen(initialFilter: ChannelFilter?, initialGuide: Boolean) {
                 MoveHint(vm.mover, CAT_LIVE, MoveLayout.COLUMN, Modifier.padding(bottom = 8.dp))
                 // One paged list for both views, so the one switched to has its rows (and somewhere for focus) at once.
                 val items = vm.channels.collectAsLazyPagingItems()
+                val categories by vm.categories.collectAsState()
+                val lockedCategory = isLockedCategory(categories, (filter as? ChannelFilter.Category)?.id)
                 BackToFilter(filterBox, inContent) {
                     when {
                         !vm.filters.settled -> Unit
+                        lockedCategory -> LockedCategory()
                         vm.guideMode -> GuideGrid(vm, items, play, guideEntry, up = filterBox)
                         else -> ChannelList(vm, items, open)
                     }

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- US English overrides: only strings whose wording differs from the UK source in values/. -->
+<resources>
+    <string name="parental_hide_search">Hide restricted channels, programs, movies and series from search</string>
+</resources>

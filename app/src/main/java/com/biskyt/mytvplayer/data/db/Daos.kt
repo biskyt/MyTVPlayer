@@ -98,6 +98,9 @@ interface CategoryDao {
     @Query("UPDATE category SET included = :included WHERE playlistId = :pid AND type = :type AND categoryId IN (:ids)")
     suspend fun setIncluded(pid: Long, type: String, ids: List<String>, included: Boolean)
 
+    @Query("UPDATE category SET restricted = :restricted WHERE playlistId = :pid AND type = :type AND categoryId IN (:ids)")
+    suspend fun setRestricted(pid: Long, type: String, ids: List<String>, restricted: Boolean)
+
     @Query(
         """UPDATE category SET channelCount = CASE type
              WHEN 'live' THEN (SELECT COUNT(*) FROM channel c WHERE c.playlistId = :pid AND c.categoryId = category.categoryId AND c.hidden = 0)
@@ -115,9 +118,45 @@ interface CategoryDao {
     suspend fun delete(pid: Long, type: String, ids: List<String>)
 }
 
+// Parental controls (see ParentalEntity). An item of a restricted category is left out while locked, and also from
+// recently watched, "Carry on watching" or search when that option is on. With no parental row (NULL), it's left out.
+// The parental row is read once per query, and the restricted categories only while they are needed.
+private const val P_LOCKED = "(SELECT locked FROM parental)"
+private const val P_RECENT = "(SELECT locked OR hideRecent FROM parental)"
+private const val P_CARRY_ON = "(SELECT locked OR hideCarryOn FROM parental)"
+private const val P_SEARCH = "(SELECT locked OR hideSearch FROM parental)"
+
+// Restricted categories of :pid, as a list SQLite builds once per query (not a lookup for each item).
+private const val RESTRICTED_OF = "SELECT categoryId FROM category WHERE playlistId = :pid AND restricted = 1 AND type ="
+private const val RESTRICTED_LIVE = "($RESTRICTED_OF '$CAT_LIVE')"
+private const val RESTRICTED_MOVIE = "($RESTRICTED_OF '$CAT_MOVIE')"
+private const val RESTRICTED_SERIES = "($RESTRICTED_OF '$CAT_SERIES')"
+private const val CHANNEL_RESTRICTED = "channel.categoryId IN $RESTRICTED_LIVE"
+private const val C_RESTRICTED = "c.categoryId IN $RESTRICTED_LIVE"
+private const val MOVIE_RESTRICTED = "movie.categoryId IN $RESTRICTED_MOVIE"
+private const val M_RESTRICTED = "m.categoryId IN $RESTRICTED_MOVIE"
+private const val SERIES_RESTRICTED = "series.categoryId IN $RESTRICTED_SERIES"
+private const val S_RESTRICTED = "s.categoryId IN $RESTRICTED_SERIES"
+
+/** A channel (the table unnamed) that may be shown: not restricted while locked. */
+private const val CHANNEL_OPEN = "NOT ($P_LOCKED AND $CHANNEL_RESTRICTED)"
+
+/** A channel named c that may be shown. */
+private const val C_OPEN = "NOT ($P_LOCKED AND $C_RESTRICTED)"
+private const val MOVIE_OPEN = "NOT ($P_LOCKED AND $MOVIE_RESTRICTED)"
+private const val M_OPEN = "NOT ($P_LOCKED AND $M_RESTRICTED)"
+private const val SERIES_OPEN = "NOT ($P_LOCKED AND $SERIES_RESTRICTED)"
+private const val S_OPEN = "NOT ($P_LOCKED AND $S_RESTRICTED)"
+
+/** A channel (the table unnamed) that may be shown in search. */
+private const val CHANNEL_SEARCHABLE = "NOT ($P_SEARCH AND $CHANNEL_RESTRICTED)"
+
+/** A channel named c that may be shown among recently watched channels. */
+private const val C_RECENT_OPEN = "NOT ($P_RECENT AND $C_RESTRICTED)"
+
 // The favourite channels of :pid (c the channel, f the favourite), and their order: the user's, else channel numbers.
 private const val CHANNEL_FAVOURITES =
-    "FROM channel c JOIN favourite f ON f.playlistId = c.playlistId AND f.streamId = c.streamId WHERE c.playlistId = :pid"
+    "FROM channel c JOIN favourite f ON f.playlistId = c.playlistId AND f.streamId = c.streamId WHERE c.playlistId = :pid AND $C_OPEN"
 private const val CHANNEL_FAVOURITE_ORDER = "ORDER BY f.position, c.position, c.name"
 
 /** A channel number starting with the typed digits (channels without a number are stored as 0 and never match). */
@@ -138,14 +177,14 @@ interface ChannelDao {
     // Users can override the provider order with sortOrder.
 
     @Query(
-        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0
+        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN
            AND (:q = '' OR $CHANNEL_MATCH)
            ORDER BY position, name"""
     )
     fun pageAll(pid: Long, q: String): PagingSource<Int, ChannelEntity>
 
     @Query(
-        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND categoryId = :cat
+        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN AND categoryId = :cat
            AND (:q = '' OR $CHANNEL_MATCH)
            ORDER BY position, name"""
     )
@@ -156,46 +195,52 @@ interface ChannelDao {
 
     @Query(
         """SELECT c.* FROM channel c JOIN recent r ON r.playlistId = c.playlistId AND r.streamId = c.streamId
-           WHERE c.playlistId = :pid AND (:q = '' OR $CHANNEL_MATCH)
+           WHERE c.playlistId = :pid AND $C_RECENT_OPEN AND (:q = '' OR $CHANNEL_MATCH)
            ORDER BY r.watchedAt DESC"""
     )
     fun pageRecent(pid: Long, q: String): PagingSource<Int, ChannelEntity>
 
-    @Query("SELECT streamId FROM channel WHERE playlistId = :pid AND hidden = 0 ORDER BY position, name")
+    @Query("SELECT streamId FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN ORDER BY position, name")
     suspend fun idsAll(pid: Long): List<Long>
 
     /** Search: the same match as the list filter (name, or the number's start), first [limit] in list order. */
     @Query(
-        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0
+        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_SEARCHABLE
            AND $CHANNEL_MATCH ORDER BY position, name LIMIT :limit"""
     )
     suspend fun search(pid: Long, q: String, limit: Int): List<ChannelEntity>
 
-    @Query("SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $NUMBER_MATCH ORDER BY number LIMIT :limit")
+    @Query(
+        "SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_SEARCHABLE AND $NUMBER_MATCH ORDER BY number LIMIT :limit"
+    )
     suspend fun searchNumber(pid: Long, q: String, limit: Int): List<ChannelEntity>
 
-    @Query("SELECT streamId FROM channel WHERE playlistId = :pid AND hidden = 0 AND categoryId = :cat ORDER BY position, name")
+    @Query(
+        "SELECT streamId FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN AND categoryId = :cat ORDER BY position, name"
+    )
     suspend fun idsCategory(pid: Long, cat: String): List<Long>
 
     @Query(
-        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND archiveDays > 0
+        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN AND archiveDays > 0
            AND (:q = '' OR $CHANNEL_MATCH)
            ORDER BY position, name"""
     )
     fun pageCatchup(pid: Long, q: String): PagingSource<Int, ChannelEntity>
 
-    @Query("SELECT streamId FROM channel WHERE playlistId = :pid AND hidden = 0 AND archiveDays > 0 ORDER BY position, name")
+    @Query(
+        "SELECT streamId FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN AND archiveDays > 0 ORDER BY position, name"
+    )
     suspend fun idsCatchup(pid: Long): List<Long>
 
     @Query(
-        """SELECT * FROM channel WHERE playlistId = :pid AND categoryId = :cat AND hidden = 0 AND archiveDays > 0
+        """SELECT * FROM channel WHERE playlistId = :pid AND categoryId = :cat AND hidden = 0 AND $CHANNEL_OPEN AND archiveDays > 0
            AND (:q = '' OR $CHANNEL_MATCH)
            ORDER BY position, name"""
     )
     fun pageCatchupCategory(pid: Long, cat: String, q: String): PagingSource<Int, ChannelEntity>
 
     @Query(
-        """SELECT streamId FROM channel WHERE playlistId = :pid AND categoryId = :cat AND hidden = 0 AND archiveDays > 0
+        """SELECT streamId FROM channel WHERE playlistId = :pid AND categoryId = :cat AND hidden = 0 AND $CHANNEL_OPEN AND archiveDays > 0
            ORDER BY position, name"""
     )
     suspend fun idsCatchupCategory(pid: Long, cat: String): List<Long>
@@ -203,7 +248,7 @@ interface ChannelDao {
     @Query(
         """SELECT c.categoryId AS categoryId, k.name AS name, k.lang AS lang, COUNT(*) AS count
            FROM channel c JOIN category k ON k.playlistId = c.playlistId AND k.type = 'live' AND k.categoryId = c.categoryId
-           WHERE c.playlistId = :pid AND c.hidden = 0 AND c.archiveDays > 0 AND k.included = 1
+           WHERE c.playlistId = :pid AND c.hidden = 0 AND c.archiveDays > 0 AND k.included = 1 AND NOT ($P_LOCKED AND k.restricted = 1)
            GROUP BY c.categoryId ORDER BY k.sortOrder"""
     )
     fun observeCatchupCategories(pid: Long): Flow<List<CategoryCount>>
@@ -218,7 +263,7 @@ interface ChannelDao {
     suspend fun idsFavourites(pid: Long): List<Long>
 
     @Query(
-        "SELECT c.streamId FROM channel c JOIN recent r ON r.playlistId = c.playlistId AND r.streamId = c.streamId WHERE c.playlistId = :pid ORDER BY r.watchedAt DESC"
+        "SELECT c.streamId FROM channel c JOIN recent r ON r.playlistId = c.playlistId AND r.streamId = c.streamId WHERE c.playlistId = :pid AND $C_RECENT_OPEN ORDER BY r.watchedAt DESC"
     )
     suspend fun idsRecent(pid: Long): List<Long>
 
@@ -226,17 +271,21 @@ interface ChannelDao {
     fun observeFavourites(pid: Long, limit: Int): Flow<List<ChannelEntity>>
 
     @Query(
-        "SELECT c.* FROM channel c JOIN recent r ON r.playlistId = c.playlistId AND r.streamId = c.streamId WHERE c.playlistId = :pid ORDER BY r.watchedAt DESC LIMIT :limit"
+        "SELECT c.* FROM channel c JOIN recent r ON r.playlistId = c.playlistId AND r.streamId = c.streamId WHERE c.playlistId = :pid AND $C_RECENT_OPEN ORDER BY r.watchedAt DESC LIMIT :limit"
     )
     fun observeRecent(pid: Long, limit: Int): Flow<List<ChannelEntity>>
 
     @Query("SELECT * FROM channel WHERE playlistId = :pid AND streamId = :id")
     suspend fun get(pid: Long, id: Long): ChannelEntity?
 
-    @Query("SELECT * FROM channel WHERE playlistId = :pid AND number = :number AND hidden = 0 LIMIT 1")
+    /** [get], unless it's restricted while locked (parental controls). */
+    @Query("SELECT * FROM channel WHERE playlistId = :pid AND streamId = :id AND $CHANNEL_OPEN")
+    suspend fun getOpen(pid: Long, id: Long): ChannelEntity?
+
+    @Query("SELECT * FROM channel WHERE playlistId = :pid AND number = :number AND hidden = 0 AND $CHANNEL_OPEN LIMIT 1")
     suspend fun byNumber(pid: Long, number: Int): ChannelEntity?
 
-    @Query("SELECT COUNT(*) FROM channel WHERE playlistId = :pid AND hidden = 0")
+    @Query("SELECT COUNT(*) FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN")
     fun observeCount(pid: Long): Flow<Int>
 
     /** The longest catch-up any channel offers (0 when none do): how far back the TV guide can go. */
@@ -259,11 +308,20 @@ interface ChannelDao {
     @Query("UPDATE channel SET sortOrder = :order, position = COALESCE(:order, number) WHERE playlistId = :pid AND streamId = :id")
     suspend fun setSortOrder(pid: Long, id: Long, order: Int?)
 
-    @Query("SELECT * FROM channel WHERE playlistId = :pid AND hidden = 1 ORDER BY name")
+    @Query("SELECT * FROM channel WHERE playlistId = :pid AND hidden = 1 AND $CHANNEL_OPEN ORDER BY name")
     fun observeHidden(pid: Long): Flow<List<ChannelEntity>>
 
     @Query("SELECT streamId, name, providerEpgId FROM channel WHERE playlistId = :pid")
     suspend fun names(pid: Long): List<ChannelName>
+}
+
+@Dao
+interface ParentalDao {
+    @Upsert
+    suspend fun set(state: ParentalEntity)
+
+    @Query("SELECT * FROM parental")
+    suspend fun get(): ParentalEntity?
 }
 
 /** A category and how many of something it has. */
@@ -461,7 +519,7 @@ interface EpgDao {
            FROM programme p JOIN channel_epg_mapping m ON m.sourceId = p.sourceId AND m.xmlId = p.xmlId
            JOIN channel c ON c.playlistId = m.playlistId AND c.streamId = m.streamId
            JOIN playlist_epg_source l ON l.playlistId = m.playlistId AND l.sourceId = m.sourceId
-           WHERE m.playlistId = :pid AND c.hidden = 0
+           WHERE m.playlistId = :pid AND c.hidden = 0 AND NOT ($P_SEARCH AND $C_RESTRICTED)
              AND p.startMs > :from - m.offsetMinutes * 60000 - $MAX_PROGRAMME_MS
              AND p.stopMs > :from - m.offsetMinutes * 60000
              AND p.title $LIKE_Q
@@ -539,7 +597,7 @@ interface EpgDao {
            LEFT JOIN channel_epg_mapping m ON m.playlistId = c.playlistId AND m.streamId = c.streamId
            LEFT JOIN epg_channel e ON e.sourceId = m.sourceId AND e.xmlId = m.xmlId
            LEFT JOIN epg_source s ON s.id = m.sourceId
-           WHERE c.playlistId = :pid AND c.hidden = 0 AND (:q = '' OR c.name $LIKE_Q)
+           WHERE c.playlistId = :pid AND c.hidden = 0 AND $C_OPEN AND (:q = '' OR c.name $LIKE_Q)
              AND CASE :status WHEN 1 THEN m.sourceId IS NULL WHEN 2 THEN m.manual = 0 AND m.sourceId IS NOT NULL WHEN 3 THEN m.manual = 1 ELSE 1 END
            ORDER BY c.position, c.name"""
     )
@@ -598,9 +656,9 @@ private const val SERIES_CARD = "SELECT seriesId AS id, title, year, coverUrl AS
 
 // Favourite movies and series of :pid (f is the favourite), and their order: the user's, else newest first.
 private const val MOVIE_FAVOURITES =
-    "FROM movie m JOIN vod_favourite f ON f.playlistId = m.playlistId AND f.kind = 'movie' AND f.itemId = m.streamId WHERE m.playlistId = :pid"
+    "FROM movie m JOIN vod_favourite f ON f.playlistId = m.playlistId AND f.kind = 'movie' AND f.itemId = m.streamId WHERE m.playlistId = :pid AND $M_OPEN"
 private const val SERIES_FAVOURITES =
-    "FROM series s JOIN vod_favourite f ON f.playlistId = s.playlistId AND f.kind = 'series' AND f.itemId = s.seriesId WHERE s.playlistId = :pid"
+    "FROM series s JOIN vod_favourite f ON f.playlistId = s.playlistId AND f.kind = 'series' AND f.itemId = s.seriesId WHERE s.playlistId = :pid AND $S_OPEN"
 private const val FAVOURITE_ORDER = "ORDER BY f.position, f.addedAt DESC"
 
 /** Movies, series, favourites among them, and how far the user has watched. */
@@ -608,15 +666,15 @@ private const val FAVOURITE_ORDER = "ORDER BY f.position, f.addedAt DESC"
 interface VodDao {
     // Lists filter by title as the user types; provider order unless sorted by date.
 
-    @Query("$MOVIE_CARD FROM movie WHERE playlistId = :pid AND (:q = '' OR title $LIKE_Q) ORDER BY position, title")
+    @Query("$MOVIE_CARD FROM movie WHERE playlistId = :pid AND $MOVIE_OPEN AND (:q = '' OR title $LIKE_Q) ORDER BY position, title")
     fun pageMovies(pid: Long, q: String): PagingSource<Int, VodCard>
 
     @Query(
-        "$MOVIE_CARD FROM movie WHERE playlistId = :pid AND categoryId = :cat AND (:q = '' OR title $LIKE_Q) ORDER BY position, title"
+        "$MOVIE_CARD FROM movie WHERE playlistId = :pid AND $MOVIE_OPEN AND categoryId = :cat AND (:q = '' OR title $LIKE_Q) ORDER BY position, title"
     )
     fun pageMovieCategory(pid: Long, cat: String, q: String): PagingSource<Int, VodCard>
 
-    @Query("$MOVIE_CARD FROM movie WHERE playlistId = :pid AND (:q = '' OR title $LIKE_Q) ORDER BY added DESC")
+    @Query("$MOVIE_CARD FROM movie WHERE playlistId = :pid AND $MOVIE_OPEN AND (:q = '' OR title $LIKE_Q) ORDER BY added DESC")
     fun pageMoviesByAdded(pid: Long, q: String): PagingSource<Int, VodCard>
 
     @Query("$MOVIE_CARD $MOVIE_FAVOURITES AND (:q = '' OR m.title $LIKE_Q) $FAVOURITE_ORDER")
@@ -625,15 +683,15 @@ interface VodDao {
     @Query("$MOVIE_CARD $MOVIE_FAVOURITES $FAVOURITE_ORDER LIMIT :limit")
     fun observeMovieFavourites(pid: Long, limit: Int): Flow<List<VodCard>>
 
-    @Query("$SERIES_CARD FROM series WHERE playlistId = :pid AND (:q = '' OR title $LIKE_Q) ORDER BY position, title")
+    @Query("$SERIES_CARD FROM series WHERE playlistId = :pid AND $SERIES_OPEN AND (:q = '' OR title $LIKE_Q) ORDER BY position, title")
     fun pageSeries(pid: Long, q: String): PagingSource<Int, VodCard>
 
     @Query(
-        "$SERIES_CARD FROM series WHERE playlistId = :pid AND categoryId = :cat AND (:q = '' OR title $LIKE_Q) ORDER BY position, title"
+        "$SERIES_CARD FROM series WHERE playlistId = :pid AND $SERIES_OPEN AND categoryId = :cat AND (:q = '' OR title $LIKE_Q) ORDER BY position, title"
     )
     fun pageSeriesCategory(pid: Long, cat: String, q: String): PagingSource<Int, VodCard>
 
-    @Query("$SERIES_CARD FROM series WHERE playlistId = :pid AND (:q = '' OR title $LIKE_Q) ORDER BY lastModified DESC")
+    @Query("$SERIES_CARD FROM series WHERE playlistId = :pid AND $SERIES_OPEN AND (:q = '' OR title $LIKE_Q) ORDER BY lastModified DESC")
     fun pageSeriesByUpdated(pid: Long, q: String): PagingSource<Int, VodCard>
 
     @Query("$SERIES_CARD $SERIES_FAVOURITES AND (:q = '' OR s.title $LIKE_Q) $FAVOURITE_ORDER")
@@ -656,10 +714,10 @@ interface VodDao {
     @Query("UPDATE vod_favourite SET position = :position WHERE playlistId = :pid AND kind = :kind AND itemId = :id")
     suspend fun setFavouritePosition(pid: Long, kind: String, id: Long, position: Long)
 
-    @Query("SELECT COUNT(*) FROM movie WHERE playlistId = :pid")
+    @Query("SELECT COUNT(*) FROM movie WHERE playlistId = :pid AND $MOVIE_OPEN")
     fun observeMovieCount(pid: Long): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM series WHERE playlistId = :pid")
+    @Query("SELECT COUNT(*) FROM series WHERE playlistId = :pid AND $SERIES_OPEN")
     fun observeSeriesCount(pid: Long): Flow<Int>
 
     @Query("SELECT (SELECT COUNT(*) FROM movie WHERE playlistId = :pid) + (SELECT COUNT(*) FROM series WHERE playlistId = :pid)")
@@ -669,7 +727,7 @@ interface VodDao {
     @Query(
         """SELECT h.id, h.title, h.year, h.imageUrl, c.name AS category FROM (
              SELECT streamId AS id, title, year, posterUrl AS imageUrl, categoryId, position FROM movie
-             WHERE playlistId = :pid AND title $LIKE_Q ORDER BY position, title LIMIT :limit
+             WHERE playlistId = :pid AND NOT ($P_SEARCH AND $MOVIE_RESTRICTED) AND title $LIKE_Q ORDER BY position, title LIMIT :limit
            ) h LEFT JOIN category c ON c.playlistId = :pid AND c.type = '$CAT_MOVIE' AND c.categoryId = h.categoryId
            ORDER BY h.position, h.title"""
     )
@@ -678,7 +736,7 @@ interface VodDao {
     @Query(
         """SELECT h.id, h.title, h.year, h.imageUrl, c.name AS category FROM (
              SELECT seriesId AS id, title, year, coverUrl AS imageUrl, categoryId, position FROM series
-             WHERE playlistId = :pid AND title $LIKE_Q ORDER BY position, title LIMIT :limit
+             WHERE playlistId = :pid AND NOT ($P_SEARCH AND $SERIES_RESTRICTED) AND title $LIKE_Q ORDER BY position, title LIMIT :limit
            ) h LEFT JOIN category c ON c.playlistId = :pid AND c.type = '$CAT_SERIES' AND c.categoryId = h.categoryId
            ORDER BY h.position, h.title"""
     )
@@ -774,6 +832,9 @@ interface VodDao {
      */
     @Query(
         """SELECT * FROM watch_progress w WHERE playlistId = :pid
+           AND NOT ($P_CARRY_ON AND (
+             EXISTS (SELECT 1 FROM movie m WHERE w.kind = 'movie' AND m.playlistId = :pid AND m.streamId = w.itemId AND $M_RESTRICTED)
+             OR EXISTS (SELECT 1 FROM series s WHERE s.playlistId = :pid AND s.seriesId = w.seriesId AND $S_RESTRICTED)))
            AND (NOT (durationMs > 0 AND positionMs >= durationMs * :finished) OR hasNext)
            AND (seriesId IS NULL OR updatedAt = (SELECT MAX(x.updatedAt) FROM watch_progress x WHERE x.playlistId = w.playlistId AND x.seriesId = w.seriesId))
            ORDER BY updatedAt DESC LIMIT :limit"""

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="parental_title">Controle dos pais</string>
+    <string name="parental_help">Categorias restritas e um PIN para mostrá-las</string>
+    <string name="parental_intro">As categorias restritas têm um cadeado. As categorias adultas já começam restritas. Restrinja uma categoria nas opções dela (segure OK) ou um grupo inteiro em Idiomas e categorias.</string>
+    <string name="parental_hide_recent">Ocultar canais restritos de Assistidos recentemente</string>
+    <string name="parental_hide_carry_on">Ocultar filmes e séries restritos de Continuar assistindo</string>
+    <string name="parental_hide_search">Ocultar canais, programas, filmes e séries restritos da busca</string>
+    <string name="parental_pin_none">Nenhum PIN definido: as categorias restritas aparecem sem ele.</string>
+    <string name="parental_pin_set_help">As categorias restritas ficam ocultas até o PIN ser digitado, e voltam a ficar ocultas quando você sai do app.</string>
+    <string name="parental_set_pin">Definir PIN</string>
+    <string name="parental_change_pin">Alterar PIN</string>
+    <string name="parental_remove_pin">Remover PIN</string>
+    <string name="parental_pin_enter">Digite o PIN</string>
+    <string name="parental_pin_new">Escolha um PIN de 4 dígitos</string>
+    <string name="parental_pin_confirm">Digite o novo PIN de novo</string>
+    <string name="parental_pin_wrong">PIN incorreto. Tente de novo.</string>
+    <string name="parental_pin_mismatch">Os PINs são diferentes. Escolha um PIN de novo.</string>
+    <string name="parental_restricted">Restrita</string>
+    <string name="parental_restricted_notice">Esta categoria é restrita.</string>
+    <string name="parental_restrict">Restringir categoria</string>
+    <string name="parental_restrict_help">Oculte até o PIN ser digitado (Configurações › Controle dos pais)</string>
+    <string name="parental_unrestrict">Remover restrição</string>
+    <string name="parental_unrestrict_help">Mostre sem o PIN</string>
+    <string name="parental_restrict_group">Restrito</string>
+    <string name="parental_restrict_group_help">Todas as categorias de %1$s</string>
+</resources>

@@ -1,0 +1,174 @@
+package com.biskyt.mytvplayer.data
+
+import androidx.test.core.app.ApplicationProvider
+import com.biskyt.mytvplayer.data.db.CAT_LIVE
+import com.biskyt.mytvplayer.data.db.CAT_MOVIE
+import com.biskyt.mytvplayer.data.db.ParentalEntity
+import com.biskyt.mytvplayer.data.db.VOD_MOVIE
+import com.biskyt.mytvplayer.data.db.WatchProgressEntity
+import com.biskyt.mytvplayer.testutil.FakeProvider
+import com.biskyt.mytvplayer.testutil.TestApp
+import com.biskyt.mytvplayer.testutil.addHomeTv
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+/**
+ * Parental controls: adult categories start restricted; restricted channels, movies and series are left out while
+ * locked (a PIN set and not entered), and from recently watched, "Carry on watching" and search while those settings
+ * are on.
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34], application = TestApp::class)
+class ParentalTest {
+    private val provider = FakeProvider()
+    private val c = ApplicationProvider.getApplicationContext<TestApp>().container
+
+    @After
+    fun tearDown() = provider.close()
+
+    /** Waits for the parental row (written in the background) to be [expected]. */
+    private suspend fun stateIs(expected: ParentalEntity) = withTimeout(5_000) {
+        while (c.db.parental().get() != expected) delay(20)
+    }
+
+    private fun state(locked: Boolean = false, recent: Boolean = true, carryOn: Boolean = true, search: Boolean = true) =
+        ParentalEntity(locked = locked, hideRecent = recent, hideCarryOn = carryOn, hideSearch = search)
+
+    /** UK | ENTERTAINMENT (channels 101 and 103) restricted. */
+    private suspend fun restrictEntertainment(id: Long) = c.parental.setRestricted(id, CAT_LIVE, listOf("1"), true)
+
+    @Test
+    fun `a PIN is kept hashed, and only the same PIN matches`() {
+        val stored = Pin.hash("1234")
+        assertFalse("1234" in stored)
+        assertTrue(Pin.matches("1234", stored))
+        assertFalse(Pin.matches("4321", stored))
+        assertNotEquals(stored, Pin.hash("1234")) // a new salt each time
+    }
+
+    @Test
+    fun `adult categories start restricted, and the user's choice is kept`() = runBlocking {
+        provider.categories += listOf("5" to "UK | XXX")
+        val id = c.addHomeTv(provider)
+        suspend fun restricted() = c.db.categories().all(id, CAT_LIVE).associate { it.categoryId to it.restricted }
+        assertEquals(mapOf("1" to false, "2" to false, "3" to false, "4" to false, "5" to true), restricted())
+
+        c.parental.setRestricted(id, CAT_LIVE, listOf("5"), false)
+        restrictEntertainment(id)
+        c.playlists.syncChannels(id)
+        assertEquals(mapOf("1" to true, "2" to false, "3" to false, "4" to false, "5" to false), restricted())
+    }
+
+    @Test
+    fun `restricted channels are hidden while locked, and shown once the PIN is entered`() = runBlocking {
+        val id = c.addHomeTv(provider)
+        restrictEntertainment(id)
+        val all = listOf(101L, 102L, 103L) // the UK categories, chosen to start with
+        // No PIN: nothing to unlock, so nothing is hidden from the lists.
+        stateIs(state())
+        assertEquals(all, c.db.channels().idsAll(id))
+
+        c.parental.setPin("1234")
+        c.parental.lock() // as leaving the app does
+        stateIs(state(locked = true))
+        assertEquals(listOf(102L), c.db.channels().idsAll(id))
+        assertEquals(listOf<Long>(), c.db.channels().idsCategory(id, "1"))
+        assertEquals(1, c.db.channels().observeCount(id).first())
+
+        assertFalse(c.parental.unlock("0000"))
+        assertTrue(c.parental.unlock("1234"))
+        stateIs(state())
+        assertEquals(all, c.db.channels().idsAll(id))
+    }
+
+    @Test
+    fun `recently watched and search leave restricted channels out while their settings are on`() = runBlocking {
+        val id = c.addHomeTv(provider)
+        restrictEntertainment(id)
+        c.channels.markWatched(id, 101)
+        c.channels.markWatched(id, 102)
+        stateIs(state())
+        assertEquals(listOf(102L), c.db.channels().idsRecent(id))
+        assertEquals(listOf<Long>(), c.db.channels().search(id, "ONE", 10).map { it.streamId })
+
+        c.settings.update { it.copy(hideRestrictedRecent = false, hideRestrictedSearch = false) }
+        stateIs(state(recent = false, search = false))
+        assertEquals(listOf(102L, 101L), c.db.channels().idsRecent(id))
+        assertEquals(listOf(101L), c.db.channels().search(id, "ONE", 10).map { it.streamId })
+    }
+
+    @Test
+    fun `carry on watching leaves restricted movies out while its setting is on`() = runBlocking {
+        val id = c.addHomeTv(provider, vod = true)
+        c.parental.setRestricted(id, CAT_MOVIE, listOf("10"), true) // UK | MOVIES: 501 and 502
+        listOf(501L, 701L).forEachIndexed { i, movie ->
+            c.vod.saveProgress(WatchProgressEntity(id, VOD_MOVIE, movie, 600_000, 3_600_000, 1_000L + i, "t", null))
+        }
+        suspend fun carryOn() = c.db.vod().observeCarryOn(id, 10, WatchProgressEntity.FINISHED_FRACTION).first().map { it.itemId }
+        stateIs(state())
+        assertEquals(listOf(701L), carryOn())
+
+        c.settings.update { it.copy(hideRestrictedCarryOn = false) }
+        stateIs(state(carryOn = false))
+        assertEquals(listOf(701L, 501L), carryOn())
+    }
+
+    @Test
+    fun `leaving the app after unlocking closes what may show restricted content`() = runBlocking {
+        c.parental.setPin("1234") // whoever sets it is let in
+        val closed = async(Dispatchers.Default) { withTimeout(5_000) { c.parental.relocked.first() } }
+        c.parental.relocked.subscriptionCount.first { it > 0 }
+        c.parental.lock()
+        closed.await()
+        assertTrue(c.parental.locked.first { it })
+    }
+
+    @Test
+    fun `backups leave the PIN out, and a restore with a PIN set lifts no restriction`() = runBlocking {
+        val id = c.addHomeTv(provider)
+        c.parental.setPin("1234")
+        val backup = c.backup.export() // Entertainment not restricted, the hide settings on
+        assertEquals("", c.backup.read(backup.inputStream()).settings.pinHash)
+
+        val pin = c.settings.current().pinHash
+        restrictEntertainment(id)
+        c.settings.update { it.copy(hideRestrictedSearch = false) }
+        c.backup.apply(c.backup.read(backup.inputStream()))
+        assertEquals(pin, c.settings.current().pinHash)
+        assertTrue(c.db.categories().all(id, CAT_LIVE).single { it.categoryId == "1" }.restricted)
+        assertFalse(c.settings.current().hideRestrictedSearch)
+    }
+
+    @Test
+    fun `a backup from before parental controls restricts its adult categories`() = runBlocking {
+        provider.categories += listOf("5" to "UK | XXX")
+        val id = c.addHomeTv(provider)
+        c.parental.setRestricted(id, CAT_LIVE, listOf("5"), false)
+        // As 1.8 wrote it: no "restrictions", nothing restricted.
+        val json = Json.parseToJsonElement(c.backup.export().decodeToString()).jsonObject
+        val old = JsonObject(json - "restrictions").toString().toByteArray()
+
+        c.backup.apply(c.backup.read(old.inputStream()))
+        assertTrue(c.db.categories().all(id, CAT_LIVE).single { it.categoryId == "5" }.restricted)
+        // A backup from now keeps the choice.
+        c.parental.setRestricted(id, CAT_LIVE, listOf("5"), false)
+        c.backup.apply(c.backup.read(c.backup.export().inputStream()))
+        assertFalse(c.db.categories().all(id, CAT_LIVE).single { it.categoryId == "5" }.restricted)
+    }
+}

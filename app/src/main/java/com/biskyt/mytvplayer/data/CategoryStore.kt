@@ -63,7 +63,8 @@ class CategoryStore(private val db: AppDatabase, private val locale: () -> Local
                 // An inherited place only once the old category has gone, so the two don't share it.
                 sortOrder = old?.takeIf { it.categoryId == c.id || it.categoryId !in remoteIds }?.sortOrder ?: (existing.size + i),
                 channelCount = old?.channelCount ?: 0,
-                type = type
+                type = type,
+                restricted = restricted(old, langs[i])
             )
         }
         // Those the provider no longer has go.
@@ -104,6 +105,12 @@ class CategoryStore(private val db: AppDatabase, private val locale: () -> Local
     private fun included(old: CategoryEntity?, lang: String?, byDefault: Boolean): Boolean {
         val adult = lang == CategoryLanguageDetector.ADULT
         return old?.included?.takeUnless { adult && old.lang != lang } ?: (byDefault && !adult)
+    }
+
+    /** Restricted as the user chose ([old]); adult sections are restricted to start with, and once they count as adult. */
+    private fun restricted(old: CategoryEntity?, lang: String?): Boolean {
+        val adult = lang == CategoryLanguageDetector.ADULT
+        return if (old == null) adult else old.restricted || (adult && old.lang != lang)
     }
 
     /**

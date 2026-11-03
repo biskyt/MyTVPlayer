@@ -52,6 +52,7 @@ import com.biskyt.mytvplayer.ui.settings.AppearanceScreen
 import com.biskyt.mytvplayer.ui.settings.BackupScreen
 import com.biskyt.mytvplayer.ui.settings.CategoriesScreen
 import com.biskyt.mytvplayer.ui.settings.LicencesScreen
+import com.biskyt.mytvplayer.ui.settings.ParentalScreen
 import com.biskyt.mytvplayer.ui.settings.PlaybackSettingsScreen
 import com.biskyt.mytvplayer.ui.settings.PlaylistEditScreen
 import com.biskyt.mytvplayer.ui.settings.PlaylistsScreen
@@ -100,6 +101,11 @@ fun AppRoot() {
         LaunchedEffect(nav) {
             container.openedFile.filterNotNull().collect { if (nav.current.screen != Screen.Backup) nav.push(Screen.Backup) }
         }
+        // Restricted content hidden again (the app was left): a player or details page that may show it closes, back to
+        // Home. Lists hide it by themselves; other screens (a backup's file picker, say) stay.
+        LaunchedEffect(nav) {
+            container.parental.relocked.collect { if (nav.current.screen.showsTitle) nav.reset(Screen.Home) }
+        }
         val activity = LocalActivity.current
         BackHandler {
             when {
@@ -142,7 +148,8 @@ private suspend fun firstScreen(container: AppContainer, s: Settings, safeStart:
     if (s.startOnLastChannel &&
         container.openedFile.value == null &&
         s.lastChannelId != 0L &&
-        container.channels.get(playlist.id, s.lastChannelId) != null
+        // Not a restricted channel while locked (parental controls).
+        container.channels.getOpen(playlist.id, s.lastChannelId) != null
     ) {
         nav.push(Screen.Player(playlist.id, s.lastChannelId, ChannelFilter.All))
     }
@@ -204,6 +211,15 @@ private fun BehindTopBar(tab: Tab?, content: @Composable () -> Unit) = Subcompos
 
 private enum class Slot { BAR, BODY }
 
+/** A player or details page: what it shows may be restricted (parental controls). */
+private val Screen.showsTitle: Boolean
+    get() = this is Screen.Player ||
+        this is Screen.VodPlayer ||
+        this is Screen.CatchupPlayer ||
+        this is Screen.Catchup ||
+        this is Screen.MovieDetails ||
+        this is Screen.SeriesDetails
+
 /** The pages with a title's art behind them, which shows behind the top bar too. */
 private val Screen.drawsBehindTopBar: Boolean
     get() = this is Screen.MovieDetails || this is Screen.SeriesDetails
@@ -214,7 +230,7 @@ private val Screen.drawsOwnTopBar: Boolean
         Screen.Home, is Screen.Live, is Screen.Movies, is Screen.Series, is Screen.Search, is Screen.Catchup -> true
         Screen.Welcome, is Screen.Player, is Screen.VodPlayer, is Screen.CatchupPlayer, is Screen.MovieDetails,
         is Screen.SeriesDetails, Screen.Settings, Screen.Playlists, is Screen.PlaylistEdit, is Screen.Categories,
-        Screen.PlaybackSettings, Screen.Appearance, Screen.GuideSources, is Screen.GuideMatching, Screen.Backup,
+        Screen.PlaybackSettings, Screen.Appearance, Screen.Parental, Screen.GuideSources, is Screen.GuideMatching, Screen.Backup,
         Screen.About, Screen.Licences -> false
     }
 
@@ -247,6 +263,7 @@ private fun ScreenBody(screen: Screen) {
         is Screen.Categories -> CategoriesScreen(screen.playlistId, screen.firstRun)
         Screen.PlaybackSettings -> PlaybackSettingsScreen()
         Screen.Appearance -> AppearanceScreen()
+        Screen.Parental -> ParentalScreen()
         Screen.GuideSources -> GuideSourcesScreen()
         is Screen.GuideMatching -> GuideMatchingScreen(screen.playlistId, screen.streamId)
         Screen.Backup -> BackupScreen()

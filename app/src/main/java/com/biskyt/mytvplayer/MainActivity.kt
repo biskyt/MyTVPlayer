@@ -36,6 +36,12 @@ class MainActivity : ComponentActivity() {
         setContent { InAppLanguage { AppRoot() } }
     }
 
+    // Leaving the app (Home, the TV switched off, another app) hides restricted content again (parental controls).
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) container.parental.lock()
+    }
+
     // Already running (it's the only one, singleTask): a file opened with it arrives here.
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
