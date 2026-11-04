@@ -12,11 +12,13 @@ to find something to watch and press play.
 - **Fast**, even on budget boxes, with channel lists of thousands.
 - **Excellent TV guide matching**, with simple manual overrides when you want them.
 - **Small**: an 8 MB download.
-- **No ads, no tracking, no accounts.** Every feature is free.
+- **No ads, no tracking, and no account needed.** Every feature is free.
 - **Your own provider or free channels**: add your IPTV provider's Xtream Codes login or M3U playlist, or start
   straight away with the built-in [free TV](https://github.com/biskyt/legalFreeIPTVplaylist): channels streamed
   free by their broadcasters, and public-domain or openly licensed films and series.
 - **Movies, series and catch-up TV**, for providers that offer them.
+- **Optional sync between TVs**: carry on a film or an episode on another TV, through your own Google Drive. It is
+  off unless you turn it on. [How it works, and your privacy](#sync-between-tvs-optional).
 
 ![Home](store/screenshots/1-home.png)
 
@@ -91,6 +93,41 @@ cropped ([credits, with each image's author and licence](app/src/test/resources/
 - **Appearance**: preset accent colours and large text.
 - **Looks after its own storage**: only the guide for channels you use is kept, logos are capped and the database is
   kept compact.
+
+## Sync between TVs (optional)
+
+This is **off unless you turn it on**, in Settings › Sync between TVs. It keeps your place in films and episodes the
+same on all your TVs: stop a film on one TV, and carry on from the same point on another.
+
+**How it works**
+- On each TV, you sign in with the same Google account. The TV shows a code: enter it at google.com/device on your
+  phone or computer, or scan the QR code.
+- Each TV keeps a small file of what you watched in a hidden app folder in **your own Google Drive**. The other TVs
+  read it from there.
+- Sync works only for films and episodes. It does not include live TV, your playlists, or your settings.
+
+**What MyTVPlayer asks Google for, and why**
+
+| Permission, as Google shows it | Why MyTVPlayer needs it |
+|---|---|
+| See, create and delete its own configuration data in your Google Drive (`drive.appdata`) | To keep each TV's progress file in the app's hidden folder. MyTVPlayer cannot see, open or change any other file in your Drive. |
+| See your primary Google Account email address (`email`) | To show in Settings which account the TV is signed in with. |
+| Associate you with your personal info on Google (`openid`) | This is part of every Google sign-in. It tells the app which account signed in. |
+
+MyTVPlayer asks for no new Android permissions for the sync.
+
+**Your data stays yours**
+- **We do not collect your data, and we cannot see it.** MyTVPlayer has no server. The data goes directly from your
+  TV to your own Google Drive, and only your TVs read it.
+- The file holds the titles, poster addresses, how far you got, and when. Each playlist is named by a scrambled id,
+  not by its address or user name. **Your playlist logins and passwords never go to Google.**
+- **To stop:** select Stop syncing. This signs the TV out and deletes its file from your Drive. What you watched stays
+  on the TV.
+- **To delete everything:** in [Google Drive](https://drive.google.com) › Settings › Manage apps, find MyTVPlayer and
+  select Options › Delete hidden app data. To remove the app's access, go to your Google Account ›
+  [Third-party apps and services](https://myaccount.google.com/connections).
+
+The [privacy policy](https://biskyt.github.io/MyTVPlayer/privacy.html#sync) has the full details.
 
 What's planned is in [ROADMAP.md](ROADMAP.md); what's changed in each version is in [CHANGELOG.md](CHANGELOG.md).
 
