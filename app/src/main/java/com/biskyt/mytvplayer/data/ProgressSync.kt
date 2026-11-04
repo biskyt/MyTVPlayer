@@ -108,8 +108,8 @@ class SyncAccount(private val prefs: DataStore<Preferences>) {
 }
 
 /**
- * Keeps the place in films and episodes the same on all the user's TVs, through the app's hidden folder in their own
- * Google Drive. It is off until the user signs in (Settings › Sync between TVs).
+ * Keeps the place in films and episodes the same on all the user's TVs, through the app's own folder (MyTVPlayer) in
+ * their Google Drive. It is off until the user signs in (Settings › Sync between TVs).
  *
  * - Each TV writes only its own file: all its progress and what it forgot (see [ProgressFile]).
  * - **A sync** reads the other TVs' files that changed since the last sync, keeps the newest change to each item, then
@@ -142,10 +142,10 @@ class ProgressSync(
     /** This TV has changes that the other TVs may not have yet: not sent, or a sync is sending them. */
     val hasChanges: Boolean get() = on && (dirty.get() || synchronized(this) { running?.isActive == true })
 
-    private val _failed = MutableStateFlow(false)
+    private val _failure = MutableStateFlow<SyncException?>(null)
 
     /** The last sync did not finish (no connection, for example). The next one tries again. */
-    val failed: StateFlow<Boolean> = _failed.asStateFlow()
+    val failure: StateFlow<SyncException?> = _failure.asStateFlow()
 
     private val vod = db.vod()
     private val dirty = AtomicBoolean(false)
@@ -271,9 +271,9 @@ class ProgressSync(
         return scope.async {
             try {
                 syncNow()
-                _failed.value = false
+                _failure.value = null
             } catch (e: SyncException) {
-                _failed.value = true
+                _failure.value = e
                 throw e
             }
         }.also { running = it }

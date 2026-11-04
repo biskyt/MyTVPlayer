@@ -2,7 +2,7 @@
 <resources>
     <string name="sync_title">Sincronizar entre TVs</string>
     <string name="sync_help">Usa seu Google Drive para manter o ponto em que você parou em filmes e episódios igual em todas as suas TVs</string>
-    <string name="sync_intro">Entre com a mesma conta do Google em cada TV. O MyTVPlayer guarda onde você parou em filmes e episódios em uma pasta oculta do seu Google Drive. Só o MyTVPlayer pode ver essa pasta, e ele não lê mais nada do seu Drive.</string>
+    <string name="sync_intro">Entre com a mesma conta do Google em cada TV. O MyTVPlayer guarda onde você parou em filmes e episódios em uma pasta chamada MyTVPlayer no seu Google Drive. O MyTVPlayer só pode ver os arquivos que ele cria, e nada mais do seu Drive.</string>
     <string name="sync_sign_in">Entrar com o Google</string>
     <string name="sync_go_to">No seu celular ou computador, acesse %1$s e digite este código:</string>
     <string name="sync_waiting">Aguardando você entrar…</string>
@@ -17,4 +17,6 @@
     <string name="sync_now">Sincronizar agora</string>
     <string name="sync_stop">Parar de sincronizar</string>
     <string name="sync_stop_help">Apaga a cópia desta TV no seu Google Drive. O que você assistiu nesta TV continua aqui.</string>
+    <string name="sync_google_error">O Google recusou o acesso (%1$s).</string>
+    <string name="sync_failed_code">Não foi possível sincronizar: o Google respondeu %1$s. Tente mais tarde.</string>
 </resources>

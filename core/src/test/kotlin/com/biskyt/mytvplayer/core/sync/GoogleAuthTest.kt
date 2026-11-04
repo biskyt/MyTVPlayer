@@ -38,8 +38,20 @@ class GoogleAuthTest {
         )
         assertEquals(code, auth().start())
         val body = server.takeRequest().body.readUtf8()
-        assertTrue(body, body.contains("scope=openid%20email%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive.appdata"))
+        // Google refuses drive.appdata for a TV sign-in (invalid_scope): only drive.file.
+        assertTrue(body, body.contains("scope=openid%20email%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive.file"))
         assertTrue(body, body.contains("client_id=client"))
+    }
+
+    @Test
+    fun `a refused start says Google's reason`() = runTest {
+        server.enqueue(error("invalid_scope", 400))
+        try {
+            auth().start()
+            fail("No exception")
+        } catch (e: SyncException) {
+            assertEquals("invalid_scope", e.code)
+        }
     }
 
     @Test

@@ -27,6 +27,9 @@ Status: parked (planned 1 November 2026). The roadmap links to this file. Start 
   - In December 2025, a Trakt API change removed the scrobble "pause" call. The "stop" call now needs a minimum progress.
 - **Google Drive:**
   - Google's device sign-in flow (for TVs) allows only a few scopes. `drive.appdata` and `drive.file` are two of them.
+  - **Correction (2026-11-04, 1.10.1):** in practice, Google refuses `drive.appdata` for the device flow
+    (`invalid_scope`, "Invalid device flow scope"), and accepts `drive.file`. The app uses `drive.file`, with a
+    visible MyTVPlayer folder.
   - Google classes `drive.appdata` as non-sensitive, so the app needs only basic verification.
   - `drive.appdata` gives a hidden folder that only the app can read. The user's other files stay private from the app.
   - The sign-in uses plain HTTPS, so it needs no Google Play services. It also works on Fire TV. The user signs in on a phone or computer.

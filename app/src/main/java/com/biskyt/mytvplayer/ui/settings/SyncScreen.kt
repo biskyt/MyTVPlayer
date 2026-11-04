@@ -44,14 +44,15 @@ class SyncViewModel(private val sync: ProgressSync) : ViewModel() {
 
         data class Code(val code: DeviceCode) : SignIn
 
-        data class Failed(val reason: SyncException.Reason) : SignIn
+        /** [code]: Google's own reason, when Google refused. */
+        data class Failed(val reason: SyncException.Reason, val code: String? = null) : SignIn
     }
 
     var signIn by mutableStateOf<SignIn>(SignIn.Idle)
         private set
 
     /** The last sync did not finish. */
-    val failed = sync.failed
+    val failure = sync.failure
 
     val account = sync.account.state.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     private var job: Job? = null
@@ -65,7 +66,7 @@ class SyncViewModel(private val sync: ProgressSync) : ViewModel() {
                 sync.finishSignIn(code)
                 signIn = SignIn.Idle
             } catch (e: SyncException) {
-                signIn = SignIn.Failed(e.reason)
+                signIn = SignIn.Failed(e.reason, e.code)
             }
         }
     }
@@ -93,18 +94,18 @@ fun SyncRow() {
 @Composable
 fun SyncScreen(vm: SyncViewModel = appViewModel { SyncViewModel(it.progressSync) }) {
     val account = vm.account.collectAsState().value ?: return
-    val failed by vm.failed.collectAsState()
+    val failure by vm.failure.collectAsState()
     SettingsPage(stringResource(R.string.sync_title)) {
         item { Muted(stringResource(R.string.sync_intro), maxLines = 4) }
-        if (account.on) signedIn(vm, account, failed) else signIn(vm)
+        if (account.on) signedIn(vm, account, failure) else signIn(vm)
     }
 }
 
-private fun LazyListScope.signedIn(vm: SyncViewModel, account: SyncAccount.State, failed: Boolean) {
+private fun LazyListScope.signedIn(vm: SyncViewModel, account: SyncAccount.State, failure: SyncException?) {
     item {
         val who = account.email?.let { stringResource(R.string.sync_signed_in_as, it) } ?: stringResource(R.string.sync_signed_in)
         val last = when {
-            failed -> stringResource(R.string.sync_failed)
+            failure != null -> failure.code?.let { stringResource(R.string.sync_failed_code, it) } ?: stringResource(R.string.sync_failed)
             account.lastSyncedAt > 0 -> stringResource(R.string.sync_last, formatDateTime(account.lastSyncedAt))
             else -> stringResource(R.string.sync_never)
         }
@@ -129,14 +130,13 @@ private fun LazyListScope.signIn(vm: SyncViewModel) {
             }
         }
         else -> item {
-            val problem = (s as? SyncViewModel.SignIn.Failed)?.reason?.let {
-                stringResource(
-                    when (it) {
-                        SyncException.Reason.DENIED -> R.string.sync_denied
-                        SyncException.Reason.EXPIRED -> R.string.sync_expired
-                        else -> R.string.sync_failed
-                    }
-                )
+            val problem = (s as? SyncViewModel.SignIn.Failed)?.let {
+                when {
+                    it.reason == SyncException.Reason.DENIED -> stringResource(R.string.sync_denied)
+                    it.reason == SyncException.Reason.EXPIRED -> stringResource(R.string.sync_expired)
+                    it.code != null -> stringResource(R.string.sync_google_error, it.code)
+                    else -> stringResource(R.string.sync_failed)
+                }
             }
             SettingRow(stringResource(R.string.sync_sign_in), problem, { vm.start() }, rememberFirstFocus())
         }
