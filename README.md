@@ -102,15 +102,15 @@ same on all your TVs: stop a film on one TV, and carry on from the same point on
 **How it works**
 - On each TV, you sign in with the same Google account. The TV shows a code: enter it at google.com/device on your
   phone or computer, or scan the QR code.
-- Each TV keeps a small file of what you watched in a hidden app folder in **your own Google Drive**. The other TVs
-  read it from there.
+- Each TV keeps a small file of what you watched in a folder called **MyTVPlayer** in **your own Google Drive**. The
+  other TVs read it from there. You can see the folder in Drive.
 - Sync works only for films and episodes. It does not include live TV, your playlists, or your settings.
 
 **What MyTVPlayer asks Google for, and why**
 
 | Permission, as Google shows it | Why MyTVPlayer needs it |
 |---|---|
-| See, create and delete its own configuration data in your Google Drive (`drive.appdata`) | To keep each TV's progress file in the app's hidden folder. MyTVPlayer cannot see, open or change any other file in your Drive. |
+| See, edit, create and delete only the specific Google Drive files that you use with this app (`drive.file`) | To keep each TV's progress file in the MyTVPlayer folder. MyTVPlayer can see only the files that it made itself. It cannot see, open or change any other file in your Drive. |
 | See your primary Google Account email address (`email`) | To show in Settings which account the TV is signed in with. |
 | Associate you with your personal info on Google (`openid`) | This is part of every Google sign-in. It tells the app which account signed in. |
 
@@ -123,8 +123,8 @@ MyTVPlayer asks for no new Android permissions for the sync.
   not by its address or user name. **Your playlist logins and passwords never go to Google.**
 - **To stop:** select Stop syncing. This signs the TV out and deletes its file from your Drive. What you watched stays
   on the TV.
-- **To delete everything:** in [Google Drive](https://drive.google.com) › Settings › Manage apps, find MyTVPlayer and
-  select Options › Delete hidden app data. To remove the app's access, go to your Google Account ›
+- **To delete everything:** delete the MyTVPlayer folder in [Google Drive](https://drive.google.com). To remove the
+  app's access, go to your Google Account ›
   [Third-party apps and services](https://myaccount.google.com/connections).
 
 The [privacy policy](https://biskyt.github.io/MyTVPlayer/privacy.html#sync) has the full details.

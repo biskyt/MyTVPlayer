@@ -19,7 +19,13 @@ import okhttp3.Request
 /**
  * A failure of the sync. [message] is in English, for logs. [reason] lets the app tell the user in their language.
  */
-class SyncException(message: String, cause: Throwable? = null, val reason: Reason = Reason.OTHER) : IOException(message, cause) {
+class SyncException(
+    message: String,
+    cause: Throwable? = null,
+    val reason: Reason = Reason.OTHER,
+    /** Google's own error code when Google refused (e.g. `invalid_scope`), else the HTTP status: shown to help find the cause. */
+    val code: String? = null,
+) : IOException(message, cause) {
     enum class Reason {
         /** The user said no on the sign-in page. */
         DENIED,
@@ -67,7 +73,11 @@ class GoogleAuth(
     private val json = Json { ignoreUnknownKeys = true }
 
     /** Asks Google for a code to show on the TV. */
-    suspend fun start(): DeviceCode = json.decodeOrFail(DeviceCode.serializer(), post("device/code", "scope" to SCOPES).body, "Google")
+    suspend fun start(): DeviceCode {
+        val answer = post("device/code", "scope" to SCOPES)
+        answer.error?.let { throw SyncException("Google refused the sign-in: $it", code = it) }
+        return json.decodeOrFail(DeviceCode.serializer(), answer.body, "Google")
+    }
 
     /** Waits until the user signs in with [code]. It asks Google again at the interval Google gives. */
     suspend fun await(code: DeviceCode): GoogleTokens {
@@ -82,7 +92,7 @@ class GoogleAuth(
                 "slow_down" -> interval += SLOW_DOWN_SEC
                 "access_denied" -> throw SyncException("Sign-in refused", reason = SyncException.Reason.DENIED)
                 "expired_token" -> break
-                else -> throw SyncException("Sign-in failed: ${answer.error}")
+                else -> throw SyncException("Sign-in failed: ${answer.error}", code = answer.error)
             }
         }
         throw SyncException("The sign-in code expired", reason = SyncException.Reason.EXPIRED)
@@ -94,7 +104,7 @@ class GoogleAuth(
         return when (answer.error) {
             null -> tokens(answer.body, refreshToken)
             "invalid_grant" -> throw SyncException("Google signed this TV out", reason = SyncException.Reason.SIGNED_OUT)
-            else -> throw SyncException("Token refresh failed: ${answer.error}")
+            else -> throw SyncException("Token refresh failed: ${answer.error}", code = answer.error)
         }
     }
 
@@ -108,7 +118,12 @@ class GoogleAuth(
             http.newCall(request).execute().use { r ->
                 val body = r.body?.string().orEmpty()
                 // Google answers a pending sign-in with an error status (428) and a JSON error code.
-                val error = if (r.isSuccessful) null else errorCode(body) ?: throw SyncException("Google answered ${r.code}")
+                val error = if (r.isSuccessful) {
+                    null
+                } else {
+                    errorCode(body)
+                        ?: throw SyncException("Google answered ${r.code}", code = "HTTP ${r.code}")
+                }
                 Answer(body, error)
             }
         } catch (e: SyncException) {
@@ -140,7 +155,11 @@ class GoogleAuth(
     )
 
     companion object {
-        const val SCOPES = "openid email https://www.googleapis.com/auth/drive.appdata"
+        /**
+         * Google allows only some permissions for a TV sign-in. It refuses `drive.appdata` (the hidden app folder), and
+         * accepts `drive.file`: only the files the app made itself (checked against Google on 2026-11-04).
+         */
+        const val SCOPES = "openid email https://www.googleapis.com/auth/drive.file"
         private const val DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
         private const val SLOW_DOWN_SEC = 5
         private const val MS = 1000L

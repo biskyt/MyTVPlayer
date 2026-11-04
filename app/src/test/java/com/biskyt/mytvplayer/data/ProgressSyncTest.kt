@@ -207,13 +207,13 @@ class ProgressSyncTest {
         a.signIn()
         folder.failing = true
         a.vod.saveProgress(film(a.pid, 600_000, 1_000), trim = true)
-        withTimeout(WAIT_MS) { while (!a.sync.failed.value) delay(10) }
+        withTimeout(WAIT_MS) { while (a.sync.failure.value == null) delay(10) }
         assertTrue(a.sync.hasChanges)
         folder.failing = false
         a.sync.finish()
         assertEquals(1, folder.uploads.get())
         assertFalse(a.sync.hasChanges)
-        assertFalse(a.sync.failed.value)
+        assertNull(a.sync.failure.value)
     }
 
     @Test

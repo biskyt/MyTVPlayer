@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.10.1
+- Sync between TVs now signs in: Google does not allow a TV to use a hidden Drive folder, so MyTVPlayer keeps its files in a folder called MyTVPlayer in your Drive, and can see only the files it makes.
+- When Google refuses a sign-in, the TV now shows Google's reason, to help find the cause.
+
 ## 1.10.0
 - New in Settings: Sync between TVs keeps your place in films and episodes the same on all your TVs, through a hidden folder in your own Google Drive (off until you sign in).
 - To sign in, enter the code the TV shows at google.com/device on your phone or computer, or scan the QR code.

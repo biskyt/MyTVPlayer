@@ -44,16 +44,17 @@ Until these secrets exist, releases still build, but they are signed with the pu
 Versions starting with `0.` are marked as pre-releases. From `1.0.0` they are full releases.
 
 ## Sync between TVs: the Google client (one-time setup)
-Settings › Sync between TVs signs in with Google and keeps watch progress in a hidden app folder in the user's own
+Settings › Sync between TVs signs in with Google and keeps watch progress in a MyTVPlayer folder in the user's own
 Google Drive. The app needs a Google OAuth client for this. Without one, the app hides the setting.
 
 1. **Google Cloud** ([console.cloud.google.com](https://console.cloud.google.com/)): create a project with a neutral
-   name, so that MyPlexPlayer can later use the same one (Drive gives the hidden folder to the project, not to one app).
+   name, so that MyPlexPlayer can later use the same one (with `drive.file`, Drive gives the app's files to the project, not to one app).
    Enable the **Google Drive API**.
 2. **OAuth consent screen:** the app's name, a support email, the home page
    (`https://biskyt.github.io/MyTVPlayer/`) and the privacy policy (`https://biskyt.github.io/MyTVPlayer/privacy.html`).
-   Add the scopes `openid`, `email` and `.../auth/drive.appdata`. Google classes `drive.appdata` as non-sensitive, so
-   only basic verification is needed. Publish the app ("In production"): while it is in "Testing", only test users can
+   Add the scopes `openid`, `email` and `.../auth/drive.file`. Google refuses `drive.appdata` (the hidden app folder)
+   for a TV sign-in, with `invalid_scope`. Google classes `drive.file` as non-sensitive, so only basic verification is
+   needed. Publish the app ("In production"): while it is in "Testing", only test users can
    sign in, and their sign-in ends after 7 days.
 3. **Credentials** › *Create credentials* › *OAuth client ID*, of type **TVs and Limited Input devices**.
 4. **GitHub** › *Settings* › *Secrets and variables* › *Actions*: the secrets `MYTV_GOOGLE_CLIENT_ID` and

@@ -44,16 +44,17 @@
 
   <h2 id="sync">Sync between TVs (optional, off by default)</h2>
   <p>If you turn on Settings › Sync between TVs and sign in with Google, the app keeps how far you got into movies and
-    episodes in a hidden app folder in <strong>your own Google Drive</strong>, so your other TVs can carry on from the
+    episodes in a folder called MyTVPlayer in <strong>your own Google Drive</strong>, so your other TVs can carry on from the
     same place. It stores each item's title, picture address, position and the time it was watched, with an id for
     the playlist that cannot be turned back into its address or user name. Your playlist logins are never stored
     there.</p>
   <ul>
-    <li>The app asks Google only for this hidden folder (the <code>drive.appdata</code> permission) and your email
-      address, which it shows on the settings page. It cannot see any other file in your Drive.</li>
+    <li>The app asks Google only for the files that it makes itself (the <code>drive.file</code> permission) and your
+      email address, which it shows on the settings page. It cannot see any other file in your Drive.</li>
     <li>The data goes from your device to Google directly. The developer has no server and never receives it.</li>
     <li>Stop syncing deletes this TV's file from the folder and signs the TV out. You can also remove the app's access
-      and its hidden data at any time in your Google account (Drive › Settings › Manage apps).</li>
+      at any time in your Google account (Third-party apps and services), and delete the MyTVPlayer folder in your
+      Drive.</li>
     <li>Google's handling of your Drive is covered by Google's privacy policy.</li>
   </ul>
 

@@ -56,9 +56,13 @@ class SyncUiTest {
 
     /** Google: the sign-in stays pending until [approved]. */
     @Volatile private var approved = false
+
+    /** Google refuses the permissions (as it refused drive.appdata in 1.10.0). */
+    @Volatile private var refuse = false
     private val google = MockWebServer().apply {
         dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse = when {
+                request.path == "/device/code" && refuse -> MockResponse().setResponseCode(400).setBody("""{"error":"invalid_scope"}""")
                 request.path == "/device/code" -> MockResponse().setBody(
                     """{"device_code":"d","user_code":"ABCD-EFGH","verification_url":"https://www.google.com/device","expires_in":600,"interval":0}"""
                 )
@@ -139,6 +143,15 @@ class SyncUiTest {
         compose.waitForText("ABCD-EFGH")
         click("Cancel")
         compose.waitForText("Sign in with Google")
+    }
+
+    @Test
+    fun `a refused sign-in shows Google's reason`() {
+        refuse = true
+        val vm = SyncViewModel(sync)
+        compose.setContent { MyTvTheme { SyncScreen(vm) } }
+        click("Sign in with Google")
+        compose.waitForText("Google refused the sign-in (invalid_scope).")
     }
 
     private companion object {
