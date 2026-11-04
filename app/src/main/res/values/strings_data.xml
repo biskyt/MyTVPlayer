@@ -47,7 +47,7 @@
     <string name="data_episode_gone">This episode is no longer in the playlist</string>
 
     <!--
-    Group headings on the Languages & categories screen (and next to category names that appear in several groups):
+    Group headings on the Categories screen (and next to category names that appear in several groups):
     the language or country a provider's categories are for. Countries without one here are named by the system.
     -->
     <string name="data_lang_uk">English (UK)</string>

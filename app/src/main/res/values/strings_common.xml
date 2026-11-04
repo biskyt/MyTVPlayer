@@ -12,7 +12,7 @@
     <!-- Top bar button (spoken by screen readers) -->
     <string name="common_settings">Settings</string>
 
-    <!-- Top bar tabs, also the headings of search results and the Languages & categories page's tabs. Keep short:
+    <!-- Top bar tabs, also the headings of search results and the Categories page's tabs. Keep short:
          in the top bar they share one row with the logo, clock and buttons -->
     <string name="common_tab_home">Home</string>
     <string name="common_tab_live">Live TV</string>
@@ -94,8 +94,8 @@
 
     <!-- Category column -->
     <string name="common_hide_category">Hide category</string>
-    <!-- "Settings › Languages & categories" names a settings page: keep it the same as that page's title -->
-    <string name="common_hide_category_help">Show it again in Settings › Languages &amp; categories</string>
+    <!-- "Settings › Categories" names a settings page: keep it the same as that page's title -->
+    <string name="common_hide_category_help">Show it again in Settings › Categories</string>
 
     <!-- Stand-in for a channel logo when the channel's name gives no letters to show. Two or three letters -->
     <string name="common_logo_fallback">TV</string>

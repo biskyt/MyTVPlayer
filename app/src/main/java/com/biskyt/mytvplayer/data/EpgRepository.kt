@@ -73,6 +73,8 @@ class EpgRepository(
     private val clock: () -> Long = System::currentTimeMillis,
     /** A provider's own guide goes through its playlist's proxy, as the rest of the playlist does. */
     private val proxies: ProxyClients = ProxyClients(http),
+    /** Keeps the user's changes for the sync between TVs: the guides switched on, and the guide channels chosen. */
+    private val log: ChoiceLog = ChoiceLog(db),
 ) {
     private val epg = db.epg()
 
@@ -131,11 +133,17 @@ class EpgRepository(
      * Named after its address when [name] is blank; switched on for [playlistId]. A guide another playlist added
      * already (by address) is switched on for this one instead, so it's still downloaded once.
      */
-    suspend fun addSource(name: String, url: String, playlistId: Long): Long = db.withTransaction {
+    suspend fun addSource(name: String, url: String, playlistId: Long): Long {
         val address = url.trim()
-        (epg.sourceByUrl(address)?.id ?: epg.insertSource(EpgSourceEntity(name = name.trim().ifEmpty { address }, url = address))).also {
-            epg.link(listOf(PlaylistEpgSourceEntity(playlistId, it)))
+        val source = db.withTransaction {
+            val source = epg.sourceByUrl(address) ?: EpgSourceEntity(name = name.trim().ifEmpty { address }, url = address).let {
+                it.copy(id = epg.insertSource(it))
+            }
+            epg.link(listOf(PlaylistEpgSourceEntity(playlistId, source.id)))
+            source
         }
+        if (!source.isProviders) log.record(playlistId, ChoiceKinds.GUIDE, address, source.name)
+        return source.id
     }
 
     /**
@@ -160,6 +168,8 @@ class EpgRepository(
         if (on && !wasUsed) metaFile(source.id).delete() // no "not changed" from the server: its programmes went
         releaseMatcher()
         changed()
+        // Not a provider's own guide: its address holds the login, and each TV adds its own.
+        if (!source.isProviders) log.record(playlistId, ChoiceKinds.GUIDE, source.url, if (on) source.name else null)
         return on && (!wasUsed || isOutOfDate(source))
     }
 
@@ -173,6 +183,9 @@ class EpgRepository(
     }
 
     suspend fun removeSource(id: Long) {
+        val source = epg.source(id) ?: return
+        val users = epg.playlistsOf(id)
+        val chosen = epg.manualMappingsFor(id)
         db.withTransaction {
             epg.clearProgrammes(id)
             epg.clearChannels(id)
@@ -183,6 +196,11 @@ class EpgRepository(
         sourceFile(id).delete()
         matcherCache = null
         changed()
+        if (!source.isProviders) users.forEach { log.record(it, ChoiceKinds.GUIDE, source.url, null) }
+        // The channels matched to it by the user are matched automatically again.
+        chosen.groupBy({ it.playlistId }, { it.streamId.toString() }).forEach { (pid, ids) ->
+            log.record(pid, ChoiceKinds.GUIDE_CHANNEL, ids.associateWith { null })
+        }
     }
 
     /**
@@ -429,6 +447,13 @@ class EpgRepository(
         epg.upsertMappings(listOf(m))
         if (m.sourceId != null && m.xmlId != null) queueProgrammeImport(m.sourceId, m.xmlId)
         changed()
+        recordGuideChannel(m)
+    }
+
+    /** The user's choice for a channel ([m]), for the sync between TVs; an automatic match is none. */
+    private suspend fun recordGuideChannel(m: ChannelEpgMappingEntity) {
+        val choice = GuideChoice.of(m, m.sourceId?.let { epg.source(it) })
+        log.record(m.playlistId, ChoiceKinds.GUIDE_CHANNEL, m.streamId, choice?.encode())
     }
 
     private val pendingImports = HashMap<Long, MutableSet<String>>()
@@ -455,14 +480,17 @@ class EpgRepository(
     }
 
     suspend fun setNoGuide(playlistId: Long, streamId: Long) {
-        epg.upsertMappings(listOf(ChannelEpgMappingEntity(playlistId, streamId, null, null, manual = true, score = 0.0)))
+        val m = ChannelEpgMappingEntity(playlistId, streamId, null, null, manual = true, score = 0.0)
+        epg.upsertMappings(listOf(m))
         changed()
+        recordGuideChannel(m)
     }
 
     suspend fun setOffset(playlistId: Long, streamId: Long, offsetMinutes: Int) {
-        val m = epg.mapping(playlistId, streamId) ?: return
-        epg.upsertMappings(listOf(m.copy(offsetMinutes = offsetMinutes, manual = true)))
+        val m = epg.mapping(playlistId, streamId)?.copy(offsetMinutes = offsetMinutes, manual = true) ?: return
+        epg.upsertMappings(listOf(m))
         changed()
+        recordGuideChannel(m)
     }
 
     suspend fun resetToAutomatic(playlistId: Long, streamId: Long, channelName: String, providerEpgId: String?) {
@@ -470,6 +498,7 @@ class EpgRepository(
         val m = withContext(Dispatchers.Default) { matcher(playlistId).autoMatch(channelName, providerEpgId) }
         if (m == null) {
             changed()
+            log.record(playlistId, ChoiceKinds.GUIDE_CHANNEL, streamId, null)
         } else {
             applyMapping(
                 ChannelEpgMappingEntity(playlistId, streamId, m.candidate.sourceId, m.candidate.xmlId, manual = false, score = m.score)

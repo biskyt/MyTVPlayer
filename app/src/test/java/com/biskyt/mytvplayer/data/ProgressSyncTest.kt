@@ -8,6 +8,11 @@ import com.biskyt.mytvplayer.core.sync.SyncException
 import com.biskyt.mytvplayer.core.sync.SyncFile
 import com.biskyt.mytvplayer.core.sync.SyncStore
 import com.biskyt.mytvplayer.data.db.AppDatabase
+import com.biskyt.mytvplayer.data.db.CAT_LIVE
+import com.biskyt.mytvplayer.data.db.CAT_MOVIE
+import com.biskyt.mytvplayer.data.db.CategoryEntity
+import com.biskyt.mytvplayer.data.db.ChannelEntity
+import com.biskyt.mytvplayer.data.db.FavouriteEntity
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import com.biskyt.mytvplayer.data.db.VOD_EPISODE
 import com.biskyt.mytvplayer.data.db.VOD_MOVIE
@@ -50,24 +55,42 @@ class ProgressSyncTest {
 
     private inner class Tv(name: String, extraPlaylists: Int) {
         val db: AppDatabase = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
+
+        /** This TV's clock for the user's choices (choices of "none" older than 60 days are dropped). */
+        @Volatile var now = NOW
+
+        /** What [sync] asked to download again, for each playlist. */
+        val reloaded = ConcurrentHashMap<Long, Reload>()
+        private lateinit var choices: SyncedChoices
         val sync = ProgressSync(
             db,
             SyncAccount(PreferenceDataStoreFactory.create(scope = scope) { context.filesDir.resolve("sync-$name.preferences_pb") }),
             null,
             scope,
-            { folder }
+            { folder },
+            choices = { choices },
+            onChoices = { pid, reload -> reloaded[pid] = reload }
         )
-        private val categoryStore = CategoryStore(db) { Locale.UK }
+        private val log = ChoiceLog(db, sync) { now }
+        private val categoryStore = CategoryStore(db, log) { Locale.UK }
         private val http = OkHttpClient()
+        val epg = EpgRepository(db, http, context.cacheDir.resolve("epg-$name"), scope, log = log)
         private val playlists = PlaylistRepository(
             db,
             http,
             SettingsRepository(context),
-            EpgRepository(db, http, context.cacheDir.resolve("epg-$name"), scope),
+            epg,
             context.cacheDir.resolve("playlists-$name"),
             categoryStore
         )
-        val vod = VodRepository(db, playlists, categoryStore, sync)
+        val channels = ChannelRepository(db, log) { now }
+        val vod = VodRepository(db, playlists, categoryStore, sync, log)
+        val parental = ParentalRepository(db, SettingsRepository(context), scope, log)
+
+        init {
+            choices = SyncedChoices(db, channels, vod, categoryStore, parental, epg)
+        }
+
         val pid: Long = runBlocking {
             repeat(extraPlaylists) {
                 db.playlists().insert(PlaylistEntity(name = "Other $it", server = "http://other$it", username = "u", password = "p"))
@@ -81,6 +104,25 @@ class ProgressSyncTest {
         }
 
         suspend fun progress(kind: String, id: Long) = db.vod().progress(pid, kind, id)
+
+        /** Two live categories, both ticked. */
+        suspend fun loadCategories() = db.categories().upsert(
+            listOf(CategoryEntity(pid, "1", "UK | NEWS", "GB", true, 0), CategoryEntity(pid, "2", "UK | SPORT", "GB", true, 1))
+        )
+
+        suspend fun included() = db.categories().included(pid, CAT_LIVE).map { it.categoryId }.sorted()
+
+        suspend fun choose(id: String, included: Boolean) = categoryStore.choose(pid, CAT_LIVE, listOf(id), included)
+
+        /** Channels 101 and 102. */
+        suspend fun loadChannels() = db.channels().upsert(
+            listOf(101L, 102L).map { ChannelEntity(pid, it, it.toInt(), "Channel $it", "1", null, null, 0) }
+        )
+
+        /** The favourite channels' ids, whether or not the channels are loaded. */
+        suspend fun favourites() = db.favourites().observeIds(pid).first()
+
+        suspend fun sync() = sync.finish(always = true)
     }
 
     @Before
@@ -163,6 +205,146 @@ class ProgressSyncTest {
         // And B's episode 4 does not come back to A.
         a.sync.finish(always = true)
         assertNull(a.progress(VOD_EPISODE, 4))
+    }
+
+    @Test
+    fun `a category unticked on one TV is unticked on the other, which downloads its lists again`() = runBlocking {
+        a.loadCategories()
+        b.loadCategories()
+        a.signIn()
+        b.signIn()
+        a.now = NOW + 5_000
+        a.choose("2", false)
+        a.sync.finish(always = true)
+        b.sync.finish(always = true)
+        assertEquals(listOf("1"), b.included())
+        assertEquals(setOf(CAT_LIVE), b.reloaded[b.pid]?.types)
+
+        // A newer choice on B goes back to A.
+        b.now = NOW + 6_000
+        b.choose("2", true)
+        b.sync.finish()
+        a.sync.finish(always = true)
+        assertEquals(listOf("1", "2"), a.included())
+        // A's file now has the same choice: B has it already, so nothing downloads again.
+        b.reloaded.clear()
+        a.sync.changed(stopped = false)
+        a.sync.finish()
+        b.sync.finish(always = true)
+        assertEquals(listOf("1", "2"), b.included())
+        assertNull(b.reloaded[b.pid])
+    }
+
+    @Test
+    fun `a category choice reaches a TV that loads its categories later`() = runBlocking {
+        a.loadCategories()
+        a.signIn()
+        b.signIn()
+        a.choose("2", false)
+        a.sync.finish(always = true)
+        b.sync.finish(always = true)
+        b.loadCategories()
+        b.sync.finish(always = true)
+        assertEquals(listOf("1"), b.included())
+    }
+
+    @Test
+    fun `favourites, recently watched and hidden channels go to the other TV, and a removal too`() = runBlocking {
+        a.loadChannels()
+        b.loadChannels()
+        a.signIn()
+        b.signIn()
+        a.channels.setFavourite(a.pid, 101, true)
+        a.vod.setFavourite(a.pid, CAT_MOVIE, 501, true)
+        a.channels.markWatched(a.pid, 102)
+        a.channels.setHidden(a.pid, 102, true)
+        a.sync()
+        b.sync()
+        assertEquals(listOf(101L), b.favourites())
+        assertEquals(listOf(501L), b.db.backup().vodFavourites().map { it.itemId })
+        assertEquals(listOf(102L), b.db.channels().idsRecent(b.pid))
+        assertTrue(b.db.channels().get(b.pid, 102)!!.hidden)
+
+        b.now = NOW + 2_000
+        b.channels.setFavourite(b.pid, 101, false)
+        b.channels.setHidden(b.pid, 102, false)
+        b.sync()
+        a.sync()
+        assertEquals(emptyList<Long>(), a.favourites())
+        assertFalse(a.db.channels().get(a.pid, 102)!!.hidden)
+    }
+
+    @Test
+    fun `favourites from before this version go to the other TV, and a hidden channel waits for its channel`() = runBlocking {
+        a.loadChannels()
+        a.db.favourites().add(FavouriteEntity(a.pid, 102, 500, 1))
+        a.channels.setHidden(a.pid, 101, true)
+        a.signIn()
+        b.signIn()
+        a.sync()
+        b.sync()
+        assertEquals(listOf(102L), b.favourites())
+        // B loads its channels later: the next sync hides 101 there.
+        b.loadChannels()
+        b.sync()
+        assertTrue(b.db.channels().get(b.pid, 101)!!.hidden)
+    }
+
+    @Test
+    fun `restricted categories, guides and guide channels go to the other TV`() = runBlocking {
+        a.loadCategories()
+        b.loadCategories()
+        a.loadChannels()
+        b.loadChannels()
+        a.signIn()
+        b.signIn()
+        a.parental.setRestricted(a.pid, CAT_LIVE, "2", true)
+        val guide = a.epg.addSource("My guide", "http://guide.example/tv.xml", a.pid)
+        a.epg.setManual(a.pid, 101, guide, "one.uk", offsetMinutes = 60)
+        a.sync()
+        b.sync()
+        assertTrue(b.db.categories().get(b.pid, CAT_LIVE, "2")!!.restricted)
+        val source = b.db.epg().sourceByUrl("http://guide.example/tv.xml")!!
+        assertEquals("My guide", source.name)
+        assertEquals(listOf(source.id), b.db.epg().sourcesFor(listOf(b.pid)).map { it.id })
+        val mapping = b.db.epg().mapping(b.pid, 101)!!
+        assertEquals(listOf(source.id, "one.uk", 60, true), listOf(mapping.sourceId, mapping.xmlId, mapping.offsetMinutes, mapping.manual))
+        assertTrue(b.reloaded[b.pid]!!.guides)
+    }
+
+    @Test
+    fun `with a PIN set, another TV cannot lift a restriction`() = runBlocking {
+        a.loadCategories()
+        b.loadCategories()
+        a.signIn()
+        b.signIn()
+        a.parental.setRestricted(a.pid, CAT_LIVE, "2", true)
+        a.sync()
+        b.sync()
+        // The TVs share the settings here, so A has the PIN too.
+        SettingsRepository(context).update { it.copy(pinHash = "pin") }
+        b.now = NOW + 1_000
+        b.parental.setRestricted(b.pid, CAT_LIVE, "2", false)
+        b.sync()
+        a.sync()
+        assertTrue(a.db.categories().get(a.pid, CAT_LIVE, "2")!!.restricted)
+    }
+
+    @Test
+    fun `a favourite from another TV goes at the end of this TV's order`() = runBlocking {
+        a.signIn()
+        b.signIn()
+        a.channels.setFavourite(a.pid, 101, true)
+        a.channels.setFavourite(a.pid, 102, true)
+        b.channels.setFavourite(b.pid, 103, true)
+        b.sync()
+        a.sync()
+        assertEquals(
+            listOf(1L, 2L, 3L),
+            listOf(101L, 102L, 103L).map { id ->
+                a.db.backup().favourites().first { it.streamId == id }.position
+            }
+        )
     }
 
     @Test
@@ -339,5 +521,6 @@ class ProgressSyncTest {
 
     private companion object {
         const val WAIT_MS = 5_000L
+        val NOW = System.currentTimeMillis()
     }
 }

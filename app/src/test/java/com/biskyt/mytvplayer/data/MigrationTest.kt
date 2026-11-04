@@ -240,4 +240,15 @@ class MigrationTest {
             }
         }
     }
+
+    @Test
+    fun `version 12 to 13 adds an empty list of choices to sync`() {
+        helper.createDatabase("migration-test-13", 12).close()
+        helper.runMigrationsAndValidate("migration-test-13", 13, true).use { db ->
+            db.query("SELECT COUNT(*) FROM sync_choice").use {
+                it.moveToFirst()
+                assertEquals(0, it.getInt(0))
+            }
+        }
+    }
 }

@@ -212,19 +212,17 @@ class PlaylistRepository(
     }
 
     /**
-     * Hides a category, as unticking it in Settings › Languages & categories does: its channels (or titles) go now,
+     * Hides a category, as unticking it in Settings › Categories does: its channels (or titles) go now,
      * without downloading anything, and updates leave it out.
      */
     suspend fun hideCategory(cat: CategoryEntity) {
-        val categories = db.categories()
-        db.withTransaction {
-            categories.setIncluded(cat.playlistId, cat.type, listOf(cat.categoryId), false)
+        categoryStore.hide(cat) {
             when (cat.type) {
                 CAT_LIVE -> db.channels().deleteCategory(cat.playlistId, cat.categoryId)
                 CAT_MOVIE -> db.vod().deleteMovieCategory(cat.playlistId, cat.categoryId)
                 else -> db.vod().deleteSeriesCategory(cat.playlistId, cat.categoryId)
             }
-            categories.refreshCounts(cat.playlistId, cat.type)
+            db.categories().refreshCounts(cat.playlistId, cat.type)
         }
     }
 
@@ -242,6 +240,7 @@ class PlaylistRepository(
             playlists.deleteProgress(id)
             playlists.deleteTombstones(id)
             playlists.deleteVodFavourites(id)
+            db.choices().deletePlaylist(id)
             playlists.delete(id)
         }
         db.epg().providerSource(id)?.let { epg.removeSource(it.id) }

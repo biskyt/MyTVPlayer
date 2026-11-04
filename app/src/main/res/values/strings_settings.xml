@@ -5,7 +5,7 @@
     <string name="settings_playlists_help">Add, edit or switch IPTV accounts</string>
     <string name="settings_playback_title">Playback</string>
     <string name="settings_playback_help">Skip times, audio passthrough, subtitles, buffer</string>
-    <string name="settings_categories_title">Languages &amp; categories</string>
+    <string name="settings_categories_title">Categories</string>
     <string name="settings_categories_help">Choose which channels are loaded; unhide channels</string>
     <!-- "XMLTV" is a guide format's name: don't translate it. -->
     <string name="settings_guide_sources_help">Your provider\'s guide and extra XMLTV guides</string>
@@ -151,7 +151,7 @@
     <string name="settings_backup_write_failed">Couldn\'t write the backup file</string>
     <string name="settings_backup_open_failed">Couldn\'t open the file</string>
 
-    <!-- Languages & categories page. -->
+    <!-- Categories page. -->
     <string name="settings_categories_intro">Only the categories you tick are downloaded, so lists load faster and use less storage.</string>
     <!-- %1$d: categories ticked; %2$d: all categories (the count the plural follows). -->
     <plurals name="settings_categories_loading">

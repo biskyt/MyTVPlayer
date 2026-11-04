@@ -46,6 +46,17 @@ class ProgressFileTest {
     }
 
     @Test
+    fun `the newest choice for each item wins`() {
+        fun choice(id: String, value: String?, at: Long) = SyncedChoice("p", "fav", id, value, at)
+        val a = ProgressFile(choices = listOf(choice("1", "1", 10), choice("2", null, 30)))
+        val b = ProgressFile(choices = listOf(choice("1", null, 20), choice("2", "4", 5)))
+        assertEquals(ProgressFile.decode(a.encode()), a)
+        val newest = ProgressFile.newestChoices(listOf(a, b))
+        assertEquals(choice("1", null, 20), newest[ChoiceKey("p", "fav", "1")])
+        assertEquals(choice("2", null, 30), newest[ChoiceKey("p", "fav", "2")])
+    }
+
+    @Test
     fun `the playlist key is the name and the server, whatever the scheme, default port or login`() {
         val key = ProgressFile.playlistKey("xtream", "http://Example.com:8080/", "Home")
         assertEquals(key, ProgressFile.playlistKey("xtream", " http://example.com:8080", "Home"))

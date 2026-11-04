@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.12.0
+- Sync between TVs now also keeps your favourites, recently watched channels, hidden channels, ticked and restricted categories, and TV guide choices the same on each TV (update every TV to this version).
+- On the Categories page, a country or a language no longer moves to the top when you tick it, so the focus stays on it: ticked groups come first when the page next opens.
+- "Languages & categories" in Settings is now called "Categories".
+
 ## 1.11.0
 - Each playlist can now use its own HTTP or SOCKS5 proxy (with an optional user name and password) for its login, lists, TV guide and streams, and Check proxy shows the address that the provider then sees.
 - Sync between TVs now matches a playlist by its name and server address, not its user name: give it the same name on each TV, so a renewed account keeps its progress and each person in a family can have their own playlist for the same provider (update every TV to this version).

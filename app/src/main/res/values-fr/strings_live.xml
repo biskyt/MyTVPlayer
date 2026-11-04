@@ -20,7 +20,7 @@
     <string name="live_option_switch_to_grid">Passer à la grille du guide TV</string>
     <string name="live_option_switch_help">Ou appuyez sur le bouton Guide de la télécommande</string>
     <string name="live_option_hide_channel">Masquer la chaîne</string>
-    <string name="live_option_hide_channel_help">Réaffichez-la plus tard dans Paramètres › Langues et catégories</string>
+    <string name="live_option_hide_channel_help">Réaffichez-la plus tard dans Paramètres › Catégories</string>
 
     <string name="live_catchup_title">Replay · %1$s</string>
     <string name="live_catchup_load_failed">Impossible de charger le replay</string>

@@ -3,6 +3,7 @@ package com.biskyt.mytvplayer.data
 import androidx.annotation.StringRes
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
+import com.biskyt.mytvplayer.data.db.CAT_LIVE
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -141,6 +142,18 @@ class SyncManager(
     /** Updates those of [playlistId]'s guides that are out of date, if any (as [updateGuide]); none if it's not in use. */
     suspend fun updateOutOfDateGuides(playlistId: Long): Result<Map<Long, String>> = attempt(R.string.common_guide_update_failed) {
         ifInUse(playlistId) { importGuide(listOf(playlistId), outOfDate = true) }.orEmpty()
+    }
+
+    /**
+     * After the ticked categories of [types] changed: everything when live TV's did, else only movies and series. With
+     * [guides] (a guide switched on), the guides that are out of date too.
+     */
+    fun refreshFor(playlistId: Long, types: Set<String>, guides: Boolean = false) {
+        when {
+            CAT_LIVE in types -> refresh(playlistId)
+            types.isNotEmpty() -> refreshVod(playlistId)
+        }
+        if (guides && CAT_LIVE !in types) scope.launch { updateOutOfDateGuides(playlistId) }
     }
 
     /** Only movies and series (after their categories change). */

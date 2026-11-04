@@ -77,6 +77,8 @@ class VodRepository(
     private val playlists: PlaylistRepository,
     private val categoryStore: CategoryStore,
     private val progressListener: ProgressListener = ProgressListener.NONE,
+    /** Keeps the user's changes for the sync between TVs. */
+    private val log: ChoiceLog = ChoiceLog(db),
 ) {
     private val vod = db.vod()
     private val categories = db.categories()
@@ -138,20 +140,25 @@ class VodRepository(
 
     /** A new favourite goes at the end of the user's order. */
     suspend fun setFavourite(playlistId: Long, type: String, id: Long, favourite: Boolean) {
-        if (favourite) {
+        val position = if (favourite) {
             db.withTransaction {
-                vod.addFavourite(
-                    VodFavouriteEntity(
-                        playlistId,
-                        type,
-                        id,
-                        System.currentTimeMillis(),
-                        vod.lastFavouritePosition(playlistId, type) + 1
-                    )
-                )
+                (vod.lastFavouritePosition(playlistId, type) + 1).also {
+                    vod.addFavourite(VodFavouriteEntity(playlistId, type, id, System.currentTimeMillis(), it))
+                }
             }
         } else {
             vod.removeFavourite(playlistId, type, id)
+            null
+        }
+        log.record(playlistId, ChoiceKinds.vodFavourite(type), id, position?.toString())
+    }
+
+    /** A favourite film or series ([type]) from another TV: as ChannelRepository.takeFavourite. */
+    suspend fun takeFavourite(playlistId: Long, type: String, id: Long, position: Long?, at: Long) = db.withTransaction {
+        when {
+            position == null -> vod.removeFavourite(playlistId, type, id)
+            id in vod.favouriteIds(playlistId, type) -> vod.setFavouritePosition(playlistId, type, id, position)
+            else -> vod.addFavourite(VodFavouriteEntity(playlistId, type, id, at, vod.lastFavouritePosition(playlistId, type) + 1))
         }
     }
 
@@ -160,8 +167,9 @@ class VodRepository(
         if (type == CAT_MOVIE) vod.idsMovieFavourites(playlistId) else vod.idsSeriesFavourites(playlistId)
 
     /** Stores favourite movies' or series' ([type]) places in the order ([positions]: id to place). */
-    suspend fun setFavouritePositions(playlistId: Long, type: String, positions: Map<Long, Long>) = db.withTransaction {
-        positions.forEach { (id, position) -> vod.setFavouritePosition(playlistId, type, id, position) }
+    suspend fun setFavouritePositions(playlistId: Long, type: String, positions: Map<Long, Long>) {
+        db.withTransaction { positions.forEach { (id, position) -> vod.setFavouritePosition(playlistId, type, id, position) } }
+        log.recordOrder(playlistId, ChoiceKinds.vodFavourite(type), positions)
     }
 
     suspend fun progress(playlistId: Long, kind: String, id: Long) = vod.progress(playlistId, kind, id)

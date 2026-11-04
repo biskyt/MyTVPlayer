@@ -101,14 +101,20 @@ cropped ([credits, with each image's author and licence](app/src/test/resources/
 ## Sync between TVs (optional)
 
 This is **off unless you turn it on**, in Settings › Sync between TVs. It keeps your place in films and episodes the
-same on all your TVs: stop a film on one TV, and carry on from the same point on another.
+same on all your TVs: stop a film on one TV, and carry on from the same point on another. It also keeps your choices
+the same on each TV: favourites, recently watched channels, hidden channels, the categories that you tick or
+restrict, and your TV guide choices.
 
 **How it works**
 - On each TV, you sign in with the same Google account. The TV shows a code: enter it at google.com/device on your
   phone or computer, or scan the QR code.
 - Each TV keeps a small file of what you watched in a folder called **MyTVPlayer** in **your own Google Drive**. The
   other TVs read it from there. You can see the folder in Drive.
-- Sync works only for films and episodes. It does not include live TV, your playlists, or your settings.
+- Sync includes your place in films and episodes, your favourite channels, films and series (in your order),
+  recently watched channels, hidden channels, the categories that you tick in Settings › Categories, the categories
+  that the parental controls restrict, the TV guides that you add, and the guide channel that you choose for a
+  channel. It does not include your playlists, your parental controls PIN or your other settings.
+- When you change a choice on one TV, the newest change wins on every TV.
 
 **What MyTVPlayer asks Google for, and why**
 
@@ -123,8 +129,10 @@ MyTVPlayer asks for no new Android permissions for the sync.
 **Your data stays yours**
 - **We do not collect your data, and we cannot see it.** MyTVPlayer has no server. The data goes directly from your
   TV to your own Google Drive, and only your TVs read it.
-- The file holds the titles, poster addresses, how far you got, and when. Each playlist is named by a scrambled id of
-  its name and server, not by its address or user name: give a playlist the same name on each TV. **Your playlist
+- The file holds the titles, poster addresses, how far you got, and when. It also holds your choices: the provider's
+  ids of your favourites, channels and categories, and the addresses and names of the TV guides that you added. Each
+  playlist is named by a scrambled id of its name and server, not by its address or user name: give a playlist the
+  same name on each TV. A provider's own TV guide is never sent, because its address holds your login. **Your playlist
   logins and passwords never go to Google.**
 - **To stop:** select Stop syncing. This signs the TV out and deletes its file from your Drive. What you watched stays
   on the TV.

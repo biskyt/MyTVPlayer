@@ -14,8 +14,33 @@ import java.util.Locale
  * of that. New categories are included when their language/country group is one the user already includes, or, the
  * first time, the TV's own country/language.
  */
-class CategoryStore(private val db: AppDatabase, private val locale: () -> Locale = Locale::getDefault) {
+class CategoryStore(
+    private val db: AppDatabase,
+    /** Keeps the user's ticks for the sync between TVs. */
+    private val log: ChoiceLog = ChoiceLog(db),
+    private val locale: () -> Locale = Locale::getDefault
+) {
     private val categories = db.categories()
+
+    /**
+     * The user ticked or unticked [ids] (or a choice from another TV). The other TVs get it with the next sync, when the
+     * user leaves the page.
+     */
+    suspend fun choose(playlistId: Long, type: String, ids: List<String>, included: Boolean) {
+        if (ids.isEmpty()) return
+        db.withTransaction { ids.chunked(MAX_SQL_ARGS).forEach { categories.setIncluded(playlistId, type, it, included) } }
+        log.record(playlistId, ChoiceKinds.included(type), ids.associateWith { ChoiceKinds.flag(included) }, send = false)
+    }
+
+    /** The user hid [cat] (unticked it); [also] runs in the same transaction. The other TVs get it now. */
+    suspend fun hide(cat: CategoryEntity, also: suspend () -> Unit) {
+        db.withTransaction {
+            categories.setIncluded(cat.playlistId, cat.type, listOf(cat.categoryId), false)
+            also()
+        }
+        // Once all is saved, so that the sync it starts finds it.
+        log.record(cat.playlistId, ChoiceKinds.included(cat.type), cat.categoryId, ChoiceKinds.flag(false))
+    }
 
     /**
      * A category's language/country group. [groupByName]: M3U playlists also group by genre ("News"); when no

@@ -42,7 +42,20 @@ data class SyncedDelete(val playlist: String, val kind: String, val id: Long, va
 }
 
 /**
- * One TV's watch progress, as it keeps it in the sync folder. Each TV writes only its own file, so two TVs never write
+ * A choice the user made on a TV, at [at]: a favourite, a hidden channel, a ticked category, a guide, for example.
+ * [kind] says what it is, [id] which item (the provider's id, the same on every TV), and [value] the choice (null: none,
+ * such as a favourite removed). The app gives the kinds and values their meaning.
+ */
+@Serializable
+data class SyncedChoice(val playlist: String, val kind: String, val id: String, val value: String?, val at: Long) {
+    val key: ChoiceKey get() = ChoiceKey(playlist, kind, id)
+}
+
+/** An item that a choice is about, in one playlist. [playlist] is [ProgressFile.playlistKey], the same on every TV. */
+data class ChoiceKey(val playlist: String, val kind: String, val id: String)
+
+/**
+ * One TV's watch progress and choices, as it keeps it in the sync folder. Each TV writes only its own file, so two TVs never write
  * the same file. The other TVs read it and keep the newest change to each item.
  *
  * A newer app version can add fields: older versions ignore them.
@@ -52,6 +65,8 @@ data class ProgressFile(
     val version: Int = VERSION,
     val rows: List<SyncedProgress> = emptyList(),
     val deleted: List<SyncedDelete> = emptyList(),
+    /** Since 1.12.0: the user's choices on this TV (favourites, ticked categories and more). Not the lists themselves. */
+    val choices: List<SyncedChoice> = emptyList(),
 ) {
     /** Compressed JSON. */
     fun encode(): ByteArray {
@@ -109,6 +124,10 @@ data class ProgressFile(
             }
             return out
         }
+
+        /** The newest choice for each item in [files]. */
+        fun newestChoices(files: List<ProgressFile>): Map<ChoiceKey, SyncedChoice> =
+            files.flatMap { it.choices }.groupBy { it.key }.mapValues { (_, choices) -> choices.maxBy { it.at } }
 
         /**
          * The version of [playlistKey]. When it changes, each TV sends its file again once, so that the TVs match with

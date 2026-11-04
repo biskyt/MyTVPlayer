@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.room.withTransaction
+import com.biskyt.mytvplayer.core.sync.ChoiceKey
 import com.biskyt.mytvplayer.core.sync.DeviceCode
 import com.biskyt.mytvplayer.core.sync.GoogleAuth
 import com.biskyt.mytvplayer.core.sync.GoogleTokens
@@ -15,10 +16,13 @@ import com.biskyt.mytvplayer.core.sync.ProgressFile
 import com.biskyt.mytvplayer.core.sync.SyncException
 import com.biskyt.mytvplayer.core.sync.SyncKey
 import com.biskyt.mytvplayer.core.sync.SyncStore
+import com.biskyt.mytvplayer.core.sync.SyncedChoice
 import com.biskyt.mytvplayer.core.sync.SyncedDelete
 import com.biskyt.mytvplayer.core.sync.SyncedProgress
 import com.biskyt.mytvplayer.data.db.AppDatabase
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
+import com.biskyt.mytvplayer.data.db.MAX_SQL_ARGS
+import com.biskyt.mytvplayer.data.db.SyncChoiceEntity
 import com.biskyt.mytvplayer.data.db.SyncTombstoneEntity
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
 import java.util.UUID
@@ -40,6 +44,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The sign-in for the sync between TVs. It is kept with the settings, but it is not part of [Settings], so a backup
@@ -116,10 +121,14 @@ class SyncAccount(private val prefs: DataStore<Preferences>) {
 }
 
 /**
- * Keeps the place in films and episodes the same on all the user's TVs, through the app's own folder (MyTVPlayer) in
+ * Keeps the place in films and episodes, and the user's choices (favourites, recently watched channels, hidden
+ * channels, ticked and restricted categories, guides), the same on all the user's TVs, through the app's own folder (MyTVPlayer) in
  * their Google Drive. It is off until the user signs in (Settings › Sync between TVs).
  *
- * - Each TV writes only its own file: all its progress and what it forgot (see [ProgressFile]).
+ * - Each TV writes only its own file: all its progress, what it forgot, and its choices with when each last changed
+ *   (see [ProgressFile] and ChoiceLog). The newest change to each wins.
+ * - [choices] applies the choices from other TVs. When they change the lists to download, [onChoices] downloads them
+ *   again.
  * - **A sync** reads the other TVs' files that changed since the last sync, keeps the newest change to each item, then
  *   sends this TV's file if this TV has changes. Items of playlists this TV does not have are left out. Open pages show
  *   what a sync brings in, as their lists come from the database.
@@ -139,6 +148,10 @@ class ProgressSync(
     private val scope: CoroutineScope,
     private val store: (token: suspend (renew: Boolean) -> String) -> SyncStore,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** This TV's choices. Asked for at each sync, as the repositories that apply them are made after this. */
+    private val choices: () -> ChoiceTarget = { ChoiceTarget.NONE },
+    /** Choices from another TV changed what a playlist downloads (see [ChoiceTarget.apply]). */
+    private val onChoices: (playlistId: Long, reload: Reload) -> Unit = { _, _ -> },
 ) : ProgressListener {
     val available: Boolean get() = auth != null
 
@@ -170,6 +183,12 @@ class ProgressSync(
     /** The playlists at the last sync: when one is added, the other TVs' files are read again for it. */
     @Volatile private var lastPlaylists: Set<String> = emptySet()
 
+    /**
+     * Choices from files already read, for items that this TV does not have yet (it loads them later, or its lists are
+     * older). Each sync tries them again. They are kept only as long as [seen], in memory.
+     */
+    private val waiting = ConcurrentHashMap<ChoiceKey, SyncedChoice>()
+
     @Volatile private var stopping = false
     private var running: Deferred<Unit>? = null
 
@@ -190,7 +209,7 @@ class ProgressSync(
         access = tokens
         account.signIn(refresh, tokens.email)
         state.first { it?.on == true }
-        seen.clear()
+        forgetSeen()
         // Sends all of this TV's progress the first time.
         markChanged()
         syncSoon()
@@ -217,7 +236,7 @@ class ProgressSync(
 
     private suspend fun signedOut() {
         access = null
-        seen.clear()
+        forgetSeen()
         dirty.set(false)
         account.signOut()
         state.first { it?.on == false }
@@ -296,14 +315,21 @@ class ProgressSync(
         val s = store(::token)
         val own = ownName()
         val playlists = playlistKeys()
-        // A playlist added since: the other TVs' files may hold its progress.
-        if (!lastPlaylists.containsAll(playlists.values)) seen.clear()
+        // A playlist, or a type of category, added since: the other TVs' files may hold its progress or choices.
+        // A playlist added since: the other TVs' files may hold its progress and its choices.
+        if (!lastPlaylists.containsAll(playlists.values)) forgetSeen()
         lastPlaylists = playlists.values.toSet()
+        // Before the merge, so that this TV's older choices count against the other TVs'.
+        choices().seed()
         val files = s.list()
         val changed = files.filter { ProgressFile.isProgressFile(it.name) && it.name != own && seen[it.id] != it.modifiedTime }
         // A failed download fails the sync. A file this version cannot read is left out until it changes.
         val read = changed.map { f -> s.download(f.id).let { quietly { ProgressFile.decode(it) } } }
-        if (read.isNotEmpty() && merge(ProgressFile.newest(read.filterNotNull()), playlists)) markChanged()
+        val readable = read.filterNotNull()
+        if (read.isNotEmpty() && merge(ProgressFile.newest(readable), playlists)) markChanged()
+        val choices = ProgressFile.newestChoices(readable).toMutableMap()
+        waiting.forEach { (key, c) -> if ((choices[key]?.at ?: Long.MIN_VALUE) < c.at) choices[key] = c }
+        mergeChoices(choices, playlists).forEach { (pid, reload) -> onChoices(pid, reload) }
         changed.forEach { seen[it.id] = it.modifiedTime }
         val ownFile = files.firstOrNull { it.name == own }
         if (dirty.getAndSet(false) || ownFile == null) {
@@ -321,10 +347,13 @@ class ProgressSync(
     private suspend fun ownName(): String = ownName ?: ProgressFile.fileName(account.device()).also { ownName = it }
 
     private suspend fun localFile(keys: Map<Long, String>): ProgressFile {
-        vod.pruneTombstones(clock() - TimeUnit.DAYS.toMillis(SyncTombstoneEntity.KEEP_DAYS))
+        val keep = clock() - TimeUnit.DAYS.toMillis(SyncTombstoneEntity.KEEP_DAYS)
+        vod.pruneTombstones(keep)
+        db.choices().pruneNone(keep)
         return ProgressFile(
             rows = db.backup().progress().mapNotNull { r -> keys[r.playlistId]?.let { r.toSynced(it) } },
-            deleted = vod.tombstones().mapNotNull { t -> keys[t.playlistId]?.let { SyncedDelete(it, t.kind, t.itemId, t.deletedAt) } }
+            deleted = vod.tombstones().mapNotNull { t -> keys[t.playlistId]?.let { SyncedDelete(it, t.kind, t.itemId, t.deletedAt) } },
+            choices = choices().local().mapNotNull { c -> keys[c.playlistId]?.let { SyncedChoice(it, c.kind, c.itemId, c.value, c.at) } }
         )
     }
 
@@ -365,6 +394,47 @@ class ProgressSync(
         // The same rules as this TV's own saves.
         touched.forEach { db.keepProgressRules(it) }
         deleted
+    }
+
+    /**
+     * Takes each choice that is newer than this TV's. A choice for an item that this TV does not have yet waits in
+     * [waiting]. Returns what must download again, for each playlist.
+     */
+    private suspend fun mergeChoices(newest: Map<ChoiceKey, SyncedChoice>, keys: Map<Long, String>): Map<Long, Reload> {
+        waiting.clear()
+        if (newest.isEmpty()) return emptyMap()
+        val target = choices()
+        val pids = keys.entries.groupBy({ it.value }, { it.key })
+        val reload = HashMap<Long, Reload>()
+        // Guides before the guide channels chosen in them.
+        val groups = newest.values.groupBy { it.playlist to it.kind }.entries.sortedBy { it.key.second != ChoiceKinds.GUIDE }
+        groups.forEach { (playlistKind, choices) ->
+            val (key, kind) = playlistKind
+            pids[key].orEmpty().forEach { pid ->
+                val local = choices.map { it.id }.chunked(MAX_SQL_ARGS).flatMap { db.choices().get(pid, kind, it) }
+                    .associate { it.itemId to it.at }
+                val newer = choices.filter { it.at > (local[it.id] ?: Long.MIN_VALUE) }
+                if (newer.isEmpty()) return@forEach
+                val r = reload.getOrPut(pid, ::Reload)
+                // Not through the log: each keeps the other TV's time.
+                val taken = withContext(ChoiceLog.Applying) { applyGroup(kind) { target.apply(pid, kind, newer, r) } }
+                db.choices().upsert(taken.map { SyncChoiceEntity(pid, kind, it.id, it.value, it.at) })
+                (newer - taken.toSet()).forEach { waiting[it.key] = it }
+            }
+        }
+        return reload.filterValues { it.any }
+    }
+
+    /**
+     * One transaction for a group, so that many choices (all categories ticked, for example) write at once. Not for
+     * guides: matching a channel to a guide again reads the database from other threads.
+     */
+    private suspend fun <T> applyGroup(kind: String, block: suspend () -> T): T =
+        if (kind == ChoiceKinds.GUIDE || kind == ChoiceKinds.GUIDE_CHANNEL) block() else db.withTransaction { block() }
+
+    private fun forgetSeen() {
+        seen.clear()
+        waiting.clear()
     }
 
     private inline fun <T> quietly(block: () -> T): T? = try {

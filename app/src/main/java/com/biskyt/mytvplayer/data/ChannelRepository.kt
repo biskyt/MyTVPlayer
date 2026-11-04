@@ -29,7 +29,12 @@ sealed interface ChannelFilter {
     data class Category(val id: String) : ChannelFilter
 }
 
-class ChannelRepository(private val db: AppDatabase) {
+class ChannelRepository(
+    private val db: AppDatabase,
+    /** Keeps the user's changes for the sync between TVs. */
+    private val log: ChoiceLog = ChoiceLog(db),
+    private val clock: () -> Long = System::currentTimeMillis,
+) {
     private val channels = db.channels()
     private val favourites = db.favourites()
 
@@ -79,12 +84,26 @@ class ChannelRepository(private val db: AppDatabase) {
 
     /** A new favourite goes at the end of the user's order. */
     suspend fun setFavourite(playlistId: Long, streamId: Long, favourite: Boolean) {
-        if (favourite) {
+        val position = if (favourite) {
             db.withTransaction {
-                favourites.add(FavouriteEntity(playlistId, streamId, System.currentTimeMillis(), favourites.lastPosition(playlistId) + 1))
+                (favourites.lastPosition(playlistId) + 1).also { favourites.add(FavouriteEntity(playlistId, streamId, clock(), it)) }
             }
         } else {
             favourites.remove(playlistId, streamId)
+            null
+        }
+        log.record(playlistId, ChoiceKinds.FAVOURITE, streamId, position?.toString())
+    }
+
+    /**
+     * A favourite from another TV (null [position]: not a favourite). A new one goes at the end here, as places differ
+     * between TVs; one already here moves to its [position] there (the user put them in a new order).
+     */
+    suspend fun takeFavourite(playlistId: Long, streamId: Long, position: Long?, at: Long) = db.withTransaction {
+        when {
+            position == null -> favourites.remove(playlistId, streamId)
+            streamId in favourites.ids(playlistId) -> favourites.setPosition(playlistId, streamId, position)
+            else -> favourites.add(FavouriteEntity(playlistId, streamId, at, favourites.lastPosition(playlistId) + 1))
         }
     }
 
@@ -92,20 +111,31 @@ class ChannelRepository(private val db: AppDatabase) {
     suspend fun favouriteOrder(playlistId: Long): List<Long> = channels.idsFavourites(playlistId)
 
     /** Stores favourite channels' places in the order ([positions]: stream id to place). */
-    suspend fun setFavouritePositions(playlistId: Long, positions: Map<Long, Long>) = db.withTransaction {
-        positions.forEach { (id, position) -> favourites.setPosition(playlistId, id, position) }
+    suspend fun setFavouritePositions(playlistId: Long, positions: Map<Long, Long>) {
+        db.withTransaction { positions.forEach { (id, position) -> favourites.setPosition(playlistId, id, position) } }
+        log.recordOrder(playlistId, ChoiceKinds.FAVOURITE, positions)
     }
 
     /** Puts a channel on "Recently watched", unless it's restricted and those are hidden there (parental controls). */
-    suspend fun markWatched(playlistId: Long, streamId: Long) = db.withTransaction {
-        favourites.touchRecent(RecentEntity(playlistId, streamId, System.currentTimeMillis()))
+    suspend fun markWatched(playlistId: Long, streamId: Long) {
+        addRecent(playlistId, streamId, clock())
+        // Sent with the next sync, not while the channel plays.
+        log.record(playlistId, ChoiceKinds.RECENT, streamId, ChoiceKinds.ON, send = false)
+    }
+
+    /** Puts a channel on "Recently watched" as watched [at] (on this TV, or on another TV). */
+    suspend fun addRecent(playlistId: Long, streamId: Long, at: Long) = db.withTransaction {
+        favourites.touchRecent(RecentEntity(playlistId, streamId, at))
         // Before the trim, so a restricted channel doesn't push out one that is kept.
         db.parental().forgetRecent(playlistId)
         favourites.trimRecent(playlistId, RECENT_LIMIT)
     }
 
     /** Takes a channel off "Recently watched". */
-    suspend fun removeRecent(playlistId: Long, streamId: Long) = favourites.removeRecent(playlistId, streamId)
+    suspend fun removeRecent(playlistId: Long, streamId: Long) {
+        favourites.removeRecent(playlistId, streamId)
+        log.record(playlistId, ChoiceKinds.RECENT, streamId, null)
+    }
 
     /** The channel, unless it's restricted while locked (parental controls). */
     suspend fun getOpen(playlistId: Long, streamId: Long) = channels.getOpen(playlistId, streamId)
@@ -113,6 +143,7 @@ class ChannelRepository(private val db: AppDatabase) {
     suspend fun setHidden(playlistId: Long, streamId: Long, hidden: Boolean) {
         channels.setHidden(playlistId, streamId, hidden)
         db.categories().refreshCounts(playlistId, CAT_LIVE)
+        log.record(playlistId, ChoiceKinds.HIDDEN, streamId, ChoiceKinds.onOrNone(hidden))
     }
 
     private companion object {

@@ -30,7 +30,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.room.withTransaction
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.AppContainer
@@ -40,7 +39,6 @@ import com.biskyt.mytvplayer.data.db.CAT_LIVE
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.CategoryEntity
 import com.biskyt.mytvplayer.data.db.ChannelEntity
-import com.biskyt.mytvplayer.data.db.MAX_SQL_ARGS
 import com.biskyt.mytvplayer.data.db.VOD_TYPES
 import com.biskyt.mytvplayer.data.groupLabel
 import com.biskyt.mytvplayer.data.label
@@ -115,14 +113,29 @@ class CategoriesViewModel(private val c: AppContainer, private val playlistId: L
         selectedGroup = UNSET
     }
 
-    fun groups(list: List<CategoryEntity>, q: String = ""): List<LanguageGroup> = list.groupBy { it.lang }
-        .filter { (code, items) -> matchesFilter(groupLabel(code), q) || items.any { matchesFilter(it.label, q) } }
-        .map { (code, items) -> LanguageGroup(code, groupLabel(code), items.size, items.count { it.included }) }
-        .sortedWith(
-            compareByDescending<LanguageGroup> {
-                it.included > 0
-            }.thenBy { it.code == null }.thenBy(Collator.getInstance(AppText.locale)) { it.label }
-        )
+    /** For each type, the groups' order when its list first showed. */
+    private val order = HashMap<String, Map<String?, Int>>()
+
+    /**
+     * The groups of [list] that match [q]. The groups with ticks come first, but only in the order the list had when it
+     * first showed: a tick does not move a group while the page is open, so the focus stays on it.
+     */
+    fun groups(list: List<CategoryEntity>, q: String = ""): List<LanguageGroup> {
+        val byGroup = list.groupBy { it.lang }
+        val all = byGroup.map { (code, items) -> LanguageGroup(code, groupLabel(code), items.size, items.count { it.included }) }
+            .sortedWith(
+                compareByDescending<LanguageGroup> {
+                    it.included > 0
+                }.thenBy { it.code == null }.thenBy(Collator.getInstance(AppText.locale)) { it.label }
+            )
+        val type = list.firstOrNull()?.type ?: return emptyList()
+        val first = order.getOrPut(type) { all.withIndex().associate { (i, g) -> g.code to i } }
+        // A group that came later (the list downloaded again) goes after them.
+        return all.withIndex()
+            .filter { (_, g) -> matchesFilter(g.label, q) || byGroup[g.code].orEmpty().any { matchesFilter(it.label, q) } }
+            .sortedBy { (i, g) -> first[g.code] ?: (first.size + i) }
+            .map { it.value }
+    }
 
     /** A group's categories, narrowed by [q] unless the group itself is what matched. */
     fun shown(list: List<CategoryEntity>, group: String?, q: String): List<CategoryEntity> {
@@ -155,24 +168,21 @@ class CategoriesViewModel(private val c: AppContainer, private val playlistId: L
     private suspend fun setIncluded(t: String, ids: List<String>, included: Boolean) {
         if (ids.isEmpty()) return
         changed += t
-        c.db.withTransaction { ids.chunked(MAX_SQL_ARGS).forEach { c.db.categories().setIncluded(playlistId, t, it, included) } }
+        c.categoryStore.choose(playlistId, t, ids, included)
     }
 
-    fun toggleCategory(cat: CategoryEntity) = viewModelScope.launch {
-        changed += cat.type
-        c.db.categories().setIncluded(playlistId, cat.type, listOf(cat.categoryId), !cat.included)
-    }
+    fun toggleCategory(cat: CategoryEntity) = viewModelScope.launch { setIncluded(cat.type, listOf(cat.categoryId), !cat.included) }
 
     fun unhide(ch: ChannelEntity) = viewModelScope.launch { c.channels.setHidden(ch.playlistId, ch.streamId, false) }
 
-    /** Downloads again what the change affects: everything on first run or for live TV, else just movies and series. */
+    /**
+     * Downloads again what the change affects: everything on first run or for live TV, else just movies and series. The
+     * other TVs take the same choices now (when the sync between TVs is on).
+     */
     fun finish(firstRun: Boolean) {
-        when {
-            // The guide comes with it: a playlist that names its own (as the free TV does) has it added as it loads.
-            firstRun -> c.appScope.launch { c.sync.refreshNow(playlistId) }
-            CAT_LIVE in changed -> c.sync.refresh(playlistId)
-            changed.isNotEmpty() -> c.sync.refreshVod(playlistId)
-        }
+        if (changed.isNotEmpty()) c.progressSync.syncSoon()
+        // The guide comes with it: a playlist that names its own (as the free TV does) has it added as it loads.
+        if (firstRun) c.appScope.launch { c.sync.refreshNow(playlistId) } else c.sync.refreshFor(playlistId, changed)
         changed.clear()
     }
 

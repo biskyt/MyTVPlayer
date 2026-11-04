@@ -4,7 +4,7 @@
     <string name="settings_playlists_help">Ajouter, modifier ou changer de compte IPTV</string>
     <string name="settings_playback_title">Lecture</string>
     <string name="settings_playback_help">Sauts, passthrough audio, sous-titres, mémoire tampon</string>
-    <string name="settings_categories_title">Langues et catégories</string>
+    <string name="settings_categories_title">Catégories</string>
     <string name="settings_categories_help">Choisir les chaînes chargées ; réafficher des chaînes</string>
     <string name="settings_guide_sources_help">Le guide de votre fournisseur et des guides XMLTV supplémentaires</string>
     <string name="settings_guide_matching_help">Choisir la chaîne du guide utilisée par chaque chaîne</string>
