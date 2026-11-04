@@ -24,6 +24,9 @@ jobs:
     env:
       # Secrets can't be tested in a step's `if`; this can.
       HAS_PLAY_ACCOUNT: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+      # The Google client for the sync between TVs (RELEASING.md). Without it, the app hides that setting.
+      MYTV_GOOGLE_CLIENT_ID: ${{ secrets.MYTV_GOOGLE_CLIENT_ID }}
+      MYTV_GOOGLE_CLIENT_SECRET: ${{ secrets.MYTV_GOOGLE_CLIENT_SECRET }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5

@@ -205,6 +205,7 @@ class PlaylistRepository(
             playlists.deleteSeries(id)
             playlists.deleteEpisodes(id)
             playlists.deleteProgress(id)
+            playlists.deleteTombstones(id)
             playlists.deleteVodFavourites(id)
             playlists.delete(id)
         }

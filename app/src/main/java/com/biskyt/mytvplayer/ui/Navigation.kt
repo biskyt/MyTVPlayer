@@ -68,6 +68,7 @@ sealed interface Screen {
     data object PlaybackSettings : Screen
     data object Appearance : Screen
     data object Parental : Screen
+    data object Sync : Screen
     data object GuideSources : Screen
     data class GuideMatching(val playlistId: Long, val streamId: Long? = null) : Screen
     data object Backup : Screen

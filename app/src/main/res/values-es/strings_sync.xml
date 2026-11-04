@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sync_title">Sincronizar entre televisores</string>
+    <string name="sync_help">Usa tu Google Drive para que el punto donde vas en películas y episodios sea el mismo en todos tus televisores</string>
+    <string name="sync_intro">Inicia sesión con la misma cuenta de Google en cada televisor. MyTVPlayer guarda por dónde vas en películas y episodios en una carpeta oculta de tu Google Drive. Solo MyTVPlayer puede ver esa carpeta y no lee nada más de tu Drive.</string>
+    <string name="sync_sign_in">Iniciar sesión con Google</string>
+    <string name="sync_go_to">En tu teléfono u ordenador, ve a %1$s e introduce este código:</string>
+    <string name="sync_waiting">Esperando a que inicies sesión…</string>
+    <string name="sync_cancel">Cancelar</string>
+    <string name="sync_denied">Se rechazó el inicio de sesión.</string>
+    <string name="sync_expired">El código ha caducado. Inténtalo de nuevo.</string>
+    <string name="sync_failed">No se pudo conectar con Google. Comprueba la conexión e inténtalo de nuevo.</string>
+    <string name="sync_signed_in_as">Sesión iniciada como %1$s</string>
+    <string name="sync_signed_in">Sesión iniciada</string>
+    <string name="sync_last">Última sincronización: %1$s</string>
+    <string name="sync_never">Aún no se ha sincronizado</string>
+    <string name="sync_now">Sincronizar ahora</string>
+    <string name="sync_stop">Dejar de sincronizar</string>
+    <string name="sync_stop_help">Borra la copia de este televisor en tu Google Drive. Lo que has visto en este televisor se queda aquí.</string>
+</resources>

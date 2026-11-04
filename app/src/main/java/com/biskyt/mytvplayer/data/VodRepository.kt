@@ -18,7 +18,9 @@ import com.biskyt.mytvplayer.data.db.CAT_SERIES
 import com.biskyt.mytvplayer.data.db.MovieEntity
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import com.biskyt.mytvplayer.data.db.SeriesEntity
+import com.biskyt.mytvplayer.data.db.SyncTombstoneEntity
 import com.biskyt.mytvplayer.data.db.VOD_EPISODE
+import com.biskyt.mytvplayer.data.db.VOD_MOVIE
 import com.biskyt.mytvplayer.data.db.VodCard
 import com.biskyt.mytvplayer.data.db.VodFavouriteEntity
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
@@ -34,13 +36,48 @@ sealed interface VodFilter {
     data class Category(val id: String) : VodFilter
 }
 
+/** Hears of changes to the watch progress, for the sync between TVs (see ProgressSync). */
+interface ProgressListener {
+    /** The sync is on: only then is what the user forgets kept, for the other TVs. */
+    val on: Boolean
+
+    /** [stopped]: playback stopped, or the user forgot something. */
+    fun changed(stopped: Boolean)
+
+    companion object {
+        val NONE = object : ProgressListener {
+            override val on = false
+
+            override fun changed(stopped: Boolean) = Unit
+        }
+    }
+}
+
+/**
+ * After progress is saved: nothing is kept for a restricted film or series while those are hidden from "Carry on
+ * watching" (parental controls), and with [trim], only the newest rows are kept.
+ */
+internal suspend fun AppDatabase.keepProgressRules(playlistId: Long, trim: Boolean = true) {
+    // Before the trim, so a restricted item doesn't push out one that is kept.
+    parental().forgetProgress(playlistId)
+    if (trim) vod().trimProgress(playlistId, KEEP_PROGRESS)
+}
+
+/** The most progress rows kept for each playlist. */
+private const val KEEP_PROGRESS = 300
+
 /**
  * Movies and series, from an Xtream account or an M3U playlist's movie and series playlists. The light lists are
  * stored for fast paging and filtering. Xtream details and episodes are fetched when a title is opened and kept
  * briefly in memory; M3U episodes are stored with their series, and M3U titles have no further details. [type]
  * arguments are CAT_MOVIE or CAT_SERIES, which double as the favourite kinds.
  */
-class VodRepository(private val db: AppDatabase, private val playlists: PlaylistRepository, private val categoryStore: CategoryStore) {
+class VodRepository(
+    private val db: AppDatabase,
+    private val playlists: PlaylistRepository,
+    private val categoryStore: CategoryStore,
+    private val progressListener: ProgressListener = ProgressListener.NONE,
+) {
     private val vod = db.vod()
     private val categories = db.categories()
     private val m3u = M3uVod(db, playlists, categoryStore)
@@ -140,12 +177,16 @@ class VodRepository(private val db: AppDatabase, private val playlists: Playlist
      * finished episode with [next] after it puts that one on "Carry on watching" in its place ([upNext]). Nothing is kept
      * for a restricted film or series while those are hidden from "Carry on watching" (parental controls).
      */
-    suspend fun saveProgress(p: WatchProgressEntity, trim: Boolean = false, next: EpisodeInfo? = null) = db.withTransaction {
+    suspend fun saveProgress(p: WatchProgressEntity, trim: Boolean = false, next: EpisodeInfo? = null) {
+        db.withTransaction { save(p, trim, next) }
+        // Playback stopped (trim): a good moment to sync. During playback, a save only marks a change.
+        progressListener.changed(trim)
+    }
+
+    private suspend fun save(p: WatchProgressEntity, trim: Boolean, next: EpisodeInfo?) {
         vod.saveProgress(p)
         next?.takeIf { p.finished }?.let { upNext(p, it) }
-        // Before the trim, so a restricted item doesn't push out one that is kept.
-        db.parental().forgetProgress(p.playlistId)
-        if (trim) vod.trimProgress(p.playlistId, KEEP_PROGRESS)
+        db.keepProgressRules(p.playlistId, trim)
     }
 
     /**
@@ -169,8 +210,25 @@ class VodRepository(private val db: AppDatabase, private val playlists: Playlist
 
     /** Takes a movie, or a whole series, off "Carry on watching": forgets how far it got (for a series, every episode). */
     suspend fun forgetProgress(p: WatchProgressEntity) {
-        val series = p.seriesId
-        if (series == null) vod.deleteMovieProgress(p.playlistId, p.itemId) else vod.deleteSeriesProgress(p.playlistId, series)
+        db.withTransaction {
+            val series = p.seriesId
+            if (series == null) {
+                remember(p.playlistId, listOf(VOD_MOVIE to p.itemId))
+                vod.deleteMovieProgress(p.playlistId, p.itemId)
+            } else {
+                // The whole series: on the other TVs, episodes this TV never had go too.
+                remember(p.playlistId, listOf(CAT_SERIES to series))
+                vod.deleteSeriesProgress(p.playlistId, series)
+            }
+        }
+        progressListener.changed(true)
+    }
+
+    /** Keeps what the user forgot (kind to id), so the other TVs forget it too. */
+    private suspend fun remember(playlistId: Long, items: List<Pair<String, Long>>) {
+        if (!progressListener.on) return
+        val now = System.currentTimeMillis()
+        vod.addTombstones(items.map { (kind, id) -> SyncTombstoneEntity(playlistId, kind, id, now) })
     }
 
     /**
@@ -209,10 +267,14 @@ class VodRepository(private val db: AppDatabase, private val playlists: Playlist
     }
 
     /** Forgets how far one episode got: it shows as unwatched. */
-    suspend fun forgetEpisode(playlistId: Long, episodeId: Long, next: EpisodeInfo? = null) = db.withTransaction {
-        vod.deleteEpisodeProgress(playlistId, episodeId)
-        // The one up after it goes too, if it never started.
-        next?.let { vod.deleteUpNext(playlistId, it.id) }
+    suspend fun forgetEpisode(playlistId: Long, episodeId: Long, next: EpisodeInfo? = null) {
+        db.withTransaction {
+            vod.deleteEpisodeProgress(playlistId, episodeId)
+            // The one up after it goes too, if it never started.
+            val upNext = next?.takeIf { vod.deleteUpNext(playlistId, it.id) > 0 }
+            remember(playlistId, listOfNotNull(episodeId, upNext?.id).map { VOD_EPISODE to it })
+        }
+        progressListener.changed(true)
     }
 
     // --- details (fetched when opened) ---
@@ -329,7 +391,6 @@ class VodRepository(private val db: AppDatabase, private val playlists: Playlist
     private companion object {
         const val BATCH = 2_000
         const val DETAILS_CACHE = 20
-        const val KEEP_PROGRESS = 300
         const val FIND_LIMIT = 500
     }
 }

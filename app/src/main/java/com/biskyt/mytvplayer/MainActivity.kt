@@ -36,10 +36,19 @@ class MainActivity : ComponentActivity() {
         setContent { InAppLanguage { AppRoot() } }
     }
 
+    // Back in the app: what was watched on the user's other TVs (the sync between TVs).
+    override fun onStart() {
+        super.onStart()
+        container.progressSync.syncSoon()
+    }
+
     // Leaving the app (Home, the TV switched off, another app) hides restricted content again (parental controls).
     override fun onStop() {
         super.onStop()
-        if (!isChangingConfigurations) container.parental.lock()
+        if (isChangingConfigurations) return
+        container.parental.lock()
+        // Changes not sent yet go before the app closes, in the background (the sync between TVs).
+        if (container.progressSync.hasChanges) ProgressSyncWorker.start(this)
     }
 
     // Already running (it's the only one, singleTask): a file opened with it arrives here.

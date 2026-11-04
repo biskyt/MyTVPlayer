@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sync_title">Synchroniser entre téléviseurs</string>
+    <string name="sync_help">Utilise votre Google Drive pour reprendre films et épisodes au même endroit sur tous vos téléviseurs</string>
+    <string name="sync_intro">Connectez-vous avec le même compte Google sur chaque téléviseur. MyTVPlayer enregistre où vous en êtes dans les films et les épisodes dans un dossier masqué de votre Google Drive. Seul MyTVPlayer peut voir ce dossier, et il ne lit rien d\'autre dans votre Drive.</string>
+    <string name="sync_sign_in">Se connecter avec Google</string>
+    <string name="sync_go_to">Sur votre téléphone ou votre ordinateur, allez sur %1$s et saisissez ce code :</string>
+    <string name="sync_waiting">En attente de votre connexion…</string>
+    <string name="sync_cancel">Annuler</string>
+    <string name="sync_denied">La connexion a été refusée.</string>
+    <string name="sync_expired">Le code a expiré. Réessayez.</string>
+    <string name="sync_failed">Impossible de joindre Google. Vérifiez la connexion et réessayez.</string>
+    <string name="sync_signed_in_as">Connecté en tant que %1$s</string>
+    <string name="sync_signed_in">Connecté</string>
+    <string name="sync_last">Dernière synchronisation : %1$s</string>
+    <string name="sync_never">Pas encore synchronisé</string>
+    <string name="sync_now">Synchroniser maintenant</string>
+    <string name="sync_stop">Arrêter la synchronisation</string>
+    <string name="sync_stop_help">Supprime la copie de ce téléviseur dans votre Google Drive. Ce que vous avez regardé sur ce téléviseur reste ici.</string>
+</resources>

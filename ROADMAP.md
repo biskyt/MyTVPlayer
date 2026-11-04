@@ -34,9 +34,9 @@ In the TV guide, a programme's options menu (hold OK, or Info) offers a way to w
   - Search by normalised title (reusing the channel-name normaliser). It opens the series, then the episode if the season and episode numbers match.
   - If any of this turns out to be costly, fall back to the pre-filled search alone.
 
-## Planned: sync watch progress between TVs (parked)
-- **Phase 1:** keep your place in films and episodes the same on all your TVs, through the user's own Google Drive. It is off by default.
-- **Phase 2 (low priority):** send watched marks to the user's Plex account, so that they show in MyPlexPlayer.
+## Sync watch progress between TVs
+- **Phase 1 (1.10.0):** keep your place in films and episodes the same on all your TVs, through the user's own Google Drive. It is off by default.
+- **Phase 2 (low priority, planned):** send watched marks to the user's Plex account, so that they show in MyPlexPlayer.
 - The plan, the services that we compared and the sources are in [`research/progress-sync.md`](research/progress-sync.md).
 
 ## Later

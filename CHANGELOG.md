@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.10.0
+- New in Settings: Sync between TVs keeps your place in films and episodes the same on all your TVs, through a hidden folder in your own Google Drive (off until you sign in).
+- To sign in, enter the code the TV shows at google.com/device on your phone or computer, or scan the QR code.
+- The sync runs in the background when you open the app, Home or a film or series page, and when you stop watching or leave the app, so it never holds up a page.
+
 ## 1.9.1
 - Categories in TV (Catch-up too), Movies and Series are listed from A to Z, after the lists at the top (Favourites, Recently watched, All).
 - Adult categories are named with "XXX" first everywhere in the app, so they are easy to find and come near the end of the lists.

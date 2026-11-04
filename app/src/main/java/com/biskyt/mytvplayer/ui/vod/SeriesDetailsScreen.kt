@@ -88,6 +88,7 @@ class SeriesDetailsViewModel(
     val favourite = c.vod.observeFavourite(playlistId, CAT_SERIES, seriesId).stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     init {
+        c.progressSync.syncSoon()
         load()
     }
 

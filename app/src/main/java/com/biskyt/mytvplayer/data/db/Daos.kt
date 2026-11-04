@@ -72,6 +72,9 @@ interface PlaylistDao {
     @Query("DELETE FROM watch_progress WHERE playlistId = :pid")
     suspend fun deleteProgress(pid: Long)
 
+    @Query("DELETE FROM sync_tombstone WHERE playlistId = :pid")
+    suspend fun deleteTombstones(pid: Long)
+
     @Query("DELETE FROM vod_favourite WHERE playlistId = :pid")
     suspend fun deleteVodFavourites(pid: Long)
 }
@@ -897,9 +900,27 @@ interface VodDao {
     @Query("DELETE FROM watch_progress WHERE playlistId = :pid AND kind = 'episode' AND itemId = :id")
     suspend fun deleteEpisodeProgress(pid: Long, id: Long)
 
-    /** An episode's row only while it's up next, not started. */
+    /** An episode's row only while it's up next, not started. Returns how many rows went (0 or 1). */
     @Query("DELETE FROM watch_progress WHERE playlistId = :pid AND kind = 'episode' AND itemId = :id AND positionMs = 0")
-    suspend fun deleteUpNext(pid: Long, id: Long)
+    suspend fun deleteUpNext(pid: Long, id: Long): Int
+
+    @Query("DELETE FROM watch_progress WHERE playlistId = :pid AND kind = :kind AND itemId = :id")
+    suspend fun deleteProgress(pid: Long, kind: String, id: Long)
+
+    // --- the sync between TVs (see ProgressSync) ---
+
+    @Upsert
+    suspend fun addTombstones(t: List<SyncTombstoneEntity>)
+
+    @Query("SELECT * FROM sync_tombstone")
+    suspend fun tombstones(): List<SyncTombstoneEntity>
+
+    /** A series forgotten on another TV at [before]: its episodes saved before then. Returns how many went. */
+    @Query("DELETE FROM watch_progress WHERE playlistId = :pid AND kind = 'episode' AND seriesId = :seriesId AND updatedAt < :before")
+    suspend fun deleteSeriesProgressBefore(pid: Long, seriesId: Long, before: Long): Int
+
+    @Query("DELETE FROM sync_tombstone WHERE deletedAt < :before")
+    suspend fun pruneTombstones(before: Long)
 }
 
 /** Everything a backup holds (see BackupRepository), read and replaced as a whole. */
