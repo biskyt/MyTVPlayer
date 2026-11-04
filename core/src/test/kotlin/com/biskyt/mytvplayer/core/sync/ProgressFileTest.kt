@@ -46,14 +46,14 @@ class ProgressFileTest {
     }
 
     @Test
-    fun `the newest choice for each category wins`() {
-        fun choice(id: String, on: Boolean, at: Long) = SyncedCategory("p", "live", id, on, at)
-        val a = ProgressFile(categories = listOf(choice("1", true, 10), choice("2", false, 30)))
-        val b = ProgressFile(categories = listOf(choice("1", false, 20), choice("2", true, 5)))
+    fun `the newest choice for each item wins`() {
+        fun choice(id: String, value: String?, at: Long) = SyncedChoice("p", "fav", id, value, at)
+        val a = ProgressFile(choices = listOf(choice("1", "1", 10), choice("2", null, 30)))
+        val b = ProgressFile(choices = listOf(choice("1", null, 20), choice("2", "4", 5)))
         assertEquals(ProgressFile.decode(a.encode()), a)
         val newest = ProgressFile.newestChoices(listOf(a, b))
-        assertEquals(choice("1", false, 20), newest[CategoryKey("p", "live", "1")])
-        assertEquals(choice("2", false, 30), newest[CategoryKey("p", "live", "2")])
+        assertEquals(choice("1", null, 20), newest[ChoiceKey("p", "fav", "1")])
+        assertEquals(choice("2", null, 30), newest[ChoiceKey("p", "fav", "2")])
     }
 
     @Test

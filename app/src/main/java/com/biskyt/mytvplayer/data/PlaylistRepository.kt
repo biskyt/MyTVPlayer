@@ -240,6 +240,7 @@ class PlaylistRepository(
             playlists.deleteProgress(id)
             playlists.deleteTombstones(id)
             playlists.deleteVodFavourites(id)
+            db.choices().deletePlaylist(id)
             playlists.delete(id)
         }
         db.epg().providerSource(id)?.let { epg.removeSource(it.id) }

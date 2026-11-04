@@ -144,12 +144,16 @@ class SyncManager(
         ifInUse(playlistId) { importGuide(listOf(playlistId), outOfDate = true) }.orEmpty()
     }
 
-    /** After the ticked categories of [types] changed: everything when live TV's did, else only movies and series. */
-    fun refreshFor(playlistId: Long, types: Set<String>) {
+    /**
+     * After the ticked categories of [types] changed: everything when live TV's did, else only movies and series. With
+     * [guides] (a guide switched on), the guides that are out of date too.
+     */
+    fun refreshFor(playlistId: Long, types: Set<String>, guides: Boolean = false) {
         when {
             CAT_LIVE in types -> refresh(playlistId)
             types.isNotEmpty() -> refreshVod(playlistId)
         }
+        if (guides && CAT_LIVE !in types) scope.launch { updateOutOfDateGuides(playlistId) }
     }
 
     /** Only movies and series (after their categories change). */

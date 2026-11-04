@@ -199,6 +199,12 @@ These are built in already. Keep them when changing the areas they cover.
   - Only one sync runs at a time. A request made while one runs is dropped, not queued.
   - It does not need to be instant. Saves during playback only mark a change.
   - Leaving the app with changes not sent finishes the sync in the background (`ProgressSyncWorker`).
+  - Since 1.12.0 it also syncs the user's choices (the owner, 2026-11-04): favourites, recently watched channels,
+    hidden channels, ticked and restricted categories, and guide choices. Not the playlists, their logins or the PIN.
+    - A repository records each user change through `ChoiceLog` (table `sync_choice`), also while the sync is off;
+      `SyncedChoices` applies other TVs' choices through the same repositories. The newest change wins.
+    - A new kind of choice needs a `ChoiceKinds` name, a record call where the user changes it, a branch in
+      `SyncedChoices.apply`, and a seed if choices from before can exist.
 
 ## Open items (as of 1.1.0, released)
 - **Google Play:** each release uploads the `.aab` to closed testing (`alpha`); set-up is in RELEASING.md. Production is

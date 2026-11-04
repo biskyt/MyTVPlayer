@@ -16,33 +16,30 @@ import java.util.Locale
  */
 class CategoryStore(
     private val db: AppDatabase,
-    /** Told when the user ticks or unticks categories: the sync between TVs sends the choices. */
-    private val choices: ProgressListener = ProgressListener.NONE,
-    private val clock: () -> Long = System::currentTimeMillis,
+    /** Keeps the user's ticks for the sync between TVs. */
+    private val log: ChoiceLog = ChoiceLog(db),
     private val locale: () -> Locale = Locale::getDefault
 ) {
     private val categories = db.categories()
 
-    /** The user ticked or unticked [ids], now. The other TVs get it with the next sync (when the user leaves the page). */
+    /**
+     * The user ticked or unticked [ids] (or a choice from another TV). The other TVs get it with the next sync, when the
+     * user leaves the page.
+     */
     suspend fun choose(playlistId: Long, type: String, ids: List<String>, included: Boolean) {
         if (ids.isEmpty()) return
-        write(playlistId, type, ids, included)
-        choices.changed(stopped = false)
+        db.withTransaction { ids.chunked(MAX_SQL_ARGS).forEach { categories.setIncluded(playlistId, type, it, included) } }
+        log.record(playlistId, ChoiceKinds.included(type), ids.associateWith { ChoiceKinds.flag(included) }, send = false)
     }
 
-    /** The user hid [cat] (unticked it), now; [also] runs in the same transaction. The other TVs get it now. */
+    /** The user hid [cat] (unticked it); [also] runs in the same transaction. The other TVs get it now. */
     suspend fun hide(cat: CategoryEntity, also: suspend () -> Unit) {
-        write(cat.playlistId, cat.type, listOf(cat.categoryId), false, also)
-        choices.changed(stopped = true)
-    }
-
-    // The sync is told only once all is saved, so that it finds the choice.
-    private suspend fun write(playlistId: Long, type: String, ids: List<String>, included: Boolean, also: suspend () -> Unit = {}) {
-        val at = clock()
         db.withTransaction {
-            ids.chunked(MAX_SQL_ARGS).forEach { categories.choose(playlistId, type, it, included, at) }
+            categories.setIncluded(cat.playlistId, cat.type, listOf(cat.categoryId), false)
             also()
         }
+        // Once all is saved, so that the sync it starts finds it.
+        log.record(cat.playlistId, ChoiceKinds.included(cat.type), cat.categoryId, ChoiceKinds.flag(false))
     }
 
     /**
@@ -92,8 +89,7 @@ class CategoryStore(
                 sortOrder = old?.takeIf { it.categoryId == c.id || it.categoryId !in remoteIds }?.sortOrder ?: (existing.size + i),
                 channelCount = old?.channelCount ?: 0,
                 type = type,
-                restricted = restricted(old, langs[i]),
-                choiceAt = old?.choiceAt ?: 0
+                restricted = restricted(old, langs[i])
             )
         }
         // Those the provider no longer has go.

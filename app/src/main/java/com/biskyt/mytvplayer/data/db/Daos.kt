@@ -89,6 +89,9 @@ interface CategoryDao {
     @Query("SELECT * FROM category WHERE playlistId = :pid AND type = :type ORDER BY sortOrder")
     suspend fun all(pid: Long, type: String): List<CategoryEntity>
 
+    @Query("SELECT * FROM category WHERE playlistId = :pid AND type = :type AND categoryId = :id")
+    suspend fun get(pid: Long, type: String, id: String): CategoryEntity?
+
     @Query("SELECT * FROM category WHERE playlistId = :pid AND type = :type AND included = 1 ORDER BY sortOrder")
     fun observeIncluded(pid: Long, type: String): Flow<List<CategoryEntity>>
 
@@ -100,14 +103,6 @@ interface CategoryDao {
 
     @Query("UPDATE category SET included = :included WHERE playlistId = :pid AND type = :type AND categoryId IN (:ids)")
     suspend fun setIncluded(pid: Long, type: String, ids: List<String>, included: Boolean)
-
-    /** The user ticked or unticked [ids] at [at]. At most [MAX_SQL_ARGS] [ids] at a time. */
-    @Query("UPDATE category SET included = :included, choiceAt = :at WHERE playlistId = :pid AND type = :type AND categoryId IN (:ids)")
-    suspend fun choose(pid: Long, type: String, ids: List<String>, included: Boolean, at: Long)
-
-    /** Every category that the user ticked or unticked, of every playlist and type. */
-    @Query("SELECT * FROM category WHERE choiceAt > 0")
-    suspend fun choices(): List<CategoryEntity>
 
     @Query("UPDATE category SET restricted = :restricted WHERE playlistId = :pid AND type = :type AND categoryId = :id")
     suspend fun setRestricted(pid: Long, type: String, id: String, restricted: Boolean)
@@ -381,6 +376,9 @@ interface FavouriteDao {
     @Query("SELECT streamId FROM favourite WHERE playlistId = :pid")
     fun observeIds(pid: Long): Flow<List<Long>>
 
+    @Query("SELECT streamId FROM favourite WHERE playlistId = :pid")
+    suspend fun ids(pid: Long): List<Long>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun add(f: FavouriteEntity)
 
@@ -492,6 +490,12 @@ interface EpgDao {
     @Query("SELECT * FROM epg_source WHERE playlistId = :pid")
     suspend fun providerSource(pid: Long): EpgSourceEntity?
 
+    @Query("SELECT * FROM epg_source WHERE id = :id")
+    suspend fun source(id: Long): EpgSourceEntity?
+
+    @Query("SELECT playlistId FROM playlist_epg_source WHERE sourceId = :sourceId")
+    suspend fun playlistsOf(sourceId: Long): List<Long>
+
     @Query("SELECT * FROM epg_source WHERE url = :url LIMIT 1")
     suspend fun sourceByUrl(url: String): EpgSourceEntity?
 
@@ -506,6 +510,9 @@ interface EpgDao {
 
     @Query("DELETE FROM channel_epg_mapping WHERE sourceId = :sourceId")
     suspend fun deleteMappingsForSource(sourceId: Long)
+
+    @Query("SELECT * FROM channel_epg_mapping WHERE sourceId = :sourceId AND manual = 1")
+    suspend fun manualMappingsFor(sourceId: Long): List<ChannelEpgMappingEntity>
 
     /** [pid]'s automatic matching that found nothing, so the next update tries again. */
     @Query("DELETE FROM channel_epg_mapping WHERE playlistId = :pid AND manual = 0 AND sourceId IS NULL")
@@ -766,6 +773,9 @@ interface VodDao {
     @Query("SELECT COALESCE(MAX(position), 0) FROM vod_favourite WHERE playlistId = :pid AND kind = :kind")
     suspend fun lastFavouritePosition(pid: Long, kind: String): Long
 
+    @Query("SELECT itemId FROM vod_favourite WHERE playlistId = :pid AND kind = :kind")
+    suspend fun favouriteIds(pid: Long, kind: String): List<Long>
+
     @Query("UPDATE vod_favourite SET position = :position WHERE playlistId = :pid AND kind = :kind AND itemId = :id")
     suspend fun setFavouritePosition(pid: Long, kind: String, id: Long, position: Long)
 
@@ -978,4 +988,70 @@ interface BackupDao {
         mappings: List<ChannelEpgMappingEntity>,
         progress: List<WatchProgressEntity>
     )
+}
+
+/** The user's choices that the sync between TVs keeps the same (see SyncChoiceEntity and ChoiceKinds). */
+@Dao
+interface SyncChoiceDao {
+    @Upsert
+    suspend fun upsert(rows: List<SyncChoiceEntity>)
+
+    @Query("SELECT * FROM sync_choice")
+    suspend fun all(): List<SyncChoiceEntity>
+
+    @Query("SELECT * FROM sync_choice WHERE playlistId = :pid AND kind = :kind AND itemId IN (:ids)")
+    suspend fun get(pid: Long, kind: String, ids: List<String>): List<SyncChoiceEntity>
+
+    @Query("DELETE FROM sync_choice WHERE playlistId = :pid")
+    suspend fun deletePlaylist(pid: Long)
+
+    /** "None" choices (a favourite removed, for example) older than [before]: the other TVs have them by then. */
+    @Query("DELETE FROM sync_choice WHERE value IS NULL AND at < :before")
+    suspend fun pruneNone(before: Long)
+
+    @Query("SELECT EXISTS (SELECT 1 FROM sync_choice WHERE playlistId = 0 AND kind = :kind)")
+    suspend fun has(kind: String): Boolean
+
+    // Choices made before this version (or restored from a backup) have no row yet: they get one, as the oldest
+    // choice, so that a choice made since on any TV wins over them. Rows already there stay. See SyncedChoices.seed.
+
+    @Query(
+        "INSERT OR IGNORE INTO sync_choice SELECT playlistId, :kind, CAST(streamId AS TEXT), CAST(position AS TEXT), addedAt " +
+            "FROM favourite"
+    )
+    suspend fun seedFavourites(kind: String)
+
+    /** [prefix] and the type make the kind. */
+    @Query(
+        "INSERT OR IGNORE INTO sync_choice SELECT playlistId, :prefix || kind, CAST(itemId AS TEXT), CAST(position AS TEXT), " +
+            "addedAt FROM vod_favourite"
+    )
+    suspend fun seedVodFavourites(prefix: String)
+
+    @Query("INSERT OR IGNORE INTO sync_choice SELECT playlistId, :kind, CAST(streamId AS TEXT), :on, watchedAt FROM recent")
+    suspend fun seedRecent(kind: String, on: String)
+
+    @Query("INSERT OR IGNORE INTO sync_choice SELECT playlistId, :kind, CAST(streamId AS TEXT), :on, 1 FROM channel WHERE hidden = 1")
+    suspend fun seedHidden(kind: String, on: String)
+
+    /** Every category's tick: a TV that loads its categories later takes these. */
+    @Query(
+        "INSERT OR IGNORE INTO sync_choice SELECT playlistId, :prefix || type, categoryId, " +
+            "CASE included WHEN 1 THEN :on ELSE :off END, 1 FROM category"
+    )
+    suspend fun seedIncluded(prefix: String, on: String, off: String)
+
+    /** Only categories restricted (or not) other than as they start: [adult] ones start restricted. */
+    @Query(
+        "INSERT OR IGNORE INTO sync_choice SELECT playlistId, :prefix || type, categoryId, " +
+            "CASE restricted WHEN 1 THEN :on ELSE :off END, 1 FROM category WHERE restricted != COALESCE(lang = :adult, 0)"
+    )
+    suspend fun seedRestricted(prefix: String, on: String, off: String, adult: String)
+
+    /** Guides that the user added (not a provider's own guide, whose address holds the login). */
+    @Query(
+        "INSERT OR IGNORE INTO sync_choice SELECT l.playlistId, :kind, s.url, s.name, 1 " +
+            "FROM playlist_epg_source l JOIN epg_source s ON s.id = l.sourceId WHERE s.playlistId IS NULL"
+    )
+    suspend fun seedGuides(kind: String)
 }

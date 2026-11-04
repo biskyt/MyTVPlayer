@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 13,
-    "identityHash": "0293ac90ce2eeef4ea192282b73ff5a0",
+    "identityHash": "3481037ec4ff56b9fb7b6d4f228d8a88",
     "entities": [
       {
         "tableName": "playlist",
@@ -111,7 +111,7 @@
       },
       {
         "tableName": "category",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`playlistId` INTEGER NOT NULL, `categoryId` TEXT NOT NULL, `name` TEXT NOT NULL, `lang` TEXT, `included` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL, `channelCount` INTEGER NOT NULL, `type` TEXT NOT NULL DEFAULT 'live', `restricted` INTEGER NOT NULL DEFAULT 0, `choiceAt` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`playlistId`, `type`, `categoryId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`playlistId` INTEGER NOT NULL, `categoryId` TEXT NOT NULL, `name` TEXT NOT NULL, `lang` TEXT, `included` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL, `channelCount` INTEGER NOT NULL, `type` TEXT NOT NULL DEFAULT 'live', `restricted` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`playlistId`, `type`, `categoryId`))",
         "fields": [
           {
             "fieldPath": "playlistId",
@@ -164,13 +164,6 @@
           {
             "fieldPath": "restricted",
             "columnName": "restricted",
-            "affinity": "INTEGER",
-            "notNull": true,
-            "defaultValue": "0"
-          },
-          {
-            "fieldPath": "choiceAt",
-            "columnName": "choiceAt",
             "affinity": "INTEGER",
             "notNull": true,
             "defaultValue": "0"
@@ -1244,11 +1237,54 @@
             "itemId"
           ]
         }
+      },
+      {
+        "tableName": "sync_choice",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`playlistId` INTEGER NOT NULL, `kind` TEXT NOT NULL, `itemId` TEXT NOT NULL, `value` TEXT, `at` INTEGER NOT NULL, PRIMARY KEY(`playlistId`, `kind`, `itemId`))",
+        "fields": [
+          {
+            "fieldPath": "playlistId",
+            "columnName": "playlistId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "itemId",
+            "columnName": "itemId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "at",
+            "columnName": "at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "playlistId",
+            "kind",
+            "itemId"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0293ac90ce2eeef4ea192282b73ff5a0')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3481037ec4ff56b9fb7b6d4f228d8a88')"
     ]
   }
 }

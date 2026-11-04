@@ -78,9 +78,7 @@ data class CategoryEntity(
     val channelCount: Int = 0,
     @ColumnInfo(defaultValue = CAT_LIVE) val type: String = CAT_LIVE,
     /** Restricted (parental controls): adult categories by default. See [ParentalEntity]. */
-    @ColumnInfo(defaultValue = "0") val restricted: Boolean = false,
-    /** When the user last ticked or unticked it (0: never; the default choice). The sync between TVs sends these. */
-    @ColumnInfo(defaultValue = "0") val choiceAt: Long = 0
+    @ColumnInfo(defaultValue = "0") val restricted: Boolean = false
 )
 
 /**
@@ -219,6 +217,14 @@ data class SyncTombstoneEntity(val playlistId: Long, val kind: String, val itemI
         const val KEEP_DAYS = 60L
     }
 }
+
+/**
+ * The last change to one of the user's choices that the sync between TVs keeps the same (see ChoiceKinds): made on
+ * this TV, or taken from another TV. [itemId] is the provider's id of the item; [value] is null for "none" (a
+ * favourite removed, for example). A change made while the sync is off is kept too, so it is sent when it is on.
+ */
+@Entity(tableName = "sync_choice", primaryKeys = ["playlistId", "kind", "itemId"])
+data class SyncChoiceEntity(val playlistId: Long, val kind: String, val itemId: String, val value: String?, val at: Long)
 
 /**
  * A favourite movie or series. [kind] is [CAT_MOVIE] or [CAT_SERIES]. [position]: where the user put it (0, as for

@@ -27,7 +27,13 @@ import kotlinx.coroutines.launch
  * The state is kept in the parental table, which the list queries read: Room then reloads every open list when it
  * changes, so unlocking shows the restricted items at once.
  */
-class ParentalRepository(private val db: AppDatabase, private val settings: SettingsRepository, scope: CoroutineScope) {
+class ParentalRepository(
+    private val db: AppDatabase,
+    private val settings: SettingsRepository,
+    scope: CoroutineScope,
+    /** Keeps the user's changes for the sync between TVs: only which categories are restricted, not the PIN. */
+    private val log: ChoiceLog = ChoiceLog(db),
+) {
     private val unlocked = MutableStateFlow(false)
 
     /**
@@ -36,6 +42,9 @@ class ParentalRepository(private val db: AppDatabase, private val settings: Sett
      */
     val hasPin: StateFlow<Boolean> = settings.settings.map { it.pinHash.isNotEmpty() }.distinctUntilChanged()
         .stateIn(scope, SharingStarted.Eagerly, false)
+
+    /** Whether a PIN is set, as saved (not waiting for [hasPin] to catch up). */
+    suspend fun pinSet(): Boolean = settings.current().pinHash.isNotEmpty()
 
     /** Whether restricted content is hidden now: a PIN is set and it hasn't been entered. */
     val locked: StateFlow<Boolean> = combine(hasPin, unlocked) { pin, open -> pin && !open }
@@ -79,10 +88,13 @@ class ParentalRepository(private val db: AppDatabase, private val settings: Sett
     }
 
     /** Restricts category [id], or removes that (callers ask for the PIN first to remove it, when one is set). */
-    suspend fun setRestricted(playlistId: Long, type: String, id: String, restricted: Boolean) = db.withTransaction {
-        db.categories().setRestricted(playlistId, type, id, restricted)
-        // What was watched in it goes, as if it had been restricted then (while the hide settings are on).
-        if (restricted) db.parental().forgetRestricted(playlistId)
+    suspend fun setRestricted(playlistId: Long, type: String, id: String, restricted: Boolean) {
+        db.withTransaction {
+            db.categories().setRestricted(playlistId, type, id, restricted)
+            // What was watched in it goes, as if it had been restricted then (while the hide settings are on).
+            if (restricted) db.parental().forgetRestricted(playlistId)
+        }
+        log.record(playlistId, ChoiceKinds.restricted(type), id, ChoiceKinds.flag(restricted))
     }
 
     /** Emits when restricted content is hidden again after it was shown: screens open on it are closed (see AppRoot). */

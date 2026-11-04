@@ -32,6 +32,7 @@ import com.biskyt.mytvplayer.data.BackupRepository
 import com.biskyt.mytvplayer.data.CatchupRepository
 import com.biskyt.mytvplayer.data.CategoryStore
 import com.biskyt.mytvplayer.data.ChannelRepository
+import com.biskyt.mytvplayer.data.ChoiceLog
 import com.biskyt.mytvplayer.data.CrashLog
 import com.biskyt.mytvplayer.data.EpgRepository
 import com.biskyt.mytvplayer.data.ExternalIp
@@ -43,6 +44,7 @@ import com.biskyt.mytvplayer.data.SearchRepository
 import com.biskyt.mytvplayer.data.SettingsRepository
 import com.biskyt.mytvplayer.data.SyncAccount
 import com.biskyt.mytvplayer.data.SyncManager
+import com.biskyt.mytvplayer.data.SyncedChoices
 import com.biskyt.mytvplayer.data.VodRepository
 import com.biskyt.mytvplayer.data.VpnMonitor
 import com.biskyt.mytvplayer.data.dataStore
@@ -80,26 +82,31 @@ class AppContainer(context: Context) {
         }
         .build()
     val settings = SettingsRepository(context)
-    val parental = ParentalRepository(db, settings, appScope)
-
-    /** One client for each playlist proxy: the playlists, their guides and the player share them. */
-    val proxies = ProxyClients(http)
-
-    /** The same for the player's streams: shorter waits than the downloads', so a stall is found sooner. */
-    val playerProxies = ProxyClients(http.newBuilder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build())
-    val epg = EpgRepository(db, http, context.filesDir, appScope, proxies = proxies)
     val progressSync: ProgressSync = ProgressSync(
         db,
         SyncAccount(context.dataStore),
         BuildConfig.GOOGLE_CLIENT_ID.takeIf { it.isNotBlank() }?.let { GoogleAuth(http, it, BuildConfig.GOOGLE_CLIENT_SECRET) },
         appScope,
         { token -> DriveStore(http, token) },
-        onChoices = { pid, types -> sync.refreshFor(pid, types) }
+        choices = { syncedChoices },
+        onChoices = { pid, reload -> sync.refreshFor(pid, reload.types, reload.guides) }
     )
-    val categoryStore = CategoryStore(db, progressSync)
+
+    /** Keeps the user's changes for the sync between TVs. */
+    private val choiceLog = ChoiceLog(db, progressSync)
+    val parental = ParentalRepository(db, settings, appScope, choiceLog)
+
+    /** One client for each playlist proxy: the playlists, their guides and the player share them. */
+    val proxies = ProxyClients(http)
+
+    /** The same for the player's streams: shorter waits than the downloads', so a stall is found sooner. */
+    val playerProxies = ProxyClients(http.newBuilder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build())
+    val epg = EpgRepository(db, http, context.filesDir, appScope, proxies = proxies, log = choiceLog)
+    val categoryStore = CategoryStore(db, choiceLog)
     val playlists = PlaylistRepository(db, http, settings, epg, context.cacheDir.resolve("playlists"), categoryStore, proxies)
-    val channels = ChannelRepository(db)
-    val vod = VodRepository(db, playlists, categoryStore, progressSync)
+    val channels = ChannelRepository(db, choiceLog)
+    val vod = VodRepository(db, playlists, categoryStore, progressSync, choiceLog)
+    private val syncedChoices by lazy { SyncedChoices(db, channels, vod, categoryStore, parental, epg) }
     val favourites = Favourites(appScope, settings, channels, vod)
     val search = SearchRepository(db)
     val catchup = CatchupRepository(playlists)

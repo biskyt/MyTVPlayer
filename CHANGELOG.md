@@ -3,8 +3,8 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
-## 1.11.1
-- Sync between TVs now also keeps the categories that you tick in Settings › Categories the same on each TV, so each TV loads the same channels, films and series (update every TV to this version).
+## 1.12.0
+- Sync between TVs now also keeps your favourites, recently watched channels, hidden channels, ticked and restricted categories, and TV guide choices the same on each TV (update every TV to this version).
 - On the Categories page, a country or a language no longer moves to the top when you tick it, so the focus stays on it: ticked groups come first when the page next opens.
 - "Languages & categories" in Settings is now called "Categories".
 

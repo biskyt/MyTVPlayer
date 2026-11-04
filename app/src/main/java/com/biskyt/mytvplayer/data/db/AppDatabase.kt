@@ -25,7 +25,7 @@ import com.biskyt.mytvplayer.core.epg.CategoryLanguageDetector
     // 10: parental controls (category.restricted, adult categories restricted; parental).
     // 11: progress this TV forgot, for the sync between TVs (sync_tombstone).
     // 12: a proxy for each playlist (playlist.proxyType, proxyHost, proxyPort, proxyUsername, proxyPassword).
-    // 13: when the user last ticked or unticked each category, for the sync between TVs (category.choiceAt).
+    // 13: the user's choices, with when each last changed, for the sync between TVs (sync_choice).
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -43,7 +43,8 @@ import com.biskyt.mytvplayer.core.epg.CategoryLanguageDetector
         PlaylistEntity::class, CategoryEntity::class, ChannelEntity::class, FavouriteEntity::class, RecentEntity::class,
         EpgSourceEntity::class, EpgChannelEntity::class, ProgrammeEntity::class, ChannelEpgMappingEntity::class,
         MovieEntity::class, SeriesEntity::class, EpisodeEntity::class, WatchProgressEntity::class, VodFavouriteEntity::class,
-        PlaylistEpgSourceEntity::class, ParentalEntity::class, SyncTombstoneEntity::class
+        PlaylistEpgSourceEntity::class, ParentalEntity::class, SyncTombstoneEntity::class,
+        SyncChoiceEntity::class
     ]
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -55,6 +56,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun vod(): VodDao
     abstract fun backup(): BackupDao
     abstract fun parental(): ParentalDao
+    abstract fun choices(): SyncChoiceDao
 
     /** Version 10: the adult categories that are already stored start restricted, as new ones do. */
     class RestrictAdult : AutoMigrationSpec {
