@@ -240,4 +240,20 @@ class MigrationTest {
             }
         }
     }
+
+    @Test
+    fun `version 12 to 13 keeps categories, with no choice to sync`() {
+        helper.createDatabase("migration-test-13", 12).use { db ->
+            db.execSQL(
+                "INSERT INTO category (playlistId, categoryId, lang, name, included, sortOrder, channelCount, type, restricted) " +
+                    "VALUES (1, 'a', 'GB', 'n', 1, 0, 0, 'live', 0)"
+            )
+        }
+        helper.runMigrationsAndValidate("migration-test-13", 13, true).use { db ->
+            db.query("SELECT included, choiceAt FROM category").use {
+                it.moveToFirst()
+                assertEquals(1 to 0L, it.getInt(0) to it.getLong(1))
+            }
+        }
+    }
 }

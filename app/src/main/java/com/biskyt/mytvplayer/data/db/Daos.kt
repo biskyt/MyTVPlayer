@@ -101,6 +101,14 @@ interface CategoryDao {
     @Query("UPDATE category SET included = :included WHERE playlistId = :pid AND type = :type AND categoryId IN (:ids)")
     suspend fun setIncluded(pid: Long, type: String, ids: List<String>, included: Boolean)
 
+    /** The user ticked or unticked [ids] at [at]. At most [MAX_SQL_ARGS] [ids] at a time. */
+    @Query("UPDATE category SET included = :included, choiceAt = :at WHERE playlistId = :pid AND type = :type AND categoryId IN (:ids)")
+    suspend fun choose(pid: Long, type: String, ids: List<String>, included: Boolean, at: Long)
+
+    /** Every category that the user ticked or unticked, of every playlist and type. */
+    @Query("SELECT * FROM category WHERE choiceAt > 0")
+    suspend fun choices(): List<CategoryEntity>
+
     @Query("UPDATE category SET restricted = :restricted WHERE playlistId = :pid AND type = :type AND categoryId = :id")
     suspend fun setRestricted(pid: Long, type: String, id: String, restricted: Boolean)
 

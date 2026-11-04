@@ -29,8 +29,8 @@
     <!-- "Guide" is a button on the TV remote -->
     <string name="live_option_switch_help">Or press the Guide button on the remote</string>
     <string name="live_option_hide_channel">Hide channel</string>
-    <!-- "Settings › Languages & categories" names a settings page: keep it the same as that page's title -->
-    <string name="live_option_hide_channel_help">Unhide later in Settings › Languages &amp; categories</string>
+    <!-- "Settings › Categories" names a settings page: keep it the same as that page's title -->
+    <string name="live_option_hide_channel_help">Unhide later in Settings › Categories</string>
 
     <!-- Catch-up screen -->
     <!-- Title. %1$s is a channel name -->

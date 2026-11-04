@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.room.withTransaction
+import com.biskyt.mytvplayer.core.sync.CategoryKey
 import com.biskyt.mytvplayer.core.sync.DeviceCode
 import com.biskyt.mytvplayer.core.sync.GoogleAuth
 import com.biskyt.mytvplayer.core.sync.GoogleTokens
@@ -15,10 +16,12 @@ import com.biskyt.mytvplayer.core.sync.ProgressFile
 import com.biskyt.mytvplayer.core.sync.SyncException
 import com.biskyt.mytvplayer.core.sync.SyncKey
 import com.biskyt.mytvplayer.core.sync.SyncStore
+import com.biskyt.mytvplayer.core.sync.SyncedCategory
 import com.biskyt.mytvplayer.core.sync.SyncedDelete
 import com.biskyt.mytvplayer.core.sync.SyncedProgress
 import com.biskyt.mytvplayer.data.db.AppDatabase
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
+import com.biskyt.mytvplayer.data.db.MAX_SQL_ARGS
 import com.biskyt.mytvplayer.data.db.SyncTombstoneEntity
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
 import java.util.UUID
@@ -116,10 +119,13 @@ class SyncAccount(private val prefs: DataStore<Preferences>) {
 }
 
 /**
- * Keeps the place in films and episodes the same on all the user's TVs, through the app's own folder (MyTVPlayer) in
+ * Keeps the place in films and episodes, and the categories chosen in Settings › Categories, the same on all the user's
+ * TVs, through the app's own folder (MyTVPlayer) in
  * their Google Drive. It is off until the user signs in (Settings › Sync between TVs).
  *
- * - Each TV writes only its own file: all its progress and what it forgot (see [ProgressFile]).
+ * - Each TV writes only its own file: all its progress, what it forgot, and the categories the user ticked or unticked
+ *   (see [ProgressFile]).
+ * - A category choice from another TV changes the lists to download: [onChoices] downloads them again.
  * - **A sync** reads the other TVs' files that changed since the last sync, keeps the newest change to each item, then
  *   sends this TV's file if this TV has changes. Items of playlists this TV does not have are left out. Open pages show
  *   what a sync brings in, as their lists come from the database.
@@ -139,6 +145,8 @@ class ProgressSync(
     private val scope: CoroutineScope,
     private val store: (token: suspend (renew: Boolean) -> String) -> SyncStore,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** Choices from another TV changed which categories of [types] a playlist downloads. */
+    private val onChoices: (playlistId: Long, types: Set<String>) -> Unit = { _, _ -> },
 ) : ProgressListener {
     val available: Boolean get() = auth != null
 
@@ -170,6 +178,12 @@ class ProgressSync(
     /** The playlists at the last sync: when one is added, the other TVs' files are read again for it. */
     @Volatile private var lastPlaylists: Set<String> = emptySet()
 
+    /**
+     * Choices from files already read, for categories that this TV does not have yet (it loads them later, or its lists
+     * are older). Each sync tries them again. They are kept only as long as [seen], in memory.
+     */
+    private val waiting = ConcurrentHashMap<CategoryKey, SyncedCategory>()
+
     @Volatile private var stopping = false
     private var running: Deferred<Unit>? = null
 
@@ -190,7 +204,7 @@ class ProgressSync(
         access = tokens
         account.signIn(refresh, tokens.email)
         state.first { it?.on == true }
-        seen.clear()
+        forgetSeen()
         // Sends all of this TV's progress the first time.
         markChanged()
         syncSoon()
@@ -217,7 +231,7 @@ class ProgressSync(
 
     private suspend fun signedOut() {
         access = null
-        seen.clear()
+        forgetSeen()
         dirty.set(false)
         account.signOut()
         state.first { it?.on == false }
@@ -296,14 +310,19 @@ class ProgressSync(
         val s = store(::token)
         val own = ownName()
         val playlists = playlistKeys()
-        // A playlist added since: the other TVs' files may hold its progress.
-        if (!lastPlaylists.containsAll(playlists.values)) seen.clear()
+        // A playlist, or a type of category, added since: the other TVs' files may hold its progress or choices.
+        // A playlist added since: the other TVs' files may hold its progress and its choices.
+        if (!lastPlaylists.containsAll(playlists.values)) forgetSeen()
         lastPlaylists = playlists.values.toSet()
         val files = s.list()
         val changed = files.filter { ProgressFile.isProgressFile(it.name) && it.name != own && seen[it.id] != it.modifiedTime }
         // A failed download fails the sync. A file this version cannot read is left out until it changes.
         val read = changed.map { f -> s.download(f.id).let { quietly { ProgressFile.decode(it) } } }
-        if (read.isNotEmpty() && merge(ProgressFile.newest(read.filterNotNull()), playlists)) markChanged()
+        val readable = read.filterNotNull()
+        if (read.isNotEmpty() && merge(ProgressFile.newest(readable), playlists)) markChanged()
+        val choices = ProgressFile.newestChoices(readable).toMutableMap()
+        waiting.forEach { (key, c) -> if ((choices[key]?.at ?: Long.MIN_VALUE) < c.at) choices[key] = c }
+        mergeChoices(choices, playlists).forEach { (pid, types) -> onChoices(pid, types) }
         changed.forEach { seen[it.id] = it.modifiedTime }
         val ownFile = files.firstOrNull { it.name == own }
         if (dirty.getAndSet(false) || ownFile == null) {
@@ -324,7 +343,10 @@ class ProgressSync(
         vod.pruneTombstones(clock() - TimeUnit.DAYS.toMillis(SyncTombstoneEntity.KEEP_DAYS))
         return ProgressFile(
             rows = db.backup().progress().mapNotNull { r -> keys[r.playlistId]?.let { r.toSynced(it) } },
-            deleted = vod.tombstones().mapNotNull { t -> keys[t.playlistId]?.let { SyncedDelete(it, t.kind, t.itemId, t.deletedAt) } }
+            deleted = vod.tombstones().mapNotNull { t -> keys[t.playlistId]?.let { SyncedDelete(it, t.kind, t.itemId, t.deletedAt) } },
+            categories = db.categories().choices().mapNotNull { c ->
+                keys[c.playlistId]?.let { SyncedCategory(it, c.type, c.categoryId, c.included, c.choiceAt) }
+            }
         )
     }
 
@@ -365,6 +387,40 @@ class ProgressSync(
         // The same rules as this TV's own saves.
         touched.forEach { db.keepProgressRules(it) }
         deleted
+    }
+
+    /**
+     * Takes each category choice that is newer than this TV's. A choice for a category that this TV does not have yet
+     * waits in [waiting]. Returns the types of category whose ticks changed, for each playlist.
+     */
+    private suspend fun mergeChoices(newest: Map<CategoryKey, SyncedCategory>, keys: Map<Long, String>): Map<Long, Set<String>> {
+        waiting.clear()
+        if (newest.isEmpty()) return emptyMap()
+        val categories = db.categories()
+        val pids = keys.entries.groupBy({ it.value }, { it.key })
+        val changed = HashMap<Long, MutableSet<String>>()
+        db.withTransaction {
+            newest.values.groupBy { it.playlist to it.type }.forEach { (playlistType, choices) ->
+                val (key, type) = playlistType
+                pids[key].orEmpty().forEach { pid ->
+                    val local = categories.all(pid, type).associateBy { it.categoryId }
+                    choices.forEach { c -> if (c.id !in local) waiting[c.key] = c }
+                    // The newer ones, written in groups of the same tick and time.
+                    choices.filter { c -> local[c.id]?.let { c.at > it.choiceAt } == true }
+                        .groupBy { it.included to it.at }
+                        .forEach { (tick, same) ->
+                            same.map { it.id }.chunked(MAX_SQL_ARGS).forEach { categories.choose(pid, type, it, tick.first, tick.second) }
+                            if (same.any { local.getValue(it.id).included != tick.first }) changed.getOrPut(pid, ::HashSet) += type
+                        }
+                }
+            }
+        }
+        return changed
+    }
+
+    private fun forgetSeen() {
+        seen.clear()
+        waiting.clear()
     }
 
     private inline fun <T> quietly(block: () -> T): T? = try {

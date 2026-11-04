@@ -4,7 +4,7 @@
     <string name="settings_playlists_help">Adicione, edite ou troque contas de IPTV</string>
     <string name="settings_playback_title">Reprodução</string>
     <string name="settings_playback_help">Tempos de pulo, passthrough de áudio, legendas, buffer</string>
-    <string name="settings_categories_title">Idiomas e categorias</string>
+    <string name="settings_categories_title">Categorias</string>
     <string name="settings_categories_help">Escolha quais canais são carregados; mostre canais ocultos</string>
     <string name="settings_guide_sources_help">O guia do seu provedor e guias XMLTV extras</string>
     <string name="settings_guide_matching_help">Escolha o canal do guia usado por cada canal</string>

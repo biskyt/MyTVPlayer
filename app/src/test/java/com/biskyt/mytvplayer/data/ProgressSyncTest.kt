@@ -8,6 +8,8 @@ import com.biskyt.mytvplayer.core.sync.SyncException
 import com.biskyt.mytvplayer.core.sync.SyncFile
 import com.biskyt.mytvplayer.core.sync.SyncStore
 import com.biskyt.mytvplayer.data.db.AppDatabase
+import com.biskyt.mytvplayer.data.db.CAT_LIVE
+import com.biskyt.mytvplayer.data.db.CategoryEntity
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import com.biskyt.mytvplayer.data.db.VOD_EPISODE
 import com.biskyt.mytvplayer.data.db.VOD_MOVIE
@@ -50,12 +52,16 @@ class ProgressSyncTest {
 
     private inner class Tv(name: String, extraPlaylists: Int) {
         val db: AppDatabase = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).build()
+
+        /** The types of category whose lists [sync] asked to download again, for each playlist. */
+        val reloaded = ConcurrentHashMap<Long, Set<String>>()
         val sync = ProgressSync(
             db,
             SyncAccount(PreferenceDataStoreFactory.create(scope = scope) { context.filesDir.resolve("sync-$name.preferences_pb") }),
             null,
             scope,
-            { folder }
+            { folder },
+            onChoices = { pid, types -> reloaded[pid] = types }
         )
         private val categoryStore = CategoryStore(db) { Locale.UK }
         private val http = OkHttpClient()
@@ -81,6 +87,13 @@ class ProgressSyncTest {
         }
 
         suspend fun progress(kind: String, id: Long) = db.vod().progress(pid, kind, id)
+
+        /** Two live categories, both ticked. */
+        suspend fun loadCategories() = db.categories().upsert(
+            listOf(CategoryEntity(pid, "1", "UK | NEWS", "GB", true, 0), CategoryEntity(pid, "2", "UK | SPORT", "GB", true, 1))
+        )
+
+        suspend fun included() = db.categories().included(pid, CAT_LIVE).map { it.categoryId }.sorted()
     }
 
     @Before
@@ -163,6 +176,46 @@ class ProgressSyncTest {
         // And B's episode 4 does not come back to A.
         a.sync.finish(always = true)
         assertNull(a.progress(VOD_EPISODE, 4))
+    }
+
+    @Test
+    fun `a category unticked on one TV is unticked on the other, which downloads its lists again`() = runBlocking {
+        a.loadCategories()
+        b.loadCategories()
+        a.signIn()
+        b.signIn()
+        a.db.categories().choose(a.pid, CAT_LIVE, listOf("2"), false, 5_000)
+        a.sync.finish(always = true)
+        b.sync.finish(always = true)
+        assertEquals(listOf("1"), b.included())
+        assertEquals(setOf(CAT_LIVE), b.reloaded[b.pid])
+
+        // A newer choice on B goes back to A.
+        b.db.categories().choose(b.pid, CAT_LIVE, listOf("2"), true, 6_000)
+        b.sync.changed(stopped = false)
+        b.sync.finish()
+        a.sync.finish(always = true)
+        assertEquals(listOf("1", "2"), a.included())
+        // A's file now has the same choice: B has it already, so nothing downloads again.
+        b.reloaded.clear()
+        a.sync.changed(stopped = false)
+        a.sync.finish()
+        b.sync.finish(always = true)
+        assertEquals(listOf("1", "2"), b.included())
+        assertNull(b.reloaded[b.pid])
+    }
+
+    @Test
+    fun `a category choice reaches a TV that loads its categories later`() = runBlocking {
+        a.loadCategories()
+        a.signIn()
+        b.signIn()
+        a.db.categories().choose(a.pid, CAT_LIVE, listOf("2"), false, 5_000)
+        a.sync.finish(always = true)
+        b.sync.finish(always = true)
+        b.loadCategories()
+        b.sync.finish(always = true)
+        assertEquals(listOf("1"), b.included())
     }
 
     @Test

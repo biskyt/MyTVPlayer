@@ -14,8 +14,36 @@ import java.util.Locale
  * of that. New categories are included when their language/country group is one the user already includes, or, the
  * first time, the TV's own country/language.
  */
-class CategoryStore(private val db: AppDatabase, private val locale: () -> Locale = Locale::getDefault) {
+class CategoryStore(
+    private val db: AppDatabase,
+    /** Told when the user ticks or unticks categories: the sync between TVs sends the choices. */
+    private val choices: ProgressListener = ProgressListener.NONE,
+    private val clock: () -> Long = System::currentTimeMillis,
+    private val locale: () -> Locale = Locale::getDefault
+) {
     private val categories = db.categories()
+
+    /** The user ticked or unticked [ids], now. The other TVs get it with the next sync (when the user leaves the page). */
+    suspend fun choose(playlistId: Long, type: String, ids: List<String>, included: Boolean) {
+        if (ids.isEmpty()) return
+        write(playlistId, type, ids, included)
+        choices.changed(stopped = false)
+    }
+
+    /** The user hid [cat] (unticked it), now; [also] runs in the same transaction. The other TVs get it now. */
+    suspend fun hide(cat: CategoryEntity, also: suspend () -> Unit) {
+        write(cat.playlistId, cat.type, listOf(cat.categoryId), false, also)
+        choices.changed(stopped = true)
+    }
+
+    // The sync is told only once all is saved, so that it finds the choice.
+    private suspend fun write(playlistId: Long, type: String, ids: List<String>, included: Boolean, also: suspend () -> Unit = {}) {
+        val at = clock()
+        db.withTransaction {
+            ids.chunked(MAX_SQL_ARGS).forEach { categories.choose(playlistId, type, it, included, at) }
+            also()
+        }
+    }
 
     /**
      * A category's language/country group. [groupByName]: M3U playlists also group by genre ("News"); when no
@@ -64,7 +92,8 @@ class CategoryStore(private val db: AppDatabase, private val locale: () -> Local
                 sortOrder = old?.takeIf { it.categoryId == c.id || it.categoryId !in remoteIds }?.sortOrder ?: (existing.size + i),
                 channelCount = old?.channelCount ?: 0,
                 type = type,
-                restricted = restricted(old, langs[i])
+                restricted = restricted(old, langs[i]),
+                choiceAt = old?.choiceAt ?: 0
             )
         }
         // Those the provider no longer has go.

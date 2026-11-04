@@ -20,7 +20,7 @@
     <string name="live_option_switch_to_grid">Cambiar a la cuadrícula de la guía</string>
     <string name="live_option_switch_help">O presiona el botón Guide del control remoto</string>
     <string name="live_option_hide_channel">Ocultar canal</string>
-    <string name="live_option_hide_channel_help">Vuelve a mostrarlo en Configuración › Idiomas y categorías</string>
+    <string name="live_option_hide_channel_help">Vuelve a mostrarlo en Configuración › Categorías</string>
 
     <string name="live_catchup_title">Diferido · %1$s</string>
     <string name="live_catchup_load_failed">No se pudo cargar el diferido</string>

@@ -20,7 +20,7 @@
     <string name="live_option_switch_to_grid">Mudar para a grade do guia de TV</string>
     <string name="live_option_switch_help">Ou aperte o botão Guide do controle remoto</string>
     <string name="live_option_hide_channel">Ocultar canal</string>
-    <string name="live_option_hide_channel_help">Mostre de novo depois em Configurações › Idiomas e categorias</string>
+    <string name="live_option_hide_channel_help">Mostre de novo depois em Configurações › Categorias</string>
 
     <string name="live_catchup_title">Reprises · %1$s</string>
     <string name="live_catchup_load_failed">Não foi possível carregar as reprises</string>

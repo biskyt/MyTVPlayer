@@ -61,7 +61,7 @@
     <string name="common_change_guide_source_help">Escolha quais dados de guia este canal usa</string>
 
     <string name="common_hide_category">Ocultar categoria</string>
-    <string name="common_hide_category_help">Mostre de novo em Configurações › Idiomas e categorias</string>
+    <string name="common_hide_category_help">Mostre de novo em Configurações › Categorias</string>
 
     <string name="common_logo_fallback">TV</string>
     <string name="common_qr_description">QR code de %1$s</string>

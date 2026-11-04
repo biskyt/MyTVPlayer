@@ -78,7 +78,9 @@ data class CategoryEntity(
     val channelCount: Int = 0,
     @ColumnInfo(defaultValue = CAT_LIVE) val type: String = CAT_LIVE,
     /** Restricted (parental controls): adult categories by default. See [ParentalEntity]. */
-    @ColumnInfo(defaultValue = "0") val restricted: Boolean = false
+    @ColumnInfo(defaultValue = "0") val restricted: Boolean = false,
+    /** When the user last ticked or unticked it (0: never; the default choice). The sync between TVs sends these. */
+    @ColumnInfo(defaultValue = "0") val choiceAt: Long = 0
 )
 
 /**

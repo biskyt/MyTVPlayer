@@ -101,14 +101,16 @@ cropped ([credits, with each image's author and licence](app/src/test/resources/
 ## Sync between TVs (optional)
 
 This is **off unless you turn it on**, in Settings › Sync between TVs. It keeps your place in films and episodes the
-same on all your TVs: stop a film on one TV, and carry on from the same point on another.
+same on all your TVs: stop a film on one TV, and carry on from the same point on another. It also keeps the
+categories that you tick in Settings › Categories the same, so each TV loads the same channels, films and series.
 
 **How it works**
 - On each TV, you sign in with the same Google account. The TV shows a code: enter it at google.com/device on your
   phone or computer, or scan the QR code.
 - Each TV keeps a small file of what you watched in a folder called **MyTVPlayer** in **your own Google Drive**. The
   other TVs read it from there. You can see the folder in Drive.
-- Sync works only for films and episodes. It does not include live TV, your playlists, or your settings.
+- Sync includes your place in films and episodes, and which categories you ticked. It does not include your
+  playlists, your favourites or your other settings.
 
 **What MyTVPlayer asks Google for, and why**
 
@@ -123,7 +125,8 @@ MyTVPlayer asks for no new Android permissions for the sync.
 **Your data stays yours**
 - **We do not collect your data, and we cannot see it.** MyTVPlayer has no server. The data goes directly from your
   TV to your own Google Drive, and only your TVs read it.
-- The file holds the titles, poster addresses, how far you got, and when. Each playlist is named by a scrambled id of
+- The file holds the titles, poster addresses, how far you got, and when, and the ids of the categories that you
+  ticked or unticked. Each playlist is named by a scrambled id of
   its name and server, not by its address or user name: give a playlist the same name on each TV. **Your playlist
   logins and passwords never go to Google.**
 - **To stop:** select Stop syncing. This signs the TV out and deletes its file from your Drive. What you watched stays

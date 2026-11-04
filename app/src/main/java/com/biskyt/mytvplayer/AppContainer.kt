@@ -88,21 +88,22 @@ class AppContainer(context: Context) {
     /** The same for the player's streams: shorter waits than the downloads', so a stall is found sooner. */
     val playerProxies = ProxyClients(http.newBuilder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build())
     val epg = EpgRepository(db, http, context.filesDir, appScope, proxies = proxies)
-    private val categoryStore = CategoryStore(db)
-    val playlists = PlaylistRepository(db, http, settings, epg, context.cacheDir.resolve("playlists"), categoryStore, proxies)
-    val channels = ChannelRepository(db)
-    val progressSync = ProgressSync(
+    val progressSync: ProgressSync = ProgressSync(
         db,
         SyncAccount(context.dataStore),
         BuildConfig.GOOGLE_CLIENT_ID.takeIf { it.isNotBlank() }?.let { GoogleAuth(http, it, BuildConfig.GOOGLE_CLIENT_SECRET) },
         appScope,
-        { token -> DriveStore(http, token) }
+        { token -> DriveStore(http, token) },
+        onChoices = { pid, types -> sync.refreshFor(pid, types) }
     )
+    val categoryStore = CategoryStore(db, progressSync)
+    val playlists = PlaylistRepository(db, http, settings, epg, context.cacheDir.resolve("playlists"), categoryStore, proxies)
+    val channels = ChannelRepository(db)
     val vod = VodRepository(db, playlists, categoryStore, progressSync)
     val favourites = Favourites(appScope, settings, channels, vod)
     val search = SearchRepository(db)
     val catchup = CatchupRepository(playlists)
-    val sync = SyncManager(appScope, playlists, vod, epg, settings)
+    val sync: SyncManager = SyncManager(appScope, playlists, vod, epg, settings)
     val vpn = VpnMonitor(context, appScope)
 
     // No pooled connection: one opened before a VPN started would still show the address without it.
