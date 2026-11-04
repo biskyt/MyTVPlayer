@@ -4,13 +4,13 @@ import androidx.annotation.StringRes
 import com.biskyt.mytvplayer.AppText
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
+import com.biskyt.mytvplayer.core.countryName
 import com.biskyt.mytvplayer.core.epg.CategoryLanguageDetector
 import com.biskyt.mytvplayer.core.xtream.XtreamException
 import com.biskyt.mytvplayer.core.xtream.XtreamException.Reason
 import com.biskyt.mytvplayer.data.db.CategoryCount
 import com.biskyt.mytvplayer.data.db.CategoryEntity
 import java.io.IOException
-import java.util.Locale
 
 // The app's words for what the core module reports as codes (core has no Android resources).
 
@@ -44,7 +44,7 @@ internal inline fun <T> withUserXtreamErrors(block: () -> T): T = try {
 fun groupLabel(code: String?): String = when {
     code == null -> appString(R.string.data_lang_other)
     code in groupLabels -> appString(groupLabels.getValue(code))
-    code.length == 2 -> Locale("", code).getDisplayCountry(AppText.locale).ifEmpty { code }
+    code.length == 2 -> countryName(code, AppText.locale)
     else -> code
 }
 

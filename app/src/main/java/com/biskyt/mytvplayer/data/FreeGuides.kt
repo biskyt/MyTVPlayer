@@ -1,6 +1,7 @@
 package com.biskyt.mytvplayer.data
 
 import com.biskyt.mytvplayer.AppText
+import com.biskyt.mytvplayer.core.countryName
 import com.biskyt.mytvplayer.data.db.EpgSourceEntity
 import java.text.Collator
 import java.util.Locale
@@ -38,7 +39,9 @@ object FreeGuides {
 
     private fun build(key: Key): List<FreeGuide> {
         val own = key.locale.country.lowercase()
-        return codes.map { FreeGuide(it, Locale("", it).getDisplayCountry(key.names).ifEmpty { it.uppercase() }, "$BASE$it.xml.gz") }
+        return codes.map {
+            FreeGuide(it, countryName(it, key.names), "$BASE$it.xml.gz")
+        }
             .sortedWith(compareBy<FreeGuide> { it.code != own }.thenBy(Collator.getInstance(key.names)) { it.country })
     }
 

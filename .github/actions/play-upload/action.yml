@@ -50,7 +50,7 @@ runs:
         packageName: com.biskyt.mytvplayer
         releaseFiles: ${{ inputs.bundle }}
         releaseName: ${{ inputs.version }}
-        track: alpha
+        tracks: alpha
         status: ${{ inputs.status }}
         whatsNewDirectory: ${{ steps.notes.outputs.dir }}
         mappingFile: ${{ steps.notes.outputs.mapping }}

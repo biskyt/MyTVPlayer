@@ -9,6 +9,8 @@ import java.util.zip.GZIPOutputStream
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /** A film or an episode in one playlist. [playlist] is [ProgressFile.playlistKey], the same on every TV. */
 data class SyncKey(val playlist: String, val kind: String, val id: Long)
@@ -106,15 +108,30 @@ data class ProgressFile(
         }
 
         /**
+         * The version of [playlistKey]. When it changes, each TV sends its file again once, so that the TVs match with
+         * the new keys. 2 (1.10.2): the scheme and the default port are ignored.
+         */
+        const val KEY_FORMAT = 2
+
+        /**
          * The same playlist on every TV: the same kind, server and user name. Hashed, so the file holds no server address
-         * or user name.
+         * or user name. The server is the same whatever the scheme and with or without its default port:
+         * "http://example.tv:80/", "https://example.tv" and "example.tv" match.
          */
         fun playlistKey(kind: String, server: String, username: String): String {
-            // As the app reaches it: "example.tv" and "http://example.tv/" are the same server.
-            val address = XtreamCredentials(server, username, "").base.lowercase()
-            val identity = listOf(kind, address, username.trim()).joinToString("\n")
+            val identity = listOf(kind, address(server), username.trim()).joinToString("\n")
             return MessageDigest.getInstance("SHA-256").digest(identity.toByteArray())
                 .joinToString("") { "%02x".format(it) }
+        }
+
+        /** [server] without its scheme, and without its port when that is the scheme's default (80, 443). */
+        private fun address(server: String): String {
+            val base = XtreamCredentials(server, "", "").base
+            val url = base.toHttpUrlOrNull() ?: return base.lowercase()
+            val port = if (url.port == HttpUrl.defaultPort(url.scheme)) "" else ":${url.port}"
+            val query = url.encodedQuery?.let { "?$it" }.orEmpty()
+            // The host is in lower case already. A path or query (an M3U address) keeps its case.
+            return url.host + port + url.encodedPath.trimEnd('/') + query
         }
     }
 }

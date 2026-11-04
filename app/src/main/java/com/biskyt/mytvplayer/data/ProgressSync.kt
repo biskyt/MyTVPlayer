@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.room.withTransaction
@@ -45,8 +46,10 @@ import kotlinx.coroutines.launch
  * never holds it.
  */
 class SyncAccount(private val prefs: DataStore<Preferences>) {
-    /** [refreshToken] is null when the sync is off. */
-    /** [pending]: this TV has changes not sent yet (kept, so that they are sent after a restart too). */
+    /**
+     * [refreshToken] is null when the sync is off. [pending]: this TV has changes not sent yet (kept, so that they are
+     * sent after a restart too), or its file has playlist keys of an older [ProgressFile.KEY_FORMAT].
+     */
     data class State(
         val refreshToken: String? = null,
         val email: String? = null,
@@ -62,10 +65,14 @@ class SyncAccount(private val prefs: DataStore<Preferences>) {
         val last = longPreferencesKey("sync_last")
         val device = stringPreferencesKey("sync_device")
         val pending = booleanPreferencesKey("sync_pending")
+
+        /** The [ProgressFile.KEY_FORMAT] of this TV's last file (none: 1). */
+        val keys = intPreferencesKey("sync_key_format")
     }
 
     val state: Flow<State> = prefs.data.map {
-        State(it[K.token], it[K.email], it[K.last] ?: 0, it[K.pending] == true)
+        val oldKeys = it[K.token] != null && (it[K.keys] ?: 1) < ProgressFile.KEY_FORMAT
+        State(it[K.token], it[K.email], it[K.last] ?: 0, it[K.pending] == true || oldKeys)
     }.distinctUntilChanged()
 
     suspend fun signIn(refreshToken: String, email: String?) {
@@ -94,6 +101,7 @@ class SyncAccount(private val prefs: DataStore<Preferences>) {
         prefs.edit {
             if (it[K.token] == null) return@edit
             it[K.last] = at
+            it[K.keys] = ProgressFile.KEY_FORMAT
             if (pending) it[K.pending] = true else it.remove(K.pending)
         }
     }
@@ -283,6 +291,8 @@ class ProgressSync(
 
     private suspend fun syncNow() {
         lastSyncAt = clock()
+        // Changes saved before a restart, or a file with older playlist keys (read here too: start-up may come first).
+        if (account.state.first().pending) dirty.set(true)
         val s = store(::token)
         val own = ownName()
         val playlists = playlistKeys()

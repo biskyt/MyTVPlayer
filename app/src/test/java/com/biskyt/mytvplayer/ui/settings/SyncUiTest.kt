@@ -122,7 +122,9 @@ class SyncUiTest {
         compose.waitForText("ABCD-EFGH")
         compose.waitForText("On your phone or computer, go to www.google.com/device and enter this code:")
         assertTrue(
-            compose.onAllNodes(hasContentDescription("QR code for https://www.google.com/device")).fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodes(
+                hasContentDescription("QR code for https://www.google.com/device?user_code=ABCD-EFGH")
+            ).fetchSemanticsNodes().isNotEmpty()
         )
 
         approved = true

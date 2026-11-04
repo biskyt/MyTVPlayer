@@ -1,6 +1,7 @@
 package com.biskyt.mytvplayer.core.sync
 
 import java.util.Base64
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -13,6 +14,7 @@ import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class) // testScheduler.currentTime: the virtual clock
 class GoogleAuthTest {
     private val server = MockWebServer()
 
@@ -92,6 +94,13 @@ class GoogleAuthTest {
         assertTrue(server.takeRequest().body.readUtf8().contains("grant_type=refresh_token"))
         server.enqueue(error("invalid_grant", 400))
         assertReason(SyncException.Reason.SIGNED_OUT) { auth().refresh("rt") }
+    }
+
+    @Test
+    fun `the QR address has the code filled in`() {
+        assertEquals("https://www.google.com/device?user_code=ABC-DEF", code.urlWithCode)
+        // An address that is not one stays as it is: never a crash.
+        assertEquals("google.com/device", code.copy(verificationUrl = "google.com/device").urlWithCode)
     }
 
     @Test

@@ -50,6 +50,17 @@ class ProgressFileTest {
         val key = ProgressFile.playlistKey("xtream", "http://Example.com:8080/", "user")
         assertEquals(key, ProgressFile.playlistKey("xtream", " http://example.com:8080", "user"))
         assertEquals(key, ProgressFile.playlistKey("xtream", "example.com:8080", "user"))
+        // The scheme does not matter, nor the default port: the same TV service typed three ways.
+        val plain = ProgressFile.playlistKey("xtream", "http://argon.example", "user")
+        assertEquals(plain, ProgressFile.playlistKey("xtream", "https://argon.example/", "user"))
+        assertEquals(plain, ProgressFile.playlistKey("xtream", "http://argon.example:80", "user"))
+        assertEquals(plain, ProgressFile.playlistKey("xtream", "https://Argon.example:443", "user"))
+        assertNotEquals(plain, ProgressFile.playlistKey("xtream", "http://argon.example:8080", "user"))
+        // An M3U address keeps its path and query.
+        assertNotEquals(
+            ProgressFile.playlistKey("m3u", "http://host/get.php?type=a", ""),
+            ProgressFile.playlistKey("m3u", "http://host/get.php?type=b", "")
+        )
         assertNotEquals(key, ProgressFile.playlistKey("xtream", "http://example.com:8080", "other"))
         assertEquals(64, key.length)
         assertEquals(false, key.contains("example"))

@@ -124,7 +124,8 @@ private fun LazyListScope.signIn(vm: SyncViewModel) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.sync_go_to, s.code.verificationUrl.removePrefix("https://")))
                 Text(s.code.userCode, style = MaterialTheme.typography.displaySmall)
-                QrCode(s.code.verificationUrl, Modifier.size(200.dp))
+                // Scanned, it opens Google's page with the code filled in.
+                QrCode(s.code.urlWithCode, Modifier.size(200.dp))
                 Muted(stringResource(R.string.sync_waiting))
                 PillButton(stringResource(R.string.sync_cancel), { vm.cancel() }, rememberFirstFocus(s))
             }

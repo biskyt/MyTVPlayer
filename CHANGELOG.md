@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.10.2
+- Sync between TVs now matches the same playlist when one TV has its address with https or a port such as :80 and the other does not, so update every TV to this version.
+- In Settings › Sync between TVs, scanning the QR code now opens Google's page with the code already filled in, so you only confirm it.
+
 ## 1.10.1
 - Sync between TVs now signs in: Google does not allow a TV to use a hidden Drive folder, so MyTVPlayer keeps its files in a folder called MyTVPlayer in your Drive, and can see only the files it makes.
 - When Google refuses a sign-in, the TV now shows Google's reason, to help find the cause.

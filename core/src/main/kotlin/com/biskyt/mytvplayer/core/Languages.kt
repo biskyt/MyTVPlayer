@@ -1,5 +1,6 @@
 package com.biskyt.mytvplayer.core
 
+import java.util.IllformedLocaleException
 import java.util.Locale
 
 /** Language names and codes as streams and playlists write them, to ISO 639-1 codes. */
@@ -30,3 +31,10 @@ object Languages {
     /** The two-letter code for a language named in English ("Swedish") or by an ISO 639 code ("sv", "swe", "ger"). */
     fun code(language: String): String? = language.trim().lowercase().let { codes[it] }
 }
+
+/** The name of the country with the two-letter [code] (e.g. "GB") in [language]; else [code] in capitals (e.g. "4K"). */
+fun countryName(code: String, language: Locale): String = try {
+    Locale.Builder().setRegion(code).build().getDisplayCountry(language)
+} catch (_: IllformedLocaleException) {
+    ""
+}.ifEmpty { code.uppercase() }
