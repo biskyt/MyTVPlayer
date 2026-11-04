@@ -180,4 +180,6 @@
     <string name="settings_playlist_delete">Supprimer la playlist</string>
     <string name="settings_warn_vpn">Avertir si le VPN n\'est pas connecté</string>
     <string name="settings_warn_vpn_help">Indique dans la barre du haut si Android signale un VPN sur cet appareil. Un VPN configuré sur votre box ou sur un autre appareil ne peut pas être détecté.</string>
+    <string name="settings_external_ip">Afficher votre adresse IP externe</string>
+    <string name="settings_external_ip_help">Affiche à côté de l\'indicateur VPN l\'adresse que voient les sites web, et son pays. Pour l\'obtenir, MyTVPlayer interroge ipinfo.io quand le réseau ou le VPN change.</string>
 </resources>

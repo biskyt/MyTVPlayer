@@ -2,7 +2,7 @@
 <resources>
     <string name="sync_title">Sincronizar entre televisores</string>
     <string name="sync_help">Usa tu Google Drive para que el punto donde vas en películas y episodios sea el mismo en todos tus televisores</string>
-    <string name="sync_intro">Inicia sesión con la misma cuenta de Google en cada televisor. MyTVPlayer guarda por dónde vas en películas y episodios en una carpeta llamada MyTVPlayer de tu Google Drive. MyTVPlayer solo puede ver los archivos que crea, y nada más de tu Drive.</string>
+    <string name="sync_intro">Inicia sesión con la misma cuenta de Google en cada televisor. MyTVPlayer guarda por dónde vas en películas y episodios en una carpeta llamada MyTVPlayer de tu Google Drive. MyTVPlayer solo puede ver los archivos que crea, y nada más de tu Drive. Pon a cada lista el mismo nombre en cada televisor.</string>
     <string name="sync_sign_in">Iniciar sesión con Google</string>
     <string name="sync_go_to">En tu teléfono u ordenador, ve a %1$s e introduce este código:</string>
     <string name="sync_waiting">Esperando a que inicies sesión…</string>

@@ -22,6 +22,7 @@ import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
+import com.biskyt.mytvplayer.core.net.IpLookup
 import com.biskyt.mytvplayer.core.sync.DriveStore
 import com.biskyt.mytvplayer.core.sync.GoogleAuth
 import com.biskyt.mytvplayer.core.sync.SyncException
@@ -32,6 +33,7 @@ import com.biskyt.mytvplayer.data.CategoryStore
 import com.biskyt.mytvplayer.data.ChannelRepository
 import com.biskyt.mytvplayer.data.CrashLog
 import com.biskyt.mytvplayer.data.EpgRepository
+import com.biskyt.mytvplayer.data.ExternalIp
 import com.biskyt.mytvplayer.data.Favourites
 import com.biskyt.mytvplayer.data.ParentalRepository
 import com.biskyt.mytvplayer.data.PlaylistRepository
@@ -49,6 +51,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 
 /**
@@ -94,6 +97,14 @@ class AppContainer(context: Context) {
     val catchup = CatchupRepository(playlists)
     val sync = SyncManager(appScope, playlists, vod, epg, settings)
     val vpn = VpnMonitor(context, appScope)
+
+    // No pooled connection: one opened before a VPN started would still show the address without it.
+    val externalIp =
+        ExternalIp(
+            vpn.network,
+            IpLookup(http.newBuilder().connectionPool(ConnectionPool(0, 1, TimeUnit.SECONDS)).build())::lookup,
+            appScope
+        )
     val backup = BackupRepository(db, settings, epg, sync)
     val backupFile = BackupFile(context)
     val crashLog = CrashLog(context.filesDir, BuildConfig.VERSION_NAME)

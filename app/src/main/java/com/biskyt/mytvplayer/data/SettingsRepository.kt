@@ -42,6 +42,8 @@ data class Settings(
     val largeText: Boolean = false,
     /** Show in the top bar whether Android reports a VPN (see VpnMonitor). */
     val warnVpn: Boolean = false,
+    /** With [warnVpn]: also show the public IP address (see ExternalIp). It asks ipinfo.io, so it is off by default. */
+    val showExternalIp: Boolean = false,
     /** Parental controls: leave restricted categories out of these (see ParentalRepository). */
     val hideRestrictedRecent: Boolean = true,
     val hideRestrictedCarryOn: Boolean = true,
@@ -70,6 +72,7 @@ class SettingsRepository(private val context: Context) {
         val accent = intPreferencesKey("accent")
         val largeText = booleanPreferencesKey("large_text")
         val warnVpn = booleanPreferencesKey("warn_vpn")
+        val showIp = booleanPreferencesKey("show_external_ip")
         val hideRecent = booleanPreferencesKey("restricted_hide_recent")
         val hideCarryOn = booleanPreferencesKey("restricted_hide_carry_on")
         val hideSearch = booleanPreferencesKey("restricted_hide_search")
@@ -125,6 +128,7 @@ class SettingsRepository(private val context: Context) {
             accent = this[K.accent] ?: d.accent,
             largeText = this[K.largeText] ?: d.largeText,
             warnVpn = this[K.warnVpn] ?: d.warnVpn,
+            showExternalIp = this[K.showIp] ?: d.showExternalIp,
             hideRestrictedRecent = this[K.hideRecent] ?: d.hideRestrictedRecent,
             hideRestrictedCarryOn = this[K.hideCarryOn] ?: d.hideRestrictedCarryOn,
             hideRestrictedSearch = this[K.hideSearch] ?: d.hideRestrictedSearch,
@@ -151,6 +155,7 @@ class SettingsRepository(private val context: Context) {
             prefs[K.accent] = s.accent
             prefs[K.largeText] = s.largeText
             prefs[K.warnVpn] = s.warnVpn
+            prefs[K.showIp] = s.showExternalIp
             prefs[K.hideRecent] = s.hideRestrictedRecent
             prefs[K.hideCarryOn] = s.hideRestrictedCarryOn
             prefs[K.hideSearch] = s.hideRestrictedSearch
