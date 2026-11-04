@@ -180,4 +180,22 @@
     <string name="settings_playlist_delete">Borrar lista</string>
     <string name="settings_warn_vpn">Avisar si la VPN no está conectada</string>
     <string name="settings_warn_vpn_help">Muestra en la barra superior si Android indica una VPN en este dispositivo. No se puede detectar una VPN configurada en el router o en otro dispositivo.</string>
+    <string name="settings_external_ip">Mostrar tu dirección IP externa</string>
+    <string name="settings_external_ip_help">Muestra junto al indicador de VPN la dirección que ven los sitios web y su país. Para obtenerla, MyTVPlayer consulta ipinfo.io cuando cambia la red o la VPN.</string>
+    <string name="settings_proxy_title">Proxy</string>
+    <string name="settings_proxy_none">Ninguno</string>
+    <string name="settings_proxy_http">HTTP</string>
+    <string name="settings_proxy_socks">SOCKS5</string>
+    <string name="settings_proxy_host">Dirección del proxy</string>
+    <string name="settings_proxy_port">Puerto</string>
+    <string name="settings_proxy_username">Usuario del proxy (opcional)</string>
+    <string name="settings_proxy_password">Contraseña del proxy (opcional)</string>
+    <string name="settings_proxy_help">Todo el tráfico de esta lista pasa por el proxy: el inicio de sesión, las listas, la guía de TV y las emisiones. Los logotipos y carteles no.</string>
+    <string name="settings_proxy_check">Comprobar proxy</string>
+    <string name="settings_proxy_checking">Comprobando el proxy…</string>
+    <string name="settings_proxy_bad">Introduce la dirección del proxy y un puerto de 1 a 65535.</string>
+    <string name="settings_proxy_works">El proxy funciona: el tráfico de esta lista sale desde %1$s, no desde %2$s.</string>
+    <string name="settings_proxy_works_only">El proxy funciona: el tráfico de esta lista sale desde %1$s.</string>
+    <string name="settings_proxy_same">El proxy respondió, pero tu dirección no cambió (%1$s).</string>
+    <string name="settings_proxy_failed">El proxy no respondió: %1$s</string>
 </resources>

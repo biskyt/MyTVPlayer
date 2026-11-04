@@ -29,7 +29,16 @@ data class PlaylistEntity(
     val moviesUrl: String? = null,
     val seriesUrl: String? = null,
     /** A fingerprint of the movie and series playlists last loaded, so unchanged ones aren't loaded again. */
-    val vodFeedHash: Long? = null
+    val vodFeedHash: Long? = null,
+    /**
+     * The proxy that all of this playlist's traffic goes through (its login, lists, guide and streams): [ProxyType]'s
+     * name, or null for none. The user name and password are optional.
+     */
+    val proxyType: String? = null,
+    val proxyHost: String? = null,
+    val proxyPort: Int? = null,
+    val proxyUsername: String? = null,
+    val proxyPassword: String? = null,
 ) {
     val isM3u: Boolean get() = kind == KIND_M3U
 

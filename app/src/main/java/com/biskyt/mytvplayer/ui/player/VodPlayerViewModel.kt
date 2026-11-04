@@ -17,6 +17,7 @@ import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import com.biskyt.mytvplayer.data.db.VOD_EPISODE
 import com.biskyt.mytvplayer.data.db.VOD_MOVIE
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
+import com.biskyt.mytvplayer.data.db.proxy
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.common.ItemAction
 import com.biskyt.mytvplayer.ui.common.favouriteFlash
@@ -153,7 +154,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         onCarryOn = known != null && known.started && !known.finished
         resetForNewStream()
         val engine = engine ?: return
-        engine.play(url, hls = null)
+        engine.play(url, hls = null, proxy = p.proxy)
         // Resume unless it was nearly finished (or the user asked to start over).
         val saved = if (fromStart) null else known
         if (saved != null && !saved.finished && saved.positionMs > RESUME_AFTER_MS) {

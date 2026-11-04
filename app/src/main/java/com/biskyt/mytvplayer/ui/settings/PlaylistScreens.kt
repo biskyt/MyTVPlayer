@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,7 +35,13 @@ import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
+import com.biskyt.mytvplayer.core.net.ProxyCheck
+import com.biskyt.mytvplayer.core.net.ProxySettings
+import com.biskyt.mytvplayer.core.net.ProxyType
+import com.biskyt.mytvplayer.core.net.PublicIp
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
+import com.biskyt.mytvplayer.data.db.proxy
+import com.biskyt.mytvplayer.data.db.withProxy
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
@@ -245,6 +254,13 @@ class PlaylistEditViewModel(private val c: AppContainer, private val id: Long?) 
     /** M3U: optional movie and series playlist addresses. */
     var moviesUrl by mutableStateOf("")
     var seriesUrl by mutableStateOf("")
+
+    /** The playlist's proxy: null for none. Its port is text while it is typed. */
+    var proxyType by mutableStateOf<ProxyType?>(null)
+    var proxyHost by mutableStateOf("")
+    var proxyPort by mutableStateOf("")
+    var proxyUsername by mutableStateOf("")
+    var proxyPassword by mutableStateOf("")
     var busy by mutableStateOf(false)
         private set
     var message by mutableStateOf<FormMessage?>(null)
@@ -263,6 +279,11 @@ class PlaylistEditViewModel(private val c: AppContainer, private val id: Long?) 
                     password = it.password
                     moviesUrl = it.moviesUrl.orEmpty()
                     seriesUrl = it.seriesUrl.orEmpty()
+                    proxyType = ProxyType.entries.firstOrNull { t -> t.name == it.proxyType }
+                    proxyHost = it.proxyHost.orEmpty()
+                    proxyPort = it.proxyPort?.toString().orEmpty()
+                    proxyUsername = it.proxyUsername.orEmpty()
+                    proxyPassword = it.proxyPassword.orEmpty()
                 }
             }
         }
@@ -283,14 +304,39 @@ class PlaylistEditViewModel(private val c: AppContainer, private val id: Long?) 
         }
     }
 
+    /** The proxy as typed: null for none. Throws, with a message for the user, when it is not complete. */
+    private fun proxy(): ProxySettings? {
+        val type = proxyType ?: return null
+        return ProxySettings.typed(type, proxyHost, proxyPort, proxyUsername, proxyPassword)
+            .takeIf { it.valid } ?: throw IOException(appString(R.string.settings_proxy_bad))
+    }
+
+    /** Asks for the public address without the proxy and through it, and says what that shows. */
+    fun checkProxy() = run {
+        val proxy = proxy() ?: return@run
+        message = FormMessage(appString(R.string.settings_proxy_checking), ok = true)
+        message = when (val result = c.playlists.checkProxy(proxy)) {
+            is ProxyCheck.Working -> FormMessage(
+                result.direct?.let { appString(R.string.settings_proxy_works, address(result.via), address(it)) }
+                    ?: appString(R.string.settings_proxy_works_only, address(result.via)),
+                ok = true
+            )
+            is ProxyCheck.SameAddress -> FormMessage(appString(R.string.settings_proxy_same, address(result.ip)))
+            is ProxyCheck.Failed -> FormMessage(appString(R.string.settings_proxy_failed, result.reason))
+        }
+    }
+
+    private fun address(ip: PublicIp) = ip.country?.let { appString(R.string.common_ip_country, ip.ip, it) } ?: ip.ip
+
     fun test() = run {
-        c.playlists.testConnection(m3u, server, username, password)
+        c.playlists.testConnection(m3u, server, username, password, proxy())
         message = FormMessage(appString(R.string.settings_playlist_connected), ok = true)
     }
 
     /** Saves; [onSaved] gets the playlist id. Changing login details re-downloads the channels. */
     fun save(onSaved: (Long) -> Unit) = run {
         val old = original
+        val proxy = proxy()
         if (old == null) {
             message = FormMessage(appString(if (m3u) R.string.settings_playlist_downloading else R.string.settings_playlist_checking))
             val newId = if (m3u) {
@@ -298,10 +344,11 @@ class PlaylistEditViewModel(private val c: AppContainer, private val id: Long?) 
                     name,
                     server,
                     moviesUrl,
-                    seriesUrl
+                    seriesUrl,
+                    proxy
                 )
             } else {
-                c.playlists.add(name, server, username, password)
+                c.playlists.add(name, server, username, password, proxy)
             }
             message = null
             onSaved(newId)
@@ -317,9 +364,10 @@ class PlaylistEditViewModel(private val c: AppContainer, private val id: Long?) 
                 password = password,
                 moviesUrl = moviesUrl.trim().ifEmpty { null }.takeIf { old.isM3u },
                 seriesUrl = seriesUrl.trim().ifEmpty { null }.takeIf { old.isM3u }
-            )
+            ).withProxy(proxy)
             c.playlists.update(updated)
-            if (updated.server != old.server || updated.username != old.username || updated.password != old.password) {
+            val loginChanged = updated.server != old.server || updated.username != old.username || updated.password != old.password
+            if (loginChanged || updated.proxy != old.proxy) {
                 c.sync.refresh(old.id)
             } else if (updated.moviesUrl != old.moviesUrl || updated.seriesUrl != old.seriesUrl) {
                 c.sync.refreshVod(old.id)
@@ -340,7 +388,8 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
     val vm = appViewModel(key = "edit-$id") { PlaylistEditViewModel(it, id) }
     val nav = LocalNavigator.current
     Column(
-        Modifier.fillMaxSize().padding(horizontal = 96.dp, vertical = 40.dp),
+        // Scrolls: with the proxy's boxes, the form can be taller than a TV screen.
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 96.dp, vertical = 40.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(
@@ -367,6 +416,9 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
         val passwordEdit = rememberSaveable { mutableStateOf(false) }
         val moviesEdit = rememberSaveable { mutableStateOf(false) }
         val seriesEdit = rememberSaveable { mutableStateOf(false) }
+        val proxyHostEdit = rememberSaveable { mutableStateOf(false) }
+        // With a proxy, Next on the last box moves on to its address.
+        val toProxy: (() -> Unit)? = if (vm.proxyType != null) ({ proxyHostEdit.value = true }) else null
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Field(stringResource(R.string.settings_playlist_name), Modifier.weight(1f)) {
                 TvTextField(
@@ -425,7 +477,8 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
                         "https://example.com/series.m3u",
                         Modifier.fillMaxWidth(),
                         keyboardType = KeyboardType.Uri,
-                        editing = seriesEdit
+                        editing = seriesEdit,
+                        onNext = toProxy
                     )
                 }
             }
@@ -451,11 +504,13 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
                         stringResource(R.string.settings_playlist_password),
                         Modifier.fillMaxWidth(),
                         autoCorrect = false,
-                        editing = passwordEdit
+                        editing = passwordEdit,
+                        onNext = toProxy
                     )
                 }
             }
         }
+        ProxyFields(vm, proxyHostEdit)
         vm.message?.let {
             Text(it.text, style = MaterialTheme.typography.bodyLarge, color = if (it.ok) LocalAccent.current.color else Palette.warning)
         }
@@ -478,6 +533,7 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
                 primary = true
             )
             PillButton(stringResource(R.string.settings_playlist_test), vm::test)
+            if (vm.proxyType != null) PillButton(stringResource(R.string.settings_proxy_check), vm::checkProxy)
             if (id != null) {
                 Box(Modifier.width(40.dp))
                 PillButton(stringResource(R.string.settings_playlist_delete), {
@@ -487,6 +543,78 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
         }
     }
 }
+
+/** The playlist's proxy: none, HTTP or SOCKS5, and its address, port and optional login. */
+@Composable
+private fun ProxyFields(vm: PlaylistEditViewModel, hostEdit: MutableState<Boolean>) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.settings_proxy_title), style = MaterialTheme.typography.titleSmall)
+            listOf(
+                null to R.string.settings_proxy_none,
+                ProxyType.HTTP to R.string.settings_proxy_http,
+                ProxyType.SOCKS to R.string.settings_proxy_socks
+            )
+                .forEach { (type, label) ->
+                    PillButton(stringResource(label), { vm.proxyType = type }, selected = vm.proxyType == type, compact = true)
+                }
+        }
+        if (vm.proxyType == null) return@Column
+        Muted(stringResource(R.string.settings_proxy_help), maxLines = 2)
+        val portEdit = rememberSaveable { mutableStateOf(false) }
+        val userEdit = rememberSaveable { mutableStateOf(false) }
+        val passwordEdit = rememberSaveable { mutableStateOf(false) }
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Field(stringResource(R.string.settings_proxy_host), Modifier.weight(2f)) {
+                TvTextField(
+                    vm.proxyHost,
+                    { vm.proxyHost = it },
+                    "proxy.example.com",
+                    Modifier.fillMaxWidth(),
+                    keyboardType = KeyboardType.Uri,
+                    editing = hostEdit,
+                    onNext = { portEdit.value = true }
+                )
+            }
+            Field(stringResource(R.string.settings_proxy_port), Modifier.weight(1f)) {
+                TvTextField(
+                    vm.proxyPort,
+                    { vm.proxyPort = it.filter(Char::isDigit).take(PORT_DIGITS) },
+                    if (vm.proxyType == ProxyType.SOCKS) "1080" else "8080",
+                    Modifier.fillMaxWidth(),
+                    keyboardType = KeyboardType.Number,
+                    editing = portEdit,
+                    onNext = { userEdit.value = true }
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Field(stringResource(R.string.settings_proxy_username), Modifier.weight(1f)) {
+                TvTextField(
+                    vm.proxyUsername,
+                    { vm.proxyUsername = it },
+                    stringResource(R.string.settings_proxy_username),
+                    Modifier.fillMaxWidth(),
+                    autoCorrect = false,
+                    editing = userEdit,
+                    onNext = { passwordEdit.value = true }
+                )
+            }
+            Field(stringResource(R.string.settings_proxy_password), Modifier.weight(1f)) {
+                TvTextField(
+                    vm.proxyPassword,
+                    { vm.proxyPassword = it },
+                    stringResource(R.string.settings_proxy_password),
+                    Modifier.fillMaxWidth(),
+                    autoCorrect = false,
+                    editing = passwordEdit
+                )
+            }
+        }
+    }
+}
+
+private const val PORT_DIGITS = 5
 
 /**
  * A labelled box. For an address ([onScheme] given), "http://" and "https://" buttons beside the label put that start on

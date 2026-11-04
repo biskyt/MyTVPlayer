@@ -16,6 +16,7 @@ import com.biskyt.mytvplayer.core.xtream.CatchupProgramme
 import com.biskyt.mytvplayer.data.CatchupRepository
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
+import com.biskyt.mytvplayer.data.db.proxy
 import com.biskyt.mytvplayer.ui.Screen
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -114,7 +115,7 @@ class CatchupPlayerViewModel(
         // Xtream archives are MPEG-TS; M3U ones may be either (told by the address when it can), and may need the
         // channel's headers.
         val hls = if (p.isM3u) M3uCatchup.isHls(url, ch.streamUrl.orEmpty(), ch.catchupType.orEmpty()) else false
-        engine?.play(url, hls = hls, userAgent = ch.userAgent, referrer = ch.referrer)
+        engine?.play(url, hls = hls, userAgent = ch.userAgent, referrer = ch.referrer, proxy = p.proxy)
         showControls()
     }
 

@@ -46,7 +46,7 @@
   <p>If you turn on Settings › Sync between TVs and sign in with Google, the app keeps how far you got into movies and
     episodes in a folder called MyTVPlayer in <strong>your own Google Drive</strong>, so your other TVs can carry on from the
     same place. It stores each item's title, picture address, position and the time it was watched, with an id for
-    the playlist that cannot be turned back into its address or user name. Your playlist logins are never stored
+    the playlist that cannot be turned back into its name, address or user name. Your playlist logins are never stored
     there.</p>
   <ul>
     <li>The app asks Google only for the files that it makes itself (the <code>drive.file</code> permission) and your
@@ -67,6 +67,11 @@
       iptv-epg.org.</li>
     <li><strong>The free TV lists (biskyt.github.io),</strong> only if you choose the free TV, films and series.</li>
     <li><strong>Google (sign-in and Google Drive),</strong> only if you turn on Sync between TVs.</li>
+    <li><strong>A proxy that you set up for a playlist,</strong> which then carries that playlist's traffic. The proxy's
+      operator can see that traffic, as your provider can. Check proxy also asks ipinfo.io for your address, without
+      the proxy and through it.</li>
+    <li><strong>ipinfo.io,</strong> only if you turn on "Show your external IP address". It receives your IP address
+      (as any website does) and answers with it and its country. The app asks only when your network or VPN changes.</li>
     <li><strong>Image servers</strong> named in those lists, to show channel logos and posters, and the stream
       servers the lists point to.</li>
   </ul>

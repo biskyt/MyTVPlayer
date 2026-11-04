@@ -34,10 +34,10 @@ class PlaybackEngineTest {
     @Test
     fun `DASH streams play, and a stream type with no support reports it instead of crashing`() {
         // BBC Four in the free UK list is DASH: this used to throw and close the app.
-        engine.play("https://example.invalid/bbc/stream/BBC_FOUR/hevc_iptv_mse_v0.mpd", hls = null)
+        engine.play("https://example.invalid/bbc/stream/BBC_FOUR/hevc_iptv_mse_v0.mpd", hls = null, proxy = null)
         assertEquals(0, unsupported)
         // SmoothStreaming isn't included.
-        engine.play("https://example.invalid/channel.ism/Manifest", hls = null)
+        engine.play("https://example.invalid/channel.ism/Manifest", hls = null, proxy = null)
         assertEquals(1, unsupported)
         // The error shows its address.
         assertEquals("https://example.invalid/channel.ism/Manifest", unsupportedUrl)

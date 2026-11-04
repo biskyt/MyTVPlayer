@@ -76,6 +76,9 @@ data class ProgressFile(
     companion object {
         const val VERSION = 1
         private const val PREFIX = "progress-"
+
+        /** Query parameters that hold a login in an M3U address. */
+        private val LOGIN = listOf("username", "password", "user", "pass")
         private val json = Json { ignoreUnknownKeys = true }
 
         /** This TV's file in the sync folder. */
@@ -109,25 +112,35 @@ data class ProgressFile(
 
         /**
          * The version of [playlistKey]. When it changes, each TV sends its file again once, so that the TVs match with
-         * the new keys. 2 (1.10.2): the scheme and the default port are ignored.
+         * the new keys. 2 (1.10.2): the scheme and the default port are ignored. 3 (1.11.0): the playlist's name in
+         * place of its user name.
          */
-        const val KEY_FORMAT = 2
+        const val KEY_FORMAT = 3
 
         /**
-         * The same playlist on every TV: the same kind, server and user name. Hashed, so the file holds no server address
-         * or user name. The server is the same whatever the scheme and with or without its default port:
-         * "http://example.tv:80/", "https://example.tv" and "example.tv" match.
+         * The same playlist on every TV: the same kind, server and [name]. Hashed, so the file holds no name or server
+         * address.
+         * - The name tells apart playlists for the same account (one for each person in a family, each with their own
+         *   progress). Capitals and spaces at the ends do not matter.
+         * - The user name and password are not part of it: a renewed account often has a new user name, and its
+         *   progress stays.
+         * - The server is the same whatever the scheme and with or without its default port: "http://example.tv:80/",
+         *   "https://example.tv" and "example.tv" match.
          */
-        fun playlistKey(kind: String, server: String, username: String): String {
-            val identity = listOf(kind, address(server), username.trim()).joinToString("\n")
+        fun playlistKey(kind: String, server: String, name: String): String {
+            val identity = listOf(kind, address(server), name.trim().lowercase()).joinToString("\n")
             return MessageDigest.getInstance("SHA-256").digest(identity.toByteArray())
                 .joinToString("") { "%02x".format(it) }
         }
 
-        /** [server] without its scheme, and without its port when that is the scheme's default (80, 443). */
+        /**
+         * [server] without its scheme, without its port when that is the scheme's default (80, 443), and without a login in
+         * its query (an M3U address such as get.php?username=…&password=…).
+         */
         private fun address(server: String): String {
             val base = XtreamCredentials(server, "", "").base
-            val url = base.toHttpUrlOrNull() ?: return base.lowercase()
+            val parsed = base.toHttpUrlOrNull() ?: return base.lowercase()
+            val url = LOGIN.fold(parsed.newBuilder()) { b, name -> b.removeAllQueryParameters(name) }.build()
             val port = if (url.port == HttpUrl.defaultPort(url.scheme)) "" else ":${url.port}"
             val query = url.encodedQuery?.let { "?$it" }.orEmpty()
             // The host is in lower case already. A path or query (an M3U address) keeps its case.

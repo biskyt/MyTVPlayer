@@ -88,9 +88,13 @@ cropped ([credits, with each image's author and licence](app/src/test/resources/
 ### And more
 - **Several playlists**: add as many as you like and switch between them from the top bar. Settings shows when a
   provider's subscription expires.
+- **A proxy for each playlist** (HTTP or SOCKS5, with an optional login): the playlist's login, lists, TV guide and
+  streams go through it, and Check proxy shows the address that the provider then sees.
 - **Backup and restore** of your playlists, choices, favourites, guide matching and progress, to a file you can
   copy to another TV.
 - **Appearance**: preset accent colours and large text.
+- **VPN check**: a badge in the top bar shows whether Android reports a VPN, and can also show your external IP address
+  and its country (from ipinfo.io, off by default).
 - **Looks after its own storage**: only the guide for channels you use is kept, logos are capped and the database is
   kept compact.
 
@@ -119,8 +123,9 @@ MyTVPlayer asks for no new Android permissions for the sync.
 **Your data stays yours**
 - **We do not collect your data, and we cannot see it.** MyTVPlayer has no server. The data goes directly from your
   TV to your own Google Drive, and only your TVs read it.
-- The file holds the titles, poster addresses, how far you got, and when. Each playlist is named by a scrambled id,
-  not by its address or user name. **Your playlist logins and passwords never go to Google.**
+- The file holds the titles, poster addresses, how far you got, and when. Each playlist is named by a scrambled id of
+  its name and server, not by its address or user name: give a playlist the same name on each TV. **Your playlist
+  logins and passwords never go to Google.**
 - **To stop:** select Stop syncing. This signs the TV out and deletes its file from your Drive. What you watched stays
   on the TV.
 - **To delete everything:** delete the MyTVPlayer folder in [Google Drive](https://drive.google.com). To remove the

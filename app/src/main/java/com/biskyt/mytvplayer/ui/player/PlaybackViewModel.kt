@@ -196,7 +196,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     protected suspend fun startEngine(): PlaybackEngine {
         settings = c.settings.current()
         mapper = KeyActionMapper(settings.skipBackSec * 1_000L, settings.skipForwardSec * 1_000L, settings.zapWithUpDown)
-        return PlaybackEngine(appContext, settings).also {
+        return PlaybackEngine(appContext, settings, c.playerProxies).also {
             it.player.addListener(listener)
             it.player.addAnalyticsListener(audioFormatListener)
             it.onStalled = listener::onPlayerError

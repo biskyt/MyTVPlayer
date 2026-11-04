@@ -15,7 +15,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -32,11 +32,14 @@ import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.USER_AGENT
 import com.biskyt.mytvplayer.appString
+import com.biskyt.mytvplayer.core.net.ProxyClients
+import com.biskyt.mytvplayer.core.net.ProxySettings
 import com.biskyt.mytvplayer.core.player.SubtitlePolicy
 import com.biskyt.mytvplayer.core.player.TextTrack
 import com.biskyt.mytvplayer.data.BufferSize
 import com.biskyt.mytvplayer.data.Settings
 import java.io.IOException
+import okhttp3.OkHttpClient
 
 /**
  * Builds and drives one ExoPlayer for a playback session.
@@ -46,7 +49,12 @@ import java.io.IOException
  * decoded on the box (hardware decoders first, then the FFmpeg extension).
  */
 @OptIn(UnstableApi::class)
-class PlaybackEngine(private val context: Context, private val settings: Settings) {
+class PlaybackEngine(
+    private val context: Context,
+    private val settings: Settings,
+    /** The streams' HTTP client for each playlist proxy (none: the plain one). */
+    private val clients: ProxyClients = ProxyClients(OkHttpClient()),
+) {
 
     /**
      * The address of the last load, read from the start, whose reply had no data. A server can answer "OK" with an empty
@@ -82,11 +90,12 @@ class PlaybackEngine(private val context: Context, private val settings: Setting
     /** Whether the last reply for [url], read from the start, had no data at all. */
     fun sentNothing(url: String?) = url != null && url == emptyReply
 
-    private val http = DefaultHttpDataSource.Factory()
+    /** The client of the stream playing now: through its playlist's proxy, if it has one (see [play]). */
+    @Volatile private var client: OkHttpClient = clients.forProxy(null)
+
+    // OkHttp follows redirects between http and https by itself.
+    private val http = OkHttpDataSource.Factory { request -> client.newCall(request) }
         .setUserAgent(USER_AGENT)
-        .setAllowCrossProtocolRedirects(true)
-        .setConnectTimeoutMs(10_000)
-        .setReadTimeoutMs(15_000)
 
     val player: ExoPlayer = ExoPlayer.Builder(context, renderersFactory())
         .setLoadControl(loadControl(settings.bufferSize))
@@ -171,7 +180,8 @@ class PlaybackEngine(private val context: Context, private val settings: Setting
      * [hls]: null works the format out from the stream (retrying once as HLS when that fails, see [retryAsHls]).
      * [userAgent] / [referrer]: some M3U streams only play when these headers are sent.
      */
-    fun play(url: String, hls: Boolean?, userAgent: String? = null, referrer: String? = null) {
+    fun play(url: String, hls: Boolean?, proxy: ProxySettings?, userAgent: String? = null, referrer: String? = null) {
+        client = clients.forProxy(proxy)
         subtitlesApplied = false
         // A track chosen on the last stream mustn't carry over (or quietly match a different one on this).
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()

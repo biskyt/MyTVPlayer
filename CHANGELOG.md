@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.11.0
+- Each playlist can now use its own HTTP or SOCKS5 proxy (with an optional user name and password) for its login, lists, TV guide and streams, and Check proxy shows the address that the provider then sees.
+- Sync between TVs now matches a playlist by its name and server address, not its user name: give it the same name on each TV, so a renewed account keeps its progress and each person in a family can have their own playlist for the same provider (update every TV to this version).
+- New setting under "Warn if VPN is not connected": show your external IP address and its country next to the VPN badge, to confirm where your traffic comes out (it asks ipinfo.io, and it is off by default).
+
 ## 1.10.2
 - Sync between TVs now matches the same playlist when one TV has its address with https or a port such as :80 and the other does not, so update every TV to this version.
 - In Settings › Sync between TVs, scanning the QR code now opens Google's page with the code already filled in, so you only confirm it.

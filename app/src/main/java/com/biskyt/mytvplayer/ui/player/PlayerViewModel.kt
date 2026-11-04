@@ -10,11 +10,13 @@ import androidx.lifecycle.viewModelScope
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
+import com.biskyt.mytvplayer.core.net.ProxySettings
 import com.biskyt.mytvplayer.core.player.OverlayState
 import com.biskyt.mytvplayer.core.xtream.XtreamClient
 import com.biskyt.mytvplayer.data.StreamFormat
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
+import com.biskyt.mytvplayer.data.db.proxy
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.common.ItemAction
 import com.biskyt.mytvplayer.ui.common.NumberEntry
@@ -89,6 +91,9 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
 
     private var client: XtreamClient? = null
 
+    /** The playlist's proxy, for its streams too. */
+    private var proxy: ProxySettings? = null
+
     /** The format provider channels are played in first: the one that worked for this provider, else the setting. */
     private var format = StreamFormat.TS
 
@@ -109,7 +114,9 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
         viewModelScope.launch {
             startEngine()
             format = c.settings.streamFormatFor(screen.playlistId) ?: settings.streamFormat
-            client = c.playlists.get(screen.playlistId)?.takeUnless { it.isM3u }?.let(c.playlists::client)
+            val playlist = c.playlists.get(screen.playlistId)
+            proxy = playlist?.proxy
+            client = playlist?.takeUnless { it.isM3u }?.let(c.playlists::client)
             tuneTo(screen.streamId)
             // Only needed for changing channel: not worth delaying the first picture for.
             ids = c.channels.ids(screen.playlistId, screen.filter)
@@ -141,7 +148,7 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
         resetForNewStream()
         if (ch.streamUrl != null) {
             // M3U channel: its own URL; the format is worked out from the stream itself.
-            engine?.play(ch.streamUrl, hls = null, userAgent = ch.userAgent, referrer = ch.referrer)
+            engine?.play(ch.streamUrl, hls = null, userAgent = ch.userAgent, referrer = ch.referrer, proxy = proxy)
         } else {
             playFrom(client ?: return, ch, format)
         }
@@ -156,7 +163,7 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
     private fun playFrom(client: XtreamClient, ch: ChannelEntity, f: StreamFormat) {
         tuning = f
         val hls = f == StreamFormat.HLS
-        engine?.play(client.liveStreamUrl(ch.streamId, if (hls) "m3u8" else "ts"), hls)
+        engine?.play(client.liveStreamUrl(ch.streamId, if (hls) "m3u8" else "ts"), hls, proxy = proxy)
     }
 
     /** Some providers only offer one of HLS and MPEG-TS (or only one works): a channel that won't start gets the other. */

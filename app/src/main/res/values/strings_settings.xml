@@ -245,4 +245,22 @@
     <string name="settings_playlist_delete">Delete playlist</string>
     <string name="settings_warn_vpn">Warn if VPN is not connected</string>
     <string name="settings_warn_vpn_help">Shows in the top bar whether Android reports a VPN on this device. A VPN set up on your router or on another device cannot be detected.</string>
+    <string name="settings_external_ip">Show your external IP address</string>
+    <string name="settings_external_ip_help">Shows next to the VPN badge the address that websites see, and its country. To find it, MyTVPlayer asks ipinfo.io when the network or the VPN changes.</string>
+    <string name="settings_proxy_title">Proxy</string>
+    <string name="settings_proxy_none">None</string>
+    <string name="settings_proxy_http">HTTP</string>
+    <string name="settings_proxy_socks">SOCKS5</string>
+    <string name="settings_proxy_host">Proxy address</string>
+    <string name="settings_proxy_port">Port</string>
+    <string name="settings_proxy_username">Proxy user name (optional)</string>
+    <string name="settings_proxy_password">Proxy password (optional)</string>
+    <string name="settings_proxy_help">All of this playlist\'s traffic goes through the proxy: its login, lists, TV guide and streams. Logos and posters do not.</string>
+    <string name="settings_proxy_check">Check proxy</string>
+    <string name="settings_proxy_checking">Checking the proxy…</string>
+    <string name="settings_proxy_bad">Enter the proxy\'s address, and a port from 1 to 65535.</string>
+    <string name="settings_proxy_works">The proxy works: this playlist\'s traffic comes from %1$s, not %2$s.</string>
+    <string name="settings_proxy_works_only">The proxy works: this playlist\'s traffic comes from %1$s.</string>
+    <string name="settings_proxy_same">The proxy answered, but your address did not change (%1$s).</string>
+    <string name="settings_proxy_failed">The proxy did not answer: %1$s</string>
 </resources>

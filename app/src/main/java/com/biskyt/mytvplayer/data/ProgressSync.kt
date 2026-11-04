@@ -329,7 +329,7 @@ class ProgressSync(
     }
 
     private suspend fun playlistKeys(): Map<Long, String> =
-        db.playlists().all().associate { it.id to ProgressFile.playlistKey(it.kind, it.server, it.username) }
+        db.playlists().all().associate { it.id to ProgressFile.playlistKey(it.kind, it.server, it.name) }
 
     /**
      * Takes each change that is newer than what this TV has. Returns whether something this TV had was deleted: its

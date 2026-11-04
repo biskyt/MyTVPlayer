@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -46,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
@@ -109,7 +111,7 @@ fun TopBar(selected: Tab?) {
             )
         }
         Box(Modifier.weight(1f))
-        if (settings?.warnVpn == true) VpnBadge()
+        settings?.takeIf { it.warnVpn }?.let { VpnBadge(showIp = it.showExternalIp) }
         Clock()
         IconPill(AppIcons.Search, stringResource(R.string.common_search)) { nav.open(Screen.Search()) }
         IconPill(AppIcons.Settings, stringResource(R.string.common_settings)) { nav.open(Screen.Settings) }
@@ -129,19 +131,25 @@ fun TopBar(selected: Tab?) {
     }
 }
 
-/** Whether a VPN is connected (setting "Warn if VPN is not connected"): quiet when it is, a warning when not. */
+/**
+ * Whether a VPN is connected (setting "Warn if VPN is not connected"): quiet when it is, a warning when not. With
+ * [showIp], also the public IP address and its country, once known.
+ */
 @Composable
-private fun VpnBadge() {
+private fun VpnBadge(showIp: Boolean) {
     val container = LocalContext.current.container
     val connected by container.vpn.connected.collectAsState()
+    val ip = if (showIp) container.externalIp.current.collectAsState().value else null
     val accent = LocalAccent.current.color
     val (background, text, icon) = if (connected) {
         Triple(Palette.surface, Palette.textMuted, accent)
     } else {
         Triple(Palette.warning, Palette.background, Palette.background)
     }
+    // The address goes on a second, smaller line, so the badge is no wider; the padding gives it the room.
+    val vertical = if (ip == null) 8.dp else 3.dp
     Row(
-        Modifier.clip(RoundedCornerShape(50)).background(background).padding(start = 10.dp, end = 14.dp, top = 8.dp, bottom = 8.dp),
+        Modifier.clip(RoundedCornerShape(50)).background(background).padding(start = 10.dp, end = 14.dp, top = vertical, bottom = vertical),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -150,14 +158,28 @@ private fun VpnBadge() {
             tint = icon,
             modifier = Modifier.size(20.dp)
         )
-        Text(
-            stringResource(if (connected) R.string.common_vpn_on else R.string.common_vpn_off),
-            style = MaterialTheme.typography.labelMedium,
-            color = text,
-            modifier = Modifier.padding(start = 6.dp)
-        )
+        Column(Modifier.padding(start = 6.dp)) {
+            Text(
+                stringResource(if (connected) R.string.common_vpn_on else R.string.common_vpn_off),
+                style = MaterialTheme.typography.labelMedium,
+                color = text
+            )
+            ip?.let {
+                Text(
+                    it.country?.let { country -> stringResource(R.string.common_ip_country, it.ip, country) } ?: it.ip,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = text,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    // A long IPv6 address is cut, not let to widen the bar.
+                    modifier = Modifier.widthIn(max = IP_WIDTH)
+                )
+            }
+        }
     }
 }
+
+private val IP_WIDTH = 150.dp
 
 @Composable
 private fun IconPill(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {

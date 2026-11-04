@@ -115,7 +115,7 @@ fun SettingsScreen() {
                 nav.push(Screen.Appearance)
             })
         }
-        item { VpnWarningRow() }
+        item { VpnWarningRows() }
         item { ParentalControlsRow() }
         item { SyncRow() }
         item {
@@ -131,14 +131,24 @@ fun SettingsScreen() {
     }
 }
 
-/** "Warn if VPN is not connected" (see VpnMonitor): shown in the top bar. */
+/**
+ * "Warn if VPN is not connected" (see VpnMonitor): shown in the top bar. While it is on, also "Show your external IP
+ * address" (see ExternalIp), next to it.
+ */
 @Composable
-private fun VpnWarningRow() {
+private fun VpnWarningRows() {
     val vm = appViewModel { SettingsViewModel(it) }
-    val on = vm.settings.collectAsState().value?.warnVpn ?: return
-    SettingRow(stringResource(R.string.settings_warn_vpn), stringResource(R.string.settings_warn_vpn_help), {
-        vm.update { it.copy(warnVpn = !it.warnVpn) }
-    }) { Toggle(on) }
+    val s = vm.settings.collectAsState().value ?: return
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        SettingRow(stringResource(R.string.settings_warn_vpn), stringResource(R.string.settings_warn_vpn_help), {
+            vm.update { it.copy(warnVpn = !it.warnVpn) }
+        }) { Toggle(s.warnVpn) }
+        if (s.warnVpn) {
+            SettingRow(stringResource(R.string.settings_external_ip), stringResource(R.string.settings_external_ip_help), {
+                vm.update { it.copy(showExternalIp = !it.showExternalIp) }
+            }) { Toggle(s.showExternalIp) }
+        }
+    }
 }
 
 @Composable

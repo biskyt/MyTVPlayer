@@ -46,22 +46,29 @@ class ProgressFileTest {
     }
 
     @Test
-    fun `the playlist key ignores case, a closing slash and a missing http, and hides the server`() {
-        val key = ProgressFile.playlistKey("xtream", "http://Example.com:8080/", "user")
-        assertEquals(key, ProgressFile.playlistKey("xtream", " http://example.com:8080", "user"))
-        assertEquals(key, ProgressFile.playlistKey("xtream", "example.com:8080", "user"))
+    fun `the playlist key is the name and the server, whatever the scheme, default port or login`() {
+        val key = ProgressFile.playlistKey("xtream", "http://Example.com:8080/", "Home")
+        assertEquals(key, ProgressFile.playlistKey("xtream", " http://example.com:8080", "Home"))
+        assertEquals(key, ProgressFile.playlistKey("xtream", "example.com:8080", "Home"))
         // The scheme does not matter, nor the default port: the same TV service typed three ways.
-        val plain = ProgressFile.playlistKey("xtream", "http://argon.example", "user")
-        assertEquals(plain, ProgressFile.playlistKey("xtream", "https://argon.example/", "user"))
-        assertEquals(plain, ProgressFile.playlistKey("xtream", "http://argon.example:80", "user"))
-        assertEquals(plain, ProgressFile.playlistKey("xtream", "https://Argon.example:443", "user"))
-        assertNotEquals(plain, ProgressFile.playlistKey("xtream", "http://argon.example:8080", "user"))
+        val plain = ProgressFile.playlistKey("xtream", "http://argon.example", "Home")
+        assertEquals(plain, ProgressFile.playlistKey("xtream", "https://argon.example/", "Home"))
+        assertEquals(plain, ProgressFile.playlistKey("xtream", "http://argon.example:80", "Home"))
+        assertEquals(plain, ProgressFile.playlistKey("xtream", "https://Argon.example:443", "Home"))
+        assertNotEquals(plain, ProgressFile.playlistKey("xtream", "http://argon.example:8080", "Home"))
         // An M3U address keeps its path and query.
         assertNotEquals(
-            ProgressFile.playlistKey("m3u", "http://host/get.php?type=a", ""),
-            ProgressFile.playlistKey("m3u", "http://host/get.php?type=b", "")
+            ProgressFile.playlistKey("m3u", "http://host/get.php?type=a", "Home"),
+            ProgressFile.playlistKey("m3u", "http://host/get.php?type=b", "Home")
         )
-        assertNotEquals(key, ProgressFile.playlistKey("xtream", "http://example.com:8080", "other"))
+        // The name tells apart two playlists for one account (one for each person); capitals and spaces do not matter.
+        assertEquals(plain, ProgressFile.playlistKey("xtream", "http://argon.example", " home "))
+        assertNotEquals(plain, ProgressFile.playlistKey("xtream", "http://argon.example", "Kids"))
+        // A renewed account with a new login keeps its progress: an M3U address without its user name and password.
+        assertEquals(
+            ProgressFile.playlistKey("m3u", "http://host/get.php?username=old&password=a&type=m3u_plus", "Home"),
+            ProgressFile.playlistKey("m3u", "http://host/get.php?username=new&password=b&type=m3u_plus", "Home")
+        )
         assertEquals(64, key.length)
         assertEquals(false, key.contains("example"))
     }

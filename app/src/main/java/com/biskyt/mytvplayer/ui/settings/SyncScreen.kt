@@ -96,7 +96,7 @@ fun SyncScreen(vm: SyncViewModel = appViewModel { SyncViewModel(it.progressSync)
     val account = vm.account.collectAsState().value ?: return
     val failure by vm.failure.collectAsState()
     SettingsPage(stringResource(R.string.sync_title)) {
-        item { Muted(stringResource(R.string.sync_intro), maxLines = 4) }
+        item { Muted(stringResource(R.string.sync_intro), maxLines = 5) }
         if (account.on) signedIn(vm, account, failure) else signIn(vm)
     }
 }
