@@ -30,7 +30,7 @@ sealed interface SyncState {
     data class Guide(val step: GuideStep) : SyncState
 
     /** [message] is worked out when shown, so it's in the language shown then. */
-    data class Failed(val error: Throwable, @StringRes val fallback: Int) : SyncState {
+    data class Failed(val error: Throwable, @param:StringRes val fallback: Int) : SyncState {
         val message: String get() = userMessage(error) ?: appString(fallback)
     }
 }

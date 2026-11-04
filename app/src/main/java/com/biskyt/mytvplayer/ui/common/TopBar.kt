@@ -59,7 +59,7 @@ import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
 import kotlinx.coroutines.flow.flowOf
 
-enum class Tab(@StringRes val label: Int) {
+enum class Tab(@param:StringRes val label: Int) {
     HOME(R.string.common_tab_home),
     LIVE(R.string.common_tab_live),
     SERIES(R.string.common_tab_series),

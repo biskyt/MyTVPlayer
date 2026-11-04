@@ -362,7 +362,7 @@ private fun sourceDetails(row: GuideRow, shown: PlaylistEntity?): String {
 // ---------------------------------------------------------------- matching
 
 /** [status] is what the matching query filters on; [count] the tab's number. */
-enum class MatchTab(@StringRes val label: Int, val status: Int, val count: (MatchCounts) -> Int) {
+enum class MatchTab(@param:StringRes val label: Int, val status: Int, val count: (MatchCounts) -> Int) {
     ALL(R.string.live_guide_tab_all, 0, { it.total }),
     UNMATCHED(R.string.live_guide_no_guide, 1, { it.unmatched }),
     AUTO(R.string.live_guide_tab_auto, 2, { it.auto }),

@@ -181,6 +181,25 @@ class ProgressSyncTest {
     }
 
     @Test
+    fun `after an update to the playlist keys, each TV sends its file again once`() = runBlocking {
+        a.signIn()
+        a.sync.finish(always = true)
+        assertFalse(a.sync.account.state.first().pending)
+        // As before 1.10.2: no key format is kept.
+        PreferenceDataStoreFactory.create(scope = scope) { context.filesDir.resolve("sync-old.preferences_pb") }.let { old ->
+            val account = SyncAccount(old)
+            account.signIn("refresh", null)
+            assertTrue(account.state.first().pending)
+            val again = ProgressSync(a.db, account, null, scope, { folder })
+            withTimeout(WAIT_MS) { while (!again.on) delay(10) }
+            val uploads = folder.uploads.get()
+            again.finish()
+            assertEquals(uploads + 1, folder.uploads.get())
+            assertFalse(account.state.first().pending)
+        }
+    }
+
+    @Test
     fun `an older place does not replace a newer one`() = runBlocking {
         a.signIn()
         b.signIn()

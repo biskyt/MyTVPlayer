@@ -17,7 +17,7 @@ import com.biskyt.mytvplayer.R
 import kotlin.math.roundToInt
 
 /** How the picture fills the screen. The fixed shapes fix channels whose picture is flagged with the wrong one. */
-enum class PictureMode(@StringRes val label: Int, private val shape: Float?) {
+enum class PictureMode(@param:StringRes val label: Int, private val shape: Float?) {
     FIT(R.string.player_picture_fit, null),
     ZOOM(R.string.player_picture_zoom, null),
     STRETCH(R.string.player_picture_stretch, null),

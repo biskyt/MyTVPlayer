@@ -73,7 +73,7 @@ jobs:
         id: robolectric
         run: echo "key=$(.github/scripts/robolectric-cache-key.sh)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         with:
           path: ~/.m2/repository/org/robolectric
           key: ${{ steps.robolectric.outputs.key }}

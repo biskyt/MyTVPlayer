@@ -30,7 +30,7 @@ data class OpenSourceNotice(
     val name: String,
     val version: String?,
     /** What the app uses it for. */
-    @StringRes val use: Int,
+    @param:StringRes val use: Int,
     val licence: Licence,
     val url: String,
     val modules: List<String> = emptyList()

@@ -13,6 +13,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.FormBody
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -46,7 +47,10 @@ internal fun <T> Json.decodeOrFail(serializer: KSerializer<T>, text: String, fro
     throw SyncException("Unexpected answer from $from", e)
 }
 
-/** What the TV shows: the user goes to [verificationUrl] on a phone or a computer and types [userCode]. */
+/**
+ * What the TV shows: the user goes to [verificationUrl] on a phone or a computer and types [userCode], or scans a QR
+ * code of [urlWithCode], which opens the page with the code filled in.
+ */
 @Serializable
 data class DeviceCode(
     @SerialName("device_code") val deviceCode: String,
@@ -54,7 +58,12 @@ data class DeviceCode(
     @SerialName("verification_url") val verificationUrl: String,
     @SerialName("expires_in") val expiresInSec: Int,
     @SerialName("interval") val intervalSec: Int = 5,
-)
+) {
+    /** Google's page with the code filled in, for a QR code: the user only confirms it. A bad address stays as it is. */
+    val urlWithCode: String
+        get() = verificationUrl.toHttpUrlOrNull()?.newBuilder()?.setQueryParameter("user_code", userCode)?.build()?.toString()
+            ?: verificationUrl
+}
 
 /** [email] is the Google account's address, when Google sends it. [refreshToken] comes only with the first sign-in. */
 data class GoogleTokens(val accessToken: String, val expiresAt: Long, val refreshToken: String?, val email: String?)

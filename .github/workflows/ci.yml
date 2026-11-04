@@ -36,7 +36,7 @@ jobs:
         id: robolectric
         run: echo "key=$(.github/scripts/robolectric-cache-key.sh)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         id: robolectric-cache
         with:
           path: ~/.m2/repository/org/robolectric
@@ -50,7 +50,7 @@ jobs:
       - name: Unit, Robolectric and UI tests (records screenshots)
         run: ./gradlew :core:test :app:recordRoborazziDebug koverXmlReport
 
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v5
         if: github.ref == 'refs/heads/main' && steps.robolectric-cache.outputs.cache-hit != 'true'
         with:
           path: ~/.m2/repository/org/robolectric

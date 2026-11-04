@@ -27,6 +27,8 @@ class CoreTextTest {
         // Other countries by their name, and anything else (a language's name) as it is.
         assertEquals("Austria", groupLabel("AT"))
         assertEquals("Swahili", groupLabel("Swahili"))
+        // Two characters that are not a country: in capitals, as before 1.10.2.
+        assertEquals("4K", groupLabel("4k"))
     }
 
     @Test

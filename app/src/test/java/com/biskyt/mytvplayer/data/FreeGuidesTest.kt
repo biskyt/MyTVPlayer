@@ -15,6 +15,7 @@ class FreeGuidesTest {
         val rest = uk.drop(1).map { it.country }
         assertEquals(rest.sorted(), rest)
         assertEquals("us", FreeGuides.all(Locale.US, Locale.UK).first().code)
-        assertTrue(FreeGuides.all(Locale("", "AQ"), Locale.UK).first().code == "al") // no guide for the TV's country: alphabetical
+        // No guide for the TV's country: alphabetical.
+        assertTrue(FreeGuides.all(Locale.Builder().setRegion("AQ").build(), Locale.UK).first().code == "al")
     }
 }
