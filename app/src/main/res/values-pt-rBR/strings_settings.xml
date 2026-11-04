@@ -182,4 +182,20 @@
     <string name="settings_warn_vpn_help">Mostra na barra superior se o Android indica uma VPN neste dispositivo. Não é possível detectar uma VPN configurada no roteador ou em outro dispositivo.</string>
     <string name="settings_external_ip">Mostrar seu endereço IP externo</string>
     <string name="settings_external_ip_help">Mostra ao lado do indicador de VPN o endereço que os sites veem e o país dele. Para obtê-lo, o MyTVPlayer consulta o ipinfo.io quando a rede ou a VPN muda.</string>
+    <string name="settings_proxy_title">Proxy</string>
+    <string name="settings_proxy_none">Nenhum</string>
+    <string name="settings_proxy_http">HTTP</string>
+    <string name="settings_proxy_socks">SOCKS5</string>
+    <string name="settings_proxy_host">Endereço do proxy</string>
+    <string name="settings_proxy_port">Porta</string>
+    <string name="settings_proxy_username">Usuário do proxy (opcional)</string>
+    <string name="settings_proxy_password">Senha do proxy (opcional)</string>
+    <string name="settings_proxy_help">Todo o tráfego desta playlist passa pelo proxy: o login, as listas, o guia de TV e as transmissões. Logos e capas não.</string>
+    <string name="settings_proxy_check">Verificar proxy</string>
+    <string name="settings_proxy_checking">Verificando o proxy…</string>
+    <string name="settings_proxy_bad">Digite o endereço do proxy e uma porta de 1 a 65535.</string>
+    <string name="settings_proxy_works">O proxy funciona: o tráfego desta playlist sai de %1$s, não de %2$s.</string>
+    <string name="settings_proxy_works_only">O proxy funciona: o tráfego desta playlist sai de %1$s.</string>
+    <string name="settings_proxy_same">O proxy respondeu, mas seu endereço não mudou (%1$s).</string>
+    <string name="settings_proxy_failed">O proxy não respondeu: %1$s</string>
 </resources>

@@ -10,6 +10,7 @@ import com.biskyt.mytvplayer.core.epg.EpgCandidate
 import com.biskyt.mytvplayer.core.epg.EpgMatch
 import com.biskyt.mytvplayer.core.epg.XmltvChannel
 import com.biskyt.mytvplayer.core.epg.XmltvParser
+import com.biskyt.mytvplayer.core.net.ProxyClients
 import com.biskyt.mytvplayer.data.db.AppDatabase
 import com.biskyt.mytvplayer.data.db.ChannelEpgMappingEntity
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
@@ -19,6 +20,7 @@ import com.biskyt.mytvplayer.data.db.MAX_SQL_ARGS
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import com.biskyt.mytvplayer.data.db.PlaylistEpgSourceEntity
 import com.biskyt.mytvplayer.data.db.ProgrammeEntity
+import com.biskyt.mytvplayer.data.db.proxy
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.InputStream
@@ -68,7 +70,9 @@ class EpgRepository(
     private val cacheDir: File,
     /** Runs the debounced re-imports after manual guide changes. */
     private val scope: CoroutineScope,
-    private val clock: () -> Long = System::currentTimeMillis
+    private val clock: () -> Long = System::currentTimeMillis,
+    /** A provider's own guide goes through its playlist's proxy, as the rest of the playlist does. */
+    private val proxies: ProxyClients = ProxyClients(http),
 ) {
     private val epg = db.epg()
 
@@ -318,8 +322,9 @@ class EpgRepository(
     private suspend fun load(s: EpgSourceEntity, onProgress: (GuideStep) -> Unit): Result<Int?> {
         onProgress(GuideStep.Downloading(s.name))
         val result = runCatching {
+            val client = proxies.forProxy(s.playlistId?.let { db.playlists().get(it) }?.proxy)
             val tags =
-                download(s) { percent -> onProgress(GuideStep.Downloading(s.name, percent / 100f)) }
+                download(s, client) { percent -> onProgress(GuideStep.Downloading(s.name, percent / 100f)) }
                     ?: return@runCatching null
             onProgress(GuideStep.Reading(s.name))
             // The tags only once the file has read well: a bad copy is fetched again next time, not kept as unchanged.
@@ -521,7 +526,7 @@ class EpgRepository(
      * version tags for it (for [metaFile]), or null when the server says it hasn't changed since the last download (then
      * the copy kept is used). [onProgress] gets the percentage done when the server gives the size.
      */
-    private fun download(s: EpgSourceEntity, onProgress: (Int) -> Unit): String? {
+    private fun download(s: EpgSourceEntity, client: OkHttpClient, onProgress: (Int) -> Unit): String? {
         val target = sourceFile(s.id)
         target.parentFile?.mkdirs()
         val tmp = File(target.path + ".part")
@@ -534,7 +539,7 @@ class EpgRepository(
             etag?.let { header("If-None-Match", it) }
             modified?.let { header("If-Modified-Since", it) }
         }.build()
-        val tags = http.newCall(request).execute().use { response ->
+        val tags = client.newCall(request).execute().use { response ->
             if (response.code == HttpURLConnection.HTTP_NOT_MODIFIED) return null
             if (!response.isSuccessful) throw GuideError.server(response.code)
             val length = response.body!!.contentLength()

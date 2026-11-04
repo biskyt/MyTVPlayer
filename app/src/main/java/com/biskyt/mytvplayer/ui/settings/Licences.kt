@@ -51,7 +51,8 @@ val openSourceNotices = listOf(
             "androidx.media3:media3-exoplayer-hls",
             "androidx.media3:media3-exoplayer-dash",
             "androidx.media3:media3-ui-compose",
-            "androidx.media3:media3-ui"
+            "androidx.media3:media3-ui",
+            "androidx.media3:media3-datasource-okhttp"
         )
     ),
     OpenSourceNotice(

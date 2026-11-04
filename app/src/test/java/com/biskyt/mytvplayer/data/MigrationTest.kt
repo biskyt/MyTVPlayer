@@ -224,4 +224,20 @@ class MigrationTest {
             }
         }
     }
+
+    @Test
+    fun `version 11 to 12 keeps playlists, with no proxy`() {
+        helper.createDatabase("migration-test-12", 11).use { db ->
+            db.execSQL(
+                "INSERT INTO playlist (id, name, server, username, password, lastSyncAt, kind) VALUES (1, 'P', 'http://x', 'u', 'p', 0, 'xtream')"
+            )
+        }
+        helper.runMigrationsAndValidate("migration-test-12", 12, true).use { db ->
+            db.query("SELECT name, proxyType, proxyHost, proxyPort FROM playlist WHERE id = 1").use {
+                it.moveToFirst()
+                assertEquals("P", it.getString(0))
+                assertTrue(it.isNull(1) && it.isNull(2) && it.isNull(3))
+            }
+        }
+    }
 }

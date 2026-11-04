@@ -147,6 +147,8 @@ dependencies {
     implementation(libs.media3.ui.compose)
     // Only for SubtitleView: the Compose video surface draws no subtitles.
     implementation(libs.media3.ui)
+    // Streams through the app's OkHttp clients, so a playlist's proxy carries its video too.
+    implementation(libs.media3.datasource.okhttp)
     implementation(libs.media3.ffmpeg.decoder)
 
     implementation(libs.room.runtime)

@@ -5,6 +5,7 @@ import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.m3u.M3uEntry
 import com.biskyt.mytvplayer.core.m3u.M3uParser
+import com.biskyt.mytvplayer.core.net.ProxySettings
 import com.biskyt.mytvplayer.core.vod.EpisodeNames
 import com.biskyt.mytvplayer.core.vod.VodTitles
 import com.biskyt.mytvplayer.core.xtream.EpisodeInfo
@@ -18,6 +19,7 @@ import com.biskyt.mytvplayer.data.db.EpisodeEntity
 import com.biskyt.mytvplayer.data.db.MovieEntity
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import com.biskyt.mytvplayer.data.db.SeriesEntity
+import com.biskyt.mytvplayer.data.db.proxy
 import java.io.File
 import java.io.IOException
 import java.util.zip.CRC32
@@ -49,7 +51,7 @@ internal class M3uVod(private val db: AppDatabase, private val playlists: Playli
         val series = p.seriesUrl?.trim().orEmpty()
         val urls = listOf(movies, series).filter { it.isNotEmpty() }.distinct()
         if (urls.isEmpty()) return clear(p)
-        withFeeds(urls) { files ->
+        withFeeds(urls, p.proxy) { files ->
             val feeds = urls.zip(files) { url, file -> Feed(file, seriesOnly = url == series && url != movies) }
             // Unchanged playlists and choices: nothing to do, and nothing parsed to find that out.
             val contents = checksum(movies, series, files)
@@ -66,8 +68,16 @@ internal class M3uVod(private val db: AppDatabase, private val playlists: Playli
     private class Feed(val file: File, val seriesOnly: Boolean)
 
     /** Runs [block] with every playlist downloaded (each kept until it ends). */
-    private suspend fun <T> withFeeds(urls: List<String>, files: List<File> = emptyList(), block: suspend (List<File>) -> T): T =
-        if (files.size == urls.size) block(files) else playlists.withM3u(urls[files.size]) { withFeeds(urls, files + it, block) }
+    private suspend fun <T> withFeeds(
+        urls: List<String>,
+        proxy: ProxySettings?,
+        files: List<File> = emptyList(),
+        block: suspend (List<File>) -> T
+    ): T = if (files.size == urls.size) {
+        block(files)
+    } else {
+        playlists.withM3u(urls[files.size], proxy = proxy) { withFeeds(urls, proxy, files + it, block) }
+    }
 
     /** Each entry, and whether it's a series episode (else a film). */
     private suspend fun each(feed: Feed, onEntry: suspend (M3uEntry, Boolean) -> Unit) {

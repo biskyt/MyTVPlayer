@@ -23,6 +23,7 @@ import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import com.biskyt.mytvplayer.core.net.IpLookup
+import com.biskyt.mytvplayer.core.net.ProxyClients
 import com.biskyt.mytvplayer.core.sync.DriveStore
 import com.biskyt.mytvplayer.core.sync.GoogleAuth
 import com.biskyt.mytvplayer.core.sync.SyncException
@@ -80,9 +81,15 @@ class AppContainer(context: Context) {
         .build()
     val settings = SettingsRepository(context)
     val parental = ParentalRepository(db, settings, appScope)
-    val epg = EpgRepository(db, http, context.filesDir, appScope)
+
+    /** One client for each playlist proxy: the playlists, their guides and the player share them. */
+    val proxies = ProxyClients(http)
+
+    /** The same for the player's streams: shorter waits than the downloads', so a stall is found sooner. */
+    val playerProxies = ProxyClients(http.newBuilder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build())
+    val epg = EpgRepository(db, http, context.filesDir, appScope, proxies = proxies)
     private val categoryStore = CategoryStore(db)
-    val playlists = PlaylistRepository(db, http, settings, epg, context.cacheDir.resolve("playlists"), categoryStore)
+    val playlists = PlaylistRepository(db, http, settings, epg, context.cacheDir.resolve("playlists"), categoryStore, proxies)
     val channels = ChannelRepository(db)
     val progressSync = ProgressSync(
         db,
