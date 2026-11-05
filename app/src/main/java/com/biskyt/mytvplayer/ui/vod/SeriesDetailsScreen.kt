@@ -280,8 +280,8 @@ fun SeriesColumn(
             )
         }
         extraFacts()
-        // 2 lines, so that Continue and Favourite fit under it.
-        d?.info?.plot?.let { Text(it, style = SeriesPlot.current, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+        // 4 lines at most: the column scrolls, so the buttons stay in reach.
+        d?.info?.plot?.let { Text(it, style = SeriesPlot.current, maxLines = 4, overflow = TextOverflow.Ellipsis) }
         // Room under the last button for its focus ring: the scrolled column clips what is outside it.
         Column(
             Modifier.padding(top = 4.bd, bottom = FocusStroke.width),

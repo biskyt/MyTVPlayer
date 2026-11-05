@@ -3,8 +3,11 @@ package com.biskyt.mytvplayer.ui.vod
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,9 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -106,7 +106,7 @@ private fun PillSurface(
     focusedBackground: Color,
     focusedContent: Color,
     ring: Boolean,
-    body: @Composable () -> Unit
+    body: @Composable BoxScope.() -> Unit
 ) = Surface(
     onClick = onClick,
     modifier = modifier.onTap(onClick = onClick),
@@ -122,19 +122,16 @@ private fun PillSurface(
     border = if (ring) ClickableSurfaceDefaults.border(focusedBorder = Border(FocusStroke)) else ClickableSurfaceDefaults.border()
 ) { Box { body() } }
 
-/** How far into the film: a 4 px bar along the bottom of its button, in the page's background at 45 %. */
+/**
+ * How far into the film: a 4 px bar along the bottom of its button, in the page's background at 45 %. It takes the
+ * button's size and does not set it.
+ */
 @Composable
-private fun ButtonProgress(fraction: Float) {
-    Box(
-        Modifier.fillMaxSize().drawBehind {
-            val h = 4.bd.toPx()
-            drawRect(
-                Palette.background.copy(alpha = 0.45f),
-                topLeft = Offset(0f, size.height - h),
-                size = Size(size.width * fraction.coerceIn(0f, 1f), h)
-            )
-        }
-    )
+private fun BoxScope.ButtonProgress(fraction: Float) {
+    // matchParentSize: measured after the text, so the bar never makes the button larger.
+    Box(Modifier.matchParentSize(), contentAlignment = Alignment.BottomStart) {
+        Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).height(4.bd).background(Palette.background.copy(alpha = 0.45f)))
+    }
 }
 
 /** The backdrop, faded behind a gradient from the left, when there is one; nothing when there is none. */

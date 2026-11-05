@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onRoot
@@ -33,6 +35,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -108,6 +111,11 @@ class DetailPagesScreenshotTest {
         compose.waitForText("Resume · 38 min left")
         compose.waitForText("Director: Ana Ruiz")
         compose.waitAdvancingClock { compose.focusedText().contains("Resume") }
+        // The progress bar must not size its button: Resume is a pill as high as Favourite, beside it on the screen.
+        val resume = compose.onNode(hasText("Resume · 38 min left") and hasClickAction()).getBoundsInRoot()
+        val favourite = compose.onNode(hasText("Favourite") and hasClickAction()).assertIsDisplayed().getBoundsInRoot()
+        assertEquals((favourite.bottom - favourite.top).value, (resume.bottom - resume.top).value, 1f)
+        assertTrue(resume.right < favourite.left)
         compose.onRoot().captureRoboImage("screenshots/redesign-film.png")
     }
 
