@@ -1,6 +1,7 @@
 package com.biskyt.mytvplayer.testutil
 
 import android.view.KeyEvent as NativeKeyEvent
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -10,7 +11,10 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.ComposeTestRule
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performKeyPress
+import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.printToString
 import java.util.concurrent.TimeUnit
 import org.robolectric.shadows.ShadowLooper
@@ -69,4 +73,12 @@ fun ComposeTestRule.sendKey(code: Int, action: Int, repeat: Int = 0): Boolean =
 fun ComposeTestRule.settle() = repeat(10) {
     ShadowLooper.idleMainLooper(100, TimeUnit.MILLISECONDS)
     waitForIdle()
+}
+
+/** Presses [key] on the screen's root, runs the frames that follow, and returns the text of what has focus then. */
+@OptIn(ExperimentalTestApi::class)
+fun ComposeTestRule.pressAndRead(key: Key): String {
+    onRoot().performKeyInput { pressKey(key) }
+    idleFrames()
+    return focusedText()
 }

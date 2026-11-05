@@ -4,6 +4,8 @@ Each version's section becomes its GitHub release notes, so it is written for th
 English, one bullet of one sentence per change.
 
 ## 1.13.2
+- Moving up the TV guide sources list no longer skips the top guide.
+- Back in Settings, the row you opened has focus again, so you carry on from where you were.
 - Long category names on Live TV, Movies, Series and Catch-up scroll to show the rest while you are on them.
 - In the top bar, the item you are on is a pill filled with your accent colour, as on the film and series pages.
 - Pages start a little closer to the top bar.

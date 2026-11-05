@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
@@ -16,6 +17,8 @@ import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.container
 import com.biskyt.mytvplayer.data.ChannelFilter
 import com.biskyt.mytvplayer.data.VodFilter
+import com.biskyt.mytvplayer.ui.common.FocusVisit
+import com.biskyt.mytvplayer.ui.common.LocalFocusVisit
 
 /** Every screen in the app. Tab roots are [Home], [Live], [Movies], [Series]. */
 sealed interface Screen {
@@ -156,7 +159,9 @@ fun NavHost(navigator: Navigator, content: @Composable (Screen) -> Unit) {
         navigator.dropped.forEach(holder::removeState)
         navigator.dropped.clear()
     }
-    CompositionLocalProvider(LocalNavigator provides navigator, LocalViewModelStoreOwner provides entry) {
+    // A new visit each time an entry is shown: its first focus is taken again (see rememberFirstFocus).
+    val visit = remember(entry) { FocusVisit() }
+    CompositionLocalProvider(LocalNavigator provides navigator, LocalViewModelStoreOwner provides entry, LocalFocusVisit provides visit) {
         holder.SaveableStateProvider(entry.id) { content(entry.screen) }
     }
 }
