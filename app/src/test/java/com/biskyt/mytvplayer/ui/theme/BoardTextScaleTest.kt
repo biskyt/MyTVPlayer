@@ -13,7 +13,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** The boards' pages keep Settings › large text: their text is a step larger when it is on, and as drawn when off. */
+/** The boards' text: a step smaller than drawn for normal text, and as drawn with Settings › large text. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = PlainApp::class, qualifiers = "+w960dp-h540dp-tvdpi")
 class BoardTextScaleTest {
@@ -34,14 +34,14 @@ class BoardTextScaleTest {
     }
 
     @Test
-    fun `with large text, the boards' text is larger`() {
+    fun `with large text, the boards' sizes are kept`() {
         val (drawn, shown) = heights(large = true)
-        assertTrue("$shown > $drawn", shown > drawn)
+        assertEquals(drawn, shown)
     }
 
     @Test
-    fun `without it, the boards' sizes are kept`() {
+    fun `without it, the boards' text is a step smaller`() {
         val (drawn, shown) = heights(large = false)
-        assertEquals(drawn, shown)
+        assertTrue("$shown < $drawn", shown < drawn)
     }
 }

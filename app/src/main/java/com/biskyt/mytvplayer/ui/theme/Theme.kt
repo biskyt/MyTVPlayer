@@ -40,7 +40,10 @@ object Palette {
     val danger = Color(0xFFE58080)
 }
 
-/** Settings › large text: the boards' pages (see Board.kt) scale their text up by [LARGE_TEXT] when it is on. */
+/**
+ * Settings › large text: the boards' pages (see Board.kt) show their text at the boards' sizes when it is on, and a
+ * step smaller when it is off.
+ */
 val LocalLargeText = staticCompositionLocalOf { false }
 
 @Immutable
