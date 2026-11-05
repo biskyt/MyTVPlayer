@@ -37,11 +37,11 @@ import com.biskyt.mytvplayer.ui.common.FocusStroke
 import com.biskyt.mytvplayer.ui.common.favouriteLabel
 import com.biskyt.mytvplayer.ui.common.onTap
 import com.biskyt.mytvplayer.ui.theme.BOLD
+import com.biskyt.mytvplayer.ui.theme.BoardStyle
 import com.biskyt.mytvplayer.ui.theme.EXTRA_BOLD
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.bd
-import com.biskyt.mytvplayer.ui.theme.boardText
 
 // The film and series pages, as the design boards (2026-11-05) draw them. Sizes are the boards' (see Board.kt).
 
@@ -61,7 +61,7 @@ fun DetailButton(
     progress: Float? = null,
     horizontal: Dp = 20.bd,
     vertical: Dp = 10.bd,
-    style: TextStyle = if (strong) ButtonStrong else ButtonText,
+    style: TextStyle = if (strong) ButtonStrong.current else ButtonText.current,
     background: Color = Palette.surfaceHigh
 ) {
     val accent = LocalAccent.current
@@ -88,7 +88,7 @@ fun SeasonPill(name: String, current: Boolean, onClick: () -> Unit) {
     PillSurface(onClick, Modifier, bg, fg, bg, fg, ring = true) {
         Text(
             name,
-            style = if (current) PillStrong else PillText,
+            style = if (current) PillStrong.current else PillText.current,
             color = fg,
             maxLines = 1,
             modifier = Modifier.padding(horizontal = 14.bd, vertical = 6.bd)
@@ -164,8 +164,8 @@ fun FavouriteButton(favourite: Boolean, onClick: () -> Unit, modifier: Modifier 
     horizontal = if (text.isEmpty()) 12.bd else 20.bd
 )
 
-// The buttons' and pills' text, made once (their colour comes from where they are).
-private val ButtonText = boardText(15, BOLD)
-private val ButtonStrong = boardText(15, EXTRA_BOLD)
-private val PillText = boardText(14, BOLD)
-private val PillStrong = boardText(14, EXTRA_BOLD)
+// The buttons' and pills' text (their colour comes from where they are).
+private val ButtonText = BoardStyle(15, BOLD)
+private val ButtonStrong = BoardStyle(15, EXTRA_BOLD)
+private val PillText = BoardStyle(14, BOLD)
+private val PillStrong = BoardStyle(14, EXTRA_BOLD)

@@ -131,6 +131,8 @@ class DetailPagesScreenshotTest {
         save(id, 9205, 43 * MIN, 55 * MIN, 5)
         save(id, 9204, 33 * MIN, 54 * MIN, 4)
         compose.waitForText("Continue S2 E4 · 21 min left")
+        // The season shown, its year (from its first episode), then the show's facts.
+        compose.waitForText("Series 2 · 2023 · 3 seasons · Crime")
         compose.waitForText("The First Service")
         compose.onNode(
             hasText("The First Service", substring = true) and hasClickAction()

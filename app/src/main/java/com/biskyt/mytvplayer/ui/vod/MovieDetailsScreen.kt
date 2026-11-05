@@ -38,11 +38,11 @@ import com.biskyt.mytvplayer.ui.common.formatRuntime
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.timeLeft
 import com.biskyt.mytvplayer.ui.theme.BOLD
+import com.biskyt.mytvplayer.ui.theme.BoardStyle
 import com.biskyt.mytvplayer.ui.theme.EXTRA_BOLD
 import com.biskyt.mytvplayer.ui.theme.MEDIUM
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.bd
-import com.biskyt.mytvplayer.ui.theme.boardText
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -118,15 +118,31 @@ fun FilmPage(
         ) {
             Poster(movie.posterUrl ?: d?.posterUrl, movie.title, 200.bd, radius = 10.bd)
             Column(Modifier.widthIn(max = 600.bd), verticalArrangement = Arrangement.spacedBy(10.bd)) {
-                Text(movie.title, style = FilmTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(movie.title, style = FilmTitle.current, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 // With no genre (an M3U film), its category says what it is: "1958 · Movies: Classics".
                 val facts = metaLine(movie.year ?: d?.year, d?.durationSec, d?.genre ?: category, movie.rating ?: d?.rating)
-                if (facts.isNotEmpty()) Text(facts, style = FilmFacts, color = Palette.textMuted, maxLines = 1)
+                if (facts.isNotEmpty()) {
+                    Text(
+                        facts,
+                        style = FilmFacts.current,
+                        color = Palette.textMuted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 extraFacts()
-                d?.plot?.let { Text(it, style = FilmPlot, maxLines = 6, overflow = TextOverflow.Ellipsis) }
-                d?.director?.let { Text(stringResource(R.string.vod_director, it), style = SmallMuted, maxLines = 1) }
+                d?.plot?.let { Text(it, style = FilmPlot.current, maxLines = 6, overflow = TextOverflow.Ellipsis) }
+                d?.director?.let {
+                    Text(stringResource(R.string.vod_director, it), style = SmallMuted.current, color = Palette.textDim, maxLines = 1)
+                }
                 d?.cast?.let {
-                    Text(stringResource(R.string.vod_cast, it), style = SmallMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        stringResource(R.string.vod_cast, it),
+                        style = SmallMuted.current,
+                        color = Palette.textDim,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
                 Row(Modifier.padding(top = 8.bd), horizontalArrangement = Arrangement.spacedBy(10.bd)) {
                     FilmButtons(resumable, favourite, play, toggleFavourite)
@@ -154,13 +170,13 @@ private fun FilmButtons(resumable: WatchProgressEntity?, favourite: Boolean, pla
     FavouriteButton(favourite, toggleFavourite, text = stringResource(R.string.common_favourite_mark))
 }
 
-// The film page's text, made once (the boards' sizes).
-private val FilmTitle = boardText(30, EXTRA_BOLD, lineHeight = 1.15f)
-private val FilmFacts = boardText(15, BOLD)
-private val FilmPlot = boardText(16, MEDIUM, lineHeight = 1.4f)
+// The film page's text (the boards' sizes).
+private val FilmTitle = BoardStyle(30, EXTRA_BOLD, 1.15f)
+private val FilmFacts = BoardStyle(15, BOLD)
+private val FilmPlot = BoardStyle(16, MEDIUM, 1.4f)
 
 /** Director and cast: 14, muted. */
-private val SmallMuted = boardText(14, MEDIUM, Palette.textDim)
+private val SmallMuted = BoardStyle(14, MEDIUM)
 
 /** "2021 · 2 h 35 min · Drama · ★ 8.1", skipping whatever is unknown; a series' [seasons] ("3 seasons") after the year. */
 fun metaLine(year: Int?, durationSec: Int?, genre: String?, rating: Double?, seasons: String? = null): String = listOfNotNull(

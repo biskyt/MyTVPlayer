@@ -63,10 +63,10 @@ import com.biskyt.mytvplayer.container
 import com.biskyt.mytvplayer.data.ChannelFilter
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
+import com.biskyt.mytvplayer.ui.theme.BoardStyle
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.bd
-import com.biskyt.mytvplayer.ui.theme.boardText
 import kotlinx.coroutines.flow.flowOf
 
 enum class Tab(@param:StringRes val label: Int) {
@@ -116,16 +116,16 @@ fun TopBar(selected: Tab?) {
         }
         Box(Modifier.weight(1f))
         settings?.takeIf { it.warnVpn }?.let { VpnStatus(showIp = it.showExternalIp) }
-        Clock(Modifier.padding(BAR_RING), BarText, Palette.textDim)
+        Clock(Modifier.padding(BAR_RING), BarText.current, Palette.textDim)
         BarItem({ nav.open(Screen.Search()) }) { BarIcon(AppIcons.Search, stringResource(R.string.common_search)) }
         BarItem({ nav.open(Screen.Settings) }) { BarIcon(AppIcons.Settings, stringResource(R.string.common_settings)) }
         if (active != null) {
             BarItem({ nav.open(Screen.Playlists) }) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.bd)) {
                     Box(Modifier.size(20.bd).clip(CircleShape).background(accent.color), contentAlignment = Alignment.Center) {
-                        Text(active.name.take(1).uppercase(), style = boardText(11, 800, accent.onAccent))
+                        Text(active.name.take(1).uppercase(), style = InitialText.current, color = accent.onAccent)
                     }
-                    Text(active.name, style = BarText, color = Palette.textMuted, maxLines = 1)
+                    Text(active.name, style = BarText.current, color = Palette.textMuted, maxLines = 1)
                 }
             }
         }
@@ -133,7 +133,9 @@ fun TopBar(selected: Tab?) {
 }
 
 /** The tabs' and the clock's text: 14, bold, muted. */
-private val BarText = boardText(14, 700)
+private val BarText = BoardStyle(14, 700)
+private val InitialText = BoardStyle(11, 800)
+private val VpnText = BoardStyle(13, 700)
 
 /** Room for the focus ring around a top bar item, taken back from the gap between items. */
 private val BAR_RING = 4.bd
@@ -145,7 +147,7 @@ private fun TabLabel(name: String, current: Boolean) {
     val accent = LocalAccent.current.color
     Text(
         name,
-        style = BarText,
+        style = BarText.current,
         color = if (current) accent else Palette.textDim,
         maxLines = 1,
         // Every tab has the line's room, so they all line up; only the current one draws it.
@@ -204,7 +206,8 @@ private fun VpnStatus(showIp: Boolean) {
         Column {
             Text(
                 stringResource(if (connected) R.string.common_vpn_on else R.string.common_vpn_off),
-                style = if (connected) boardText(13, 700, text) else MaterialTheme.typography.labelMedium.copy(color = text)
+                style = if (connected) VpnText.current else MaterialTheme.typography.labelMedium,
+                color = text
             )
             ip?.let {
                 Text(

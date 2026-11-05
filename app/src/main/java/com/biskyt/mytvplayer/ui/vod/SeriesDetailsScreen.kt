@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,7 +18,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -87,12 +88,12 @@ import com.biskyt.mytvplayer.ui.player.EpisodeDescriptionPanel
 import com.biskyt.mytvplayer.ui.player.episodeDescriptionAction
 import com.biskyt.mytvplayer.ui.player.episodeName
 import com.biskyt.mytvplayer.ui.theme.BOLD
+import com.biskyt.mytvplayer.ui.theme.BoardStyle
 import com.biskyt.mytvplayer.ui.theme.EXTRA_BOLD
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.MEDIUM
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.bd
-import com.biskyt.mytvplayer.ui.theme.boardText
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -192,6 +193,12 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
     val next = d?.let { continueEpisode(it.episodes, progress) }
     // Opened for one episode (from the TV guide): focus goes to it rather than to Continue.
     val target = d?.episodes?.firstOrNull { it.season == screen.season && it.number == screen.episode }
+    // The season shown: the one picked; else the one to carry on with (a season the provider doesn't have, as the guide
+    // may number them differently, shows the usual one).
+    val season = d?.let {
+        vm.season?.takeIf { s -> it.episodes.any { e -> e.season == s } } ?: next?.season
+            ?: it.seasons.firstOrNull()?.number
+    }
 
     Box(Modifier.fillMaxSize()) {
         Backdrop(d?.info?.backdropUrl)
@@ -200,23 +207,21 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
             horizontalArrangement = Arrangement.spacedBy(30.bd)
         ) {
             val favourite by vm.favourite.collectAsState()
-            SeriesColumn(show, d) {
+            SeriesColumn(show, d, season) {
                 if (next != null) {
                     ContinueButton(
                         next,
                         progress,
                         play,
-                        if (target == null ||
-                            !vm.focusEpisodePending
-                        ) {
-                            playFocus(vm, next.id)
-                        } else {
-                            Modifier
-                        }
+                        if (target == null || !vm.focusEpisodePending) playFocus(vm, next.id) else Modifier
                     )
                 }
-                // Not on the board: kept so that a series can still be a favourite (the PR asks where it goes).
-                FavouriteButton(favourite, { vm.toggleFavourite() }, if (next == null && d != null) rememberFirstFocus() else Modifier)
+                FavouriteButton(
+                    favourite,
+                    { vm.toggleFavourite() },
+                    if (next == null && d != null) rememberFirstFocus() else Modifier,
+                    text = stringResource(R.string.common_favourite_mark)
+                )
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.bd)) {
                 when {
@@ -230,11 +235,7 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
                     }
                     d == null -> Muted(stringResource(R.string.vod_loading_episodes))
                     d.episodes.isEmpty() -> Muted(stringResource(R.string.vod_no_episodes))
-                    else -> {
-                        // A season the provider doesn't have (the guide may number them differently) shows the usual one.
-                        val asked = vm.season?.takeIf { s -> d.episodes.any { it.season == s } }
-                        Episodes(vm, d, asked ?: next?.season ?: d.seasons.firstOrNull()?.number, progress, target, play)
-                    }
+                    else -> Episodes(vm, d, season, progress, target, play)
                 }
             }
         }
@@ -244,27 +245,56 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
 }
 
 /**
- * The series page's left column (board "TvSeries"), 300 wide: the poster, the title, the facts, the plot and
- * [buttons] (Continue, Favourite). [extraFacts] is where MyPlexPlayer adds its own.
+ * The series page's left column (board "TvSeries"), 300 wide: the poster, the title, the facts ([season]'s name, its
+ * year if known, else the show's, the number of seasons...), the plot, and [buttons] one under the other (Continue,
+ * then Favourite). [extraFacts] is where MyPlexPlayer adds its own.
  */
 @Composable
 fun SeriesColumn(
     show: SeriesEntity,
     d: SeriesDetails?,
+    season: Int? = null,
     extraFacts: @Composable ColumnScope.() -> Unit = {},
-    buttons: @Composable RowScope.() -> Unit
+    buttons: @Composable ColumnScope.() -> Unit
 ) {
-    Column(Modifier.width(300.bd), verticalArrangement = Arrangement.spacedBy(10.bd)) {
+    // It scrolls when it is taller than the screen (large text): the button with focus is then brought into view.
+    Column(Modifier.width(300.bd).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.bd)) {
         Poster(show.coverUrl ?: d?.info?.posterUrl, show.title, 120.bd, radius = 10.bd)
-        Text(show.title, style = SeriesTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        val seasons = d?.seasons?.size?.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.vod_seasons, it, it) }
-        val facts = metaLine(show.year ?: d?.info?.year, null, d?.info?.genre, show.rating ?: d?.info?.rating, seasons)
-        if (facts.isNotEmpty()) Text(facts, style = SeriesFacts, color = Palette.textMuted, maxLines = 1)
+        Text(show.title, style = SeriesTitle.current, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        // One season: its name says it, so not "1 season" too.
+        val seasons = d?.seasons?.size?.takeIf { it > 1 }?.let { pluralStringResource(R.plurals.vod_seasons, it, it) }
+        val current = season?.let { n -> seasonName(n, d?.seasons?.firstOrNull { it.number == n }?.name) }
+        // The season's year: when its first episode was first shown.
+        val year = d?.episodes?.filter { it.season == season }?.mapNotNull { it.airDate?.year }?.minOrNull()
+        val facts = listOfNotNull(
+            current,
+            metaLine(year ?: show.year ?: d?.info?.year, null, d?.info?.genre, show.rating ?: d?.info?.rating, seasons).ifEmpty { null }
+        ).joinToString(" · ")
+        if (facts.isNotEmpty()) {
+            Text(
+                facts,
+                style = SeriesFacts.current,
+                color = Palette.textMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
         extraFacts()
-        d?.info?.plot?.let { Text(it, style = SeriesPlot, maxLines = 6, overflow = TextOverflow.Ellipsis) }
-        Row(Modifier.padding(top = 4.bd), horizontalArrangement = Arrangement.spacedBy(10.bd), content = buttons)
+        // 2 lines, so that Continue and Favourite fit under it.
+        d?.info?.plot?.let { Text(it, style = SeriesPlot.current, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+        // Room under the last button for its focus ring: the scrolled column clips what is outside it.
+        Column(
+            Modifier.padding(top = 4.bd, bottom = FocusStroke.width),
+            verticalArrangement = Arrangement.spacedBy(10.bd),
+            horizontalAlignment = Alignment.Start,
+            content = buttons
+        )
     }
 }
+
+/** A season's name: the provider's, else the app's ("Season 2"). */
+@Composable
+private fun seasonName(number: Int, name: String?) = name ?: stringResource(R.string.vod_season, number)
 
 /** "Continue S2 E4 · 21 min left", "Continue S2 E5" (the next one), or "Play S1 E1" when nothing is watched yet. */
 @Composable
@@ -320,7 +350,7 @@ private fun Episodes(
         // In by the ring's width, as the episode list is, so the numbers line up with the pills' text.
         LazyRow(Modifier.padding(start = RING), horizontalArrangement = Arrangement.spacedBy(8.bd)) {
             items(d.seasons, key = { it.number }) { s ->
-                SeasonPill(s.name ?: stringResource(R.string.vod_season, s.number), s.number == season) { vm.season = s.number }
+                SeasonPill(seasonName(s.number, s.name), s.number == season) { vm.season = s.number }
             }
         }
     }
@@ -396,7 +426,7 @@ private fun EpisodeRow(
                 Modifier.padding(end = 14.bd),
                 horizontal = 16.bd,
                 vertical = 8.bd,
-                style = MoreText,
+                style = MoreText.current,
                 background = Palette.background
             )
         }
@@ -422,7 +452,7 @@ private fun WatchProgressEntity?.partWatched() = this?.takeIf { it.started && !i
 
 @Composable
 private fun EpisodeNumber(e: EpisodeInfo, open: Boolean) =
-    Text("${e.number}", style = NumberText, color = if (open) Palette.text else Palette.textDim, modifier = Modifier.width(24.bd))
+    Text("${e.number}", style = NumberText.current, color = if (open) Palette.text else Palette.textDim, modifier = Modifier.width(24.bd))
 
 @Composable
 private fun ClosedEpisode(e: EpisodeInfo, name: String, progress: WatchProgressEntity?) {
@@ -436,7 +466,7 @@ private fun ClosedEpisode(e: EpisodeInfo, name: String, progress: WatchProgressE
             Row(horizontalArrangement = Arrangement.spacedBy(8.bd), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     name,
-                    style = EpisodeTitle,
+                    style = EpisodeTitle.current,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
@@ -445,7 +475,7 @@ private fun ClosedEpisode(e: EpisodeInfo, name: String, progress: WatchProgressE
             }
             val part = progress.partWatched()
             val length = listOfNotNull(e.durationSec?.let(::formatRuntime), part?.let { timeLeftText(it) }).joinToString(" · ")
-            if (length.isNotEmpty()) Text(length, style = EpisodeSmall, color = Palette.textDim, maxLines = 1)
+            if (length.isNotEmpty()) Text(length, style = EpisodeSmall.current, color = Palette.textDim, maxLines = 1)
             if (part != null) ProgressLine(part.fraction, Modifier.padding(top = 3.bd).width(160.bd), height = 3.bd)
         }
     }
@@ -460,7 +490,7 @@ private fun OpenEpisode(e: EpisodeInfo, name: String, progress: WatchProgressEnt
             Row(horizontalArrangement = Arrangement.spacedBy(8.bd), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     name,
-                    style = OpenTitle,
+                    style = OpenTitle.current,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
@@ -476,14 +506,14 @@ private fun OpenEpisode(e: EpisodeInfo, name: String, progress: WatchProgressEnt
             if (info.isNotEmpty()) {
                 Text(
                     info,
-                    style = EpisodeSmall,
+                    style = EpisodeSmall.current,
                     color = Palette.textMuted,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
             }
             e.plot?.let {
-                Text(it, style = OpenPlot, color = Palette.textDim, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(it, style = OpenPlot.current, color = Palette.textDim, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             if (part != null) ProgressLine(part.fraction, Modifier.padding(top = 3.bd).width(260.bd), height = 4.bd)
         }
@@ -499,7 +529,7 @@ private fun WatchedTick() {
     val accent = LocalAccent.current.color
     Row(horizontalArrangement = Arrangement.spacedBy(3.bd), verticalAlignment = Alignment.CenterVertically) {
         Icon(AppIcons.Tick, contentDescription = null, tint = accent, modifier = Modifier.size(12.bd))
-        Text(stringResource(R.string.vod_watched), style = WatchedText, color = accent, maxLines = 1)
+        Text(stringResource(R.string.vod_watched), style = WatchedText.current, color = accent, maxLines = 1)
     }
 }
 
@@ -514,14 +544,14 @@ private fun EpisodePicture(url: String) {
 
 private const val PICTURE_WIDTH = 256
 
-// The series page's text, made once (the boards' sizes; colours are given where they differ).
-private val SeriesTitle = boardText(24, EXTRA_BOLD, lineHeight = 1.2f)
-private val SeriesFacts = boardText(14, BOLD)
-private val SeriesPlot = boardText(14, MEDIUM, lineHeight = 1.4f)
-private val NumberText = boardText(20, EXTRA_BOLD)
-private val EpisodeTitle = boardText(15, EXTRA_BOLD)
-private val OpenTitle = boardText(15, EXTRA_BOLD, lineHeight = 1.25f)
-private val EpisodeSmall = boardText(13, MEDIUM)
-private val OpenPlot = boardText(13, MEDIUM, lineHeight = 1.35f)
-private val WatchedText = boardText(12, EXTRA_BOLD)
-private val MoreText = boardText(14, BOLD)
+// The series page's text (the boards' sizes; colours are given where they differ).
+private val SeriesTitle = BoardStyle(24, EXTRA_BOLD, 1.2f)
+private val SeriesFacts = BoardStyle(14, BOLD)
+private val SeriesPlot = BoardStyle(14, MEDIUM, 1.4f)
+private val NumberText = BoardStyle(20, EXTRA_BOLD)
+private val EpisodeTitle = BoardStyle(15, EXTRA_BOLD)
+private val OpenTitle = BoardStyle(15, EXTRA_BOLD, 1.25f)
+private val EpisodeSmall = BoardStyle(13, MEDIUM)
+private val OpenPlot = BoardStyle(13, MEDIUM, 1.35f)
+private val WatchedText = BoardStyle(12, EXTRA_BOLD)
+private val MoreText = BoardStyle(14, BOLD)

@@ -40,6 +40,9 @@ object Palette {
     val danger = Color(0xFFE58080)
 }
 
+/** Settings › large text: the boards' pages (see Board.kt) scale their text up by [LARGE_TEXT] when it is on. */
+val LocalLargeText = staticCompositionLocalOf { false }
+
 @Immutable
 data class Accent(val color: Color, val tint: Color, val soft: Color, val onAccent: Color)
 
@@ -115,7 +118,12 @@ fun MyTvTheme(accentArgb: Int = AccentPalette.DEFAULT, largeText: Boolean = fals
     }
     val context = LocalContext.current
     val touch = remember { context.hasTouchScreen() }
-    CompositionLocalProvider(LocalAccent provides accent, LocalDensity provides scaled, LocalTouch provides touch) {
+    CompositionLocalProvider(
+        LocalAccent provides accent,
+        LocalDensity provides scaled,
+        LocalTouch provides touch,
+        LocalLargeText provides largeText
+    ) {
         MaterialTheme(colorScheme = colors, typography = type, content = content)
     }
 }

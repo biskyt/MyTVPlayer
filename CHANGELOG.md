@@ -8,6 +8,8 @@ English, one bullet of one sentence per change.
 - Watched episodes have a tick, and part-watched ones show the time left with a short bar.
 - The top bar is simpler: the tabs are text, with the one you are on underlined, and the icons have no circles.
 - A page with almost no details (an M3U film) shows its category, with no empty gaps.
+- A series page starts its details with the season you are looking at and that season's year, and has its Favourite button under Continue.
+- Settings › large text now makes the text on the new film and series pages and in the top bar larger too.
 
 ## 1.12.1
 - Episode names no longer repeat the series name, the language tag or the episode number: "EN: Masterchef USA - S16E01 - Auditions Day 1" now shows as "Auditions Day 1".
