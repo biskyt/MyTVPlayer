@@ -5,6 +5,7 @@ English, one bullet of one sentence per change.
 
 ## 1.13.1
 - The external IP in the top bar tries again after 10 seconds when the lookup service answers too slowly.
+- Setting a parental PIN no longer hides restricted channels, films and series for a moment.
 
 ## 1.13.0
 - New film and series pages: the episode you are on opens out with its picture, plot and a More… button, and Resume and Continue show the time left.
