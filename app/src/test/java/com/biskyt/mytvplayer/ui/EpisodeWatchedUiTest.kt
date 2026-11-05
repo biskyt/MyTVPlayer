@@ -79,7 +79,7 @@ class EpisodeWatchedUiTest {
         assertTrue("the last episode of series 1 has another after it", row.hasNext)
         compose.waitForText("Watched")
         // Where to carry on moved to S2 E1; the remote stays on the episode marked.
-        compose.waitForText("Continue: S2 E1")
+        compose.waitForText("Continue S2 E1")
         assertTrue(compose.focusedText(), compose.focusedText().contains("Episode 2"))
 
         markFromMenu("Episode 2", "Mark as unwatched")
@@ -100,14 +100,17 @@ class EpisodeWatchedUiTest {
         }
         val navigator = navigators.new(Screen.SeriesDetails(playlistId, 77, season = 1))
         compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
-        compose.waitForText("Continue: S2 E1")
+        compose.waitForText("Continue S2 E1")
         compose.waitForText("Episode 1")
 
         // Series 1's first episode: not next to the one being watched.
         markFromMenu("Episode 1", "Mark as watched")
         compose.waitAdvancingClock { progress(9001)?.finished == true }
         compose.waitForText("Watched")
-        assertTrue("still carrying on with S2 E1", compose.onAllNodes(hasText("Continue: S2 E1")).fetchSemanticsNodes().isNotEmpty())
+        assertTrue(
+            "still carrying on with S2 E1",
+            compose.onAllNodes(hasText("Continue S2 E1", substring = true)).fetchSemanticsNodes().isNotEmpty()
+        )
     }
 
     @Test
