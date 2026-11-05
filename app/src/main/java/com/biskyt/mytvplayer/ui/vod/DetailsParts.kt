@@ -120,7 +120,10 @@ private fun PillSurface(
         focusedContentColor = focusedContent
     ),
     border = if (ring) ClickableSurfaceDefaults.border(focusedBorder = Border(FocusStroke)) else ClickableSurfaceDefaults.border()
-) { Box { body() } }
+) {
+    // Centred: an icon-only button stretched to its neighbour's height keeps its icon in the middle.
+    Box(contentAlignment = Alignment.Center) { body() }
+}
 
 /**
  * How far into the film: a 4 px bar along the bottom of its button, in the page's background at 45 %. It takes the

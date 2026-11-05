@@ -14,6 +14,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performSemanticsAction
@@ -148,6 +149,16 @@ class DetailPagesScreenshotTest {
         compose.waitForText("More…")
         compose.waitForText("54 min · 21 min left · First shown 14 Mar 2023")
         assertTrue(compose.focusedText(), compose.focusedText().contains("The First Service"))
+        // With a 4-line plot, the favourite's heart is beside Continue, as high as it, and inside the screen. In pixels
+        // (MyTvTheme gives the page its own density), from each node's position: boundsInRoot is clipped by its parents.
+        val screen = compose.onRoot().fetchSemanticsNode().size.height
+        val resume = compose.onNode(hasText("Continue", substring = true) and hasClickAction()).fetchSemanticsNode()
+        val heart = compose.onNode(hasContentDescription("Add to favourites") and hasClickAction()).fetchSemanticsNode()
+        assertEquals(resume.positionInRoot.y, heart.positionInRoot.y, 1f)
+        assertEquals(resume.size.height, heart.size.height)
+        assertTrue(heart.positionInRoot.x > resume.positionInRoot.x + resume.size.width)
+        val bottom = heart.positionInRoot.y + heart.size.height
+        assertTrue("The heart ends at $bottom px, the screen at $screen px", bottom <= screen)
         compose.onRoot().captureRoboImage(file)
     }
 
@@ -186,7 +197,7 @@ class DetailPagesScreenshotTest {
             return """{"seasons":[{"season_number":1,"name":"Series 1"},{"season_number":2,"name":"Series 2"},
                {"season_number":3,"name":"Series 3"}],
                "info":{"name":"EN: Kitchen Masters USA (2010)",
-               "plot":"Two detectives on the north coast work the cases nobody else wants, while a cold case from their past comes back.",
+               "plot":"Two detectives on the north coast work the cases nobody else wants, while a cold case from their past comes back. As the town turns against them, they find that the answer was in their own files all along, and the storm season gives them one week to prove it.",
                "genre":"Crime","releaseDate":"2023-01-01"},
                "episodes":{"1":[{"id":"9101","episode_num":1,"title":"Pilot","container_extension":"mkv","season":1,"info":{}}],
                            "2":[$episodes],

@@ -5,10 +5,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -208,20 +211,22 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
         ) {
             val favourite by vm.favourite.collectAsState()
             SeriesColumn(show, d, season) {
-                if (next != null) {
-                    ContinueButton(
-                        next,
-                        progress,
-                        play,
-                        if (target == null || !vm.focusEpisodePending) playFocus(vm, next.id) else Modifier
+                // Continue, and the favourite's heart beside it at the same height, so the column fits the screen.
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.bd)) {
+                    if (next != null) {
+                        ContinueButton(
+                            next,
+                            progress,
+                            play,
+                            if (target == null || !vm.focusEpisodePending) playFocus(vm, next.id) else Modifier
+                        )
+                    }
+                    FavouriteButton(
+                        favourite,
+                        { vm.toggleFavourite() },
+                        (if (next == null && d != null) rememberFirstFocus() else Modifier).fillMaxHeight()
                     )
                 }
-                FavouriteButton(
-                    favourite,
-                    { vm.toggleFavourite() },
-                    if (next == null && d != null) rememberFirstFocus() else Modifier,
-                    text = stringResource(R.string.common_favourite_mark)
-                )
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.bd)) {
                 when {
@@ -246,8 +251,8 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
 
 /**
  * The series page's left column (board "TvSeries"), 300 wide: the poster, the title, the facts ([season]'s name, its
- * year if known, else the show's, the number of seasons...), the plot, and [buttons] one under the other (Continue,
- * then Favourite). [extraFacts] is where MyPlexPlayer adds its own.
+ * year if known, else the show's, the number of seasons...), the plot (4 lines at most), and [buttons] (Continue and
+ * the favourite's heart). [extraFacts] is where MyPlexPlayer adds its own.
  */
 @Composable
 fun SeriesColumn(
