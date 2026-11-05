@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.13.1
+- The external IP in the top bar tries again after 10 seconds when the lookup service answers too slowly.
+
 ## 1.13.0
 - New film and series pages: the episode you are on opens out with its picture, plot and a More… button, and Resume and Continue show the time left.
 - Watched episodes have a tick, and part-watched ones show the time left with a short bar.
