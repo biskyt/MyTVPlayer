@@ -36,6 +36,12 @@ object EpisodeNames {
     // What's left after the number of a file-style name, which isn't a title ("1080p", "WEB-DL", "x264").
     private val releaseJunk = Regex("""(?i)^(?:\d{3,4}p|4k|uhd|hdr|web(?:-?dl|rip)?|bluray|hdtv|x26[45]|h\.?26[45]|hevc|aac|multi)\b.*""")
 
+    /** Where the episode code is in [name] ("S01E02", "1x02", "Season 1 Episode 2"), with its separator before it. */
+    internal fun codeIn(name: String): IntRange? = number.find(name)?.range
+
+    /** What a file-style name has after its number, which is not a title ("1080p", "WEB-DL"). */
+    internal fun isReleaseTag(part: String) = releaseJunk.matches(part)
+
     fun parse(name: String): EpisodeName? {
         if (name.none(Char::isDigit)) return null // most films: no need for the pattern
         val m = number.find(name) ?: return null

@@ -27,6 +27,9 @@ object VodTitles {
         return if (known) t.substring(m.range.last + 1) else null
     }
 
+    /** A few providers stack tags ("|EN| [4K] Title"): up to two are removed. */
+    private fun withoutTags(t: String) = withoutTag(t)?.let { withoutTag(it) ?: it } ?: t
+
     private val wordCodes = setOf("IT", "IN", "NO", "AL", "AR", "AF", "US")
     private val nonWord = Regex("""[^\p{L}\p{N}]+""")
 
@@ -40,9 +43,99 @@ object VodTitles {
         return (if (words.size > 1 && words[0] == "the") words.drop(1) else words).joinToString(" ")
     }
 
+    private val word = Regex("""[\p{L}\p{N}]+""")
+    private val yearWord = Regex("""(?:19|20)\d{2}""")
+    private val spaces = Regex("""\s+""")
+    private val bracketed = Regex("""[(\[][^)\]]*[)\]]""")
+
+    // Where an episode's name is split into parts: " - ", " | ", a dash, "_" or ",". Not ":" or "." on their own,
+    // which are often in the name itself ("Mystery Box Challenge: Dim Sim Lim").
+    private val partSeparator = Regex("""\s+[-\u2013\u2014]+\s+|\s*\|\s*|[_,]""")
+    private const val TRIMMED = " -|_,:\u2013\u2014"
+
+    /**
+     * An episode's name without what the page shows already, whatever their order: "EN: Masterchef USA (2010) - S16E01
+     * - Auditions Day 1" or "Auditions Day 1 - S16E01 - Masterchef USA" of the series "Masterchef USA" is "Auditions Day
+     * 1". It drops a language or quality tag at the start, the episode code (see [EpisodeNames]), and the parts that are
+     * the series' name, a year or a release tag. With a name on both sides of the code, the one after it is kept, as most
+     * providers write it. Null when nothing is left. For display only, of every provider's episodes.
+     */
+    fun episodeName(title: String, series: String?): String? {
+        val t = withoutTags(title.trim())
+        // Commas and underscores count as separators around the code too (the same length, so the places stay).
+        val code = EpisodeNames.codeIn(t.replace(',', ' ').replace('_', ' '))
+        val sides = if (code == null) listOf(t) else listOf(t.substring(code.last + 1), t.substring(0, code.first))
+        val seriesWords = series?.let(::nameWords).orEmpty()
+        // A part that is only the start of the series' name goes too, unless that leaves nothing ("Doctor Who" of
+        // "Doctor Who Confidential").
+        return sides.firstNotNullOfOrNull { nameIn(it, seriesWords, short = true) }
+            ?: sides.firstNotNullOfOrNull { nameIn(it, seriesWords, short = false) }
+    }
+
+    /**
+     * What is left of [side] without its parts that are the series ([seriesWords]; with [short], the start of its name
+     * too), a year, a release tag or a language code.
+     */
+    private fun nameIn(side: String, seriesWords: List<String>, short: Boolean): String? {
+        val s = side.trimStart(')', ']').trimEnd('(', '[')
+        val parts = buildList {
+            var start = 0
+            partSeparator.findAll(s).forEach {
+                add(start until it.range.first)
+                start = it.range.last + 1
+            }
+            add(start until s.length)
+        }.map { r -> withoutSeriesPrefix(s, r, seriesWords, short) }
+        val kept = parts.indices.filter { keep(s.substring(parts[it]), seriesWords, short) }
+        if (kept.isEmpty()) return null
+        // Next to each other: as written, commas and all. Else joined.
+        val name = if (kept.zipWithNext().all { (a, b) -> b == a + 1 }) {
+            s.substring(parts[kept.first()].first, parts[kept.last()].last + 1)
+        } else {
+            kept.joinToString(" - ") { s.substring(parts[it]).trim() }
+        }
+        return name.replace(spaces, " ").trim { it in TRIMMED }.ifEmpty { null }
+    }
+
+    /** Part [r] of [s] without the series' name and a colon at its start ("Masterchef USA: Auditions"). */
+    private fun withoutSeriesPrefix(s: String, r: IntRange, seriesWords: List<String>, short: Boolean): IntRange {
+        val colon = s.indexOf(':', r.first).takeIf { it in r } ?: return r
+        return if (seriesWords.isNotEmpty() &&
+            isSeries(nameWords(s.substring(r.first, colon)), seriesWords, short)
+        ) {
+            colon + 1..r.last
+        } else {
+            r
+        }
+    }
+
+    private fun keep(part: String, seriesWords: List<String>, short: Boolean): Boolean {
+        val p = part.trim { it in TRIMMED }
+        if (p.isEmpty() || EpisodeNames.isReleaseTag(p) || isTagCode(p)) return false
+        val words = nameWords(p)
+        // Only years and brackets ("(2010)", "2015-2022", "(GB)") say nothing.
+        return words.isNotEmpty() && !isSeries(words, seriesWords, short)
+    }
+
+    /** A language or quality code on its own ("EN", "4K"), as at the start of a name; not one that is also a word. */
+    private fun isTagCode(p: String): Boolean {
+        val code = p.uppercase()
+        return code in qualityTags || (p.length <= 3 && code !in wordCodes && CategoryLanguageDetector.isLanguageCode(code))
+    }
+
+    /**
+     * Whether [words] name the series: all its words, or with [short] the first two or more of them, as providers
+     * shorten names ("MasterChef USA" of "MasterChef USA Gordon Ramsay").
+     */
+    private fun isSeries(words: List<String>, seriesWords: List<String>, short: Boolean) = words == seriesWords ||
+        (short && words.size >= 2 && words.size < seriesWords.size && seriesWords.subList(0, words.size) == words)
+
+    /** The words of a name, lower case, without years or what is in brackets ("(GB)", "[1080p]"). */
+    private fun nameWords(name: String): List<String> =
+        word.findAll(name.replace(bracketed, " ")).map { it.value.lowercase() }.filterNot { yearWord.matches(it) }.toList()
+
     fun clean(name: String): CleanTitle {
-        // A few providers stack tags ("|EN| [4K] Title"); up to two are removed.
-        var t = name.trim().let { once -> withoutTag(once)?.let { withoutTag(it) ?: it } ?: once }
+        var t = withoutTags(name.trim())
         val y = year.find(t)
         val yearValue = y?.groupValues?.drop(1)?.firstOrNull { it.isNotEmpty() }?.toInt()
         if (y != null && y.range.first > 0) t = t.substring(0, y.range.first)

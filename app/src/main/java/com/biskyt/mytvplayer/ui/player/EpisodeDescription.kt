@@ -38,7 +38,7 @@ fun EpisodeDescription(d: DescribedEpisode, modifier: Modifier = Modifier) {
     val e = d.episode
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         d.show?.takeIf { it.isNotBlank() }?.let { Muted(it) }
-        Text(episodeName(e), style = MaterialTheme.typography.titleLarge)
+        Text(episodeName(e, d.show), style = MaterialTheme.typography.titleLarge)
         e.airDate?.let { Muted(stringResource(R.string.vod_first_shown, formatDate(it))) }
         // At most what fits in a side panel: its text doesn't scroll (the remote has nothing in it to move to).
         e.plot?.let { Text(it, style = MaterialTheme.typography.bodyLarge, maxLines = PLOT_LINES, overflow = TextOverflow.Ellipsis) }
