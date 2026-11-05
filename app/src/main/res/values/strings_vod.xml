@@ -19,13 +19,11 @@
     <!-- Movie page. %1$s: names of people. -->
     <string name="vod_director">Director: %1$s</string>
     <string name="vod_cast">Cast: %1$s</string>
-    <!-- Button. %1$s: how far into the movie, e.g. "1 h 5 min". -->
-    <string name="vod_resume_from">Resume from %1$s</string>
 
     <!-- Series page. -->
     <string name="vod_episodes_failed">Couldn\'t load the episodes</string>
     <!-- Button. %1$s: the episode, written short, e.g. "S1 E2". -->
-    <string name="vod_continue_episode">Continue: %1$s</string>
+    <string name="vod_continue_episode">Continue %1$s</string>
     <!-- Button. %1$s: the episode, written short, e.g. "S1 E2". -->
     <string name="vod_play_episode">Play %1$s</string>
     <string name="vod_loading_episodes">Loading episodes…</string>
@@ -37,4 +35,17 @@
     <!-- An episode the provider gave no title. %1$d: its number. -->
     <string name="vod_episode">Episode %1$d</string>
     <string name="vod_first_shown">First shown %1$s</string>
+    <!-- Film page: the play button with progress. %1$s: the time left, e.g. "38 min". -->
+    <string name="vod_resume_left">Resume · %1$s left</string>
+    <!-- Film page: play from the start. -->
+    <string name="vod_restart">Restart</string>
+    <!-- Series page: carry on with a started episode. %1$s: the episode, e.g. "S2 E4"; %2$s: the time left, e.g. "21 min". -->
+    <string name="vod_continue_left">Continue %1$s · %2$s left</string>
+    <!-- Series page, under the plot: how many seasons. -->
+    <plurals name="vod_seasons">
+        <item quantity="one">%1$d season</item>
+        <item quantity="other">%1$d seasons</item>
+    </plurals>
+    <!-- Series page: the button that opens an episode's options. -->
+    <string name="vod_more">More…</string>
 </resources>

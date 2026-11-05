@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -29,12 +31,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -59,6 +65,8 @@ import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
+import com.biskyt.mytvplayer.ui.theme.bd
+import com.biskyt.mytvplayer.ui.theme.boardText
 import kotlinx.coroutines.flow.flowOf
 
 enum class Tab(@param:StringRes val label: Int) {
@@ -69,7 +77,11 @@ enum class Tab(@param:StringRes val label: Int) {
     CATCHUP(R.string.common_catchup)
 }
 
-/** Top bar from the agreed design: logo, tabs, clock, search, settings and the playlist switcher. */
+/**
+ * The top bar, as the design boards draw it (2026-11-05): the tabs as text, with the one shown in the accent colour
+ * and underlined; then the VPN status, the clock, Search, Settings and the playlist switcher. Each item takes focus
+ * with the app's usual ring.
+ */
 @Composable
 fun TopBar(selected: Tab?) {
     val nav = LocalNavigator.current
@@ -84,91 +96,120 @@ fun TopBar(selected: Tab?) {
     val hasCatchup by remember(active?.id) { active?.let { container.channels.observeHasCatchup(it.id) } ?: flowOf(false) }
         .collectAsState(initial = false)
     Row(
-        Modifier.padding(start = 56.dp, end = 56.dp, top = 24.dp),
+        // The board's 40 and 22, less the room each item keeps for its focus ring.
+        Modifier.fillMaxWidth().height(48.bd).padding(horizontal = 40.bd - BAR_RING),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(BAR_GAP)
     ) {
-        Row(Modifier.padding(end = 28.dp)) {
-            Text("My", style = MaterialTheme.typography.titleLarge)
-            Text("TV", style = MaterialTheme.typography.titleLarge, color = accent.color)
-            Text("Player", style = MaterialTheme.typography.titleLarge)
-        }
         Tab.entries.filter { it != Tab.CATCHUP || hasCatchup }.forEach { tab ->
-            PillButton(
-                text = stringResource(tab.label),
-                selected = tab == selected,
-                onClick = {
-                    nav.reset(
-                        when (tab) {
-                            Tab.HOME -> Screen.Home
-                            Tab.LIVE -> Screen.Live()
-                            Tab.MOVIES -> Screen.Movies()
-                            Tab.SERIES -> Screen.Series()
-                            Tab.CATCHUP -> Screen.Live(ChannelFilter.Catchup)
-                        }
-                    )
-                }
-            )
+            BarItem({
+                nav.reset(
+                    when (tab) {
+                        Tab.HOME -> Screen.Home
+                        Tab.LIVE -> Screen.Live()
+                        Tab.MOVIES -> Screen.Movies()
+                        Tab.SERIES -> Screen.Series()
+                        Tab.CATCHUP -> Screen.Live(ChannelFilter.Catchup)
+                    }
+                )
+            }) { TabLabel(stringResource(tab.label), tab == selected) }
         }
         Box(Modifier.weight(1f))
-        settings?.takeIf { it.warnVpn }?.let { VpnBadge(showIp = it.showExternalIp) }
-        Clock()
-        IconPill(AppIcons.Search, stringResource(R.string.common_search)) { nav.open(Screen.Search()) }
-        IconPill(AppIcons.Settings, stringResource(R.string.common_settings)) { nav.open(Screen.Settings) }
+        settings?.takeIf { it.warnVpn }?.let { VpnStatus(showIp = it.showExternalIp) }
+        Clock(Modifier.padding(BAR_RING), BarText, Palette.textDim)
+        BarItem({ nav.open(Screen.Search()) }) { BarIcon(AppIcons.Search, stringResource(R.string.common_search)) }
+        BarItem({ nav.open(Screen.Settings) }) { BarIcon(AppIcons.Settings, stringResource(R.string.common_settings)) }
         if (active != null) {
-            TvCard(onClick = { nav.open(Screen.Playlists) }, shape = RoundedCornerShape(50)) {
-                Row(
-                    Modifier.padding(start = 6.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(Modifier.size(28.dp).clip(CircleShape).background(accent.color), contentAlignment = Alignment.Center) {
-                        Text(active.name.take(1).uppercase(), style = MaterialTheme.typography.labelMedium, color = accent.onAccent)
+            BarItem({ nav.open(Screen.Playlists) }) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.bd)) {
+                    Box(Modifier.size(20.bd).clip(CircleShape).background(accent.color), contentAlignment = Alignment.Center) {
+                        Text(active.name.take(1).uppercase(), style = boardText(11, 800, accent.onAccent))
                     }
-                    Text(active.name, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 8.dp), maxLines = 1)
+                    Text(active.name, style = BarText, color = Palette.textMuted, maxLines = 1)
                 }
             }
         }
     }
 }
 
+/** The tabs' and the clock's text: 14, bold, muted. */
+private val BarText = boardText(14, 700)
+
+/** Room for the focus ring around a top bar item, taken back from the gap between items. */
+private val BAR_RING = 4.bd
+private val BAR_GAP = 22.bd - BAR_RING * 2
+
+/** A tab's name: the one shown in the accent colour, with a line under it. */
+@Composable
+private fun TabLabel(name: String, current: Boolean) {
+    val accent = LocalAccent.current.color
+    Text(
+        name,
+        style = BarText,
+        color = if (current) accent else Palette.textDim,
+        maxLines = 1,
+        // Every tab has the line's room, so they all line up; only the current one draws it.
+        modifier = Modifier.drawBehind {
+            if (current) drawRect(accent, Offset(0f, size.height - 2.bd.toPx()), Size(size.width, 2.bd.toPx()))
+        }.padding(bottom = 3.bd)
+    )
+}
+
+@Composable
+private fun BarIcon(icon: ImageVector, label: String) =
+    Icon(icon, contentDescription = label, tint = Palette.textDim, modifier = Modifier.size(18.bd))
+
 /**
- * Whether a VPN is connected (setting "Warn if VPN is not connected"): quiet when it is, a warning when not. With
- * [showIp], also the public IP address and its country, once known.
+ * A top bar item: drawn as it is, on nothing, and with the app's focus ring around it (a little padding, so the ring
+ * does not touch it).
  */
 @Composable
-private fun VpnBadge(showIp: Boolean) {
+private fun BarItem(onClick: () -> Unit, content: @Composable () -> Unit) {
+    TvCard(onClick = onClick, shape = RoundedCornerShape(50), color = Color.Transparent, focusedColor = Color.Transparent) {
+        Box(Modifier.padding(horizontal = BAR_RING, vertical = BAR_RING)) { content() }
+    }
+}
+
+/**
+ * Whether a VPN is connected (setting "Warn if VPN is not connected"): a shield and "VPN on" when it is, today's
+ * warning pill when not. With [showIp], also the public IP address and its country, once known, on a second line.
+ */
+@Composable
+private fun VpnStatus(showIp: Boolean) {
     val container = LocalContext.current.container
     val connected by container.vpn.connected.collectAsState()
     val ip = if (showIp) container.externalIp.current.collectAsState().value else null
     val accent = LocalAccent.current.color
-    val (background, text, icon) = if (connected) {
-        Triple(Palette.surface, Palette.textMuted, accent)
-    } else {
-        Triple(Palette.warning, Palette.background, Palette.background)
-    }
-    // The address goes on a second, smaller line, so the badge is no wider; the padding gives it the room.
+    val text = if (connected) Palette.textDim else Palette.background
+    // The address goes on a second, smaller line, so the status is no wider.
     val vertical = if (ip == null) 8.dp else 3.dp
     Row(
-        Modifier.clip(RoundedCornerShape(50)).background(background).padding(start = 10.dp, end = 14.dp, top = vertical, bottom = vertical),
-        verticalAlignment = Alignment.CenterVertically
+        if (connected) {
+            Modifier.padding(BAR_RING)
+        } else {
+            Modifier.clip(
+                RoundedCornerShape(50)
+            ).background(Palette.warning).padding(start = 10.dp, end = 14.dp, top = vertical, bottom = vertical)
+        },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.bd)
     ) {
+        // Connected: as the boards draw it. Not connected: the warning pill as before 1.12.2.
         Icon(
             AppIcons.Shield,
             contentDescription = null,
-            tint = icon,
-            modifier = Modifier.size(20.dp)
+            tint = if (connected) accent else text,
+            modifier = Modifier.size(if (connected) 14.bd else 20.dp)
         )
-        Column(Modifier.padding(start = 6.dp)) {
+        Column {
             Text(
                 stringResource(if (connected) R.string.common_vpn_on else R.string.common_vpn_off),
-                style = MaterialTheme.typography.labelMedium,
-                color = text
+                style = if (connected) boardText(13, 700, text) else MaterialTheme.typography.labelMedium.copy(color = text)
             )
             ip?.let {
                 Text(
                     it.country?.let { country -> stringResource(R.string.common_ip_country, it.ip, country) } ?: it.ip,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = text,
+                    style = MaterialTheme.typography.labelSmall.copy(color = text),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     // A long IPv6 address is cut, not let to widen the bar.
@@ -181,13 +222,6 @@ private fun VpnBadge(showIp: Boolean) {
 
 private val IP_WIDTH = 150.dp
 
-@Composable
-private fun IconPill(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    TvCard(onClick = onClick, shape = CircleShape, color = Palette.background) {
-        Icon(icon, contentDescription = label, tint = Palette.textMuted, modifier = Modifier.padding(10.dp).size(22.dp))
-    }
-}
-
 /** The time of day, updated each minute: in the top bar, and over the video while the player's controls show. */
 @Composable
 fun Clock(
@@ -199,8 +233,8 @@ fun Clock(
     Text(formatTime(now), style = style, color = color, modifier = modifier)
 }
 
-/** Between the top bar and the screen below it. */
-val TabScaffoldGap = 20.dp
+/** Between the top bar and the screen below it: page content starts 76 board pixels down (see TopBar). */
+val TabScaffoldGap = 28.bd
 
 /** On a page drawn behind the top bar (its art showing through), how far down its content must start: 0 without. */
 val LocalTopBarInset = compositionLocalOf { 0.dp }

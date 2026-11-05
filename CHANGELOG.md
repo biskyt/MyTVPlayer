@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.13.0
+- New film and series pages: the episode you are on opens out with its picture, plot and a More… button, and Resume and Continue show the time left.
+- Watched episodes have a tick, and part-watched ones show the time left with a short bar.
+- The top bar is simpler: the tabs are text, with the one you are on underlined, and the icons have no circles.
+- A page with almost no details (an M3U film) shows its category, with no empty gaps.
+
 ## 1.12.1
 - Episode names no longer repeat the series name, the language tag or the episode number: "EN: Masterchef USA - S16E01 - Auditions Day 1" now shows as "Auditions Day 1".
 

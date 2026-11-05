@@ -92,6 +92,8 @@ fun TvCard(
     shape: Shape = CardShape,
     color: Color = Palette.surface,
     focusedColor: Color = Palette.surfaceHigh,
+    /** Without it, what holds the card shows its focus (the series page's episode rows). */
+    ring: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val accent = LocalAccent.current
@@ -111,7 +113,7 @@ fun TvCard(
             contentColor = Palette.text,
             focusedContentColor = Palette.text
         ),
-        border = ClickableSurfaceDefaults.border(focusedBorder = FocusRing)
+        border = if (ring) ClickableSurfaceDefaults.border(focusedBorder = FocusRing) else ClickableSurfaceDefaults.border()
     ) { CompositionLocalProvider(LocalCardFocused provides focused) { content() } }
 }
 
@@ -226,8 +228,8 @@ fun StateFlow<Set<Long>?>.collectIds(): Set<Long> = collectAsState().value.orEmp
 
 /** A movie or series poster (2:3). Posters are opaque, so they're decoded at half the memory of logos. */
 @Composable
-fun Poster(url: String?, title: String, width: Dp, modifier: Modifier = Modifier) = ImageWithInitials(
-    url, title, width, width * 3 / 2, RoundedCornerShape(10.dp), ContentScale.Crop, 0.dp, MaterialTheme.typography.titleMedium, modifier,
+fun Poster(url: String?, title: String, width: Dp, modifier: Modifier = Modifier, radius: Dp = 10.dp) = ImageWithInitials(
+    url, title, width, width * 3 / 2, RoundedCornerShape(radius), ContentScale.Crop, 0.dp, MaterialTheme.typography.titleMedium, modifier,
     opaque = true
 )
 

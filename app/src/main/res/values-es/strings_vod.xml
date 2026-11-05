@@ -13,10 +13,9 @@
 
     <string name="vod_director">Dirección: %1$s</string>
     <string name="vod_cast">Reparto: %1$s</string>
-    <string name="vod_resume_from">Reanudar desde %1$s</string>
 
     <string name="vod_episodes_failed">No se pudieron cargar los episodios</string>
-    <string name="vod_continue_episode">Continuar: %1$s</string>
+    <string name="vod_continue_episode">Continuar %1$s</string>
     <string name="vod_play_episode">Reproducir %1$s</string>
     <string name="vod_loading_episodes">Cargando episodios…</string>
     <string name="vod_no_episodes">No hay episodios disponibles para esta serie.</string>
@@ -24,4 +23,13 @@
     <string name="vod_season">Temporada %1$d</string>
     <string name="vod_episode">Episodio %1$d</string>
     <string name="vod_first_shown">Emitido por primera vez el %1$s</string>
+    <string name="vod_resume_left">Reanudar · quedan %1$s</string>
+    <string name="vod_restart">Empezar de nuevo</string>
+    <string name="vod_continue_left">Continuar %1$s · quedan %2$s</string>
+    <plurals name="vod_seasons">
+        <item quantity="one">%1$d temporada</item>
+        <item quantity="many">%1$d temporadas</item>
+        <item quantity="other">%1$d temporadas</item>
+    </plurals>
+    <string name="vod_more">Más…</string>
 </resources>

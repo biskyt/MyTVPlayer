@@ -49,10 +49,11 @@ val LocalAccent = staticCompositionLocalOf { Accent(Color(AccentPalette.DEFAULT)
 private fun nunito(weight: Int) =
     Font(R.font.nunito, FontWeight(weight), variationSettings = FontVariation.Settings(FontVariation.weight(weight)))
 
-private const val BOLD = 700
-private const val MEDIUM = 500
+internal const val BOLD = 700
+internal const val MEDIUM = 500
+internal const val EXTRA_BOLD = 800
 
-val Nunito = FontFamily(nunito(MEDIUM), nunito(BOLD))
+val Nunito = FontFamily(nunito(MEDIUM), nunito(BOLD), nunito(EXTRA_BOLD))
 
 /** Text is drawn this much smaller than its nominal size (a lighter look than the first designs). */
 private const val TEXT_SCALE = 0.92f

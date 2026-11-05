@@ -71,6 +71,9 @@ class FakeProvider(private val now: Long = System.currentTimeMillis()) : Dispatc
     /** A movie's poster address. */
     var moviePoster: (Long) -> String = { "http://img/$it.jpg" }
 
+    /** A movie's rating in the list, by its id; null for none (as an M3U film has). */
+    var movieRating: (Long) -> String? = { "7.5" }
+
     /** A series' cover address. */
     var seriesCover: (Long) -> String = { "http://img/s$it.jpg" }
 
@@ -218,7 +221,8 @@ class FakeProvider(private val now: Long = System.currentTimeMillis()) : Dispatc
                     """{"num":${i + 1},"name":"${m.second}","stream_id":${m.first},"category_id":"${m.third}",""" +
                         """"stream_icon":"${moviePoster(
                             m.first
-                        )}","rating":"7.5","added":"${1_700_000_000 + m.first}","container_extension":"mkv"}"""
+                        )}",${movieRating(m.first)?.let { "\"rating\":\"$it\"," }.orEmpty()}""" +
+                        """"added":"${1_700_000_000 + m.first}","container_extension":"mkv"}"""
                 }
             )
         }
