@@ -102,8 +102,11 @@ See also:
 - **Text the app defines** comes from string resources: `stringResource` in composables, `appString` / `appPlural`
   (AppText.kt) elsewhere.
 - **Text from users, playlists and guides is shown as it is:** playlist, guide, channel and category names, titles.
-  - The one exception (the owner, 2026-11-03): an adult category's section code is replaced by "XXX" (`adultLabel` in
-    `data/CoreText.kt`), so adult categories of every type look the same and sort near the end.
+  - The exceptions:
+    - An adult category's section code is replaced by "XXX" (`adultLabel` in `data/CoreText.kt`), so adult categories
+      of every type look the same and sort near the end (the owner, 2026-11-03).
+    - An episode's name is shown without what its page shows already: the language tag, the series' name and the
+      episode code, in any order (`VodTitles.episodeName`; the owner, 2026-11-05). The provider's name is saved as it is.
 - **Category columns are in A to Z order** of the names shown (`distinctLabels`), after the fixed entries (the owner,
   2026-11-03).
 - **Saved data stays language-neutral.** The app saves blank values, ids or codes and names them when shown:

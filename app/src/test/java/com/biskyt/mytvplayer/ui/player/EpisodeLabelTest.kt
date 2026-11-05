@@ -23,15 +23,26 @@ class EpisodeLabelTest {
     private fun episode(title: String) = EpisodeInfo(1, 2, 3, title, "mp4", null, null, null)
 
     @Test
+    fun `the series name, a language tag and the episode code are left out of the name shown`() {
+        val long = episode("EN: Masterchef USA (2010) - S02E03 - Auditions Day 1")
+        assertEquals("Auditions Day 1", episodeName(long, SHOW))
+        assertEquals("Series 2 · Episode 3 · Auditions Day 1", episodeLabel(long, SHOW))
+        // The provider's words are kept as they are, for Carry on watching and the sync.
+        assertEquals("EN: Masterchef USA (2010) - S02E03 - Auditions Day 1", providerTitle(long))
+        // Nothing but the series and the code: the app names it.
+        assertEquals("Episode 3", episodeName(episode("Masterchef USA - S02E03"), SHOW))
+    }
+
+    @Test
     fun `a provider's title is kept as it is, and only the app's words change language`() {
         AppText.setLanguage(app, "es")
         val titled = episode("The Pilot")
-        assertEquals("The Pilot", episodeName(titled))
-        assertEquals("Temporada 2 · Episodio 3 · The Pilot", episodeLabel(titled))
+        assertEquals("The Pilot", episodeName(titled, SHOW))
+        assertEquals("Temporada 2 · Episodio 3 · The Pilot", episodeLabel(titled, SHOW))
         // Only its number: shown as the provider wrote it, and left out of the label so the number isn't there twice.
         val numbered = episode("Episode 3")
-        assertEquals("Episode 3", episodeName(numbered))
-        assertEquals("Temporada 2 · Episodio 3", episodeLabel(numbered))
+        assertEquals("Episode 3", episodeName(numbered, SHOW))
+        assertEquals("Temporada 2 · Episodio 3", episodeLabel(numbered, SHOW))
     }
 
     @Test
@@ -39,7 +50,11 @@ class EpisodeLabelTest {
         AppText.setLanguage(app, "es")
         val untitled = episode("")
         assertNull(providerTitle(untitled))
-        assertEquals("Episodio 3", episodeName(untitled))
-        assertEquals("Temporada 2 · Episodio 3", episodeLabel(untitled))
+        assertEquals("Episodio 3", episodeName(untitled, SHOW))
+        assertEquals("Temporada 2 · Episodio 3", episodeLabel(untitled, SHOW))
+    }
+
+    private companion object {
+        const val SHOW = "Masterchef USA"
     }
 }

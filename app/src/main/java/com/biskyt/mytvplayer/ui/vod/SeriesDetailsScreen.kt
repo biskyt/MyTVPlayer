@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -213,7 +214,7 @@ private fun EpisodeOptions(vm: SeriesDetailsViewModel, e: EpisodeInfo, saved: Wa
         if (saved?.finished != true) markWatched(false, set) else null,
         if (saved?.started == true) markWatched(true, set) else null
     )
-    ItemActionsPanel(episodeName(e), actions, close)
+    ItemActionsPanel(episodeName(e, vm.series?.title), actions, close)
 }
 
 /** Focus for Play as the page opens and whenever where to carry on changes, unless the remote is in the episode list. */
@@ -255,18 +256,27 @@ private fun Episodes(
     ) {
         items(shown, key = { it.id }) { e ->
             val focus = Modifier.restoreFocusIf(vm.focusEpisodePending && e == target) { vm.focusEpisodePending = false }
-            EpisodeRow(e, progress[e.id], focus, onLongClick = { vm.optionsFor = e }) { play(e) }
+            EpisodeRow(e, vm.series?.title, progress[e.id], focus, onLongClick = { vm.optionsFor = e }) { play(e) }
         }
     }
 }
 
 @Composable
-private fun EpisodeRow(e: EpisodeInfo, progress: WatchProgressEntity?, modifier: Modifier, onLongClick: () -> Unit, onClick: () -> Unit) {
+private fun EpisodeRow(
+    e: EpisodeInfo,
+    series: String?,
+    progress: WatchProgressEntity?,
+    modifier: Modifier,
+    onLongClick: () -> Unit,
+    onClick: () -> Unit
+) {
+    // Worked out once, not at each focus change (again when the language changes: it may be the app's "Episode 2").
+    val name = remember(e, series, LocalConfiguration.current) { episodeName(e, series) }
     TvCard(onClick = onClick, onLongClick = onLongClick, color = Palette.surfaceLow, modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("${e.number}", style = MaterialTheme.typography.titleSmall, color = Palette.textDim, modifier = Modifier.width(36.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(episodeName(e), style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
                 e.plot?.let { Muted(it) }
                 if (progress != null && !progress.finished && progress.started && progress.durationMs > 0) {
                     ProgressLine(progress.fraction, Modifier.width(220.dp).padding(top = 4.dp))

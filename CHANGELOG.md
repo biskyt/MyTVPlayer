@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.12.1
+- Episode names no longer repeat the series name, the language tag or the episode number: "EN: Masterchef USA - S16E01 - Auditions Day 1" now shows as "Auditions Day 1".
+
 ## 1.12.0
 - Sync between TVs now also keeps your favourites, recently watched channels, hidden channels, ticked and restricted categories, and TV guide choices the same on each TV (update every TV to this version).
 - On the Categories page, a country or a language no longer moves to the top when you tick it, so the focus stays on it: ticked groups come first when the page next opens.
