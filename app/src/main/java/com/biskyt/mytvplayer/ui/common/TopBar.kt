@@ -79,8 +79,8 @@ enum class Tab(@param:StringRes val label: Int) {
 
 /**
  * The top bar, as the design boards draw it (2026-11-05): the tabs as text, with the one shown in the accent colour
- * and underlined; then the VPN status, the clock, Search, Settings and the playlist switcher. Each item takes focus
- * with the app's usual ring.
+ * and underlined; then the VPN status, the clock, Search, Settings and the playlist switcher. The item with focus is
+ * filled with the accent colour, with no ring, as the film and series pages' buttons are.
  */
 @Composable
 fun TopBar(selected: Tab?) {
@@ -96,8 +96,8 @@ fun TopBar(selected: Tab?) {
     val hasCatchup by remember(active?.id) { active?.let { container.channels.observeHasCatchup(it.id) } ?: flowOf(false) }
         .collectAsState(initial = false)
     Row(
-        // The board's 40 and 22, less the room each item keeps for its focus ring.
-        Modifier.fillMaxWidth().height(48.bd).padding(horizontal = 40.bd - BAR_RING),
+        // The board's 40 and 22, less the room each item keeps around its text for its focus fill.
+        Modifier.fillMaxWidth().height(48.bd).padding(horizontal = 40.bd - BAR_PAD_H),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(BAR_GAP)
     ) {
@@ -116,16 +116,20 @@ fun TopBar(selected: Tab?) {
         }
         Box(Modifier.weight(1f))
         settings?.takeIf { it.warnVpn }?.let { VpnStatus(showIp = it.showExternalIp) }
-        Clock(Modifier.padding(BAR_RING), BarText.current, Palette.textDim)
+        Clock(Modifier.padding(horizontal = BAR_PAD_H, vertical = BAR_PAD_V), BarText.current, Palette.textDim)
         BarItem({ nav.open(Screen.Search()) }) { BarIcon(AppIcons.Search, stringResource(R.string.common_search)) }
         BarItem({ nav.open(Screen.Settings) }) { BarIcon(AppIcons.Settings, stringResource(R.string.common_settings)) }
         if (active != null) {
             BarItem({ nav.open(Screen.Playlists) }) {
+                // On the accent fill, the initial's colours swap, so its circle still shows.
+                val focused = LocalCardFocused.current
+                val circle = if (focused) accent.onAccent else accent.color
+                val initial = if (focused) accent.color else accent.onAccent
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.bd)) {
-                    Box(Modifier.size(20.bd).clip(CircleShape).background(accent.color), contentAlignment = Alignment.Center) {
-                        Text(active.name.take(1).uppercase(), style = InitialText.current, color = accent.onAccent)
+                    Box(Modifier.size(20.bd).clip(CircleShape).background(circle), contentAlignment = Alignment.Center) {
+                        Text(active.name.take(1).uppercase(), style = InitialText.current, color = initial)
                     }
-                    Text(active.name, style = BarText.current, color = Palette.textMuted, maxLines = 1)
+                    Text(active.name, style = BarText.current, color = barContent(Palette.textMuted), maxLines = 1)
                 }
             }
         }
@@ -137,38 +141,49 @@ private val BarText = BoardStyle(14, 700)
 private val InitialText = BoardStyle(11, 800)
 private val VpnText = BoardStyle(13, 700)
 
-/** Room for the focus ring around a top bar item, taken back from the gap between items. */
-private val BAR_RING = 4.bd
-private val BAR_GAP = 22.bd - BAR_RING * 2
+/** Room around a top bar item's text for its focus fill, taken back from the gap between items. */
+private val BAR_PAD_H = 10.bd
+private val BAR_PAD_V = 4.bd
+private val BAR_GAP = 22.bd - BAR_PAD_H * 2
+
+/** A top bar item's text or icon colour: [normal], or the accent's text colour on its focus fill. */
+@Composable
+private fun barContent(normal: Color) = if (LocalCardFocused.current) LocalAccent.current.onAccent else normal
 
 /** A tab's name: the one shown in the accent colour, with a line under it. */
 @Composable
 private fun TabLabel(name: String, current: Boolean) {
-    val accent = LocalAccent.current.color
+    val colour = barContent(if (current) LocalAccent.current.color else Palette.textDim)
     Text(
         name,
         style = BarText.current,
-        color = if (current) accent else Palette.textDim,
+        color = colour,
         maxLines = 1,
         // Every tab has the line's room, so they all line up; only the current one draws it.
         modifier = Modifier.drawBehind {
-            if (current) drawRect(accent, Offset(0f, size.height - 2.bd.toPx()), Size(size.width, 2.bd.toPx()))
+            if (current) drawRect(colour, Offset(0f, size.height - 2.bd.toPx()), Size(size.width, 2.bd.toPx()))
         }.padding(bottom = 3.bd)
     )
 }
 
 @Composable
 private fun BarIcon(icon: ImageVector, label: String) =
-    Icon(icon, contentDescription = label, tint = Palette.textDim, modifier = Modifier.size(18.bd))
+    Icon(icon, contentDescription = label, tint = barContent(Palette.textDim), modifier = Modifier.size(18.bd))
 
 /**
- * A top bar item: drawn as it is, on nothing, and with the app's focus ring around it (a little padding, so the ring
- * does not touch it).
+ * A top bar item: drawn as it is, on nothing. With focus, it is a pill filled with the accent colour, with no ring, as
+ * the film and series pages' buttons are; its content reads that from [LocalCardFocused] (see [barContent]).
  */
 @Composable
 private fun BarItem(onClick: () -> Unit, content: @Composable () -> Unit) {
-    TvCard(onClick = onClick, shape = RoundedCornerShape(50), color = Color.Transparent, focusedColor = Color.Transparent) {
-        Box(Modifier.padding(horizontal = BAR_RING, vertical = BAR_RING)) { content() }
+    TvCard(
+        onClick = onClick,
+        shape = RoundedCornerShape(50),
+        color = Color.Transparent,
+        focusedColor = LocalAccent.current.color,
+        ring = false
+    ) {
+        Box(Modifier.padding(horizontal = BAR_PAD_H, vertical = BAR_PAD_V)) { content() }
     }
 }
 
@@ -187,7 +202,7 @@ private fun VpnStatus(showIp: Boolean) {
     val vertical = if (ip == null) 8.dp else 3.dp
     Row(
         if (connected) {
-            Modifier.padding(BAR_RING)
+            Modifier.padding(horizontal = BAR_PAD_H, vertical = BAR_PAD_V)
         } else {
             Modifier.clip(
                 RoundedCornerShape(50)
@@ -236,8 +251,11 @@ fun Clock(
     Text(formatTime(now), style = style, color = color, modifier = modifier)
 }
 
-/** Between the top bar and the screen below it: page content starts 76 board pixels down (see TopBar). */
-val TabScaffoldGap = 28.bd
+/**
+ * Between the top bar and the screen below it: page content starts 70 board pixels down (see TopBar). The boards say
+ * 76; the owner asked for half way between that and the gap before them (2026-11-05).
+ */
+val TabScaffoldGap = 22.bd
 
 /** On a page drawn behind the top bar (its art showing through), how far down its content must start: 0 without. */
 val LocalTopBarInset = compositionLocalOf { 0.dp }

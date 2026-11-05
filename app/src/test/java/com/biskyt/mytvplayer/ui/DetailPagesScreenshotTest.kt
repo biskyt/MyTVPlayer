@@ -30,6 +30,7 @@ import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.focusedText
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.testutil.waitForText
+import com.biskyt.mytvplayer.ui.common.initials
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -117,6 +118,7 @@ class DetailPagesScreenshotTest {
         val favourite = compose.onNode(hasText("Favourite") and hasClickAction()).assertIsDisplayed().getBoundsInRoot()
         assertEquals((favourite.bottom - favourite.top).value, (resume.bottom - resume.top).value, 1f)
         assertTrue(resume.right < favourite.left)
+        waitForPoster("The Long Harbour")
         compose.onRoot().captureRoboImage("screenshots/redesign-film.png")
     }
 
@@ -159,8 +161,16 @@ class DetailPagesScreenshotTest {
         assertTrue(heart.positionInRoot.x > resume.positionInRoot.x + resume.size.width)
         val bottom = heart.positionInRoot.y + heart.size.height
         assertTrue("The heart ends at $bottom px, the screen at $screen px", bottom <= screen)
+        waitForPoster("Kitchen Masters USA")
         compose.onRoot().captureRoboImage(file)
     }
+
+    /**
+     * Pictures load in the background: waits until [title]'s poster no longer shows its initials, so the screenshot
+     * has it (without this, a busy run recorded the film page with no poster or backdrop).
+     */
+    private fun waitForPoster(title: String) =
+        compose.waitAdvancingClock(stepMs = 50) { compose.onAllNodes(hasText(initials(title))).fetchSemanticsNodes().isEmpty() }
 
     private companion object {
         const val MIN = 60_000L

@@ -3,6 +3,14 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.13.2
+- Moving up the TV guide sources list no longer skips the top guide.
+- Back in Settings, the row you opened has focus again, so you carry on from where you were.
+- Long category names on Live TV, Movies, Series and Catch-up scroll to show the rest while you are on them.
+- In the top bar, the item you are on is a pill filled with your accent colour, as on the film and series pages.
+- Pages start a little closer to the top bar.
+- The text on the film and series pages and in the top bar is smaller, and large text is now the size that normal text was.
+
 ## 1.13.1
 - The external IP in the top bar tries again after 10 seconds when the lookup service answers too slowly.
 - Setting a parental PIN no longer hides restricted channels, films and series for a moment.

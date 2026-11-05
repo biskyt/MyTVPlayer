@@ -239,12 +239,11 @@ fun <F> CategoryColumn(
                     }
             ) {
                 Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
+                    // A long name scrolls while the row has focus.
+                    OneLine(
                         label,
                         style = MaterialTheme.typography.titleSmall,
                         color = if (isSelected) LocalAccent.current.color else Palette.text,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
                     if (category?.restricted == true) RestrictedMark(Modifier.padding(end = 6.dp))

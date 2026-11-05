@@ -391,7 +391,7 @@ fun SettingRow(
     modifier: Modifier = Modifier,
     trailing: @Composable RowScope.() -> Unit = {}
 ) {
-    TvCard(onClick = onClick, modifier = modifier.fillMaxWidth(), color = Palette.surfaceLow) {
+    TvCard(onClick = onClick, modifier = modifier.returnsFocus(label).fillMaxWidth(), color = Palette.surfaceLow) {
         Row(
             Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
