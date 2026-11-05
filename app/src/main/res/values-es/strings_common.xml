@@ -91,5 +91,4 @@
     <string name="common_move_hint_touch">Toca las flechas para moverlo, tócalo para dejarlo ahí, Atrás para cancelar</string>
     <string name="common_vpn_on">VPN activa</string>
     <string name="common_vpn_off">VPN no conectada</string>
-    <string name="common_ip_country">%1$s · %2$s</string>
 </resources>

@@ -64,6 +64,9 @@ import okhttp3.OkHttpClient
  */
 val USER_AGENT = "MyTVPlayer/${BuildConfig.VERSION_NAME} (+https://github.com/biskyt/MyTVPlayer)"
 
+/** The longest wait for the external IP lookup, from the request to the last byte. */
+private const val IP_TIMEOUT_S = 10L
+
 /** Background work that needs the network waits until the TV is online. */
 private val online = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
@@ -114,10 +117,16 @@ class AppContainer(context: Context) {
     val vpn = VpnMonitor(context, appScope)
 
     // No pooled connection: one opened before a VPN started would still show the address without it.
+    // A limit for the whole call: a server that answers very slowly fails after 10 s, and the lookup is tried again.
     val externalIp =
         ExternalIp(
             vpn.network,
-            IpLookup(http.newBuilder().connectionPool(ConnectionPool(0, 1, TimeUnit.SECONDS)).build())::lookup,
+            IpLookup(
+                http.newBuilder()
+                    .connectionPool(ConnectionPool(0, 1, TimeUnit.SECONDS))
+                    .callTimeout(IP_TIMEOUT_S, TimeUnit.SECONDS)
+                    .build()
+            )::lookup,
             appScope
         )
     val backup = BackupRepository(db, settings, epg, sync)

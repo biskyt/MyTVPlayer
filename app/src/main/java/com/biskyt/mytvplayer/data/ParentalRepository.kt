@@ -108,8 +108,9 @@ class ParentalRepository(
 
     /** Sets a new PIN (empty: none). Whoever sets it knows it, so it stays unlocked until the app is left. */
     suspend fun setPin(pin: String) {
-        settings.update { it.copy(pinHash = if (pin.isEmpty()) "" else Pin.hash(pin)) }
+        // Unlock before the PIN is saved. In the other order, the row can show "locked" for a moment.
         unlocked.value = true
+        settings.update { it.copy(pinHash = if (pin.isEmpty()) "" else Pin.hash(pin)) }
     }
 }
 
