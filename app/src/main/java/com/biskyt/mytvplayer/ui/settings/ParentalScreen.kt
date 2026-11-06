@@ -50,7 +50,7 @@ fun ParentalScreen() {
         item {
             SettingRow(stringResource(R.string.parental_hide_recent), forget, {
                 vm.update { it.copy(hideRestrictedRecent = !it.hideRestrictedRecent) }
-            }, rememberFirstFocus()) { Toggle(s.hideRestrictedRecent) }
+            }, rememberFirstFocus(once = true)) { Toggle(s.hideRestrictedRecent) }
         }
         item {
             SettingRow(stringResource(R.string.parental_hide_carry_on), forget, {

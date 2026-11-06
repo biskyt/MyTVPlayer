@@ -235,7 +235,7 @@ fun GuideSourcesScreen() {
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PillButton(stringResource(R.string.live_guide_add), { adding = true }, rememberFirstFocus(), primary = true)
+                PillButton(stringResource(R.string.live_guide_add), { adding = true }, rememberFirstFocus(once = true), primary = true)
                 PillButton(stringResource(R.string.live_guide_update_now), vm::refresh)
                 PillButton(stringResource(R.string.live_guide_match_missing), vm::matchMissing)
             }

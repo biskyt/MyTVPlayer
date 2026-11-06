@@ -204,9 +204,9 @@ private fun VpnStatus(showIp: Boolean) {
         if (connected) {
             Modifier.padding(horizontal = BAR_PAD_H, vertical = BAR_PAD_V)
         } else {
-            Modifier.clip(
-                RoundedCornerShape(50)
-            ).background(Palette.warning).padding(start = 10.dp, end = 14.dp, top = vertical, bottom = vertical)
+            // The same room beside it as the other items have, so the bar is spaced alike either way.
+            Modifier.padding(horizontal = BAR_PAD_H).clip(RoundedCornerShape(50)).background(Palette.warning)
+                .padding(start = 10.dp, end = 14.dp, top = vertical, bottom = vertical)
         },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.bd)
