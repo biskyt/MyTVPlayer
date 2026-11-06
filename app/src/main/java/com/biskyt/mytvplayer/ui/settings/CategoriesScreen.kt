@@ -269,14 +269,20 @@ fun CategoriesScreen(playlistId: Long, firstRun: Boolean) {
                 }
                 if (groups.isEmpty() && query.isNotEmpty()) item { Muted(stringResource(R.string.settings_categories_no_match, query)) }
                 items(groups, key = { it.code ?: "" }) { g ->
+                    var focused by remember { mutableStateOf(false) }
                     TvCard(
                         onClick = { vm.toggleGroup(g) },
-                        selected = g.code == vm.selectedGroup,
+                        // The group shown on the right, while the remote is elsewhere: with focus, it is always that one,
+                        // and a filled card's "in use" ring (see TvCard) would say nothing.
+                        selected = g.code == vm.selectedGroup && !focused,
                         color = Palette.surfaceLow,
                         fill = true,
                         modifier = Modifier.restoreFocusIf(vm.firstFocusPending && g == groups.first()) { vm.firstFocusPending = false }
                             .fillMaxWidth()
-                            .onFocusChanged { if (it.isFocused) vm.selectedGroup = g.code }
+                            .onFocusChanged {
+                                focused = it.isFocused
+                                if (it.isFocused) vm.selectedGroup = g.code
+                            }
                     ) {
                         Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {

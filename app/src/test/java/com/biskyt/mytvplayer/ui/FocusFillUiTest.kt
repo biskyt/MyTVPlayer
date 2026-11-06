@@ -2,12 +2,15 @@ package com.biskyt.mytvplayer.ui
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.unit.dp
+import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.drawScreen
@@ -15,6 +18,7 @@ import com.biskyt.mytvplayer.testutil.focusedText
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.ui.common.MenuOption
 import com.biskyt.mytvplayer.ui.common.SettingRow
+import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
@@ -61,6 +65,29 @@ class FocusFillUiTest {
     @Test
     fun `a settings row with focus is filled with the accent colour`() = assertFilled("Playback") { label, first ->
         SettingRow(label, "Skip times and subtitles", {}, if (first) rememberFirstFocus() else Modifier)
+    }
+
+    @Test
+    fun `a filled choice in use shows a ring inside its fill`() {
+        var onAccent = Color.Unspecified
+        compose.setContent {
+            MyTvTheme {
+                accent = LocalAccent.current.color
+                onAccent = LocalAccent.current.onAccent
+                TvCard(onClick = {}, modifier = rememberFirstFocus(), selected = true, fill = true) {
+                    Text("English", Modifier.padding(16.dp))
+                }
+            }
+        }
+        compose.waitAdvancingClock(stepMs = 50) { compose.focusedText() == "English" }
+        val screen = compose.drawScreen()
+        val node = compose.onNode(hasText("English") and hasClickAction()).fetchSemanticsNode()
+        val middle = (node.positionInRoot.y + node.size.height / 2).toInt()
+        val x = node.positionInRoot.x.toInt()
+        assertEquals("Its edge", accent.toArgb(), Color(screen.getPixel(x, middle)).toArgb())
+        // The ring: 2 dp wide, inside the edge (at this test's density, pixels 2 and 3 across); then the fill again.
+        assertEquals("Its ring", onAccent.toArgb(), Color(screen.getPixel(x + 3, middle)).toArgb())
+        assertEquals("Inside its ring", accent.toArgb(), Color(screen.getPixel(x + 6, middle)).toArgb())
     }
 
     @Test
