@@ -2,6 +2,7 @@ package com.biskyt.mytvplayer.ui.player
 
 import android.content.Context
 import androidx.annotation.StringRes
+import androidx.annotation.VisibleForTesting
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -224,7 +225,9 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     /** A stream that keeps failing before it ever played may be tried another way (live TV: the other format); true if so. */
     protected open fun tryOtherFormat(): Boolean = false
 
-    protected open fun onEnded() = Unit
+    /** Playback reached the end of the stream. */
+    @VisibleForTesting(otherwise = VisibleForTesting.PROTECTED)
+    internal open fun onEnded() = Unit
 
     // Live TV overrides these; on demand they do nothing.
     protected open fun zap(step: Int) = Unit

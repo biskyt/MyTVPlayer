@@ -30,8 +30,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * A movie or an episode: resumes where the user left off, saves progress as it plays, and moves on to the next episode
- * when one finishes.
+ * A movie or an episode: resumes where the user left off, saves progress as it plays, and closes at the end.
  */
 class VodPlayerViewModel(c: AppContainer, appContext: Context, private val screen: Screen.VodPlayer) : PlaybackViewModel(c, appContext) {
     var title by mutableStateOf("")
@@ -144,13 +143,9 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
     }
 
     private suspend fun play(p: PlaylistEntity, playing: Playing, url: String, fromStart: Boolean) {
-        // Read before this one becomes current: a save meanwhile (Back, or the timer) is still the last one's, at its own
-        // place. And before playback starts, so nothing waits between starting it and the controls coming up.
+        // Read before playback starts, so nothing waits between starting it and the controls coming up.
         val known = c.vod.progress(p.id, playing.kind, playing.itemId)
         current = playing
-        // The last episode's description, open as the next one starts, goes with it.
-        if (sheet == Sheet.DESCRIPTION) sheet = null
-        playedMs = 0
         // Something already started counts at once: only a new start waits.
         onCarryOn = known != null && known.started && !known.finished
         resetForNewStream()
@@ -233,19 +228,11 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         c.appScope.launch { c.vod.saveProgress(row, trim, nextEpisode) }
     }
 
-    /** At the end: a movie closes; an episode is saved as watched and the next one starts. */
-    override fun onEnded() {
-        save(trim = true)
-        if (nextEpisode == null) stop() else playNext()
-    }
-
-    private fun playNext() {
-        val p = playlist ?: return
-        val next = nextEpisode ?: return
-        val seriesId = screen.seriesId ?: return
-        save()
-        viewModelScope.launch { startEpisode(p, seriesId, next.id, fromStart = true) }
-    }
+    /**
+     * At the end, the player closes, as Stop does (the owner, 2026-11-06): the next episode never starts by itself. An
+     * episode is saved as watched, with the next one on Carry on watching (see [save]).
+     */
+    override fun onEnded() = stop()
 
     override fun stop() {
         // Saved before the player stops, while its position is still known.
