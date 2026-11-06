@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.14.2
+- At the end of an episode, the player closes and the next episode no longer starts by itself: it waits for you on Carry on watching and on the series page.
+
 ## 1.14.1
 - The audio or subtitle track, playlist or TV guide in use has a ring inside its accent fill, so you can still see it when it has focus.
 - If you move the remote on the Movies or Series tab before its titles appear, the first title no longer takes focus from where you went.

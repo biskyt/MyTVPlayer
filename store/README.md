@@ -66,7 +66,7 @@ MAIN FEATURES
 
 OTHER FEATURES
 • Start over: watch the programme that is on now from its beginning, on channels that have catch-up.
-• Movies and episodes continue from where you stopped, and the next episode starts automatically.
+• Movies and episodes continue from where you stopped, and the next episode waits for you on the Home screen.
 • Choose the countries and languages that you want, so that large playlists stay quick.
 • One search for channels, TV programmes, movies and series.
 • Type a channel number on the remote, or press Guide to open the TV guide from any screen.
