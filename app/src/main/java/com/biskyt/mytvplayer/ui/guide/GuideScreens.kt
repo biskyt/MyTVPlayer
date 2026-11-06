@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -57,12 +58,18 @@ import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import com.biskyt.mytvplayer.data.db.PlaylistEpgSourceEntity
 import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.AppIcons
+import com.biskyt.mytvplayer.ui.common.BoardOption
+import com.biskyt.mytvplayer.ui.common.BoardPanel
+import com.biskyt.mytvplayer.ui.common.BoardPanelGap
+import com.biskyt.mytvplayer.ui.common.BoardPanelSubtitle
+import com.biskyt.mytvplayer.ui.common.BoardPanelText
+import com.biskyt.mytvplayer.ui.common.BoardPanelTitle
+import com.biskyt.mytvplayer.ui.common.BoardSection
 import com.biskyt.mytvplayer.ui.common.ChannelLogo
 import com.biskyt.mytvplayer.ui.common.FilterField
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.NowNext
 import com.biskyt.mytvplayer.ui.common.PillButton
-import com.biskyt.mytvplayer.ui.common.SidePanel
 import com.biskyt.mytvplayer.ui.common.StatusPanel
 import com.biskyt.mytvplayer.ui.common.Toggle
 import com.biskyt.mytvplayer.ui.common.TvCard
@@ -79,6 +86,7 @@ import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.settings.SettingsPage
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
+import com.biskyt.mytvplayer.ui.theme.bd
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -295,15 +303,16 @@ private fun ProgrammesUntil(untilMs: Long) {
 @Composable
 private fun AddGuidePanel(vm: GuideSourcesViewModel, sources: List<EpgSourceEntity>, onDismiss: () -> Unit) {
     val free = remember(sources) { FreeGuides.notAdded(sources) }
-    SidePanel(onDismiss, width = 560.dp) {
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            item { Text(stringResource(R.string.live_guide_add), style = MaterialTheme.typography.headlineSmall) }
+    // Wider than a menu: it has text boxes for an address. A list of its own, so the panel's column does not scroll.
+    BoardPanel(onDismiss, width = 560.dp, scroll = false) {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(BoardPanelGap)) {
+            item { BoardPanelTitle(stringResource(R.string.live_guide_add), Modifier.padding(bottom = 6.bd)) }
             vm.status?.takeIf { it.working }?.let { status ->
-                item { Text(stringResource(R.string.live_guide_wait, status.title), color = Palette.warning) }
+                item { BoardPanelText(stringResource(R.string.live_guide_wait, status.title), color = Palette.warning) }
             }
             item {
-                Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(R.string.live_guide_own_address), style = MaterialTheme.typography.titleMedium)
+                Column(Modifier.padding(top = 4.bd), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BoardSection(stringResource(R.string.live_guide_own_address))
                     val urlEdit = rememberSaveable { mutableStateOf(false) }
                     val nameHint = stringResource(R.string.live_guide_name_hint)
                     TvTextField(vm.name, { vm.name = it }, nameHint, Modifier.fillMaxWidth(), onNext = { urlEdit.value = true })
@@ -316,24 +325,13 @@ private fun AddGuidePanel(vm: GuideSourcesViewModel, sources: List<EpgSourceEnti
                 }
             }
             item {
-                Column(Modifier.padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(stringResource(R.string.live_guide_free_title), style = MaterialTheme.typography.titleMedium)
-                    Muted(stringResource(R.string.live_guide_free_note), maxLines = 2)
+                Column(Modifier.padding(top = 8.bd), verticalArrangement = Arrangement.spacedBy(4.bd)) {
+                    BoardSection(stringResource(R.string.live_guide_free_title))
+                    BoardPanelSubtitle(stringResource(R.string.live_guide_free_note), Modifier.padding(horizontal = 14.bd))
                 }
             }
-            items(free, key = { it.code }) { g ->
-                TvCard(
-                    onClick = { if (vm.addFree(g)) onDismiss() },
-                    color = Palette.surfaceLow,
-                    fill = true,
-                    modifier = (if (g == free.first()) rememberFirstFocus() else Modifier).fillMaxWidth()
-                ) {
-                    Text(
-                        g.country,
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                    )
-                }
+            itemsIndexed(free, key = { _, g -> g.code }) { i, g ->
+                BoardOption(g.country, modifier = if (i == 0) rememberFirstFocus() else Modifier) { if (vm.addFree(g)) onDismiss() }
             }
         }
     }

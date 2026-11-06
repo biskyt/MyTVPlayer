@@ -598,8 +598,9 @@ class AppUiTest {
         show(Screen.GuideSources)
         waitFor("Guides for ") // the playlist in use's
         compose.onNode(hasText("Add a guide")).performSemanticsAction(SemanticsActions.OnClick)
-        waitFor("Free guides by country")
-        waitFor("Your own XMLTV address")
+        // Section headings, in upper case as the boards draw them (see BoardSection).
+        waitFor("FREE GUIDES BY COUNTRY")
+        waitFor("YOUR OWN XMLTV ADDRESS")
     }
 
     @Test

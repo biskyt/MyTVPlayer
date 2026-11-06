@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.15.0
+- Every side panel (channel and title options, the player's menus, the channel guide, descriptions, the PIN pad and Add a guide) has the new design, with options that fill with your accent colour.
+
 ## 1.14.2
 - At the end of an episode, the player closes and the next episode no longer starts by itself: it waits for you on Carry on watching and on the series page.
 

@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -68,6 +69,7 @@ import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.VodCard
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
+import com.biskyt.mytvplayer.ui.theme.LocalOnAccentTypography
 import com.biskyt.mytvplayer.ui.theme.Palette
 import kotlinx.coroutines.flow.StateFlow
 
@@ -102,7 +104,9 @@ fun TvCard(
     /** Without it, what holds the card shows its focus (the series page's episode rows). */
     ring: Boolean = true,
     fill: Boolean = false,
-    content: @Composable () -> Unit
+    /** Its text's colour without focus (a panel's Delete is red). */
+    contentColor: Color = Palette.text,
+    content: @Composable BoxScope.() -> Unit
 ) {
     val accent = LocalAccent.current
     var focused by remember { mutableStateOf(false) }
@@ -126,8 +130,8 @@ fun TvCard(
             containerColor = if (selected) accent.tint else color,
             focusedContainerColor = focusFill,
             pressedContainerColor = if (fill) accent.color else focusedColor,
-            contentColor = Palette.text,
-            focusedContentColor = if (fill) accent.onAccent else Palette.text
+            contentColor = contentColor,
+            focusedContentColor = if (fill) accent.onAccent else contentColor
         ),
         border = ClickableSurfaceDefaults.border(
             focusedBorder = when {
@@ -142,38 +146,22 @@ fun TvCard(
         CompositionLocalProvider(LocalCardFocused provides focused, LocalCardFilled provides filled) {
             // Branched on fill (fixed for a card), not on focus: the same composition either way, so a focus move does
             // not dispose and recreate the content (its effects, such as a focus restore, would run again).
-            if (fill) FilledCardText(filled, accent.onAccent, content) else content()
+            val box = this
+            if (fill) FilledCardText(filled) { box.content() } else content()
         }
     }
 }
 
 /**
- * The theme's text styles (they set the text colour themselves), in [color] while [filled], for text on the accent
- * fill. The styles in [color] are made once for the card.
+ * The theme's text styles (they set the text colour themselves), in the accent's text colour while [filled], for text
+ * on the accent fill. The theme makes those styles once (see [LocalOnAccentTypography]), not each card.
  */
 @Composable
-private fun FilledCardText(filled: Boolean, color: Color, content: @Composable () -> Unit) {
+private fun FilledCardText(filled: Boolean, content: @Composable () -> Unit) {
+    // Always through MaterialTheme, filled or not: the same composition either way, so a focus move does not dispose
+    // and recreate the content.
     val t = MaterialTheme.typography
-    val onAccent = remember(t, color) {
-        t.copy(
-            displayLarge = t.displayLarge.copy(color = color),
-            displayMedium = t.displayMedium.copy(color = color),
-            displaySmall = t.displaySmall.copy(color = color),
-            headlineLarge = t.headlineLarge.copy(color = color),
-            headlineMedium = t.headlineMedium.copy(color = color),
-            headlineSmall = t.headlineSmall.copy(color = color),
-            titleLarge = t.titleLarge.copy(color = color),
-            titleMedium = t.titleMedium.copy(color = color),
-            titleSmall = t.titleSmall.copy(color = color),
-            bodyLarge = t.bodyLarge.copy(color = color),
-            bodyMedium = t.bodyMedium.copy(color = color),
-            bodySmall = t.bodySmall.copy(color = color),
-            labelLarge = t.labelLarge.copy(color = color),
-            labelMedium = t.labelMedium.copy(color = color),
-            labelSmall = t.labelSmall.copy(color = color)
-        )
-    }
-    MaterialTheme(MaterialTheme.colorScheme, MaterialTheme.shapes, if (filled) onAccent else t, content)
+    MaterialTheme(MaterialTheme.colorScheme, MaterialTheme.shapes, if (filled) LocalOnAccentTypography.current else t, content)
 }
 
 /** Whether the [TvCard] around this content is filled with the accent colour now (focused, with fill). */
@@ -350,17 +338,6 @@ fun OneLine(
         )
     } else {
         Text(text, style = style, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier)
-    }
-}
-
-/** A row in an options panel ([SidePanel]): a label and, under it, what it does. */
-@Composable
-fun MenuOption(label: String, help: String? = null, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    TvCard(onClick = onClick, modifier = modifier.fillMaxWidth(), color = Palette.surface, fill = true) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-            Text(label, style = MaterialTheme.typography.titleMedium)
-            if (help != null) Muted(help)
-        }
     }
 }
 

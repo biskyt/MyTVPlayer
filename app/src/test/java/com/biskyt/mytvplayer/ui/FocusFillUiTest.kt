@@ -4,11 +4,14 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.testutil.TestApp
@@ -16,7 +19,7 @@ import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.drawScreen
 import com.biskyt.mytvplayer.testutil.focusedText
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
-import com.biskyt.mytvplayer.ui.common.MenuOption
+import com.biskyt.mytvplayer.ui.common.BoardOption
 import com.biskyt.mytvplayer.ui.common.SettingRow
 import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
@@ -91,7 +94,29 @@ class FocusFillUiTest {
     }
 
     @Test
-    fun `a menu option with focus is filled with the accent colour`() = assertFilled("Add to favourites") { label, first ->
-        MenuOption(label, "Shown first on Home", if (first) rememberFirstFocus() else Modifier) {}
+    fun `a filled card's content is not made again as focus moves on and off it`() {
+        var made = 0
+        compose.setContent {
+            MyTvTheme {
+                Column {
+                    TvCard(onClick = {}, modifier = rememberFirstFocus(), fill = true) {
+                        remember { made++ }
+                        Text("Filled")
+                    }
+                    TvCard(onClick = {}) { Text("Other") }
+                }
+            }
+        }
+        compose.waitAdvancingClock(stepMs = 50) { compose.focusedText() == "Filled" }
+        compose.onNode(hasText("Other") and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
+        compose.waitAdvancingClock(stepMs = 50) { compose.focusedText() == "Other" }
+        compose.onNode(hasText("Filled") and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
+        compose.waitAdvancingClock(stepMs = 50) { compose.focusedText() == "Filled" }
+        assertEquals(1, made)
+    }
+
+    @Test
+    fun `a side panel's option with focus is filled with the accent colour`() = assertFilled("Add to favourites") { label, first ->
+        BoardOption(label, "Shown first on Home", if (first) rememberFirstFocus() else Modifier) {}
     }
 }

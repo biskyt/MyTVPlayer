@@ -31,12 +31,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
-import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
@@ -44,8 +42,10 @@ import coil3.request.ImageRequest
 import coil3.request.allowRgb565
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.ui.common.AppIcons
+import com.biskyt.mytvplayer.ui.common.BoardPanel
+import com.biskyt.mytvplayer.ui.common.BoardPanelText
+import com.biskyt.mytvplayer.ui.common.BoardPanelTitle
 import com.biskyt.mytvplayer.ui.common.FocusStroke
-import com.biskyt.mytvplayer.ui.common.SidePanel
 import com.biskyt.mytvplayer.ui.common.favouriteLabel
 import com.biskyt.mytvplayer.ui.common.onTap
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
@@ -199,11 +199,12 @@ fun PlotWithMore(title: String, plot: String, style: TextStyle, maxLines: Int, m
     Text(plot, style = style, maxLines = maxLines, overflow = TextOverflow.Ellipsis, onTextLayout = { cut = it.hasVisualOverflow })
     if (cut) DetailButton(stringResource(R.string.vod_more), { open = true }, moreModifier, horizontal = 14.bd, vertical = 6.bd)
     if (open) {
-        SidePanel({ open = false }, dim = false) {
+        // Its text does not scroll (the remote has nothing in it to move to): it is cut at what fits.
+        BoardPanel({ open = false }, dim = false, scroll = false) {
             // Focused, so that Back reaches the panel and closes it.
-            Column(rememberFirstFocus().focusable(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(title, style = MaterialTheme.typography.titleLarge)
-                Text(plot, style = MaterialTheme.typography.bodyLarge, maxLines = PLOT_LINES, overflow = TextOverflow.Ellipsis)
+            Column(rememberFirstFocus().focusable(), verticalArrangement = Arrangement.spacedBy(8.bd)) {
+                BoardPanelTitle(title)
+                BoardPanelText(plot, maxLines = PLOT_LINES)
             }
         }
     }
