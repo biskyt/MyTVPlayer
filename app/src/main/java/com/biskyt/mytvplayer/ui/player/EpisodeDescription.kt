@@ -11,6 +11,7 @@ import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.xtream.EpisodeInfo
 import com.biskyt.mytvplayer.ui.common.BoardPanel
+import com.biskyt.mytvplayer.ui.common.BoardPanelGap
 import com.biskyt.mytvplayer.ui.common.BoardPanelSubtitle
 import com.biskyt.mytvplayer.ui.common.BoardPanelText
 import com.biskyt.mytvplayer.ui.common.BoardPanelTitle
@@ -36,7 +37,7 @@ fun episodeDescriptionAction(e: EpisodeInfo, open: () -> Unit): ItemAction? =
 @Composable
 fun EpisodeDescription(d: DescribedEpisode, modifier: Modifier = Modifier) {
     val e = d.episode
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(5.bd)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(BoardPanelGap)) {
         d.show?.takeIf { it.isNotBlank() }?.let { BoardPanelSubtitle(it) }
         BoardPanelTitle(episodeName(e, d.show), small = true)
         e.airDate?.let { BoardPanelSubtitle(stringResource(R.string.vod_first_shown, formatDate(it)), Modifier.padding(bottom = 4.bd)) }

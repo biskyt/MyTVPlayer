@@ -133,8 +133,8 @@ fun BoardOption(
         selected = selected
     ) {
         Column(Modifier.padding(horizontal = 14.bd, vertical = 8.bd), verticalArrangement = Arrangement.spacedBy(1.bd)) {
-            Text(label, style = OptionText.current, color = LocalContentColor.current)
-            if (help != null) Text(help, style = HelpText.current, color = cardColor(Palette.textDim, HELP_ON_ACCENT))
+            Text(label, style = BoardOptionText.current, color = LocalContentColor.current)
+            if (help != null) Text(help, style = BoardHelpText.current, color = cardColor(Palette.textDim, HELP_ON_ACCENT))
         }
     }
 }
@@ -196,9 +196,9 @@ private val FactShape = RoundedCornerShape(4.bd)
 /** An option's help on the accent fill: the accent's text colour, a little faded. */
 private const val HELP_ON_ACCENT = 0.78f
 
-/** A panel's options: 15, extra bold; their help 12, semi-bold. */
-private val OptionText = BoardStyle(15, EXTRA_BOLD)
-private val HelpText = BoardStyle(12, SEMI_BOLD)
+/** A panel's options: 15, extra bold; their help 12, semi-bold. Public, for a row of a panel's own (MyPlexPlayer's cast list). */
+val BoardOptionText = BoardStyle(15, EXTRA_BOLD)
+val BoardHelpText = BoardStyle(12, SEMI_BOLD)
 
 /** Under a panel's title ("2021 · Drama, Mystery"): 13, muted. */
 private val PanelSubtitle = BoardStyle(13, MEDIUM)

@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.15.1
+- Closing a panel in the player (More, Audio, Subtitles, About this programme), with Back or a choice in it, leaves you on the button that opened it.
+
 ## 1.15.0
 - Every side panel (channel and title options, the player's menus, the channel guide, descriptions, the PIN pad and Add a guide) has the new design, with options that fill with your accent colour.
 
