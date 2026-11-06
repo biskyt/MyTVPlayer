@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -48,7 +47,6 @@ import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.CycleSettingRow
-import com.biskyt.mytvplayer.ui.common.LocalReturnFocus
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.SettingRow
 import com.biskyt.mytvplayer.ui.common.Toggle
@@ -57,7 +55,6 @@ import com.biskyt.mytvplayer.ui.common.cycle
 import com.biskyt.mytvplayer.ui.common.displayLanguage
 import com.biskyt.mytvplayer.ui.common.nativeLanguageName
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
-import com.biskyt.mytvplayer.ui.common.rememberReturnFocus
 import java.util.Locale
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -75,10 +72,7 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
 fun SettingsPage(title: String, content: LazyListScope.() -> Unit) {
     Column(Modifier.fillMaxSize().padding(horizontal = 96.dp, vertical = 40.dp)) {
         Text(title, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(bottom = 20.dp))
-        // Back from a screen a row opened, that row has focus again.
-        CompositionLocalProvider(LocalReturnFocus provides rememberReturnFocus()) {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 40.dp), content = content)
-        }
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 40.dp), content = content)
     }
 }
 

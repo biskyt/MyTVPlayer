@@ -94,6 +94,7 @@ import com.biskyt.mytvplayer.ui.common.onOptionsKey
 import com.biskyt.mytvplayer.ui.common.onTap
 import com.biskyt.mytvplayer.ui.common.rememberDetails
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
+import com.biskyt.mytvplayer.ui.common.returnsFocus
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
 import java.time.Instant
@@ -322,7 +323,8 @@ fun GuideGrid(
             TimeHeader(span, midnight, now) { dir -> window.move(dir, null) { cursor.time = it } }
             GridFocus(
                 label = { highlight.at()?.let { (ch, p) -> cellTitle(ch, p, now, noGuide.takeIf { rows.hasProgrammes(ch) }) } },
-                modifier = Modifier.fillMaxSize()
+                // Back on its screen, the grid has focus again (it keeps its own highlighted programme).
+                modifier = Modifier.fillMaxSize().returnsFocus()
                     .focusRequester(entry)
                     .onFocusChanged { hasFocus = it.isFocused }
                     .ignoreHeldSelect()

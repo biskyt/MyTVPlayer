@@ -1,6 +1,7 @@
 package com.biskyt.mytvplayer.ui.vod
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,7 +37,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
@@ -203,6 +206,10 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
             ?: it.seasons.firstOrNull()?.number
     }
 
+    // Right from the left column goes into the episode list (at its first unplayed episode), not up to the top bar
+    // when the list is too short to be beside the buttons. Only while the list is shown.
+    val episodes = remember { FocusRequester() }
+    val toEpisodes = if (vm.error == null && d?.episodes?.isNotEmpty() == true) Modifier.focusProperties { right = episodes } else Modifier
     Box(Modifier.fillMaxSize()) {
         Backdrop(d?.info?.backdropUrl)
         Row(
@@ -210,7 +217,7 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
             horizontalArrangement = Arrangement.spacedBy(30.bd)
         ) {
             val favourite by vm.favourite.collectAsState()
-            SeriesColumn(show, d, season) {
+            SeriesColumn(show, d, season, moreModifier = toEpisodes) {
                 // Continue, and the favourite's heart beside it at the same height, so the column fits the screen.
                 Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.bd)) {
                     if (next != null) {
@@ -224,7 +231,7 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
                     FavouriteButton(
                         favourite,
                         { vm.toggleFavourite() },
-                        (if (next == null && d != null) rememberFirstFocus() else Modifier).fillMaxHeight()
+                        (if (next == null && d != null) rememberFirstFocus() else Modifier).then(toEpisodes).fillMaxHeight()
                     )
                 }
             }
@@ -240,7 +247,7 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
                     }
                     d == null -> Muted(stringResource(R.string.vod_loading_episodes))
                     d.episodes.isEmpty() -> Muted(stringResource(R.string.vod_no_episodes))
-                    else -> Episodes(vm, d, season, progress, target, play)
+                    else -> Episodes(vm, d, season, progress, target, play, episodes)
                 }
             }
         }
@@ -259,6 +266,8 @@ fun SeriesColumn(
     show: SeriesEntity,
     d: SeriesDetails?,
     season: Int? = null,
+    /** For the More… under the plot: where Right goes from it. */
+    moreModifier: Modifier = Modifier,
     extraFacts: @Composable ColumnScope.() -> Unit = {},
     buttons: @Composable ColumnScope.() -> Unit
 ) {
@@ -285,8 +294,8 @@ fun SeriesColumn(
             )
         }
         extraFacts()
-        // 4 lines at most: the column scrolls, so the buttons stay in reach.
-        d?.info?.plot?.let { Text(it, style = SeriesPlot.current, maxLines = 4, overflow = TextOverflow.Ellipsis) }
+        // 4 lines at most, so the buttons stay in reach; More… shows the rest.
+        d?.info?.plot?.let { PlotWithMore(show.title, it, SeriesPlot.current, maxLines = 4, moreModifier) }
         // Room under the last button for its focus ring: the scrolled column clips what is outside it.
         Column(
             Modifier.padding(top = 4.bd, bottom = FocusStroke.width),
@@ -349,7 +358,9 @@ private fun Episodes(
     season: Int?,
     progress: Map<Long, WatchProgressEntity>,
     target: EpisodeInfo?,
-    play: (EpisodeInfo) -> Unit
+    play: (EpisodeInfo) -> Unit,
+    /** Focus coming into the list goes to its first unplayed episode, or its first when all are watched. */
+    entry: FocusRequester
 ) {
     if (d.seasons.size > 1) {
         // In by the ring's width, as the episode list is, so the numbers line up with the pills' text.
@@ -366,15 +377,31 @@ private fun Episodes(
         val i = shown.indexOf(target)
         if (vm.focusEpisodePending && i >= 0) list.scrollToItem(i)
     }
+    val firstUnplayed = remember(shown, progress) { shown.firstOrNull { progress[it.id]?.finished != true } ?: shown.firstOrNull() }
+    val firstUnplayedRow = remember { FocusRequester() }
     LazyColumn(
         state = list,
-        modifier = Modifier.onFocusChanged { vm.listFocused = it.hasFocus },
+        modifier = Modifier.onFocusChanged { vm.listFocused = it.hasFocus }
+            .focusRequester(entry)
+            // Its row if it is laid out (a long list may have it out of view): otherwise the usual first row in view.
+            // Only coming in with Right (from the buttons): a row asked for by name (from the TV guide) keeps focus.
+            .focusProperties {
+                onEnter = {
+                    if (requestedFocusDirection ==
+                        FocusDirection.Right
+                    ) {
+                        runCatching { firstUnplayedRow.requestFocus(requestedFocusDirection) }
+                    }
+                }
+            }
+            .focusGroup(),
         verticalArrangement = Arrangement.spacedBy(8.bd),
         // Room for the open row's ring, just outside it.
         contentPadding = PaddingValues(start = RING, end = RING, top = RING, bottom = 24.bd)
     ) {
         items(shown, key = { it.id }) { e ->
             val focus = Modifier.restoreFocusIf(vm.focusEpisodePending && e == target) { vm.focusEpisodePending = false }
+                .then(if (e == firstUnplayed) Modifier.focusRequester(firstUnplayedRow) else Modifier)
             EpisodeRow(e, vm.series?.title, progress[e.id], focus, options = { vm.optionsFor = e }) { play(e) }
         }
     }

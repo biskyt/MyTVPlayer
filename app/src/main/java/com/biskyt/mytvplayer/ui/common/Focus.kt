@@ -1,20 +1,28 @@
 package com.biskyt.mytvplayer.ui.common
 
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.currentCompositeKeyHash
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import kotlin.random.Random
 import kotlinx.coroutines.flow.first
 
@@ -53,34 +61,40 @@ class FocusVisit {
 val LocalFocusVisit = staticCompositionLocalOf<FocusVisit?> { null }
 
 /**
- * The row of a list that had focus last (rows record themselves with [returnsFocus], by a label that is different for
- * each row on the page), kept with the screen's state: coming back to the list (from the screen that row opened), that
- * row has focus again, not the first one. If it is not there (a row shown only with some setting on), the first one
- * has it after all.
+ * The item of a screen that had focus last (cards and buttons record themselves with [returnsFocus], by where they are
+ * in the screen), kept with the screen's state: coming back to the screen (from one that item opened), that item has
+ * focus again, not the first one (the owner, 2026-11-05 for Settings, 2026-11-06 for every screen). If it is not there
+ * (a row shown only with some setting on), the first one has it after all.
  */
-class ReturnFocus internal constructor(private val last: MutableState<String?>) {
+class ReturnFocus internal constructor(private val last: MutableState<Int?>) {
+    /** Coming back to the screen (it was shown before, and an item had focus then). */
+    val cameBack = last.value != null
+
     /** Coming back to [last], until it has focus or [giveUp]. */
-    private val pending = mutableStateOf(last.value != null)
+    private val pending = mutableStateOf(cameBack)
     private var restored = false
 
-    internal fun note(row: String) {
-        last.value = row
+    /** Coming back, and the item not found yet. */
+    val returning: Boolean get() = pending.value
+
+    internal fun note(item: Int) {
+        last.value = item
     }
 
-    internal fun wants(row: String) = pending.value && last.value == row
+    internal fun wants(item: Int) = pending.value && last.value == item
 
     internal fun restored() {
         restored = true
         pending.value = false
     }
 
-    /** The row did not appear: the first focus goes ahead. */
+    /** The item did not appear: the first focus goes ahead. */
     internal fun giveUp() {
         pending.value = false
     }
 
     /**
-     * While coming back: waits until the row has focus (true) or is not coming (false). Afterwards false, so that a
+     * While coming back: waits until the item has focus (true) or is not coming (false). Afterwards false, so that a
      * first focus later in the visit (content shown again) is not held back.
      */
     internal suspend fun rowTakesFocus(): Boolean {
@@ -90,40 +104,90 @@ class ReturnFocus internal constructor(private val last: MutableState<String?>) 
     }
 }
 
-/** A [ReturnFocus] for a list: the row is saved with the screen, and each visit starts out returning to it. */
+/** A [ReturnFocus] for a screen: the item is saved with the screen, and each visit starts out returning to it. */
 @Composable
 fun rememberReturnFocus(): ReturnFocus {
-    val last = rememberSaveable { mutableStateOf<String?>(null) }
+    val last = rememberSaveable { mutableStateOf<Int?>(null) }
     val back = remember(last) { ReturnFocus(last) }
-    // A row shows in the first frame or two; one that has not by then is not on the page.
+    // A list's item shows within a few frames of the screen; one that has not by then is not there.
     LaunchedEffect(back) {
-        repeat(ROW_FRAMES) { withFrameNanos {} }
+        repeat(SETTLE_FRAMES) { withFrameNanos {} }
         back.giveUp()
     }
     return back
 }
 
-private const val ROW_FRAMES = 2
-
 val LocalReturnFocus = staticCompositionLocalOf<ReturnFocus?> { null }
 
-/** For a row named [row] in a list with a [ReturnFocus]: notes when it has focus, and gives it focus again coming back. */
+/**
+ * For a card or button on a screen with a [ReturnFocus]: notes when it has focus, and gives it focus again coming back.
+ * It is known by where it is in the screen (its composition key: in a lazy list, its item's key), so nothing needs
+ * naming it.
+ */
 @Composable
-fun Modifier.returnsFocus(row: String): Modifier {
+fun Modifier.returnsFocus(): Modifier {
     val back = LocalReturnFocus.current ?: return this
-    // Derived: only the row it is for recomposes, not every row at each move of the remote.
-    val wanted by remember(back, row) { derivedStateOf { back.wants(row) } }
-    return onFocusChanged { if (it.isFocused) back.note(row) }.restoreFocusIf(wanted) { back.restored() }
+    val item = currentCompositeKeyHash
+    // Derived: only the item it is for recomposes, not every item at each move of the remote.
+    val wanted by remember(back, item) { derivedStateOf { back.wants(item) } }
+    // Asked again just before: items drawn in a loop without a key share a key, and only the first restores.
+    return onFocusChanged { if (it.isFocused) back.note(item) }
+        .restoreFocusIf(wanted, still = { back.wants(item) }) { back.restored() }
 }
 
 /**
  * Gives this element focus once when [wanted] (e.g. returning to a list, on the item last opened), then calls
- * [onRestored]. Items not composed yet simply try when they appear.
+ * [onRestored]. Items not composed yet simply try when they appear. [still] is asked again just before.
  */
 @Composable
-fun Modifier.restoreFocusIf(wanted: Boolean, onRestored: () -> Unit): Modifier {
+fun Modifier.restoreFocusIf(wanted: Boolean, still: () -> Boolean = { true }, onRestored: () -> Unit): Modifier {
     if (!wanted) return this
     val r = remember { FocusRequester() }
-    LaunchedEffect(Unit) { if (runCatching { r.requestFocus() }.isSuccess) onRestored() }
+    LaunchedEffect(Unit) { if (still() && runCatching { r.requestFocus() }.isSuccess) onRestored() }
     return focusRequester(r)
 }
+
+/**
+ * A screen that is not left with nothing focused (the owner, 2026-11-06). Coming back to it, the item used last takes
+ * focus again (see [ReturnFocus]). With nothing focused after that (that item gone), or when the item with focus goes
+ * (a list reloads under it), its first item below the top bar takes focus. A screen's own choice comes first: this
+ * waits [SETTLE_FRAMES] frames and does nothing if anything on the screen has focus by then, and nothing as the screen
+ * first opens. [key]: the entry shown.
+ */
+@Composable
+fun KeepsFocus(key: Any, content: @Composable () -> Unit) {
+    val screen = remember(key) { FocusRequester() }
+    val state = remember(key) { ScreenFocus() }
+    val focusManager = LocalFocusManager.current
+    var focused by remember(key) { mutableStateOf(false) }
+    var hadFocus by remember(key) { mutableStateOf(false) }
+    val back = rememberReturnFocus()
+    val track = Modifier.onFocusChanged {
+        focused = it.hasFocus
+        if (it.hasFocus) hadFocus = true
+    }
+    Box(Modifier.fillMaxSize().focusRequester(screen).then(track).focusGroup()) {
+        CompositionLocalProvider(LocalReturnFocus provides back, LocalScreenFocus provides state, content = content)
+    }
+    LaunchedEffect(key) {
+        snapshotFlow { focused || back.returning }.collect { busy ->
+            // Not as a screen first opens: it chooses its own first focus, maybe once its data is in.
+            if (busy || !(hadFocus || back.cameBack)) return@collect
+            repeat(SETTLE_FRAMES) { withFrameNanos {} }
+            if (focused) return@collect
+            runCatching { screen.requestFocus() }
+            // Its first item may be the top bar's Home: the content below it, then.
+            if (state.inTopBar) focusManager.moveFocus(FocusDirection.Down)
+        }
+    }
+}
+
+/** What [KeepsFocus] needs to know of a screen: whether its top bar (see TopBar) has focus. */
+class ScreenFocus {
+    var inTopBar = false
+}
+
+val LocalScreenFocus = staticCompositionLocalOf<ScreenFocus?> { null }
+
+/** How long a screen's own focus has to settle: a list's items are laid out within a few frames. */
+private const val SETTLE_FRAMES = 10

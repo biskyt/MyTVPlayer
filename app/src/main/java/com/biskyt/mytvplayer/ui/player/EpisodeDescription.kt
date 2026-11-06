@@ -53,4 +53,5 @@ fun EpisodeDescriptionPanel(d: DescribedEpisode, onDismiss: () -> Unit) {
     }
 }
 
-private const val PLOT_LINES = 18
+/** What fits in a side panel (here, and a film's or series' plot): its text does not scroll. */
+internal const val PLOT_LINES = 18

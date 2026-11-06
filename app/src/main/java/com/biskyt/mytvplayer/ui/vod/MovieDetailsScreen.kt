@@ -131,7 +131,7 @@ fun FilmPage(
                     )
                 }
                 extraFacts()
-                d?.plot?.let { Text(it, style = FilmPlot.current, maxLines = 6, overflow = TextOverflow.Ellipsis) }
+                d?.plot?.let { PlotWithMore(movie.title, it, FilmPlot.current, maxLines = 6) }
                 d?.director?.let {
                     Text(stringResource(R.string.vod_director, it), style = SmallMuted.current, color = Palette.textDim, maxLines = 1)
                 }

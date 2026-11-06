@@ -120,7 +120,13 @@ fun SidePanel(onDismiss: () -> Unit, width: Dp = 430.dp, dim: Boolean = true, co
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        CompositionLocalProvider(LocalDensity provides density, LocalContext provides context, LocalConfiguration provides configuration) {
+        // Not the screen's: an item in a panel must not become the one the screen gives focus back to.
+        CompositionLocalProvider(
+            LocalDensity provides density,
+            LocalContext provides context,
+            LocalConfiguration provides configuration,
+            LocalReturnFocus provides null
+        ) {
             // A dialog is its own window: on a phone its bars would come back over the app otherwise.
             if (LocalTouch.current) {
                 val dialogView = LocalView.current

@@ -45,6 +45,7 @@ import com.biskyt.mytvplayer.data.db.withProxy
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
+import com.biskyt.mytvplayer.ui.common.LocalCardFilled
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.StatusPanel
@@ -52,6 +53,7 @@ import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.TvTextField
 import com.biskyt.mytvplayer.ui.common.WorkRunner
 import com.biskyt.mytvplayer.ui.common.WorkStatus
+import com.biskyt.mytvplayer.ui.common.cardColor
 import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.common.formatDateTime
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
@@ -137,14 +139,22 @@ fun PlaylistsScreen() {
                 TvCard(
                     onClick = { vm.activate(p) { nav.reset(Screen.Home) } },
                     selected = isActive,
-                    modifier = (if (i == 0) rememberFirstFocus(once = true) else Modifier).weight(1f)
+                    modifier = (if (i == 0) rememberFirstFocus(once = true) else Modifier).weight(1f),
+                    fill = true
                 ) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier.size(40.dp).clip(CircleShape).background(if (isActive) accent.color else INACTIVE_DISC),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(p.name.take(1).uppercase(), style = MaterialTheme.typography.titleMedium, color = Palette.background)
+                        // On the accent fill, the disc of the playlist in use takes the accent's text colour.
+                        val swapped = isActive && LocalCardFilled.current
+                        val disc = if (swapped) {
+                            accent.onAccent
+                        } else if (isActive) {
+                            accent.color
+                        } else {
+                            INACTIVE_DISC
+                        }
+                        Box(Modifier.size(40.dp).clip(CircleShape).background(disc), contentAlignment = Alignment.Center) {
+                            val initial = if (swapped) accent.color else Palette.background
+                            Text(p.name.take(1).uppercase(), style = MaterialTheme.typography.titleMedium, color = initial)
                         }
                         Column(Modifier.padding(start = 14.dp).weight(1f)) {
                             Text(p.name, style = MaterialTheme.typography.titleMedium)
@@ -153,7 +163,7 @@ fun PlaylistsScreen() {
                                 Text(
                                     expiryText(it),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = if (it.soon) Palette.warning else Palette.textMuted
+                                    color = cardColor(if (it.soon) Palette.warning else Palette.textMuted)
                                 )
                             }
                         }
@@ -161,7 +171,7 @@ fun PlaylistsScreen() {
                             Text(
                                 stringResource(R.string.settings_playlist_in_use),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = accent.color
+                                color = cardColor(accent.color)
                             )
                         }
                     }

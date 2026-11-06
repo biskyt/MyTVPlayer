@@ -3,6 +3,14 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.14.0
+- In Settings and in menus, the item you are on is filled with your accent colour instead of having a white border.
+- The text on the film and series pages and in the top bar is the same size as on the other screens.
+- A film's or series' description that is cut short has a More… button that shows all of it.
+- Back on any screen, the item you were on has focus again, and a screen is never left with nothing focused.
+- The Movies and Series tabs open on their first title, as Live TV opens on its first channel.
+- On a series page, Right from the buttons goes to the first episode you have not watched, even when the list is short.
+
 ## 1.13.3
 - Panels and screens give focus back to their first button again after a question is answered or cancelled, as before 1.13.2.
 - The "VPN not connected" warning in the top bar has the same space around it as the other items.
