@@ -18,26 +18,27 @@ private const val BOARD = 1280f / 960f
 /** [this] board pixels. */
 val Int.bd: Dp get() = (this * BOARD).dp
 
-/** A board font size of [this] pixels. */
-val Int.bsp: TextUnit get() = (this * BOARD).sp
-
-/** Text as a board writes it: [size] px, [weight], and an optional CSS line height (a multiple of the size). */
-internal fun boardText(size: Int, weight: Int, lineHeight: Float? = null, scale: Float = 1f) = TextStyle(
+/**
+ * Text as a board writes it: [size] px, [weight], and an optional CSS line height (a multiple of the size), at
+ * [factor] sp a pixel.
+ */
+private fun boardText(size: Int, weight: Int, lineHeight: Float?, factor: Float) = TextStyle(
     fontFamily = Nunito,
-    fontSize = (size * BOARD * scale).sp,
+    fontSize = (size * factor).sp,
     fontWeight = FontWeight(weight),
     color = Palette.text,
-    lineHeight = lineHeight?.let { (size * it * BOARD * scale).sp } ?: TextUnit.Unspecified
+    lineHeight = lineHeight?.let { (size * it * factor).sp } ?: TextUnit.Unspecified
 )
 
 /**
- * A board's text style, in the text colour (give another colour on the Text). Normal text is a step smaller than the
- * board's size, and Settings › large text is the board's size: on a TV, the boards' sizes looked like large text, and
- * a step larger again was far too large (the owner, 2026-11-05). Both are made once.
+ * A board's text style, in the text colour (give another colour on the Text). Its size is the board's number as the
+ * rest of the app sizes text (the theme's scale, not the boards' 4/3), and a step larger with Settings › large text:
+ * the boards' text, scaled like their layout, was too large on a TV (the owner, 2026-11-05 and 2026-11-06). Both styles
+ * are made once.
  */
 class BoardStyle(size: Int, weight: Int, lineHeight: Float? = null) {
-    private val normal = boardText(size, weight, lineHeight, 1f / LARGE_TEXT)
-    private val large = boardText(size, weight, lineHeight)
+    private val normal = boardText(size, weight, lineHeight, TEXT_SCALE)
+    private val large = boardText(size, weight, lineHeight, TEXT_SCALE * LARGE_TEXT)
 
     val current: TextStyle @Composable get() = if (LocalLargeText.current) large else normal
 }

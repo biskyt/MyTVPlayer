@@ -186,5 +186,5 @@ fun LockedCategory() {
 /** The small lock shown beside a restricted category. */
 @Composable
 fun RestrictedMark(modifier: Modifier = Modifier) {
-    Icon(AppIcons.Lock, stringResource(R.string.parental_restricted), tint = Palette.textDim, modifier = modifier.size(16.dp))
+    Icon(AppIcons.Lock, stringResource(R.string.parental_restricted), tint = cardColor(Palette.textDim), modifier = modifier.size(16.dp))
 }

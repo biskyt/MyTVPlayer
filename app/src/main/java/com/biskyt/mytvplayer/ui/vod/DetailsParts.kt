@@ -1,18 +1,24 @@
 package com.biskyt.mytvplayer.ui.vod
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -21,21 +27,29 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
+import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowRgb565
+import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.ui.common.AppIcons
 import com.biskyt.mytvplayer.ui.common.FocusStroke
+import com.biskyt.mytvplayer.ui.common.SidePanel
 import com.biskyt.mytvplayer.ui.common.favouriteLabel
 import com.biskyt.mytvplayer.ui.common.onTap
+import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
+import com.biskyt.mytvplayer.ui.player.PLOT_LINES
 import com.biskyt.mytvplayer.ui.theme.BOLD
 import com.biskyt.mytvplayer.ui.theme.BoardStyle
 import com.biskyt.mytvplayer.ui.theme.EXTRA_BOLD
@@ -67,12 +81,15 @@ fun DetailButton(
     val accent = LocalAccent.current
     PillSurface(onClick, modifier, background, Palette.text, accent.color, accent.onAccent, ring = false) {
         Row(
-            Modifier.padding(horizontal = horizontal, vertical = vertical),
+            // At least an icon's height: a button with text only is as high as one with an icon beside it.
+            Modifier.padding(horizontal = horizontal, vertical = vertical).heightIn(min = BUTTON_ICON),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.bd)
         ) {
             // The surface's content colour: the text's, or the accent's while it has focus.
-            icon?.let { Icon(it, contentDescription = iconDescription, tint = LocalContentColor.current, modifier = Modifier.size(16.bd)) }
+            icon?.let {
+                Icon(it, contentDescription = iconDescription, tint = LocalContentColor.current, modifier = Modifier.size(BUTTON_ICON))
+            }
             if (text.isNotEmpty()) Text(text, style = style, color = LocalContentColor.current, maxLines = 1)
         }
         if (progress != null) ButtonProgress(progress)
@@ -169,3 +186,26 @@ private val ButtonText = BoardStyle(15, BOLD)
 private val ButtonStrong = BoardStyle(15, EXTRA_BOLD)
 private val PillText = BoardStyle(14, BOLD)
 private val PillStrong = BoardStyle(14, EXTRA_BOLD)
+
+/**
+ * A film's or series' plot, [maxLines] at most. When it is cut short, a More… button under it opens the whole of it in a
+ * side panel, with [title] (the owner, 2026-11-06).
+ */
+@Composable
+fun PlotWithMore(title: String, plot: String, style: TextStyle, maxLines: Int) {
+    var cut by remember(plot) { mutableStateOf(false) }
+    var open by remember(plot) { mutableStateOf(false) }
+    Text(plot, style = style, maxLines = maxLines, overflow = TextOverflow.Ellipsis, onTextLayout = { cut = it.hasVisualOverflow })
+    if (cut) DetailButton(stringResource(R.string.vod_more), { open = true }, horizontal = 14.bd, vertical = 6.bd)
+    if (open) {
+        SidePanel({ open = false }, dim = false) {
+            // Focused, so that Back reaches the panel and closes it.
+            Column(rememberFirstFocus().focusable(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, style = MaterialTheme.typography.titleLarge)
+                Text(plot, style = MaterialTheme.typography.bodyLarge, maxLines = PLOT_LINES, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+private val BUTTON_ICON = 16.bd

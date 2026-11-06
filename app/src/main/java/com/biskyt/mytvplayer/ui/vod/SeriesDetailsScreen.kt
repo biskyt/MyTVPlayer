@@ -285,8 +285,8 @@ fun SeriesColumn(
             )
         }
         extraFacts()
-        // 4 lines at most: the column scrolls, so the buttons stay in reach.
-        d?.info?.plot?.let { Text(it, style = SeriesPlot.current, maxLines = 4, overflow = TextOverflow.Ellipsis) }
+        // 4 lines at most, so the buttons stay in reach; More… shows the rest.
+        d?.info?.plot?.let { PlotWithMore(show.title, it, SeriesPlot.current, maxLines = 4) }
         // Room under the last button for its focus ring: the scrolled column clips what is outside it.
         Column(
             Modifier.padding(top = 4.bd, bottom = FocusStroke.width),

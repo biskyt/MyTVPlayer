@@ -41,8 +41,8 @@ object Palette {
 }
 
 /**
- * Settings › large text: the boards' pages (see Board.kt) show their text at the boards' sizes when it is on, and a
- * step smaller when it is off.
+ * Settings › large text: the boards' pages (see Board.kt) show their text a step larger when it is on, as the other
+ * screens do.
  */
 val LocalLargeText = staticCompositionLocalOf { false }
 
@@ -62,7 +62,7 @@ internal const val EXTRA_BOLD = 800
 val Nunito = FontFamily(nunito(MEDIUM), nunito(BOLD), nunito(EXTRA_BOLD))
 
 /** Text is drawn this much smaller than its nominal size (a lighter look than the first designs). */
-private const val TEXT_SCALE = 0.92f
+internal const val TEXT_SCALE = 0.92f
 
 private fun style(size: Int, weight: Int) =
     TextStyle(fontFamily = Nunito, fontSize = (size * TEXT_SCALE).sp, fontWeight = FontWeight(weight), color = Palette.text)

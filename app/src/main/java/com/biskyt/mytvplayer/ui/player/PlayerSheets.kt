@@ -180,7 +180,7 @@ private fun Header(title: String, subtitle: String?) {
 
 @Composable
 private fun Choice(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    TvCard(onClick = onClick, selected = selected, modifier = modifier.fillMaxWidth(), color = Palette.surface) {
+    TvCard(onClick = onClick, selected = selected, modifier = modifier.fillMaxWidth(), color = Palette.surface, fill = true) {
         Text(label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
     }
 }

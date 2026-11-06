@@ -80,6 +80,8 @@ val CardShape = RoundedCornerShape(14.dp)
 
 /**
  * The app's one clickable surface: neutral background, white ring when focused, optional selected state in accent.
+ * With [fill] (settings rows and menus, the owner 2026-11-06), it is filled with the accent colour when focused, with
+ * no ring, and its text takes the accent's text colour (see [LocalCardFilled]).
  * No focus scale animation by default — re-laying out rows on every focus change is costly on slow boxes.
  * [onLongClick] (holding OK) is also opened by the remote's Info/Options/Menu button. On a touch screen: tap and long press.
  */
@@ -94,10 +96,18 @@ fun TvCard(
     focusedColor: Color = Palette.surfaceHigh,
     /** Without it, what holds the card shows its focus (the series page's episode rows). */
     ring: Boolean = true,
+    fill: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val accent = LocalAccent.current
     var focused by remember { mutableStateOf(false) }
+    val focusFill = if (fill) {
+        accent.color
+    } else if (selected) {
+        accent.tint
+    } else {
+        focusedColor
+    }
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
@@ -108,14 +118,61 @@ fun TvCard(
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (selected) accent.tint else color,
-            focusedContainerColor = if (selected) accent.tint else focusedColor,
-            pressedContainerColor = focusedColor,
+            focusedContainerColor = focusFill,
+            pressedContainerColor = if (fill) accent.color else focusedColor,
             contentColor = Palette.text,
-            focusedContentColor = Palette.text
+            focusedContentColor = if (fill) accent.onAccent else Palette.text
         ),
-        border = if (ring) ClickableSurfaceDefaults.border(focusedBorder = FocusRing) else ClickableSurfaceDefaults.border()
-    ) { CompositionLocalProvider(LocalCardFocused provides focused) { content() } }
+        border = if (ring && !fill) ClickableSurfaceDefaults.border(focusedBorder = FocusRing) else ClickableSurfaceDefaults.border()
+    ) {
+        val filled = fill && focused
+        CompositionLocalProvider(LocalCardFocused provides focused, LocalCardFilled provides filled) {
+            // Branched on fill (fixed for a card), not on focus: the same composition either way, so a focus move does
+            // not dispose and recreate the content (its effects, such as a focus restore, would run again).
+            if (fill) FilledCardText(filled, accent.onAccent, content) else content()
+        }
+    }
 }
+
+/**
+ * The theme's text styles (they set the text colour themselves), in [color] while [filled], for text on the accent
+ * fill. The styles in [color] are made once for the card.
+ */
+@Composable
+private fun FilledCardText(filled: Boolean, color: Color, content: @Composable () -> Unit) {
+    val t = MaterialTheme.typography
+    val onAccent = remember(t, color) {
+        t.copy(
+            displayLarge = t.displayLarge.copy(color = color),
+            displayMedium = t.displayMedium.copy(color = color),
+            displaySmall = t.displaySmall.copy(color = color),
+            headlineLarge = t.headlineLarge.copy(color = color),
+            headlineMedium = t.headlineMedium.copy(color = color),
+            headlineSmall = t.headlineSmall.copy(color = color),
+            titleLarge = t.titleLarge.copy(color = color),
+            titleMedium = t.titleMedium.copy(color = color),
+            titleSmall = t.titleSmall.copy(color = color),
+            bodyLarge = t.bodyLarge.copy(color = color),
+            bodyMedium = t.bodyMedium.copy(color = color),
+            bodySmall = t.bodySmall.copy(color = color),
+            labelLarge = t.labelLarge.copy(color = color),
+            labelMedium = t.labelMedium.copy(color = color),
+            labelSmall = t.labelSmall.copy(color = color)
+        )
+    }
+    MaterialTheme(MaterialTheme.colorScheme, MaterialTheme.shapes, if (filled) onAccent else t, content)
+}
+
+/** Whether the [TvCard] around this content is filled with the accent colour now (focused, with fill). */
+val LocalCardFilled = compositionLocalOf { false }
+
+/**
+ * A colour of its own for text or a mark in a card: [normal], or on the card's fill the accent's text colour (at
+ * [onAccentAlpha], for something fainter).
+ */
+@Composable
+fun cardColor(normal: Color, onAccentAlpha: Float = 1f): Color =
+    if (LocalCardFilled.current) LocalAccent.current.onAccent.copy(alpha = onAccentAlpha) else normal
 
 /** Whether the [TvCard] around this content has focus (e.g. for [OneLine]); only readers redraw when it changes. */
 val LocalCardFocused = compositionLocalOf { false }
@@ -286,7 +343,7 @@ fun OneLine(
 /** A row in an options panel ([SidePanel]): a label and, under it, what it does. */
 @Composable
 fun MenuOption(label: String, help: String? = null, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    TvCard(onClick = onClick, modifier = modifier.fillMaxWidth(), color = Palette.surface) {
+    TvCard(onClick = onClick, modifier = modifier.fillMaxWidth(), color = Palette.surface, fill = true) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Text(label, style = MaterialTheme.typography.titleMedium)
             if (help != null) Muted(help)
@@ -362,7 +419,7 @@ fun Muted(text: String, modifier: Modifier = Modifier, maxLines: Int = 1) {
     Text(
         text,
         style = style,
-        color = Palette.textMuted,
+        color = cardColor(Palette.textMuted, MUTED_ON_ACCENT),
         modifier = modifier,
         maxLines = maxLines,
         overflow = TextOverflow.Ellipsis
@@ -372,12 +429,15 @@ fun Muted(text: String, modifier: Modifier = Modifier, maxLines: Int = 1) {
 /** On/off switch drawn without animation. */
 @Composable
 fun Toggle(on: Boolean) {
-    val accent = LocalAccent.current.color
-    Box(Modifier.size(52.dp, 30.dp).clip(RoundedCornerShape(15.dp)).background(if (on) accent else Color(0xFF3A404C))) {
+    // On a card's accent fill: a track in the accent's text colour, and a knob in the accent colour.
+    val accent = LocalAccent.current
+    val track = if (on) cardColor(accent.color) else cardColor(Color(0xFF3A404C), TRACK_OFF_ON_ACCENT)
+    Box(Modifier.size(52.dp, 30.dp).clip(RoundedCornerShape(15.dp)).background(track)) {
         Box(
             Modifier.padding(
                 3.dp
-            ).size(24.dp).align(if (on) Alignment.CenterEnd else Alignment.CenterStart).clip(CircleShape).background(Palette.text)
+            ).size(24.dp).align(if (on) Alignment.CenterEnd else Alignment.CenterStart).clip(CircleShape)
+                .background(if (on && LocalCardFilled.current) accent.color else Palette.text)
         )
     }
 }
@@ -391,7 +451,7 @@ fun SettingRow(
     modifier: Modifier = Modifier,
     trailing: @Composable RowScope.() -> Unit = {}
 ) {
-    TvCard(onClick = onClick, modifier = modifier.returnsFocus(label).fillMaxWidth(), color = Palette.surfaceLow) {
+    TvCard(onClick = onClick, modifier = modifier.returnsFocus(label).fillMaxWidth(), color = Palette.surfaceLow, fill = true) {
         Row(
             Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -430,7 +490,9 @@ fun ValueChip(value: String) {
     Text(
         "◀ $value ▶",
         style = MaterialTheme.typography.labelLarge,
-        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Palette.surfaceHigh).padding(horizontal = 12.dp, vertical = 6.dp)
+        modifier = Modifier.clip(RoundedCornerShape(8.dp))
+            .background(cardColor(Palette.surfaceHigh, CHIP_ON_ACCENT))
+            .padding(horizontal = 12.dp, vertical = 6.dp)
     )
 }
 
@@ -467,3 +529,8 @@ fun <T> LazyListScope.titledRow(
         }
     }
 }
+
+/** On a card's accent fill: help text a little lighter than the label, an off switch's track and a value chip faint. */
+private const val MUTED_ON_ACCENT = 0.78f
+private const val TRACK_OFF_ON_ACCENT = 0.25f
+private const val CHIP_ON_ACCENT = 0.14f

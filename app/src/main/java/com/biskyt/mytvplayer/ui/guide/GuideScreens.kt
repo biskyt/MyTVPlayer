@@ -69,6 +69,7 @@ import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.TvTextField
 import com.biskyt.mytvplayer.ui.common.WorkRunner
 import com.biskyt.mytvplayer.ui.common.WorkStatus
+import com.biskyt.mytvplayer.ui.common.cardColor
 import com.biskyt.mytvplayer.ui.common.formatCount
 import com.biskyt.mytvplayer.ui.common.formatDateTime
 import com.biskyt.mytvplayer.ui.common.formatRange
@@ -253,7 +254,7 @@ fun GuideSourcesScreen() {
         items(sources, key = { it.source.id }) { row ->
             val s = row.source
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                TvCard(onClick = { vm.toggle(row) }, color = Palette.surfaceLow, modifier = Modifier.weight(1f)) {
+                TvCard(onClick = { vm.toggle(row) }, color = Palette.surfaceLow, modifier = Modifier.weight(1f), fill = true) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(s.name, style = MaterialTheme.typography.titleMedium)
@@ -263,7 +264,7 @@ fun GuideSourcesScreen() {
                                 Text(
                                     stringResource(R.string.live_guide_last_failed, GuideError.text(it)),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Palette.warning,
+                                    color = cardColor(Palette.warning),
                                     maxLines = 1
                                 )
                             }
@@ -285,7 +286,7 @@ private fun ProgrammesUntil(untilMs: Long) {
     Text(
         stringResource(R.string.live_guide_programmes_until, formatDateTime(untilMs)),
         style = MaterialTheme.typography.bodyMedium,
-        color = if (untilMs < now) Palette.warning else Palette.textMuted,
+        color = cardColor(if (untilMs < now) Palette.warning else Palette.textMuted),
         maxLines = 1
     )
 }
@@ -324,6 +325,7 @@ private fun AddGuidePanel(vm: GuideSourcesViewModel, sources: List<EpgSourceEnti
                 TvCard(
                     onClick = { if (vm.addFree(g)) onDismiss() },
                     color = Palette.surfaceLow,
+                    fill = true,
                     modifier = (if (g == free.first()) rememberFirstFocus() else Modifier).fillMaxWidth()
                 ) {
                     Text(
@@ -611,7 +613,9 @@ private fun ChoicePanel(vm: GuideMatchingViewModel, modifier: Modifier) {
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             items(vm.choices, key = { "${it.candidate.sourceId}/${it.candidate.xmlId}" }) { choice ->
                 val current = m?.sourceId == choice.candidate.sourceId && m.xmlId == choice.candidate.xmlId
-                TvCard(onClick = { vm.use(choice) }, selected = current, color = Palette.surface, modifier = Modifier.fillMaxWidth()) {
+                TvCard(onClick = {
+                    vm.use(choice)
+                }, selected = current, color = Palette.surface, modifier = Modifier.fillMaxWidth(), fill = true) {
                     Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(
@@ -626,7 +630,7 @@ private fun ChoicePanel(vm: GuideMatchingViewModel, modifier: Modifier) {
                             Text(
                                 stringResource(R.string.live_guide_match_score, (it * 100).toInt()),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = LocalAccent.current.soft
+                                color = cardColor(LocalAccent.current.soft)
                             )
                         }
                     }

@@ -122,14 +122,14 @@ fun TopBar(selected: Tab?) {
         if (active != null) {
             BarItem({ nav.open(Screen.Playlists) }) {
                 // On the accent fill, the initial's colours swap, so its circle still shows.
-                val focused = LocalCardFocused.current
+                val focused = LocalCardFilled.current
                 val circle = if (focused) accent.onAccent else accent.color
                 val initial = if (focused) accent.color else accent.onAccent
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.bd)) {
                     Box(Modifier.size(20.bd).clip(CircleShape).background(circle), contentAlignment = Alignment.Center) {
                         Text(active.name.take(1).uppercase(), style = InitialText.current, color = initial)
                     }
-                    Text(active.name, style = BarText.current, color = barContent(Palette.textMuted), maxLines = 1)
+                    Text(active.name, style = BarText.current, color = cardColor(Palette.textMuted), maxLines = 1)
                 }
             }
         }
@@ -146,14 +146,10 @@ private val BAR_PAD_H = 10.bd
 private val BAR_PAD_V = 4.bd
 private val BAR_GAP = 22.bd - BAR_PAD_H * 2
 
-/** A top bar item's text or icon colour: [normal], or the accent's text colour on its focus fill. */
-@Composable
-private fun barContent(normal: Color) = if (LocalCardFocused.current) LocalAccent.current.onAccent else normal
-
 /** A tab's name: the one shown in the accent colour, with a line under it. */
 @Composable
 private fun TabLabel(name: String, current: Boolean) {
-    val colour = barContent(if (current) LocalAccent.current.color else Palette.textDim)
+    val colour = cardColor(if (current) LocalAccent.current.color else Palette.textDim)
     Text(
         name,
         style = BarText.current,
@@ -168,21 +164,15 @@ private fun TabLabel(name: String, current: Boolean) {
 
 @Composable
 private fun BarIcon(icon: ImageVector, label: String) =
-    Icon(icon, contentDescription = label, tint = barContent(Palette.textDim), modifier = Modifier.size(18.bd))
+    Icon(icon, contentDescription = label, tint = cardColor(Palette.textDim), modifier = Modifier.size(18.bd))
 
 /**
  * A top bar item: drawn as it is, on nothing. With focus, it is a pill filled with the accent colour, with no ring, as
- * the film and series pages' buttons are; its content reads that from [LocalCardFocused] (see [barContent]).
+ * the film and series pages' buttons are; its content takes the accent's text colour then (see [cardColor]).
  */
 @Composable
 private fun BarItem(onClick: () -> Unit, content: @Composable () -> Unit) {
-    TvCard(
-        onClick = onClick,
-        shape = RoundedCornerShape(50),
-        color = Color.Transparent,
-        focusedColor = LocalAccent.current.color,
-        ring = false
-    ) {
+    TvCard(onClick = onClick, shape = RoundedCornerShape(50), color = Color.Transparent, fill = true) {
         Box(Modifier.padding(horizontal = BAR_PAD_H, vertical = BAR_PAD_V)) { content() }
     }
 }
