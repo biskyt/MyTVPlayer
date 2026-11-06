@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -63,9 +64,9 @@ fun PinPanel(title: String, onDismiss: () -> Unit, help: String? = null, wrong: 
         }
     }
     val delete = { digits = digits.dropLast(1) }
-    SidePanel(onDismiss, width = 420.dp) {
+    BoardPanel(onDismiss) {
         Column(
-            Modifier.onPreviewKeyEvent { e ->
+            Modifier.fillMaxWidth().onPreviewKeyEvent { e ->
                 val d = e.key.digit()
                 when {
                     e.type != KeyEventType.KeyDown -> false
@@ -77,8 +78,8 @@ fun PinPanel(title: String, onDismiss: () -> Unit, help: String? = null, wrong: 
             verticalArrangement = Arrangement.spacedBy(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(title, style = MaterialTheme.typography.titleLarge)
-            help?.let { Muted(it, maxLines = 3) }
+            BoardPanelTitle(title)
+            help?.let { BoardPanelSubtitle(it) }
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 repeat(Pin.LENGTH) { i ->
                     val filled = i < digits.length
@@ -113,7 +114,8 @@ fun PinPanel(title: String, onDismiss: () -> Unit, help: String? = null, wrong: 
 
 @Composable
 private fun PadKey(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    TvCard(onClick, modifier.size(PAD_KEY), shape = CircleShape) {
+    // Filled with the accent colour while it has focus, as a panel's options are (see BoardPanel).
+    TvCard(onClick, modifier.size(PAD_KEY), shape = CircleShape, fill = true) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(label, style = MaterialTheme.typography.titleLarge)
         }

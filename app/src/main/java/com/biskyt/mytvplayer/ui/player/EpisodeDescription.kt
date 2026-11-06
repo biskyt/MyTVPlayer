@@ -3,21 +3,21 @@ package com.biskyt.mytvplayer.ui.player
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.xtream.EpisodeInfo
+import com.biskyt.mytvplayer.ui.common.BoardPanel
+import com.biskyt.mytvplayer.ui.common.BoardPanelSubtitle
+import com.biskyt.mytvplayer.ui.common.BoardPanelText
+import com.biskyt.mytvplayer.ui.common.BoardPanelTitle
 import com.biskyt.mytvplayer.ui.common.ItemAction
-import com.biskyt.mytvplayer.ui.common.Muted
-import com.biskyt.mytvplayer.ui.common.SidePanel
 import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
+import com.biskyt.mytvplayer.ui.theme.bd
 
 /** An episode, and the show it is in (null when not known), as its description tells of them. */
 data class DescribedEpisode(val show: String?, val episode: EpisodeInfo)
@@ -36,19 +36,19 @@ fun episodeDescriptionAction(e: EpisodeInfo, open: () -> Unit): ItemAction? =
 @Composable
 fun EpisodeDescription(d: DescribedEpisode, modifier: Modifier = Modifier) {
     val e = d.episode
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        d.show?.takeIf { it.isNotBlank() }?.let { Muted(it) }
-        Text(episodeName(e, d.show), style = MaterialTheme.typography.titleLarge)
-        e.airDate?.let { Muted(stringResource(R.string.vod_first_shown, formatDate(it))) }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(5.bd)) {
+        d.show?.takeIf { it.isNotBlank() }?.let { BoardPanelSubtitle(it) }
+        BoardPanelTitle(episodeName(e, d.show), small = true)
+        e.airDate?.let { BoardPanelSubtitle(stringResource(R.string.vod_first_shown, formatDate(it)), Modifier.padding(bottom = 4.bd)) }
         // At most what fits in a side panel: its text doesn't scroll (the remote has nothing in it to move to).
-        e.plot?.let { Text(it, style = MaterialTheme.typography.bodyLarge, maxLines = PLOT_LINES, overflow = TextOverflow.Ellipsis) }
+        e.plot?.let { BoardPanelText(it, maxLines = PLOT_LINES) }
     }
 }
 
 /** [EpisodeDescription] in a side panel (the series page's), focused so that Back reaches the panel and closes it. */
 @Composable
 fun EpisodeDescriptionPanel(d: DescribedEpisode, onDismiss: () -> Unit) {
-    SidePanel(onDismiss, dim = false) {
+    BoardPanel(onDismiss, dim = false, scroll = false) {
         EpisodeDescription(d, rememberFirstFocus().focusable())
     }
 }

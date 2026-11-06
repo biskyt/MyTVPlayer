@@ -1,13 +1,8 @@
 package com.biskyt.mytvplayer.ui.common
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appPlural
 import com.biskyt.mytvplayer.appString
@@ -16,6 +11,7 @@ import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Navigator
 import com.biskyt.mytvplayer.ui.Screen
+import com.biskyt.mytvplayer.ui.theme.bd
 
 /** Something an options menu offers for an item: open a screen, or do something there and then. */
 sealed interface ItemAction {
@@ -94,14 +90,10 @@ fun vodDetails(playlistId: Long, type: String, id: Long): Screen =
 @Composable
 fun ItemActionsPanel(title: String, actions: List<ItemAction>, onDismiss: () -> Unit) {
     val nav = LocalNavigator.current
-    SidePanel(onDismiss) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 2, modifier = Modifier.padding(bottom = 8.dp))
-            actions.forEachIndexed { i, a ->
-                MenuOption(a.label, a.help, if (i == 0) rememberFirstFocus() else Modifier) {
-                    a.perform(nav, onDismiss)
-                }
-            }
+    BoardPanel(onDismiss) {
+        BoardPanelTitle(title, Modifier.padding(bottom = 6.bd))
+        actions.forEachIndexed { i, a ->
+            BoardOption(a.label, a.help, if (i == 0) rememberFirstFocus() else Modifier) { a.perform(nav, onDismiss) }
         }
     }
 }
