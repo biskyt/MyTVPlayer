@@ -75,13 +75,18 @@ import kotlinx.coroutines.flow.StateFlow
 val FocusStroke = BorderStroke(3.dp, Palette.text)
 private val FocusRing = Border(FocusStroke)
 
+/** The ring inside a filled card that is in use (see TvCard's fill). A Border's inset is outwards: in, it is less than 0. */
+private val SelectedRing = 2.dp
+private val SelectedRingInset = (-3).dp
+
 /** A card's shape. */
 val CardShape = RoundedCornerShape(14.dp)
 
 /**
  * The app's one clickable surface: neutral background, white ring when focused, optional selected state in accent.
  * With [fill] (settings rows and menus, the owner 2026-11-06), it is filled with the accent colour when focused, with
- * no ring, and its text takes the accent's text colour (see [LocalCardFilled]).
+ * no ring, and its text takes the accent's text colour (see [LocalCardFilled]). Only a filled card that is [selected]
+ * (the track, playlist or guide in use) has a ring then, inside its fill, so that it still shows which one is in use.
  * No focus scale animation by default — re-laying out rows on every focus change is costly on slow boxes.
  * [onLongClick] (holding OK) is also opened by the remote's Info/Options/Menu button. On a touch screen: tap and long press.
  */
@@ -124,7 +129,14 @@ fun TvCard(
             contentColor = Palette.text,
             focusedContentColor = if (fill) accent.onAccent else Palette.text
         ),
-        border = if (ring && !fill) ClickableSurfaceDefaults.border(focusedBorder = FocusRing) else ClickableSurfaceDefaults.border()
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = when {
+                // In use and filled: a ring in the fill's text colour, so it still shows which one is in use.
+                fill && selected -> Border(BorderStroke(SelectedRing, accent.onAccent), SelectedRingInset)
+                ring && !fill -> FocusRing
+                else -> Border.None
+            }
+        )
     ) {
         val filled = fill && focused
         CompositionLocalProvider(LocalCardFocused provides focused, LocalCardFilled provides filled) {

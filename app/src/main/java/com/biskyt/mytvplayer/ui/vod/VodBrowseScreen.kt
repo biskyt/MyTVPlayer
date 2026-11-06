@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -184,7 +185,11 @@ fun VodBrowseScreen(type: String, initialFilter: VodFilter?) {
             CategoryEntry(VodFilter.All, all)
         ) + categoryEntries<VodFilter>(categories) { VodFilter.Category(it.categoryId) }
     }
-    TabScaffold(if (vm.isMovies) Tab.MOVIES else Tab.SERIES) {
+    // Something on the screen given focus before the first title is shown (the remote moved, as there was none yet):
+    // the first title does not take it from there when it comes. With nothing focused again ("Load now" gone once
+    // the titles are in), it does. (The first title taking focus ends it too.)
+    val firstTitleWaits = Modifier.onFocusChanged { if (vm.focusId == null) vm.restoreFocusPending = !it.hasFocus }
+    TabScaffold(if (vm.isMovies) Tab.MOVIES else Tab.SERIES, firstTitleWaits) {
         Row(Modifier.fillMaxSize().padding(horizontal = 56.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
             FilteredCategoryColumn(entries, fixed = 3, filter, vm.filters::focus, vm.filters::select, vm::hideCategory)
             Column(Modifier.weight(1f)) {

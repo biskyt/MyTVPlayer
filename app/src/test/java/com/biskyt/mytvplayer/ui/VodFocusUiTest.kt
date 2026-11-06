@@ -3,6 +3,10 @@ package com.biskyt.mytvplayer.ui
 import android.content.pm.PackageManager
 import androidx.compose.runtime.remember
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.data.db.VOD_EPISODE
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
@@ -13,11 +17,13 @@ import com.biskyt.mytvplayer.testutil.addHomeTv
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.focusedText
 import com.biskyt.mytvplayer.testutil.pressAndRead
+import com.biskyt.mytvplayer.testutil.settle
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.testutil.waitForText
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -47,12 +53,14 @@ class VodFocusUiTest {
     fun setUp() = runBlocking<Unit> {
         // Two series in the same UK category (the UK categories are chosen to start with).
         provider.series = listOf(Triple(77L, "UK - Line of Duty", "20"), Triple(79L, "UK - Bodyguard", "20"))
-        playlistId = app.container.addHomeTv(provider, vod = true)
+        playlistId = app.container.addHomeTv(provider)
         shadowOf(app.packageManager).setSystemFeature(PackageManager.FEATURE_LEANBACK, true)
     }
 
     @After
     fun tearDown() = provider.close()
+
+    private fun loadSeries() = runBlocking { app.container.vod.sync(app.container.playlists.get(playlistId)!!) }
 
     private fun show(start: Screen): Navigator {
         val navigator = navigators.new(start)
@@ -62,6 +70,7 @@ class VodFocusUiTest {
 
     @Test
     fun `the series tab opens on a series, not a category`() {
+        loadSeries()
         show(Screen.Series())
         compose.waitForText("Bodyguard", stepMs = 50)
         compose.waitAdvancingClock(stepMs = 50) { compose.focusedText().isNotEmpty() }
@@ -69,7 +78,49 @@ class VodFocusUiTest {
     }
 
     @Test
+    fun `titles that arrive after a key press do not take focus`() {
+        // The series not loaded yet: the tab shows its empty grid.
+        show(Screen.Series())
+        compose.waitForText("Load now", stepMs = 50)
+        val moved = compose.pressAndRead(Key.DirectionDown)
+        assertTrue("A key press gave focus to something", moved.isNotEmpty())
+
+        loadSeries()
+        compose.waitForText("Bodyguard", stepMs = 50)
+        compose.settle()
+        assertEquals("Focus stays where the remote moved it", moved, compose.focusedText())
+    }
+
+    @Test
+    fun `after Load now, the first title takes focus`() {
+        show(Screen.Series())
+        compose.waitForText("Load now", stepMs = 50)
+        compose.onNode(hasText("Load now") and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
+        compose.waitAdvancingClock(stepMs = 50) { "Load now" in compose.focusedText() }
+        compose.pressAndRead(Key.DirectionCenter)
+        compose.waitForText("Bodyguard", stepMs = 50)
+        compose.waitAdvancingClock(stepMs = 50) { "Line of Duty" in compose.focusedText() }
+    }
+
+    @Test
+    fun `a title's options closed, focus is on that title`() {
+        loadSeries()
+        show(Screen.Series())
+        compose.waitForText("Bodyguard", stepMs = 50)
+        compose.waitAdvancingClock(stepMs = 50) { compose.focusedText().isNotEmpty() }
+        repeat(MAX_KEYS) { if ("Bodyguard" !in compose.focusedText()) compose.pressAndRead(Key.DirectionRight) }
+        compose.onAllNodes(hasText("Bodyguard", substring = true) and hasClickAction())[0]
+            .performSemanticsAction(SemanticsActions.OnLongClick)
+        compose.waitForText("Add to favourites", stepMs = 50)
+        compose.onNode(hasText("Add to favourites") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitAdvancingClock(stepMs = 50) { compose.onAllNodes(hasText("Add to favourites")).fetchSemanticsNodes().isEmpty() }
+        compose.settle()
+        assertTrue("Focus is on: ${compose.focusedText()}", "Bodyguard" in compose.focusedText())
+    }
+
+    @Test
     fun `back from a series, focus is on it again`() {
+        loadSeries()
         val navigator = show(Screen.Series())
         compose.waitForText("Bodyguard", stepMs = 50)
         compose.waitAdvancingClock(stepMs = 50) { compose.focusedText().isNotEmpty() }
@@ -86,6 +137,7 @@ class VodFocusUiTest {
 
     @Test
     fun `right from the series page's buttons goes to the first unplayed episode`() {
+        loadSeries()
         // Series 1 has two episodes: the first watched to the end.
         runBlocking {
             app.container.vod.saveProgress(
