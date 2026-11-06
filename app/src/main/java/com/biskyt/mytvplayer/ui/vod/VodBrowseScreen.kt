@@ -145,7 +145,9 @@ class VodBrowseViewModel(
 
     /** The title last opened, to return focus to it when coming back. */
     var focusId: Long? = null
-    var restoreFocusPending by mutableStateOf(false)
+
+    /** Pending from the start: the tab opens on its first title (as Live TV does on its first channel), not nowhere. */
+    var restoreFocusPending by mutableStateOf(true)
 
     /** Downloads the movie and series lists (progress shows in the top bar). */
     fun loadNow() {

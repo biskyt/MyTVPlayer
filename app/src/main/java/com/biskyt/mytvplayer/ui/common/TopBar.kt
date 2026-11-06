@@ -95,9 +95,12 @@ fun TopBar(selected: Tab?) {
     // Catch-up only for playlists that have some.
     val hasCatchup by remember(active?.id) { active?.let { container.channels.observeHasCatchup(it.id) } ?: flowOf(false) }
         .collectAsState(initial = false)
+    val screen = LocalScreenFocus.current
     Row(
         // The board's 40 and 22, less the room each item keeps around its text for its focus fill.
-        Modifier.fillMaxWidth().height(48.bd).padding(horizontal = 40.bd - BAR_PAD_H),
+        Modifier.fillMaxWidth().height(48.bd).padding(horizontal = 40.bd - BAR_PAD_H)
+            // So that a screen given focus with none (see KeepsFocus) moves it on into its content.
+            .onFocusChanged { screen?.inTopBar = it.hasFocus },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(BAR_GAP)
     ) {

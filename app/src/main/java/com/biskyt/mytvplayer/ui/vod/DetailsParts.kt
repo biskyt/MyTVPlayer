@@ -49,6 +49,7 @@ import com.biskyt.mytvplayer.ui.common.SidePanel
 import com.biskyt.mytvplayer.ui.common.favouriteLabel
 import com.biskyt.mytvplayer.ui.common.onTap
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
+import com.biskyt.mytvplayer.ui.common.returnsFocus
 import com.biskyt.mytvplayer.ui.player.PLOT_LINES
 import com.biskyt.mytvplayer.ui.theme.BOLD
 import com.biskyt.mytvplayer.ui.theme.BoardStyle
@@ -126,7 +127,7 @@ private fun PillSurface(
     body: @Composable BoxScope.() -> Unit
 ) = Surface(
     onClick = onClick,
-    modifier = modifier.onTap(onClick = onClick),
+    modifier = modifier.returnsFocus().onTap(onClick = onClick),
     shape = ClickableSurfaceDefaults.shape(Pill),
     scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
     colors = ClickableSurfaceDefaults.colors(
@@ -192,11 +193,11 @@ private val PillStrong = BoardStyle(14, EXTRA_BOLD)
  * side panel, with [title] (the owner, 2026-11-06).
  */
 @Composable
-fun PlotWithMore(title: String, plot: String, style: TextStyle, maxLines: Int) {
+fun PlotWithMore(title: String, plot: String, style: TextStyle, maxLines: Int, moreModifier: Modifier = Modifier) {
     var cut by remember(plot) { mutableStateOf(false) }
     var open by remember(plot) { mutableStateOf(false) }
     Text(plot, style = style, maxLines = maxLines, overflow = TextOverflow.Ellipsis, onTextLayout = { cut = it.hasVisualOverflow })
-    if (cut) DetailButton(stringResource(R.string.vod_more), { open = true }, horizontal = 14.bd, vertical = 6.bd)
+    if (cut) DetailButton(stringResource(R.string.vod_more), { open = true }, moreModifier, horizontal = 14.bd, vertical = 6.bd)
     if (open) {
         SidePanel({ open = false }, dim = false) {
             // Focused, so that Back reaches the panel and closes it.

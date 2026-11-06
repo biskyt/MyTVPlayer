@@ -111,7 +111,8 @@ fun TvCard(
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
-        modifier = (if (onLongClick != null) modifier.onOptionsKey(onLongClick) else modifier)
+        // Back on its screen, the card used last has focus again.
+        modifier = (if (onLongClick != null) modifier.onOptionsKey(onLongClick) else modifier).returnsFocus()
             .onFocusChanged { focused = it.hasFocus }
             .onTap(onLongClick, onClick),
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -202,7 +203,7 @@ fun PillButton(
     }
     Surface(
         onClick = onClick,
-        modifier = modifier.onTap(onClick = onClick),
+        modifier = modifier.returnsFocus().onTap(onClick = onClick),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
         colors = ClickableSurfaceDefaults.colors(
@@ -451,7 +452,7 @@ fun SettingRow(
     modifier: Modifier = Modifier,
     trailing: @Composable RowScope.() -> Unit = {}
 ) {
-    TvCard(onClick = onClick, modifier = modifier.returnsFocus(label).fillMaxWidth(), color = Palette.surfaceLow, fill = true) {
+    TvCard(onClick = onClick, modifier = modifier.fillMaxWidth(), color = Palette.surfaceLow, fill = true) {
         Row(
             Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
