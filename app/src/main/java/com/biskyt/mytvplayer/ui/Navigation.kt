@@ -159,7 +159,7 @@ fun NavHost(navigator: Navigator, content: @Composable (Screen) -> Unit) {
         navigator.dropped.forEach(holder::removeState)
         navigator.dropped.clear()
     }
-    // A new visit each time an entry is shown: its first focus is taken again (see rememberFirstFocus).
+    // A new visit each time an entry is shown (see rememberFirstFocus's once).
     val visit = remember(entry) { FocusVisit() }
     CompositionLocalProvider(LocalNavigator provides navigator, LocalViewModelStoreOwner provides entry, LocalFocusVisit provides visit) {
         holder.SaveableStateProvider(entry.id) { content(entry.screen) }

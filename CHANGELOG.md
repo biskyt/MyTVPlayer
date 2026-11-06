@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.13.3
+- Panels and screens give focus back to their first button again after a question is answered or cancelled, as before 1.13.2.
+- The "VPN not connected" warning in the top bar has the same space around it as the other items.
+
 ## 1.13.2
 - Moving up the TV guide sources list no longer skips the top guide.
 - Back in Settings, the row you opened has focus again, so you carry on from where you were.

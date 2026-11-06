@@ -137,7 +137,7 @@ fun PlaylistsScreen() {
                 TvCard(
                     onClick = { vm.activate(p) { nav.reset(Screen.Home) } },
                     selected = isActive,
-                    modifier = (if (i == 0) rememberFirstFocus() else Modifier).weight(1f)
+                    modifier = (if (i == 0) rememberFirstFocus(once = true) else Modifier).weight(1f)
                 ) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(

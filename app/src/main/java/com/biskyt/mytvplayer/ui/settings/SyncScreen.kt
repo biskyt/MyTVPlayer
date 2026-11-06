@@ -114,7 +114,7 @@ private fun LazyListScope.signedIn(vm: SyncViewModel, account: SyncAccount.State
             Muted(last)
         }
     }
-    item { SettingRow(stringResource(R.string.sync_now), null, { vm.syncNow() }, rememberFirstFocus()) }
+    item { SettingRow(stringResource(R.string.sync_now), null, { vm.syncNow() }, rememberFirstFocus(once = true)) }
     item { SettingRow(stringResource(R.string.sync_stop), stringResource(R.string.sync_stop_help), { vm.stop() }) }
 }
 

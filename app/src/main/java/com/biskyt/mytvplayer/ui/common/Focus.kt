@@ -3,7 +3,6 @@ package com.biskyt.mytvplayer.ui.common
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.currentCompositeKeyHash
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,36 +15,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import kotlin.random.Random
 import kotlinx.coroutines.flow.first
 
 /**
  * Modifier that takes focus once the element is shown (and again whenever [key] changes, e.g. when data arrives),
- * so each screen opens with the remote already on its main content.
+ * so each screen opens with the remote already on its main content. Shown again (content swapped back, a panel's
+ * question answered), it takes focus again.
+ *
+ * With [once], it takes focus once a visit to the screen: for the first item of a list that scrolls on a TV. The list
+ * composes it again as it scrolls back into view, which must not take focus from the item the remote is on (the top
+ * guide was skipped in TV guide sources). The visit it took focus in is kept in its saved state, which a lazy list
+ * keeps while the item is out of view and drops when the item is really removed. Outside a NavHost (no visit), it
+ * takes focus each time, as without it.
  */
 @Composable
-fun rememberFirstFocus(key: Any? = Unit): Modifier {
+fun rememberFirstFocus(key: Any? = Unit, once: Boolean = false): Modifier {
     val r = remember { FocusRequester() }
-    val visit = LocalFocusVisit.current
     val back = LocalReturnFocus.current
-    val hash = currentCompositeKeyHash
+    val visit = LocalFocusVisit.current
+    val takenIn = if (once) rememberSaveable(key) { mutableStateOf<Int?>(null) } else null
     LaunchedEffect(key) {
-        // Once a visit: a list's item composed again as it scrolls back into view must not take focus back from the
-        // item the remote is on.
-        val site = hash to key
-        if (visit?.taken?.contains(site) == true) return@LaunchedEffect
+        if (takenIn != null && visit != null && takenIn.value == visit.id) return@LaunchedEffect
         // Coming back to a list, the row last used takes focus instead, if it is there (see ReturnFocus).
         if (back?.rowTakesFocus() == true) return@LaunchedEffect
-        runCatching { r.requestFocus() }.onSuccess { visit?.taken?.add(site) }
+        runCatching { r.requestFocus() }.onSuccess { takenIn?.value = visit?.id }
     }
     return Modifier.focusRequester(r)
 }
 
-/**
- * The [rememberFirstFocus] requests made during one visit to a screen (NavHost gives each visit its own) or one opening
- * of a side panel (SidePanel gives each its own).
- */
+/** One visit to a screen: NavHost gives each its own (see rememberFirstFocus's once). */
 class FocusVisit {
-    internal val taken = mutableSetOf<Pair<Int, Any?>>()
+    /** Random, not counted from 0: an id saved before the app was restarted must not match a new visit. */
+    val id = Random.nextInt()
 }
 
 val LocalFocusVisit = staticCompositionLocalOf<FocusVisit?> { null }
@@ -77,8 +79,12 @@ class ReturnFocus internal constructor(private val last: MutableState<String?>) 
         pending.value = false
     }
 
-    /** Waits until the row has focus (true) or is not coming (false). */
+    /**
+     * While coming back: waits until the row has focus (true) or is not coming (false). Afterwards false, so that a
+     * first focus later in the visit (content shown again) is not held back.
+     */
     internal suspend fun rowTakesFocus(): Boolean {
+        if (!pending.value) return false
         snapshotFlow { pending.value }.first { !it }
         return restored
     }

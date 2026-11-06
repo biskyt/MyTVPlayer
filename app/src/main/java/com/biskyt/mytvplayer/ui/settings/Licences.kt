@@ -194,7 +194,7 @@ fun LicencesScreen() {
                 if (i ==
                     0
                 ) {
-                    rememberFirstFocus()
+                    rememberFirstFocus(once = true)
                 } else {
                     Modifier
                 }

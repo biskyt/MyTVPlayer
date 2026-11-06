@@ -92,7 +92,7 @@ fun SettingsScreen() {
                 stringResource(R.string.settings_playlists_title),
                 stringResource(R.string.settings_playlists_help),
                 { nav.push(Screen.Playlists) },
-                rememberFirstFocus()
+                rememberFirstFocus(once = true)
             )
         }
         item { LanguageRow() }
@@ -169,7 +169,7 @@ fun PlaybackSettingsScreen() {
                 stringResource(R.string.settings_skip_back_help),
                 stringResource(R.string.settings_seconds, s.skipBackSec),
                 { d -> vm.update { it.copy(skipBackSec = skipSteps.cycle(it.skipBackSec, d)) } },
-                rememberFirstFocus()
+                rememberFirstFocus(once = true)
             )
         }
         item {
@@ -289,7 +289,7 @@ fun AppearanceScreen() {
                     modifier = if (argb ==
                         AccentPalette.presets.first().argb
                     ) {
-                        rememberFirstFocus()
+                        rememberFirstFocus(once = true)
                     } else {
                         Modifier
                     }
@@ -332,7 +332,7 @@ fun AboutScreen() {
                 stringResource(R.string.settings_licences_title),
                 stringResource(R.string.settings_licences_help),
                 { nav.push(Screen.Licences) },
-                rememberFirstFocus()
+                rememberFirstFocus(once = true)
             )
         }
         item {
