@@ -260,7 +260,8 @@ private fun Modifier.wakeKeys(vm: PlaybackViewModel): Modifier {
 /** Focus goes back to the video when nothing's over it (play/pause is the controls' own: see [ControlsBar]). */
 @Composable
 private fun FocusFollowsOverlay(vm: PlaybackViewModel, root: FocusRequester) {
-    LaunchedEffect(vm.overlay, vm.sheet, vm.controlsFocus) {
+    // Not as a panel closes: focus is still where it was before it opened (see ControlsBar).
+    LaunchedEffect(vm.overlay, vm.controlsFocus) {
         val toButtons = vm.overlay == OverlayState.CONTROLS && vm.controlsFocus != PlaybackViewModel.ControlsFocus.VIDEO
         if (vm.sheet == null && vm.overlay != OverlayState.GUIDE && !toButtons) runCatching { root.requestFocus() }
     }
@@ -480,8 +481,9 @@ internal fun ControlsBar(
     leading: @Composable RowScope.() -> Unit = {}
 ) {
     val more = remember { FocusRequester() }
-    // As they come up (when what's playing is known), and again when a panel over them closes.
-    LaunchedEffect(vm.sheet, vm.controlsFocus, vm.optionsPresses) {
+    // As they come up (when what's playing is known), and on the Options button (More), also as it closes a panel. Not
+    // as a panel closes otherwise: focus is still on the button that opened it, and stays there (the owner, 2026-11-06).
+    LaunchedEffect(vm.controlsFocus, vm.optionsPresses) {
         if (vm.sheet != null) return@LaunchedEffect
         when (vm.controlsFocus) {
             PlaybackViewModel.ControlsFocus.PLAY_PAUSE -> runCatching { buttons.requestFocus() }
