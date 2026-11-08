@@ -30,7 +30,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Carry on watching's cards: a poster, the title, and the episode and time left, short. */
+/** Continue watching's cards: a poster, the title, and the episode and time left, short. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "+w960dp-h540dp-tvdpi")
 class HomeCarryOnUiTest {
@@ -103,14 +103,14 @@ class HomeCarryOnUiTest {
     }
 
     @Test
-    fun `Home opens on the first card of Carry on watching, and focus stays in the row when a card is removed`() {
+    fun `Home opens on the first card of Continue watching, and focus stays in the row when a card is removed`() {
         val navigator = navigators.new(Screen.Home)
         compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
         // The newest first: the episode, then the film.
         compose.waitAdvancingClock(50) { compose.focusedText().contains("Line of Duty") }
         compose.onNode(hasText("Line of Duty") and hasClickAction()).performSemanticsAction(SemanticsActions.OnLongClick)
-        compose.waitForText("Remove from Carry on watching")
-        compose.onNode(hasText("Remove from Carry on watching") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForText("Remove from Continue watching")
+        compose.onNode(hasText("Remove from Continue watching") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
         // The card now in its place, not the row below.
         compose.waitAdvancingClock(50) { compose.focusedText().contains("Dune") }
         compose.settle()

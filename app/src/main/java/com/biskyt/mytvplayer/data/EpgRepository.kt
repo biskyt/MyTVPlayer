@@ -28,13 +28,19 @@ import java.net.HttpURLConnection
 import java.util.zip.Deflater
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -214,6 +220,13 @@ class EpgRepository(
         only: Long? = null,
         outOfDate: Boolean = false,
         onProgress: (GuideStep) -> Unit = {}
+    ): Map<Long, String> = reading.withLock { importAllNow(playlistIds, only, outOfDate, onProgress) }
+
+    private suspend fun importAllNow(
+        playlistIds: List<Long>,
+        only: Long?,
+        outOfDate: Boolean,
+        onProgress: (GuideStep) -> Unit
     ): Map<Long, String> = withContext(Dispatchers.IO) {
         val errors = HashMap<Long, String>()
         val sources = epg.sourcesFor(playlistIds)
@@ -242,6 +255,7 @@ class EpgRepository(
         }
         if (late.isNotEmpty()) addLateChannels(late, playlistIds, onProgress)
         epg.pruneProgrammes(clock() - KEEP_PAST_MS)
+        synchronized(noProgrammes) { noProgrammes.clear() }
         changed()
         errors
     }
@@ -303,7 +317,7 @@ class EpgRepository(
             importProgrammes(
                 s.id,
                 wanted,
-                onlyThese = !full,
+                if (full) ImportMode.ALL else ImportMode.THESE,
                 known = if (full) epg.channelXmlIds(s.id).toHashSet() else null,
                 onProgress = { percent -> onProgress(GuideStep.Loading(s.name, percent / 100f)) }
             ).also {
@@ -418,7 +432,7 @@ class EpgRepository(
         val names = epg.sourcesFor(playlistIds).associate { it.id to it.name }
         found.groupBy({ it.sourceId!! }, { it.xmlId!! }).forEach { (source, xmlIds) ->
             onProgress(GuideStep.Loading(names[source]))
-            runCatching { importProgrammes(source, xmlIds.toHashSet(), onlyThese = true) }
+            runCatching { importProgrammes(source, xmlIds.toHashSet(), ImportMode.THESE) }
         }
         changed()
         MatchResult(checked.size, found.size)
@@ -445,7 +459,11 @@ class EpgRepository(
 
     private suspend fun applyMapping(m: ChannelEpgMappingEntity) {
         epg.upsertMappings(listOf(m))
-        if (m.sourceId != null && m.xmlId != null) queueProgrammeImport(m.sourceId, m.xmlId)
+        if (m.sourceId != null && m.xmlId != null) {
+            // Its programmes there already (read for the choice, see readOnNow): it shows at once, with no other pass.
+            val end = epg.programmesEnd(m.sourceId, m.xmlId)
+            if (end == null) queueProgrammeImport(m.sourceId, m.xmlId) else epg.raiseProgrammesUntil(m.sourceId, end)
+        }
         changed()
         recordGuideChannel(m)
     }
@@ -455,6 +473,55 @@ class EpgRepository(
         val choice = GuideChoice.of(m, m.sourceId?.let { epg.source(it) })
         log.record(m.playlistId, ChoiceKinds.GUIDE_CHANNEL, m.streamId, choice?.encode())
     }
+
+    /**
+     * What is on now on each of guide channels [channels] (guide id to xml ids), by guide and xml id: the choices for a
+     * channel's guide (see GuideMatching). From what is stored; see [readOnNow].
+     */
+    suspend fun onNow(channels: Map<Long, Set<String>>): Map<Pair<Long, String>, ProgrammeEntity> {
+        val at = clock()
+        return channels.flatMap { (source, ids) ->
+            ids.toList().chunked(MAX_SQL_ARGS).flatMap { epg.programmesAt(source, it, at) }
+        }.groupBy { it.sourceId to it.xmlId }.mapValues { it.value.first() } // the first, if they overlap (as NowNextLoader)
+    }
+
+    /**
+     * Reads the programmes of guide channels [channels] (guide id to xml ids) that have none stored: one pass over each
+     * guide's file, for those channels only, one guide at a time (cancelled with the caller). Then a choice among them
+     * shows what is on, and choosing it shows its programmes at once. A full update of the guide drops those of
+     * channels still not used.
+     */
+    suspend fun readOnNow(channels: Map<Long, Set<String>>) = reading.withLock {
+        withContext(Dispatchers.IO) {
+            channels.forEach { (source, ids) ->
+                currentCoroutineContext().ensureActive()
+                val stored = ids.toList().chunked(MAX_SQL_ARGS).flatMap { epg.xmlIdsWithProgrammes(source, it) }.toSet()
+                val empty = synchronized(noProgrammes) { noProgrammes[source].orEmpty().toSet() }
+                val missing = ids - stored - empty
+                if (missing.isEmpty()) return@forEach
+                if (!sourceFile(source).exists()) return@forEach
+                val read = runCatching { importProgrammes(source, missing, ImportMode.CHOICES) }
+                    .onFailure { if (it is CancellationException) throw it }
+                if (read.isFailure) return@forEach
+                // Those the file has no programmes for: not read again for a choice until the guide is updated.
+                val none = missing - epg.xmlIdsWithProgrammes(source, missing.toList()).toSet()
+                synchronized(noProgrammes) { noProgrammes.getOrPut(source) { HashSet() } += none }
+            }
+        }
+    }
+
+    /** One reading of guide files at a time: an update, and the reads for a choice (see readOnNow), wait for each other. */
+    private val reading = Mutex()
+
+    /** By guide, its channels with no programmes in its file (see readOnNow): forgotten when guides are updated. */
+    private val noProgrammes = HashMap<Long, MutableSet<String>>()
+
+    /**
+     * What [importProgrammes] stores: the guide's channels in full ([ALL], the others' programmes dropped), only those
+     * asked for ([THESE]), or those for a choice only ([CHOICES], see readOnNow: when the used channels' programmes end
+     * stays as it is, and it stops when cancelled).
+     */
+    private enum class ImportMode { ALL, THESE, CHOICES }
 
     private val pendingImports = HashMap<Long, MutableSet<String>>()
     private var importScheduled = false
@@ -474,7 +541,7 @@ class EpgRepository(
                 importScheduled = false
                 pendingImports.toMap().also { pendingImports.clear() }
             }
-            work.forEach { (source, ids) -> runCatching { importProgrammes(source, ids, onlyThese = true) } }
+            work.forEach { (source, ids) -> runCatching { importProgrammes(source, ids, ImportMode.THESE) } }
             changed()
         }
     }
@@ -658,15 +725,16 @@ class EpgRepository(
     /**
      * Stores programmes for [xmlIds] within the keep window, in batches as they are read. Rows are replaced in place
      * and older rows removed at the end, so screens never see a half-empty guide during an import.
-     * [onlyThese] limits the clean-up to [xmlIds] (used when one channel is re-mapped).
+     * A [mode] other than ALL limits the clean-up to [xmlIds] (used when one channel is re-mapped).
      */
     private suspend fun importProgrammes(
         sourceId: Long,
         xmlIds: Set<String>,
-        onlyThese: Boolean = false,
+        mode: ImportMode = ImportMode.ALL,
         known: Set<String>? = null,
         onProgress: ((Int) -> Unit)? = null
     ): List<EpgChannelEntity> {
+        val onlyThese = mode != ImportMode.ALL
         // With [known] (the channels read before), returns any others the file has: see addLateChannels.
         val late = ArrayList<EpgChannelEntity>()
         if (!sourceFile(sourceId).exists()) return late
@@ -688,14 +756,20 @@ class EpgRepository(
             }
         }
         val parser = parser(now - KEEP_PAST_MS, now + KEEP_FUTURE_MS)
+        // A choice's channels (see readOnNow): stops as soon as they are no longer shown, not at the end. (Not an update:
+        // its callers keep a failure as the guide's error.)
+        val job = if (mode == ImportMode.CHOICES) currentCoroutineContext()[Job] else null
         open(sourceId, onProgress).use { input ->
             parser.parse(input, wantProgrammes = {
+                job?.ensureActive()
                 it in xmlIds
             }, onChannel = onChannel, onProgramme = { p ->
                 batch += ProgrammeEntity(
                     sourceId, p.channelId, p.startMs, p.stopMs, p.title, p.subtitle, p.description, now, p.kind, p.season, p.episode
                 )
-                if (batch.size >= BATCH) {
+                // A choice's few channels are written at the end, all or nothing: stopped part-way, it leaves none,
+                // so they are not taken as stored (see readOnNow, applyMapping).
+                if (batch.size >= BATCH && mode != ImportMode.CHOICES) {
                     epg.insertProgrammes(batch.toList())
                     batch.clear()
                 }
@@ -707,7 +781,7 @@ class EpgRepository(
         db.withTransaction {
             if (onlyThese) {
                 xmlIds.chunked(MAX_SQL_ARGS).forEach { epg.deleteOlderProgrammes(sourceId, it, now) }
-                epg.raiseProgrammesUntil(sourceId, until)
+                if (mode == ImportMode.THESE) epg.raiseProgrammesUntil(sourceId, until)
             } else {
                 epg.deleteOlderProgrammes(sourceId, now)
                 epg.setProgrammesUntil(sourceId, until)

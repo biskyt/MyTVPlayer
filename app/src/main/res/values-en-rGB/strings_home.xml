@@ -2,8 +2,6 @@
 <!-- UK English for the strings values-en-rUS changes: without these, Android picks US English for a UK
      device (a same-language match beats the unqualified values). Same text as values/. -->
 <resources>
-    <string name="home_carry_on">Carry on watching</string>
-    <string name="home_remove_carry_on">Remove from Carry on watching</string>
     <string name="home_no_favourites">No favourites yet. On Live TV, hold OK on a channel and choose “Add to favourites”.</string>
     <string name="home_favourite_series">Favourite series</string>
     <string name="home_favourite_movies">Favourite movies</string>

@@ -182,8 +182,8 @@ class VodRepository(
 
     /**
      * Saves progress; [trim] (when playback stops) also drops the oldest rows beyond the cap, in the same write. A
-     * finished episode with [next] after it puts that one on "Carry on watching" in its place ([upNext]). Nothing is kept
-     * for a restricted film or series while those are hidden from "Carry on watching" (parental controls).
+     * finished episode with [next] after it puts that one on "Continue watching" in its place ([upNext]). Nothing is kept
+     * for a restricted film or series while those are hidden from "Continue watching" (parental controls).
      */
     suspend fun saveProgress(p: WatchProgressEntity, trim: Boolean = false, next: EpisodeInfo? = null) {
         db.withTransaction { save(p, trim, next) }
@@ -216,7 +216,7 @@ class VodRepository(
         vod.saveProgress(row.copy(updatedAt = watched.updatedAt + 1))
     }
 
-    /** Takes a movie, or a whole series, off "Carry on watching": forgets how far it got (for a series, every episode). */
+    /** Takes a movie, or a whole series, off "Continue watching": forgets how far it got (for a series, every episode). */
     suspend fun forgetProgress(p: WatchProgressEntity) {
         db.withTransaction {
             val series = p.seriesId

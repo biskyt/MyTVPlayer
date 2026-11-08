@@ -83,7 +83,7 @@ data class CategoryEntity(
 
 /**
  * Parental controls, one row kept from the settings and the PIN lock (see ParentalRepository), which list queries read:
- * items of restricted categories are left out while [locked], and from recently watched, "Carry on watching" and search
+ * items of restricted categories are left out while [locked], and from recently watched, "Continue watching" and search
  * when [hideRecent], [hideCarryOn] or [hideSearch] is on. With no row, they are left out everywhere.
  */
 @Entity(tableName = "parental")
@@ -166,7 +166,7 @@ const val VOD_MOVIE = "movie"
 const val VOD_EPISODE = "episode"
 
 /**
- * How far into a movie or episode the user got, for resuming and "Carry on watching" (which shows [title] and
+ * How far into a movie or episode the user got, for resuming and "Continue watching" (which shows [title] and
  * [imageUrl] without another lookup). [kind] is [VOD_MOVIE] or [VOD_EPISODE].
  */
 @Entity(
@@ -189,12 +189,12 @@ data class WatchProgressEntity(
     val season: Int? = null,
     val episode: Int? = null,
     val episodeTitle: String? = null,
-    /** Episodes: whether another follows, so a finished one still leads "Carry on watching" to the next. */
+    /** Episodes: whether another follows, so a finished one still leads "Continue watching" to the next. */
     val hasNext: Boolean = false
 ) {
     val finished: Boolean get() = durationMs > 0 && positionMs >= durationMs * FINISHED_FRACTION
 
-    /** Not yet, for the episode up next after one watched: its row is there for "Carry on watching". */
+    /** Not yet, for the episode up next after one watched: its row is there for "Continue watching". */
     val started: Boolean get() = positionMs > 0
     val fraction: Float get() = if (durationMs > 0) positionMs.toFloat() / durationMs else 0f
     val remainingMs: Long get() = (durationMs - positionMs).coerceAtLeast(0)

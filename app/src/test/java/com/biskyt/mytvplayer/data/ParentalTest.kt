@@ -33,7 +33,7 @@ import org.robolectric.annotation.Config
 /**
  * Parental controls: adult categories start restricted; restricted channels, movies and series are left out while
  * locked (a PIN set and not entered), and from search while that setting is on. What is watched in them is not kept for
- * recently watched or "Carry on watching" while those settings are on.
+ * recently watched or "Continue watching" while those settings are on.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class)

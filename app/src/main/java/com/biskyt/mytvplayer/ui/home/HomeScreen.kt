@@ -179,7 +179,7 @@ fun HomeScreen() {
                 }
             }
             item {
-                // The first row unless Carry on watching has cards.
+                // The first row unless Continue watching has cards.
                 val onTop = (if (carryOn.isEmpty()) first else Modifier).then(
                     if (refocus?.carryOn ==
                         null
@@ -244,7 +244,7 @@ fun HomeScreen() {
 }
 
 /**
- * Where focus goes after a card is taken off Home: the card now in its place on Carry on watching ([carryOn], its
+ * Where focus goes after a card is taken off Home: the card now in its place on Continue watching ([carryOn], its
  * index), or else the first channel on now. Not a data class: each removal is a new one, so focus moves each time.
  */
 private class Refocus(val carryOn: Int?)

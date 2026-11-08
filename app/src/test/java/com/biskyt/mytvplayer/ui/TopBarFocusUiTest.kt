@@ -3,20 +3,19 @@ package com.biskyt.mytvplayer.ui
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performSemanticsAction
 import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
+import com.biskyt.mytvplayer.testutil.assertColourAcross
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.drawScreen
 import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TopBar
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
-import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -47,11 +46,7 @@ class TopBarFocusUiTest {
         live.performSemanticsAction(SemanticsActions.RequestFocus)
         val screen = compose.drawScreen()
         val node = live.fetchSemanticsNode()
-        val middle = (node.positionInRoot.y + node.size.height / 2).toInt()
         // At its edge (where a ring would be) and in the room before the text: the accent fill.
-        listOf(1, 6).forEach { x ->
-            val pixel = Color(screen.getPixel(node.positionInRoot.x.toInt() + x, middle))
-            assertEquals("pixel $x across", accent.toArgb(), pixel.toArgb())
-        }
+        assertColourAcross(screen, node, listOf(1, 6), accent)
     }
 }

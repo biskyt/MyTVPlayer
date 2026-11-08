@@ -5,7 +5,7 @@
     <string name="parental_help">Restricted categories, and a PIN to show them</string>
     <string name="parental_intro">Restricted categories have a lock. To restrict a category, open its options (hold OK).</string>
     <string name="parental_hide_recent">Hide restricted channels from Recently watched</string>
-    <string name="parental_hide_carry_on">Hide restricted movies and series from Carry on watching</string>
+    <string name="parental_hide_carry_on">Hide restricted movies and series from Continue watching</string>
     <string name="parental_hide_search">Hide restricted channels, programmes, movies and series from search</string>
     <string name="parental_forget_help">While this is on, MyTVPlayer does not keep what you watch in restricted categories.</string>
     <string name="parental_pin_none">No PIN is set: restricted categories show without one.</string>
