@@ -77,9 +77,18 @@ class ReturnFocus internal constructor(private val last: MutableState<Int?>) {
     /** Coming back, and the item not found yet. */
     val returning: Boolean get() = pending.value
 
+    /**
+     * [item] has focus: the one to give it back to. Not while coming back: a real TV gives the screen's first item (the
+     * top bar's Home) focus for a moment as the screen over it goes, which must not take the place of the item used last
+     * (the emulators, 2026-11-08; Robolectric does not).
+     */
     internal fun note(item: Int) {
+        if (pending.value && !restoring) return
         last.value = item
     }
+
+    /** A screen's own restore (see restoreFocusIf) is giving an item focus: noted, as it ends coming back. */
+    internal var restoring = false
 
     internal fun wants(item: Int) = pending.value && last.value == item
 
@@ -92,6 +101,9 @@ class ReturnFocus internal constructor(private val last: MutableState<Int?>) {
     internal fun giveUp() {
         pending.value = false
     }
+
+    /** Came back, and the item used last was not there (see KeepsFocus: focus left on the top bar moves on). */
+    val notFound: Boolean get() = cameBack && !pending.value && !restored
 
     /**
      * While coming back: waits until the item has focus (true) or is not coming (false). Afterwards false, so that a
@@ -132,18 +144,30 @@ fun Modifier.returnsFocus(): Modifier {
     val wanted by remember(back, item) { derivedStateOf { back.wants(item) } }
     // Asked again just before: items drawn in a loop without a key share a key, and only the first restores.
     return onFocusChanged { if (it.isFocused) back.note(item) }
-        .restoreFocusIf(wanted, still = { back.wants(item) }) { back.restored() }
+        .restoreFocusIf(wanted, still = { back.wants(item) })
 }
 
 /**
  * Gives this element focus once when [wanted] (e.g. returning to a list, on the item last opened), then calls
- * [onRestored]. Items not composed yet simply try when they appear. [still] is asked again just before.
+ * [onRestored]. Items not composed yet simply try when they appear. [still] is asked again just before. Once it has
+ * focus, coming back to the screen ends (see [ReturnFocus]): the screen's own choice replaces the item used last.
  */
 @Composable
-fun Modifier.restoreFocusIf(wanted: Boolean, still: () -> Boolean = { true }, onRestored: () -> Unit): Modifier {
+fun Modifier.restoreFocusIf(wanted: Boolean, still: () -> Boolean = { true }, onRestored: () -> Unit = {}): Modifier {
     if (!wanted) return this
     val r = remember { FocusRequester() }
-    LaunchedEffect(Unit) { if (still() && runCatching { r.requestFocus() }.isSuccess) onRestored() }
+    val back = LocalReturnFocus.current
+    LaunchedEffect(Unit) {
+        if (!still()) return@LaunchedEffect
+        // Noted while coming back (see ReturnFocus.note), so that the item given focus is the one used last from now:
+        // a screen's own restore (the channel played last) is not undone by the item used before.
+        back?.restoring = true
+        val done = runCatching { r.requestFocus(FocusDirection.Enter) }.getOrDefault(false)
+        back?.restoring = false
+        if (!done) return@LaunchedEffect
+        back?.restored()
+        onRestored()
+    }
     return focusRequester(r)
 }
 
@@ -170,11 +194,17 @@ fun KeepsFocus(key: Any, content: @Composable () -> Unit) {
         CompositionLocalProvider(LocalReturnFocus provides back, LocalScreenFocus provides state, content = content)
     }
     LaunchedEffect(key) {
-        snapshotFlow { focused || back.returning }.collect { busy ->
+        // Back, with the item used last gone: a real TV has given the top bar's Home focus meanwhile (see
+        // ReturnFocus.note). It moves on into the screen, as a screen with nothing focused does: once, as the return ends.
+        var returnEnding = back.cameBack
+        snapshotFlow { focused to back.returning }.collect { (hasIt, returning) ->
             // Not as a screen first opens: it chooses its own first focus, maybe once its data is in.
-            if (busy || !(hadFocus || back.cameBack)) return@collect
+            if (returning || !(hadFocus || back.cameBack)) return@collect
+            val fromTopBar = returnEnding && back.notFound
+            returnEnding = false
+            if (hasIt && !(fromTopBar && state.inTopBar)) return@collect
             repeat(SETTLE_FRAMES) { withFrameNanos {} }
-            if (focused) return@collect
+            if (focused && !(fromTopBar && state.inTopBar)) return@collect
             runCatching { screen.requestFocus() }
             // Its first item may be the top bar's Home: the content below it, then.
             if (state.inTopBar) focusManager.moveFocus(FocusDirection.Down)

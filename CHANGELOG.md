@@ -4,6 +4,7 @@ Each version's section becomes its GitHub release notes, so it is written for th
 English, one bullet of one sentence per change.
 
 ## 1.15.2
+- Back on a TV puts focus back on the item you opened (in Settings and every other screen), not on nothing or on Home.
 - TV guide matching shows what is on now on each guide channel offered, so you can see it before you choose, and the one you choose shows at once.
 - TV guide matching opened from a channel's options starts on that channel, not on the filter.
 - In the TV guide, the programme you are on is filled with your accent colour, as in menus and Settings.

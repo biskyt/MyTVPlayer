@@ -570,7 +570,10 @@ fun GuideMatchingScreen(playlistId: Long, streamId: Long?) {
                         // channel (once the list is filtered to it: unfiltered first, another can be first).
                         val shown = vm.initial != null && items.itemSnapshotList.any { it?.channel?.streamId == vm.initial }
                         val first = if (shown) row.channel.streamId == vm.initial else i == 0
-                        val focus = Modifier.restoreFocusIf(vm.firstFocusPending && first) { vm.firstFocusPending = false }
+                        // Asked again as it takes focus: the search box can have taken it meanwhile.
+                        val focus = Modifier.restoreFocusIf(vm.firstFocusPending && first, { vm.firstFocusPending }) {
+                            vm.firstFocusPending = false
+                        }
                         MatchRowCard(row, row.channel.streamId == vm.selected?.streamId, focus) { vm.select(row.channel) }
                     }
                 }
