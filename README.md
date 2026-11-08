@@ -72,7 +72,7 @@ cropped ([credits, with each image's author and licence](app/src/test/resources/
 - Browse by category with posters, filter by title, and see what's recently added.
 - Details pages with plot, cast and running time (where the provider gives them), and every season and episode of a
   series.
-- Movies and episodes **resume where you left off**, and **Carry on watching** on Home takes you straight back, to
+- Movies and episodes **resume where you left off**, and **Continue watching** on Home takes you straight back, to
   the next episode once one ends.
 - From a programme in the TV guide, **Find series** or **Find in Movies** to watch it on demand.
 

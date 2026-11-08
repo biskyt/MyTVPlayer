@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.testutil.TestApp
+import com.biskyt.mytvplayer.testutil.assertColourAcross
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.drawScreen
 import com.biskyt.mytvplayer.testutil.focusedText
@@ -57,12 +58,8 @@ class FocusFillUiTest {
         compose.waitAdvancingClock(stepMs = 50) { compose.focusedText().startsWith(focused) }
         val screen = compose.drawScreen()
         val node = compose.onNode(hasText(focused, substring = true) and hasClickAction()).fetchSemanticsNode()
-        val middle = (node.positionInRoot.y + node.size.height / 2).toInt()
         // At its edge (where a ring would be) and in the room before the text: the accent fill.
-        listOf(1, 6).forEach { x ->
-            val pixel = Color(screen.getPixel(node.positionInRoot.x.toInt() + x, middle))
-            assertEquals("$focused, pixel $x across", accent.toArgb(), pixel.toArgb())
-        }
+        assertColourAcross(screen, node, listOf(1, 6), accent)
     }
 
     @Test

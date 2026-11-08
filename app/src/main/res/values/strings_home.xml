@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Home screen row headings. "Carry on watching" and "Recently watched" are also named in the remove actions below. -->
-    <string name="home_carry_on">Carry on watching</string>
+    <!-- Home screen row headings. "Continue watching" and "Recently watched" are also named in the remove actions below. -->
+    <string name="home_carry_on">Continue watching</string>
     <string name="home_on_now">Your channels, on now</string>
 
     <!-- Options for a channel card (hold OK on it). -->
     <string name="home_remove_recent">Remove from Recently watched</string>
 
-    <!-- Options for a movie or episode card in "Carry on watching". -->
+    <!-- Options for a movie or episode card in "Continue watching". -->
     <string name="home_play_next_episode">Play the next episode</string>
     <string name="home_resume">Resume</string>
-    <string name="home_remove_carry_on">Remove from Carry on watching</string>
-    <!-- Explains "Remove from Carry on watching" for a movie. -->
+    <string name="home_remove_carry_on">Remove from Continue watching</string>
+    <!-- Explains "Remove from Continue watching" for a movie. -->
     <string name="home_forget_movie">Forgets how far you got</string>
-    <!-- Explains "Remove from Carry on watching" for a series. -->
+    <!-- Explains "Remove from Continue watching" for a series. -->
     <string name="home_forget_series">Forgets which episodes you\'ve watched</string>
 
     <!-- "Add to favourites" is the name of an action in the channel options: keep it the same as there. Up to 2 lines. -->
@@ -30,9 +30,9 @@
     <!-- Home rows of the favourite series and movies, below Recently watched -->
     <string name="home_favourite_series">Favourite series</string>
     <string name="home_favourite_movies">Favourite movies</string>
-    <!-- An episode on a Carry on watching card, short: season and episode, as "S1E2" -->
+    <!-- An episode on a Continue watching card, short: season and episode, as "S1E2" -->
     <string name="home_episode_code">S%1$dE%2$d</string>
-    <!-- Time left on a Carry on watching card, short: minutes; hours and minutes -->
+    <!-- Time left on a Continue watching card, short: minutes; hours and minutes -->
     <string name="home_left_m">%1$dm</string>
     <string name="home_left_h">%1$dh</string>
     <string name="home_left_h_m">%1$dh %2$dm</string>

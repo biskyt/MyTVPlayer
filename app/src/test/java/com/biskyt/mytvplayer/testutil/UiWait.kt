@@ -4,8 +4,11 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.view.KeyEvent as NativeKeyEvent
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeTimeoutException
@@ -21,6 +24,7 @@ import androidx.compose.ui.test.performKeyPress
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.printToString
 import java.util.concurrent.TimeUnit
+import org.junit.Assert.assertEquals
 import org.robolectric.shadows.ShadowLooper
 
 /**
@@ -98,6 +102,15 @@ fun AndroidComposeTestRule<*, out ComponentActivity>.drawScreen(): Bitmap {
     val screen = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
     runOnUiThread { view.draw(Canvas(screen)) }
     return screen
+}
+
+/** On [screen] (see drawScreen), [node]'s middle row is [colour] at each of [xs] pixels from its left edge. */
+fun assertColourAcross(screen: Bitmap, node: SemanticsNode, xs: List<Int>, colour: Color) {
+    val middle = (node.positionInRoot.y + node.size.height / 2).toInt()
+    xs.forEach { x ->
+        val pixel = Color(screen.getPixel(node.positionInRoot.x.toInt() + x, middle))
+        assertEquals("pixel $x across", colour.toArgb(), pixel.toArgb())
+    }
 }
 
 private const val DRAW_SETTLE_MS = 200L

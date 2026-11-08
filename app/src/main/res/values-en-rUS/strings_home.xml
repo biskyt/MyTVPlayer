@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- US English overrides: only strings whose wording differs from the UK source in values/. -->
 <resources>
-    <!-- "Continue watching" is also named in home_remove_carry_on: keep them the same. -->
-    <string name="home_carry_on">Continue watching</string>
-    <string name="home_remove_carry_on">Remove from Continue watching</string>
     <!-- "Add to favorites" is the action common_favourite_add: keep it the same as there. -->
     <string name="home_no_favourites">No favorites yet. On Live TV, hold OK on a channel and choose “Add to favorites”.</string>
     <string name="home_favourite_series">Favorite series</string>

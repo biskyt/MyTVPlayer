@@ -125,7 +125,7 @@ interface CategoryDao {
 }
 
 // Parental controls (see ParentalEntity). An item of a restricted category is left out while locked, and also from
-// recently watched, "Carry on watching" or search when that option is on. With no parental row (NULL), it's left out.
+// recently watched, "Continue watching" or search when that option is on. With no parental row (NULL), it's left out.
 // The parental row is read once per query, and the restricted categories only while they are needed.
 private const val P_LOCKED = "(SELECT locked FROM parental)"
 private const val P_RECENT = "(SELECT locked OR hideRecent FROM parental)"
@@ -557,6 +557,21 @@ interface EpgDao {
     @Query("DELETE FROM programme WHERE sourceId = :sourceId AND xmlId IN (:xmlIds) AND stamp != :stamp")
     suspend fun deleteOlderProgrammes(sourceId: Long, xmlIds: List<String>, stamp: Long)
 
+    /** What is on at [at] on guide channels [xmlIds] of guide [sourceId] (a guide channel's choice, see GuideMatching). */
+    @Query(
+        "SELECT * FROM programme WHERE sourceId = :sourceId AND xmlId IN (:xmlIds) " +
+            "AND startMs <= :at AND startMs > :at - $MAX_PROGRAMME_MS AND stopMs > :at ORDER BY startMs"
+    )
+    suspend fun programmesAt(sourceId: Long, xmlIds: List<String>, at: Long): List<ProgrammeEntity>
+
+    /** When guide channel [xmlId] of guide [sourceId]'s stored programmes end (null for none). */
+    @Query("SELECT MAX(stopMs) FROM programme WHERE sourceId = :sourceId AND xmlId = :xmlId")
+    suspend fun programmesEnd(sourceId: Long, xmlId: String): Long?
+
+    /** Those of guide channels [xmlIds] of guide [sourceId] with programmes stored. */
+    @Query("SELECT DISTINCT xmlId FROM programme WHERE sourceId = :sourceId AND xmlId IN (:xmlIds)")
+    suspend fun xmlIdsWithProgrammes(sourceId: Long, xmlIds: List<String>): List<String>
+
     @Query("DELETE FROM programme WHERE stopMs < :before")
     suspend fun pruneProgrammes(before: Long)
 
@@ -892,7 +907,7 @@ interface VodDao {
     fun observeMovieProgress(pid: Long, id: Long): Flow<WatchProgressEntity?>
 
     /**
-     * "Carry on watching", newest first: unfinished movies, and per series its most recent episode, unless that was
+     * "Continue watching", newest first: unfinished movies, and per series its most recent episode, unless that was
      * finished and the last one. [finished] is [WatchProgressEntity.FINISHED_FRACTION].
      */
     @Query(

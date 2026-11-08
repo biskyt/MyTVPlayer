@@ -4,7 +4,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** A title is saved (and so goes on Carry on watching) once it has played 30 seconds. */
+/** A title is saved (and so goes on Continue watching) once it has played 30 seconds. */
 class CountsAsWatchingTest {
     @Test
     fun `a look at the start isn't watching it`() {

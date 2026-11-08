@@ -558,7 +558,7 @@ class AppUiTest {
         compose.onNode(hasText("Half Watched") and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
         compose.onNode(hasText("Half Watched") and hasClickAction()).performSemanticsAction(SemanticsActions.OnLongClick)
         waitFor("About this movie")
-        compose.onNode(hasText("Remove from Carry on watching")).performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNode(hasText("Remove from Continue watching")).performSemanticsAction(SemanticsActions.OnClick)
         compose.waitAdvancingClock { compose.onAllNodes(hasText("Half Watched")).fetchSemanticsNodes().isEmpty() }
         // Focus doesn't go with the card.
         compose.settle()

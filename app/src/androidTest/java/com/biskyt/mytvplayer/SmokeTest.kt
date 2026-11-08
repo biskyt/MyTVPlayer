@@ -1,10 +1,14 @@
 package com.biskyt.mytvplayer
 
+import android.view.KeyEvent
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
@@ -56,6 +60,29 @@ class SmokeTest {
         // Then its channels are read, catch-up and all (the regex that crashed 0.9.5 runs here).
         val one = waitForChannel("Channel One {HD}")
         assertEquals(2, one.archiveDays)
+        backInSettingsKeepsFocus()
+    }
+
+    /**
+     * Back with the remote from a screen that a Settings row opened: that row has focus again (the owner, 2026-11-08,
+     * on a real TV; the JVM tests passed).
+     */
+    private fun backInSettingsKeepsFocus() {
+        val playback = hasText("Playback") and hasClickAction()
+        click(hasContentDescription("Settings"))
+        waitFor(playback)
+        compose.onNode(playback).performSemanticsAction(SemanticsActions.RequestFocus)
+        waitFor(isFocused() and hasText("Playback", substring = true))
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
+        waitFor(hasText("Skip back", substring = true))
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        // The Playback screen gone, Settings shown again.
+        compose.waitUntil(WAIT_MS) { compose.onAllNodes(hasText("Skip back", substring = true)).fetchSemanticsNodes().isEmpty() }
+        waitFor(playback)
+        waitFor(isFocused() and hasText("Playback", substring = true) and hasClickAction(), FOCUS_MS) {
+            "Back in Settings, focus is on: ${compose.onAllNodes(isFocused()).fetchSemanticsNodes().map { it.config }}"
+        }
     }
 
     /** The channel once the playlist's channels are stored (they download in the background, after set-up). */
@@ -69,8 +96,11 @@ class SmokeTest {
         return found!!
     }
 
-    private fun waitFor(matcher: SemanticsMatcher) =
-        compose.waitUntil(WAIT_MS) { compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty() }
+    private fun waitFor(matcher: SemanticsMatcher, timeoutMs: Long = WAIT_MS, failure: () -> String = { "Not shown: $matcher" }) = try {
+        compose.waitUntil(timeoutMs) { compose.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty() }
+    } catch (e: ComposeTimeoutException) {
+        throw AssertionError(failure(), e)
+    }
 
     private fun click(matcher: SemanticsMatcher) {
         waitFor(matcher and hasClickAction())
@@ -80,6 +110,9 @@ class SmokeTest {
     private companion object {
         /** Generous: an emulator on a shared CI runner can be slow. */
         const val WAIT_MS = 30_000L
+
+        /** Focus is given back within a few frames: three seconds is plenty, even on a slow emulator. */
+        const val FOCUS_MS = 3_000L
 
         /** The attributes the app reads, catch-up included, so each of its regexes runs on Android's engine. */
         val PLAYLIST = """

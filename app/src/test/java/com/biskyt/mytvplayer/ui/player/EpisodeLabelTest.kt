@@ -27,7 +27,7 @@ class EpisodeLabelTest {
         val long = episode("EN: Masterchef USA (2010) - S02E03 - Auditions Day 1")
         assertEquals("Auditions Day 1", episodeName(long, SHOW))
         assertEquals("Series 2 · Episode 3 · Auditions Day 1", episodeLabel(long, SHOW))
-        // The provider's words are kept as they are, for Carry on watching and the sync.
+        // The provider's words are kept as they are, for Continue watching and the sync.
         assertEquals("EN: Masterchef USA (2010) - S02E03 - Auditions Day 1", providerTitle(long))
         // Nothing but the series and the code: the app names it.
         assertEquals("Episode 3", episodeName(episode("Masterchef USA - S02E03"), SHOW))

@@ -155,7 +155,7 @@ class SeriesDetailsViewModel(
     var describing by mutableStateOf<EpisodeInfo?>(null)
 
     /**
-     * Marks [e] watched (saved as played to the end, as the player saves it, so "Carry on watching" moves on past it)
+     * Marks [e] watched (saved as played to the end, as the player saves it, so "Continue watching" moves on past it)
      * or unwatched (its progress forgotten).
      */
     fun setWatched(e: EpisodeInfo, watched: Boolean) {

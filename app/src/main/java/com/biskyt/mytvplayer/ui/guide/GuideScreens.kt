@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,6 +57,8 @@ import com.biskyt.mytvplayer.data.db.MatchCounts
 import com.biskyt.mytvplayer.data.db.MatchRow
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import com.biskyt.mytvplayer.data.db.PlaylistEpgSourceEntity
+import com.biskyt.mytvplayer.data.db.ProgrammeEntity
+import com.biskyt.mytvplayer.data.programmeTitle
 import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.AppIcons
 import com.biskyt.mytvplayer.ui.common.BoardOption
@@ -83,6 +86,7 @@ import com.biskyt.mytvplayer.ui.common.formatRange
 import com.biskyt.mytvplayer.ui.common.guideNowNext
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
+import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.settings.SettingsPage
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
@@ -95,6 +99,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -373,7 +378,7 @@ enum class MatchTab(@param:StringRes val label: Int, val status: Int, val count:
 data class GuideChoice(val candidate: EpgCandidate, val score: Double?, val sourceName: String)
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
-class GuideMatchingViewModel(private val c: AppContainer, private val playlistId: Long, initial: Long?) : ViewModel() {
+class GuideMatchingViewModel(private val c: AppContainer, private val playlistId: Long, val initial: Long?) : ViewModel() {
     val tab = MutableStateFlow(MatchTab.ALL)
     val filter = MutableStateFlow("")
     val counts = c.epg.observeMatchCounts(playlistId).stateIn(viewModelScope, SharingStarted.Eagerly, MatchCounts(0, 0, 0, 0))
@@ -383,6 +388,9 @@ class GuideMatchingViewModel(private val c: AppContainer, private val playlistId
 
     var selected by mutableStateOf<ChannelEntity?>(null)
         private set
+
+    /** Until the first channel (opened for one: that one) has taken focus, once for the screen (see GuideMatchingScreen). */
+    var firstFocusPending by mutableStateOf(true)
     var mapping by mutableStateOf<MappingInfo?>(null)
         private set
 
@@ -394,13 +402,28 @@ class GuideMatchingViewModel(private val c: AppContainer, private val playlistId
     var busy by mutableStateOf(false)
         private set
 
+    /**
+     * What is on now on each choice's guide channel, by guide and xml id: once looked for (null for nothing on now;
+     * not there until looked for).
+     */
+    var onNow by mutableStateOf<Map<Pair<Long, String>, ProgrammeEntity?>>(emptyMap())
+        private set
+
     private var sources: Map<Long, String> = emptyMap()
     private var searchJob: Job? = null
     private var selectJob: Job? = null
+    private var onNowJob: Job? = null
 
     init {
         viewModelScope.launch {
             c.epg.observeSources().collect { list -> sources = list.associate { it.id to it.name } }
+        }
+        // A guide updated (or a channel's guide changed): what is on now is looked for again.
+        viewModelScope.launch {
+            c.epg.changes.drop(1).collect {
+                onNow = emptyMap()
+                showChoices(choices)
+            }
         }
         // Opened for one channel (from its menu): show just that channel, already selected.
         if (initial != null) {
@@ -421,7 +444,28 @@ class GuideMatchingViewModel(private val c: AppContainer, private val playlistId
         selectJob = viewModelScope.launch {
             mapping = c.epg.mappingInfo(playlistId, listOf(ch.streamId)).firstOrNull()
             nowNext.request(ch.streamId)
-            choices = suggestionsFor(ch)
+            showChoices(suggestionsFor(ch))
+        }
+    }
+
+    /**
+     * Shows [list], and what is on now on the first [ON_NOW_CHOICES] of them: at once from what is stored, then the rest
+     * read from their guides' files (one pass for each guide, stopped if other choices are shown meanwhile).
+     */
+    private fun showChoices(list: List<GuideChoice>, readAfterMs: Long = 0) {
+        choices = list
+        onNowJob?.cancel()
+        val missing = list.take(ON_NOW_CHOICES).map { it.candidate.sourceId to it.candidate.xmlId }.filter { it !in onNow }
+        if (missing.isEmpty()) return
+        val wanted = missing.groupBy({ it.first }, { it.second }).mapValues { it.value.toSet() }
+        onNowJob = viewModelScope.launch {
+            // Those stored at once; the rest once read from their guides' files.
+            val stored = c.epg.onNow(wanted)
+            onNow = onNow + stored
+            delay(readAfterMs)
+            c.epg.readOnNow(wanted) // only those with no programmes stored
+            val found = c.epg.onNow(wanted)
+            onNow = onNow + missing.associateWith { found[it] }
         }
     }
 
@@ -431,7 +475,7 @@ class GuideMatchingViewModel(private val c: AppContainer, private val playlistId
         val ch = selected ?: return
         searchJob = viewModelScope.launch {
             delay(250)
-            choices = if (q.isBlank()) {
+            val found = if (q.isBlank()) {
                 suggestionsFor(ch)
             } else {
                 c.epg.searchGuideChannels(playlistId, q).map {
@@ -442,6 +486,8 @@ class GuideMatchingViewModel(private val c: AppContainer, private val playlistId
                     )
                 }
             }
+            // Typing still: a guide's file is read once it rests, not at each pause.
+            showChoices(found, readAfterMs = SEARCH_READ_AFTER_MS)
         }
     }
 
@@ -455,8 +501,10 @@ class GuideMatchingViewModel(private val c: AppContainer, private val playlistId
         viewModelScope.launch {
             block(ch)
             mapping = c.epg.mappingInfo(playlistId, listOf(ch.streamId)).firstOrNull()
-            // The new choice's programmes load shortly after (then the guide changes, and it reloads): until then, nothing.
+            // From the new choice: at once if its programmes were read for the choices (see showChoices), else when its
+            // guide has been read (then the guide changes, and it reloads). Until then, nothing.
             nowNext.entries.remove(ch.streamId)
+            nowNext.refresh(ch.streamId)
             busy = false
         }
     }
@@ -490,7 +538,10 @@ fun GuideMatchingScreen(playlistId: Long, streamId: Long?) {
     vm.nowNext.PauseWhenHidden()
 
     Column(
-        Modifier.fillMaxSize().padding(horizontal = 56.dp, vertical = 32.dp),
+        Modifier.fillMaxSize().padding(horizontal = 56.dp, vertical = 32.dp)
+            // Something given focus first (the search box, before the channels are in): the first channel no longer
+            // takes it from there. (Its own first focus ends it too.)
+            .onFocusChanged { if (it.hasFocus) vm.firstFocusPending = false },
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -511,11 +562,16 @@ fun GuideMatchingScreen(playlistId: Long, streamId: Long?) {
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
             Column(Modifier.width(480.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 val hint = stringResource(R.string.live_guide_filter_hint)
-                FilterField(filter, { vm.filter.value = it }, hint, rememberFirstFocus().fillMaxWidth())
+                FilterField(filter, { vm.filter.value = it }, hint, Modifier.fillMaxWidth())
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
                     items(count = items.itemCount, key = items.itemKey { it.channel.streamId }) { i ->
                         val row = items[i] ?: return@items
-                        MatchRowCard(row, row.channel.streamId == vm.selected?.streamId) { vm.select(row.channel) }
+                        // The first channel takes focus, not the filter: once, and opened from a channel's menu, that
+                        // channel (once the list is filtered to it: unfiltered first, another can be first).
+                        val shown = vm.initial != null && items.itemSnapshotList.any { it?.channel?.streamId == vm.initial }
+                        val first = if (shown) row.channel.streamId == vm.initial else i == 0
+                        val focus = Modifier.restoreFocusIf(vm.firstFocusPending && first) { vm.firstFocusPending = false }
+                        MatchRowCard(row, row.channel.streamId == vm.selected?.streamId, focus) { vm.select(row.channel) }
                     }
                 }
             }
@@ -525,9 +581,9 @@ fun GuideMatchingScreen(playlistId: Long, streamId: Long?) {
 }
 
 @Composable
-private fun MatchRowCard(row: MatchRow, selected: Boolean, onClick: () -> Unit) {
+private fun MatchRowCard(row: MatchRow, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val ch = row.channel
-    TvCard(onClick = onClick, selected = selected, color = Palette.surfaceLow, modifier = Modifier.fillMaxWidth()) {
+    TvCard(onClick = onClick, selected = selected, color = Palette.surfaceLow, modifier = modifier.fillMaxWidth()) {
         Row(
             Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -582,9 +638,25 @@ private fun CurrentGuide(m: MappingInfo, nowNext: NowNext?) {
     }
 }
 
+/** What is on now on [choice]'s guide channel, once looked for (see GuideMatchingViewModel.showChoices). */
+@Composable
+private fun ChoiceOnNow(vm: GuideMatchingViewModel, choice: GuideChoice, now: Long) {
+    val key = choice.candidate.sourceId to choice.candidate.xmlId
+    if (key !in vm.onNow) return
+    // One that has ended since: nothing, until it is looked for again.
+    val p = vm.onNow[key]?.takeIf { it.stopMs > now }
+    if (p == null && vm.onNow[key] != null) return
+    if (p == null) {
+        Muted(stringResource(R.string.live_guide_on_now_none))
+    } else {
+        Muted(stringResource(R.string.live_guide_on_now, programmeTitle(p.title), formatRange(p.startMs, p.stopMs)))
+    }
+}
+
 @Composable
 private fun ChoicePanel(vm: GuideMatchingViewModel, modifier: Modifier) {
     val ch = vm.selected
+    val now by rememberMinuteClock()
     Column(
         modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)).background(Palette.surfaceLow).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -623,6 +695,7 @@ private fun ChoicePanel(vm: GuideMatchingViewModel, modifier: Modifier) {
                                 overflow = TextOverflow.Ellipsis
                             )
                             Muted("${choice.sourceName} · ${choice.candidate.xmlId}")
+                            ChoiceOnNow(vm, choice, now)
                         }
                         choice.score?.let {
                             Text(
@@ -648,3 +721,9 @@ private fun ChoicePanel(vm: GuideMatchingViewModel, modifier: Modifier) {
         }
     }
 }
+
+/** How many of a channel's guide choices show what is on now (the ones on screen, about). */
+private const val ON_NOW_CHOICES = 10
+
+/** How long search results rest before their guides' files are read for what is on now. */
+private const val SEARCH_READ_AFTER_MS = 750L
