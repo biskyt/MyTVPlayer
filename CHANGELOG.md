@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.15.3
+- The remote's channel up and down buttons move a page up or down in the channel list, the TV guide and the film and series lists.
+
 ## 1.15.2
 - Back on a TV puts focus back on the item you opened (in Settings and every other screen), not on nothing or on Home.
 - TV guide matching shows what is on now on each guide channel offered, so you can see it before you choose, and the one you choose shows at once.

@@ -59,8 +59,11 @@ class PlayerBackUiTest {
         val navigator = navigators.new(screen)
         compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
         val vm = ViewModelProvider(navigator.current)[VodPlayerViewModel::class.java]
-        // The controls come up as playback starts, on Play/Pause.
-        compose.waitAdvancingClock { vm.overlay == OverlayState.CONTROLS && compose.focusedText().isNotEmpty() }
+        // The controls come up as playback starts, on Play/Pause. (They are up as the player opens too: a Back before
+        // the film has started would be undone when it starts.)
+        compose.waitAdvancingClock {
+            vm.engine?.player?.currentMediaItem != null && vm.overlay == OverlayState.CONTROLS && compose.focusedText().isNotEmpty()
+        }
         pressBack(repeats = 3)
         assertEquals(OverlayState.NONE, vm.overlay)
         assertEquals(screen, navigator.current.screen)

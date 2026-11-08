@@ -28,6 +28,19 @@ fun Key.isOptions(): Boolean = this in optionsKeys
 /** OK, or a keyboard's Enter. */
 fun Key.isSelect(): Boolean = this in selectKeys
 
+/** The remote's channel up button, or a keyboard's Page Up. */
+fun Key.isChannelUp(): Boolean = this == Key.ChannelUp || this == Key.PageUp
+
+/** The remote's channel down button, or a keyboard's Page Down. */
+fun Key.isChannelDown(): Boolean = this == Key.ChannelDown || this == Key.PageDown
+
+/** -1 for channel up, 1 for channel down (see [isChannelUp]), else null: a page up or down in a list. */
+fun Key.pageStep(): Int? = when {
+    isChannelUp() -> -1
+    isChannelDown() -> 1
+    else -> null
+}
+
 /** The remote's Guide/EPG button. */
 fun Key.isGuide(): Boolean = this == Key.Guide
 
