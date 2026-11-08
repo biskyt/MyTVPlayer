@@ -55,6 +55,7 @@ import com.biskyt.mytvplayer.ui.common.MoveHint
 import com.biskyt.mytvplayer.ui.common.MoveLayout
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.POSTER_WIDTH
+import com.biskyt.mytvplayer.ui.common.PageFocus
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.Poster
 import com.biskyt.mytvplayer.ui.common.PosterCard
@@ -65,7 +66,11 @@ import com.biskyt.mytvplayer.ui.common.collectIds
 import com.biskyt.mytvplayer.ui.common.isLockedCategory
 import com.biskyt.mytvplayer.ui.common.moveAction
 import com.biskyt.mytvplayer.ui.common.openOnShown
+import com.biskyt.mytvplayer.ui.common.pageItem
+import com.biskyt.mytvplayer.ui.common.pageKeys
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
+import com.biskyt.mytvplayer.ui.common.reveal
+import com.biskyt.mytvplayer.ui.common.rowsInView
 import com.biskyt.mytvplayer.ui.common.vodActions
 import com.biskyt.mytvplayer.ui.common.vodDetails
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -269,8 +274,16 @@ private fun PosterGrid(vm: VodBrowseViewModel, pid: Long) {
         }
     }
     KeepInView(state) { vm.mover.movingId(vm.type)?.let { p -> items.itemSnapshotList.indexOfFirst { it?.id == p } } }
+    val page = remember(filter, query) { PageFocus() } // a page not reached in another list is not taken in this one
     LazyVerticalGrid(
         columns = GridCells.Fixed(COLUMNS),
+        modifier = Modifier.pageKeys(
+            page,
+            { items.itemCount },
+            COLUMNS,
+            enabled = { vm.mover.movingId(vm.type) == null },
+            rows = { state.rowsInView() }
+        ) { state.reveal(it, COLUMNS) },
         state = state,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -289,7 +302,7 @@ private fun PosterGrid(vm: VodBrowseViewModel, pid: Long) {
                 MovableTile(vm.mover, vm.type, card.id, MoveLayout.GRID, COLUMNS) {
                     PosterCard(
                         card,
-                        Modifier.restoreFocusIf(wantsFocus) { vm.restoreFocusPending = false },
+                        Modifier.restoreFocusIf(wantsFocus) { vm.restoreFocusPending = false }.pageItem(page, index),
                         favourite = card.id in favourites,
                         onLongClick = { vm.optionsFor = card }
                     ) { nav.push(vm.open(card, pid)) }

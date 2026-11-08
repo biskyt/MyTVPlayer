@@ -26,6 +26,7 @@ import com.biskyt.mytvplayer.ui.common.FavouriteMover
 import com.biskyt.mytvplayer.ui.common.NumberEntry
 import com.biskyt.mytvplayer.ui.common.guideNowNext
 import com.biskyt.mytvplayer.ui.common.openOnShown
+import com.biskyt.mytvplayer.ui.common.reveal
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job

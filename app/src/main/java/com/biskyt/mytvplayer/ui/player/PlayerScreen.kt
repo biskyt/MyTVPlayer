@@ -90,6 +90,8 @@ import com.biskyt.mytvplayer.ui.common.digit
 import com.biskyt.mytvplayer.ui.common.formatRuntime
 import com.biskyt.mytvplayer.ui.common.formatTime
 import com.biskyt.mytvplayer.ui.common.ignoreHeldSelect
+import com.biskyt.mytvplayer.ui.common.isChannelDown
+import com.biskyt.mytvplayer.ui.common.isChannelUp
 import com.biskyt.mytvplayer.ui.common.numberLabel
 import com.biskyt.mytvplayer.ui.common.onAnyTouch
 import com.biskyt.mytvplayer.ui.common.onPlainTap
@@ -308,9 +310,11 @@ private fun remoteKey(key: Key): RemoteKey? = when (key) {
     Key.MediaFastForward -> RemoteKey.FAST_FORWARD
     Key.Guide -> RemoteKey.GUIDE
     Key.Menu -> RemoteKey.MENU
-    Key.ChannelUp, Key.PageUp -> RemoteKey.CHANNEL_UP
-    Key.ChannelDown, Key.PageDown -> RemoteKey.CHANNEL_DOWN
-    else -> null
+    else -> when {
+        key.isChannelUp() -> RemoteKey.CHANNEL_UP
+        key.isChannelDown() -> RemoteKey.CHANNEL_DOWN
+        else -> null
+    }
 }
 
 /**

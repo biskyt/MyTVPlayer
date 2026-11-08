@@ -2,7 +2,6 @@ package com.biskyt.mytvplayer.ui.live
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -84,15 +82,20 @@ import com.biskyt.mytvplayer.ui.common.formatDayTime
 import com.biskyt.mytvplayer.ui.common.formatRange
 import com.biskyt.mytvplayer.ui.common.formatTime
 import com.biskyt.mytvplayer.ui.common.ignoreHeldSelect
+import com.biskyt.mytvplayer.ui.common.inFullView
 import com.biskyt.mytvplayer.ui.common.isLive
 import com.biskyt.mytvplayer.ui.common.isSelect
 import com.biskyt.mytvplayer.ui.common.isToday
 import com.biskyt.mytvplayer.ui.common.numberLabel
 import com.biskyt.mytvplayer.ui.common.onOptionsKey
 import com.biskyt.mytvplayer.ui.common.onTap
+import com.biskyt.mytvplayer.ui.common.pageStep
+import com.biskyt.mytvplayer.ui.common.pageTarget
 import com.biskyt.mytvplayer.ui.common.rememberDetails
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.common.returnsFocus
+import com.biskyt.mytvplayer.ui.common.reveal
+import com.biskyt.mytvplayer.ui.common.rowsInView
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
 import java.time.Instant
@@ -471,11 +474,15 @@ private class GuideHighlight(
      * Every arrow press moves the highlight one step (Up from the first row goes to the filter box);
      * OK opens what it's on and holding OK opens its options (as Info/Menu do, see [GuideGrid]).
      */
-    fun onKey(e: KeyEvent): Boolean = when {
-        e.key.isSelect() -> true.also { ok(e) }
-        e.key !in arrowKeys -> false
-        e.type != KeyEventType.KeyDown -> true
-        else -> arrow(e)
+    fun onKey(e: KeyEvent): Boolean {
+        val page = e.key.pageStep()
+        return when {
+            e.key.isSelect() -> true.also { ok(e) }
+            page != null -> true.also { if (e.type == KeyEventType.KeyDown) page(page) }
+            e.key !in arrowKeys -> false
+            e.type != KeyEventType.KeyDown -> true
+            else -> arrow(e)
+        }
     }
 
     private fun arrow(e: KeyEvent): Boolean {
@@ -489,6 +496,13 @@ private class GuideHighlight(
         }
     }
 
+    /** Channel up (-1) or down (1): a page of rows up or down (see pageKeys), stopping at the first and last rows. */
+    private fun page(dir: Int) {
+        if (items.itemCount == 0) return
+        cursor.moves++
+        moveTo(pageTarget(cursor.row, dir * vm.listState.rowsInView(), 1, items.itemCount))
+    }
+
     /** A press opens; held, the options open instead (a press that began elsewhere never gets here: ignoreHeldSelect). */
     private fun ok(e: KeyEvent) {
         when {
@@ -499,27 +513,6 @@ private class GuideHighlight(
             }
             e.type == KeyEventType.KeyUp && !okHeld -> at()?.let { (ch, p) -> open(ch, p) }
         }
-    }
-}
-
-/** Whether row [index] is on screen in full. */
-private fun LazyListState.inFullView(index: Int): Boolean {
-    val end = layoutInfo.viewportEndOffset - layoutInfo.afterContentPadding
-    return layoutInfo.visibleItemsInfo.any { it.index == index && it.offset >= 0 && it.offset + it.size <= end }
-}
-
-/** Scrolls the list just enough to show row [index] in full (it's usually the row next to one on screen). */
-internal suspend fun LazyListState.reveal(index: Int) {
-    val info = layoutInfo
-    val end = info.viewportEndOffset - info.afterContentPadding
-    val item = info.visibleItemsInfo.firstOrNull { it.index == index }
-    when {
-        item == null -> {
-            val inFull = info.visibleItemsInfo.count { it.offset >= 0 && it.offset + it.size <= end }
-            scrollToItem(if (index < firstVisibleItemIndex) index else maxOf(0, index - maxOf(1, inFull) + 1))
-        }
-        item.offset < 0 -> scrollBy(item.offset.toFloat())
-        item.offset + item.size > end -> scrollBy((item.offset + item.size - end).toFloat())
     }
 }
 
