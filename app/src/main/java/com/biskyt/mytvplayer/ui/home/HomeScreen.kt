@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -22,11 +23,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.MaterialTheme
 import com.biskyt.mytvplayer.AppContainer
@@ -46,6 +52,7 @@ import com.biskyt.mytvplayer.ui.common.FavouriteMover
 import com.biskyt.mytvplayer.ui.common.ItemAction
 import com.biskyt.mytvplayer.ui.common.ItemActionsPanel
 import com.biskyt.mytvplayer.ui.common.KeepInView
+import com.biskyt.mytvplayer.ui.common.LocalReturnFocus
 import com.biskyt.mytvplayer.ui.common.MovableRow
 import com.biskyt.mytvplayer.ui.common.MovableTile
 import com.biskyt.mytvplayer.ui.common.MoveBackHandler
@@ -67,8 +74,9 @@ import com.biskyt.mytvplayer.ui.common.channelActions
 import com.biskyt.mytvplayer.ui.common.collectIds
 import com.biskyt.mytvplayer.ui.common.guideNowNext
 import com.biskyt.mytvplayer.ui.common.moveAction
-import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
+import com.biskyt.mytvplayer.ui.common.onAnyTouch
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
+import com.biskyt.mytvplayer.ui.common.settleFor
 import com.biskyt.mytvplayer.ui.common.titledRow
 import com.biskyt.mytvplayer.ui.common.vodActions
 import com.biskyt.mytvplayer.ui.common.vodDetails
@@ -76,6 +84,9 @@ import com.biskyt.mytvplayer.ui.theme.Palette
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -150,21 +161,33 @@ fun HomeScreen() {
     // States, read where used: shown() below must see a row change after its card is taken off.
     val favouriteVod = VOD_TYPES.associateWith { vm.favouriteVod.getValue(it).collectAsState() }
     val pid = vm.playlistId.collectAsState().value
-    // On the first card of the first row, once the rows are read.
-    val first = rememberFirstFocus(favourites != null && carryOnRead != null)
+    // The first card of the first row, at the top of the page: once the rows are read, and each time the app comes back
+    // to the front (the owner, 2026-11-11). See TopFocus.
+    var options by remember { mutableStateOf<HomeTile?>(null) }
+    val top = rememberTopFocus(
+        rows = { if (favourites == null || carryOnRead == null) null else carryOnRead.orEmpty().isNotEmpty() },
+        busy = { options != null || vm.mover.moving != null }
+    )
+    val first = Modifier.focusRequester(top.requester)
     // After a card is taken off its row (focus would otherwise go with it): see Refocus.
     var refocus by remember { mutableStateOf<Refocus?>(null) }
     val again = remember { FocusRequester() }
     LaunchedEffect(refocus) { if (refocus != null) runCatching { again.requestFocus() } }
-    var options by remember { mutableStateOf<HomeTile?>(null) }
     val scope = rememberCoroutineScope()
 
     // (Reads the states, so a change shows in a snapshotFlow.)
     fun shown(tile: HomeTile) = tile.isIn(recent, favourites.orEmpty(), carryOnRead.orEmpty()) { favouriteVod.getValue(it).value }
 
     MoveBackHandler(vm.mover)
-    TabScaffold(Tab.HOME) {
+    TabScaffold(
+        Tab.HOME,
+        Modifier.onPreviewKeyEvent {
+            if (it.type == KeyEventType.KeyDown) top.use()
+            false
+        }.onAnyTouch { top.use() }
+    ) {
         LazyColumn(
+            state = top.list,
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 56.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(28.dp)
         ) {
@@ -439,3 +462,57 @@ private const val MINUTES_PER_HOUR = 60
 /** The title of Home's row of favourite movies or series ([type]). */
 @StringRes
 private fun favouriteRowTitle(type: String) = if (type == CAT_MOVIE) R.string.home_favourite_movies else R.string.home_favourite_series
+
+/**
+ * Home's first focus: the first card of its first row, with the page at the top. It takes focus once the rows are read
+ * (not before: whether Continue watching, the first row, has cards). Until the remote or a touch is used, it takes it
+ * again when that changes (a sync brings in Continue watching above the card that has focus). And each time the app
+ * comes back to the front, Home is at its top again, on that card (the owner, 2026-11-11), unless a card is being moved
+ * or its options are open. Coming back from a screen that Home opened, the card used last has focus instead (see
+ * ReturnFocus).
+ */
+private class TopFocus(val list: LazyListState, val requester: FocusRequester) {
+    /** Home has taken its first focus; the remote or a touch was used since: focus stays where the user put it. */
+    var taken = false
+    var used by mutableStateOf(false)
+
+    /** The remote or a touch: counts once Home has taken its first focus (not a key pressed while the rows load). */
+    fun use() {
+        if (taken && !used) used = true
+    }
+
+    /** The page at its top, and its first card focused (once the first row is laid out there). */
+    suspend fun take() {
+        list.scrollToItem(0)
+        val focused = settleFor { runCatching { requester.requestFocus(FocusDirection.Enter) }.getOrDefault(false) }
+        if (focused) taken = true
+    }
+}
+
+/** See [TopFocus]. [rows]: null until Home's rows are read, then whether Continue watching has cards. */
+@Composable
+private fun rememberTopFocus(rows: () -> Boolean?, busy: () -> Boolean): TopFocus {
+    val back = LocalReturnFocus.current
+    // The list's place is saved with Home: coming back, the card used last is on screen to take focus.
+    val list = rememberLazyListState()
+    val top = remember { TopFocus(list, FocusRequester()) }
+    val scope = rememberCoroutineScope()
+    LifecycleStartEffect(top) {
+        // Back to the front (not the first start: Home has not taken its first focus yet, and the rows below see to it).
+        if (top.taken && !busy()) {
+            top.used = false
+            scope.launch { top.take() }
+        }
+        onStopOrDispose {}
+    }
+    LaunchedEffect(top) {
+        // Coming back from a screen Home opened, its card has focus (if it is still there).
+        // (Taken too: back to the front later, Home is at its top again.)
+        if (back?.rowTakesFocus() == true) {
+            top.taken = true
+            top.used = true
+        }
+        snapshotFlow { if (top.used) null else rows() }.filterNotNull().distinctUntilChanged().collectLatest { top.take() }
+    }
+    return top
+}

@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.15.5
+- When the app opens on Home, Home is at its top, on the first item of its first row.
+
 ## 1.15.4
 - When playback is paused, the remote's Play or Play/Pause button also closes the player controls.
 

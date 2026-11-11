@@ -221,3 +221,12 @@ val LocalScreenFocus = staticCompositionLocalOf<ScreenFocus?> { null }
 
 /** How long a screen's own focus has to settle: a list's items are laid out within a few frames. */
 private const val SETTLE_FRAMES = 10
+
+/** Tries [done] each frame for as long as a screen's own focus takes to settle (see SETTLE_FRAMES); whether it was. */
+suspend fun settleFor(done: () -> Boolean): Boolean {
+    repeat(SETTLE_FRAMES) {
+        withFrameNanos {}
+        if (done()) return true
+    }
+    return false
+}

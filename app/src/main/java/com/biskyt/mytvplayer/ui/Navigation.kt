@@ -20,6 +20,7 @@ import com.biskyt.mytvplayer.data.VodFilter
 import com.biskyt.mytvplayer.ui.common.FocusVisit
 import com.biskyt.mytvplayer.ui.common.KeepsFocus
 import com.biskyt.mytvplayer.ui.common.LocalFocusVisit
+import kotlin.random.Random
 
 /** Every screen in the app. Tab roots are [Home], [Live], [Movies], [Series]. */
 sealed interface Screen {
@@ -99,7 +100,10 @@ class Navigator(start: Screen) {
     /** The lists picked on Live TV, Movies and Series while the app is open (as this navigator is). */
     val picked = PickedLists()
 
-    private var nextId = 0
+    // Each run of the app (each navigator) numbers its entries from a start of its own. An entry's saved state is kept
+    // by its number, and Android gives it back after it has stopped the app and starts it again: a new run's entries
+    // must not take the old run's (Home far down the page; the owner, 2026-11-11). The app opens again, fresh.
+    private var nextId = Random.nextInt(0, Int.MAX_VALUE / 2)
     val stack = mutableStateListOf(NavEntry(start, nextId++))
 
     /** Ids of entries removed since the host last cleaned up their saved state. */
