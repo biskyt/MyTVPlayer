@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.15.6
+- When the app comes back, Home is on its first item even if its first row was scrolled to the side.
+- After Android restarts the app, the app no longer keeps the saved details of its screens from before.
+
 ## 1.15.5
 - When the app opens on Home, Home is at its top, on the first item of its first row.
 

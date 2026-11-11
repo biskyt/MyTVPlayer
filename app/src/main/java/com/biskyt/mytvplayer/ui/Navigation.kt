@@ -5,6 +5,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
@@ -106,8 +107,6 @@ class Navigator(start: Screen) {
     private var nextId = Random.nextInt(0, Int.MAX_VALUE / 2)
     val stack = mutableStateListOf(NavEntry(start, nextId++))
 
-    /** Ids of entries removed since the host last cleaned up their saved state. */
-    internal val dropped = ArrayList<Int>()
     val current: NavEntry get() = stack.last()
 
     fun push(screen: Screen) {
@@ -147,9 +146,9 @@ class Navigator(start: Screen) {
         stack.forEach { it.viewModelStore.clear() }
     }
 
+    // (Its saved state goes too: see NavHost.)
     private fun drop(entry: NavEntry) {
         entry.viewModelStore.clear()
-        dropped += entry.id
     }
 }
 
@@ -159,10 +158,16 @@ val LocalNavigator = staticCompositionLocalOf<Navigator> { error("No navigator")
 @Composable
 fun NavHost(navigator: Navigator, content: @Composable (Screen) -> Unit) {
     val holder = rememberSaveableStateHolder()
+    // The entries the holder keeps state for, saved with it. An entry no longer on the stack has its state removed:
+    // one taken off it, and after Android starts the app again, the old run's (numbered apart from the new run's: see
+    // Navigator).
+    val kept = rememberSaveable { ArrayList<Int>() }
     val entry = navigator.current
     SideEffect {
-        navigator.dropped.forEach(holder::removeState)
-        navigator.dropped.clear()
+        val ids = navigator.stack.map { it.id }
+        kept.filterNot(ids::contains).forEach(holder::removeState)
+        kept.clear()
+        kept += ids
     }
     // A new visit each time an entry is shown (see rememberFirstFocus's once).
     val visit = remember(entry) { FocusVisit() }

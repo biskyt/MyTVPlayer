@@ -195,7 +195,7 @@ fun HomeScreen() {
                 item {
                     Column {
                         SectionTitle(stringResource(R.string.home_carry_on))
-                        CarryOnRow(carryOn, first, refocus?.carryOn, again, { options = HomeTile.CarryOn(it) }) {
+                        CarryOnRow(carryOn, first, refocus?.carryOn, again, top.carryOnRow, { options = HomeTile.CarryOn(it) }) {
                             nav.push(Screen.VodPlayer(pid, it.itemId, it.seriesId, continueSeries = true))
                         }
                     }
@@ -221,7 +221,7 @@ fun HomeScreen() {
                         favs.isEmpty() -> EmptyFavourites(onTop) { nav.reset(Screen.Live()) }
                         else -> ChannelCardRow(favs, vm.nowNext, {
                             options = HomeTile.Channel(it, ChannelFilter.Favourites)
-                        }, onTop, vm.mover) {
+                        }, onTop, vm.mover, top.channelRow) {
                             nav.push(Screen.Player(pid, it.streamId, ChannelFilter.Favourites))
                         }
                     }
@@ -380,10 +380,10 @@ private fun ChannelCardRow(
     onOptions: (ChannelEntity) -> Unit,
     modifier: Modifier = Modifier,
     mover: FavouriteMover? = null,
+    state: LazyListState = rememberLazyListState(),
     onPlay: (ChannelEntity) -> Unit
 ) {
     val now by rememberMinuteClock()
-    val state = rememberLazyListState()
     KeepInView(state) { mover?.movingId(CAT_LIVE)?.let { p -> channels.indexOfFirst { it.streamId == p } } }
     LazyRow(state = state, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
         items(channels, key = { it.streamId }) { c ->
@@ -403,10 +403,11 @@ private fun CarryOnRow(
     /** The card focus goes to after one is taken off, by its place, and how it is focused. */
     againAt: Int?,
     again: FocusRequester,
+    state: LazyListState,
     onOptions: (WatchProgressEntity) -> Unit,
     onPlay: (WatchProgressEntity) -> Unit
 ) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+    LazyRow(state = state, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
         itemsIndexed(items, key = { _, p -> "${p.kind}${p.itemId}" }) { i, p ->
             val focus = (if (i == 0) first else Modifier).then(if (i == againAt) Modifier.focusRequester(again) else Modifier)
             CarryOnCard(p, focus, { onOptions(p) }) { onPlay(p) }
@@ -471,7 +472,13 @@ private fun favouriteRowTitle(type: String) = if (type == CAT_MOVIE) R.string.ho
  * or its options are open. Coming back from a screen that Home opened, the card used last has focus instead (see
  * ReturnFocus).
  */
-private class TopFocus(val list: LazyListState, val requester: FocusRequester) {
+private class TopFocus(
+    val list: LazyListState,
+    /** The places of the rows that can be first, Continue watching's and the favourite channels'. */
+    val carryOnRow: LazyListState,
+    val channelRow: LazyListState,
+    val requester: FocusRequester
+) {
     /** Home has taken its first focus; the remote or a touch was used since: focus stays where the user put it. */
     var taken = false
     var used by mutableStateOf(false)
@@ -484,6 +491,9 @@ private class TopFocus(val list: LazyListState, val requester: FocusRequester) {
     /** The page at its top, and its first card focused (once the first row is laid out there). */
     suspend fun take() {
         list.scrollToItem(0)
+        // The first row back at its start too, so that its first card is there to take focus. (Only a row on show: one
+        // not laid out would wait for ever.)
+        listOf(carryOnRow, channelRow).forEach { if (it.layoutInfo.totalItemsCount > 0) it.scrollToItem(0) }
         val focused = settleFor { runCatching { requester.requestFocus(FocusDirection.Enter) }.getOrDefault(false) }
         if (focused) taken = true
     }
@@ -493,9 +503,11 @@ private class TopFocus(val list: LazyListState, val requester: FocusRequester) {
 @Composable
 private fun rememberTopFocus(rows: () -> Boolean?, busy: () -> Boolean): TopFocus {
     val back = LocalReturnFocus.current
-    // The list's place is saved with Home: coming back, the card used last is on screen to take focus.
+    // The page's and its first row's places are saved with Home: coming back, the card used last is there for focus.
     val list = rememberLazyListState()
-    val top = remember { TopFocus(list, FocusRequester()) }
+    val carryOnRow = rememberLazyListState()
+    val channelRow = rememberLazyListState()
+    val top = remember { TopFocus(list, carryOnRow, channelRow, FocusRequester()) }
     val scope = rememberCoroutineScope()
     LifecycleStartEffect(top) {
         // Back to the front (not the first start: Home has not taken its first focus yet, and the rows below see to it).

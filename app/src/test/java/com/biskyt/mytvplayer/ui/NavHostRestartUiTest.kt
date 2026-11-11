@@ -60,6 +60,20 @@ class NavHostRestartUiTest {
     }
 
     @Test
+    fun `the old run's saved state is let go, not kept for ever`() {
+        val restoration = StateRestorationTester(compose)
+        show(restoration)
+        val old = navigator
+        navigator = navigators.new(Screen.Home) // a new run
+        restoration.emulateSavedInstanceStateRestore()
+        compose.onNodeWithText("Count 0").assertExists()
+        // Were the old run's entry still kept, it would come back with its own navigator (its numbers).
+        navigator = old
+        restoration.emulateSavedInstanceStateRestore()
+        compose.onNodeWithText("Count 0").assertExists()
+    }
+
+    @Test
     fun `a new run's navigator does not get the old run's saved state`() {
         val restoration = StateRestorationTester(compose)
         show(restoration)
