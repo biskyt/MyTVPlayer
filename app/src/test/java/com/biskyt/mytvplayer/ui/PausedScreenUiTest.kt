@@ -119,6 +119,37 @@ class PausedScreenUiTest {
     }
 
     @Test
+    fun `the remote's play buttons play and put the controls away at once`() {
+        paused()
+        listOf(NativeKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, NativeKeyEvent.KEYCODE_MEDIA_PLAY).forEach { code ->
+            compose.runOnIdle { vm.engine!!.player.pause() } // (paused already the first time)
+            compose.idleFrames()
+            assertEquals(OverlayState.CONTROLS, vm.overlay)
+            press(code)
+            assertTrue("playing", playWhenReady)
+            assertEquals("controls after $code", OverlayState.NONE, vm.overlay)
+        }
+    }
+
+    @Test
+    fun `with a panel open, the remote's play button plays and leaves the controls under it`() {
+        paused()
+        compose.runOnIdle { vm.sheet = PlaybackViewModel.Sheet.MORE }
+        compose.idleFrames()
+        press(NativeKeyEvent.KEYCODE_MEDIA_PLAY)
+        assertTrue("playing", playWhenReady)
+        assertEquals(OverlayState.CONTROLS, vm.overlay)
+    }
+
+    @Test
+    fun `the play button on screen leaves the controls up`() {
+        paused()
+        compose.runOnIdle { vm.togglePlayPause() } // focus is on it: the controls stay, to pause again
+        assertTrue("playing", playWhenReady)
+        assertEquals(OverlayState.CONTROLS, vm.overlay)
+    }
+
+    @Test
     fun `play on the dimmed screen plays straight away`() {
         paused()
         pass(125_000)

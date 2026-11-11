@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.15.4
+- When playback is paused, the remote's Play or Play/Pause button also closes the player controls.
+
 ## 1.15.3
 - The remote's channel up and down buttons move a page up or down in the channel list, the TV guide and the film and series lists.
 

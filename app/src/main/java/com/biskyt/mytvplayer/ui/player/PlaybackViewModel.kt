@@ -247,7 +247,14 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         // one the player doesn't act on is the TV's, repeats and all.
         if (repeat > 0 && (key == RemoteKey.OK || (key == RemoteKey.MENU || key == RemoteKey.GUIDE) && actsOn(key))) return true
         val action = actionFor(key, digit)
-        if (overlay != OverlayState.NONE) showControls(keepOverlay = true)
+        // The remote's Play or Play/Pause, from paused, also puts the controls away (the owner, 2026-11-11): first, so
+        // that playing does not keep them up. Not with a panel open over them, or the channel guide. The play button on
+        // screen leaves them, with focus on it, to pause again.
+        val plays = action == PlayerAction.Play || action == PlayerAction.TogglePlayPause
+        when {
+            plays && paused && overlay == OverlayState.CONTROLS && sheet == null -> hideOverlay()
+            overlay != OverlayState.NONE -> showControls(keepOverlay = true)
+        }
         return perform(action, repeat)
     }
 
