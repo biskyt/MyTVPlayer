@@ -1,9 +1,11 @@
 package com.biskyt.mytvplayer.player
 
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
+import androidx.media3.datasource.HttpUtil
 import androidx.media3.exoplayer.ExoPlaybackException
 import androidx.media3.exoplayer.mediacodec.MediaCodecRenderer
 import com.biskyt.mytvplayer.R
@@ -42,6 +44,7 @@ private val loginQuery = Regex("""\b(username|password)=[^&#]*""")
 fun explainFailure(e: PlaybackException, sentNothing: Boolean = false): String {
     val http = e.causes().firstNotNullOfOrNull { it as? HttpDataSource.InvalidResponseCodeException }
     return when {
+        http?.responseCode == RANGE_NOT_SATISFIABLE -> rangeReason(http)
         http != null -> httpReason(http.responseCode)
         e.causes().any { it is UnknownHostException } -> appString(R.string.player_error_dns)
         e.errorCode == ERROR_CODE_STALLED -> appString(R.string.player_error_stalled)
@@ -59,6 +62,27 @@ fun explainFailure(e: PlaybackException, sentNothing: Boolean = false): String {
         else -> appString(R.string.player_error_other, e.errorCodeName.removePrefix("ERROR_CODE_").lowercase().replace('_', ' '))
     }
 }
+
+/**
+ * The server could not send the part of the file asked for (when resuming or skipping in a file): which byte was asked
+ * for, and how big the server says the file is (the number after the slash in its Content-Range reply), if it says. To find the
+ * cause when it happens (the owner, 2026-11-11: it happened now and then, and played after some tries).
+ */
+@OptIn(UnstableApi::class)
+private fun rangeReason(http: HttpDataSource.InvalidResponseCodeException): String {
+    val at = http.dataSpec.position
+    // (The header's name in any case: data sources differ.)
+    val range = http.headerFields.entries.firstOrNull { it.key.equals("Content-Range", ignoreCase = true) }?.value?.firstOrNull()
+    val size = HttpUtil.getDocumentSize(range)
+    return if (size != C.LENGTH_UNSET.toLong()) {
+        appString(R.string.player_error_http_range, at, size)
+    } else {
+        appString(R.string.player_error_http_range_no_size, at)
+    }
+}
+
+/** HTTP 416, Range Not Satisfiable: see [rangeReason]. */
+private const val RANGE_NOT_SATISFIABLE = 416
 
 private fun httpReason(code: Int) = when (code) {
     401, 403 -> appString(R.string.player_error_http_refused, code)

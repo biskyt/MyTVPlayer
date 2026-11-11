@@ -61,8 +61,8 @@ private fun CatchupControls(vm: CatchupPlayerViewModel, buttons: FocusRequester,
             ) { vm.scrubTo(p.startMs..p.stopMs, it) }
         }
         ControlsBar(vm, buttons, root) {
-            PillButton(stringResource(R.string.common_from_start), vm::fromStart)
-            PillButton(stringResource(R.string.player_watch_live), vm::watchLive)
+            PillButton(stringResource(R.string.common_from_start), vm::fromStart, fill = true)
+            PillButton(stringResource(R.string.player_watch_live), vm::watchLive, fill = true)
         }
     }
 }

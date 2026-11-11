@@ -17,14 +17,14 @@ import org.robolectric.annotation.Config
 class PlaybackFailureTest {
     private fun failure(code: Int, cause: Throwable? = null) = PlaybackException("test", cause, code)
 
-    private fun http(status: Int) = failure(
+    private fun http(status: Int, headers: Map<String, List<String>> = emptyMap(), at: Long = 0) = failure(
         PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS,
         HttpDataSource.InvalidResponseCodeException(
             status,
             null,
             null,
-            emptyMap(),
-            DataSpec(android.net.Uri.parse("https://x/s.m3u8")),
+            headers,
+            DataSpec(android.net.Uri.parse("https://x/s.m3u8")).subrange(at),
             ByteArray(0)
         )
     )
@@ -39,6 +39,13 @@ class PlaybackFailureTest {
         says(http(403), "refused", "403", "country")
         says(http(404), "isn't at its address", "404")
         says(http(502), "server has a problem", "502")
+    }
+
+    @Test
+    fun `a part of the file the server cannot send says which part was asked for, and the file's size`() {
+        // (The header's name in any case, as servers send it.)
+        says(http(416, mapOf("content-range" to listOf("bytes */1000")), at = 2000), "416", "2000", "1000")
+        says(http(416, at = 2000), "416", "2000", "did not say")
     }
 
     @Test

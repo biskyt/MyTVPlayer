@@ -178,7 +178,10 @@ fun cardColor(normal: Color, onAccentAlpha: Float = 1f): Color =
 /** Whether the [TvCard] around this content has focus (e.g. for [OneLine]); only readers redraw when it changes. */
 val LocalCardFocused = compositionLocalOf { false }
 
-/** Pill-shaped button. [primary] fills it with the accent colour. */
+/**
+ * Pill-shaped button. [primary] fills it with the accent colour. With [fill] (the player's buttons, the owner
+ * 2026-11-11), it is filled with the accent colour only while it has focus, with no ring, as menus are.
+ */
 @Composable
 fun PillButton(
     text: String,
@@ -188,8 +191,16 @@ fun PillButton(
     selected: Boolean = false,
     /** Smaller, for a choice beside a label. */
     compact: Boolean = false,
+    fill: Boolean = false,
     leading: (@Composable () -> Unit)? = null
 ) {
+    if (fill) {
+        TvCard(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(50), color = Palette.surfaceHigh, fill = true) {
+            // (Its colour from the filled card's text style: the accent's text colour while filled.)
+            Text(text, Modifier.padding(horizontal = 20.dp, vertical = 10.dp), style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        }
+        return
+    }
     val accent = LocalAccent.current
     val bg = when {
         primary -> accent.color
