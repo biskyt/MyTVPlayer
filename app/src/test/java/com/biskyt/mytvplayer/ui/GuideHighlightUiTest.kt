@@ -65,12 +65,15 @@ class GuideHighlightUiTest {
         val cell = compose.onAllNodes(hasClickAction(), useUnmergedTree = true).fetchSemanticsNodes()
             .filter { it.boundsInRoot.contains(text.boundsInRoot.center) }
             .minBy { it.size.width }
-        // Where a ring would be, and the room before its text.
-        assertColourAcross(screen, cell, listOf(EDGE, INSIDE), accent)
+        // Where a ring would be, and inside it: at the cell's end. Its start can be the guide's left edge (the half hour
+        // before now), and in the first minutes after a half hour the now line crosses it there. The programme on now
+        // ends half an hour after now, far from the line.
+        val end = cell.size.width - 1
+        assertColourAcross(screen, cell, listOf(end - EDGE, end - INSIDE), accent)
     }
 
     private companion object {
-        /** Pixels across the cell: on its edge, where the old ring was drawn; and inside it. */
+        /** Pixels back from the cell's end: on its edge, where the old ring was drawn; and inside it. */
         const val EDGE = 1
         const val INSIDE = 8
     }
