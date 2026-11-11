@@ -27,6 +27,7 @@ import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -46,7 +47,10 @@ class HomeOpenFocusUiTest {
     @get:Rule(order = Navigators.ORDER)
     val navigators = Navigators()
 
-    private val provider = FakeProvider()
+    private val provider = FakeProvider().apply {
+        // More channels than a row shows (for a row scrolled far to the side).
+        streams = streams + (1..WIDE).map { FakeProvider.Stream(1000L + it, 400 + it, "Extra %02d".format(it), "1", null) }
+    }
     private val app = ApplicationProvider.getApplicationContext<TestApp>()
     private var pid = 0L
 
@@ -124,10 +128,41 @@ class HomeOpenFocusUiTest {
         assertEquals(moved, compose.focusedText())
     }
 
+    @Test
+    fun `back from the background with the first row scrolled to its end, Home is on its first card`() {
+        runBlocking { (1..WIDE).forEach { app.container.channels.setFavourite(pid, 1000L + it, true) } }
+        val first = home()
+        // To the row's last card (it shows the first 12 favourites), far out of sight of its first.
+        repeat(ROW - 1) { compose.pressAndRead(Key.DirectionRight) }
+        assertTrue(compose.focusedText(), "Extra %02d".format(ROW - 1) in compose.focusedText())
+        compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        compose.waitAdvancingClock(stepMs = 50) { compose.focusedText() == first }
+        assertAtTop()
+    }
+
+    @Test
+    fun `with no favourite channels and nothing to continue, Home still takes its first focus, and again when it comes back`() {
+        runBlocking { app.container.channels.setFavourite(pid, 101, false) }
+        val first = home() // the button that leads to the channels, in the empty row
+        onHeat()
+        compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        compose.waitAdvancingClock(stepMs = 50) { compose.focusedText() == first }
+    }
+
     /** A film started on another TV (a sync brings it in): it goes on Continue watching. */
     private fun film(id: Long, title: String) = runBlocking {
         app.container.vod.saveProgress(
             WatchProgressEntity(pid, VOD_MOVIE, id, 600_000, 6_000_000, System.currentTimeMillis() + id, title, null)
         )
+    }
+
+    private companion object {
+        /** Extra favourite channels: more than a row shows. */
+        const val WIDE = 20
+
+        /** The favourite channels Home's row shows. */
+        const val ROW = 12
     }
 }
