@@ -54,13 +54,16 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.container
+import com.biskyt.mytvplayer.core.net.PublicIp
 import com.biskyt.mytvplayer.data.ChannelFilter
+import com.biskyt.mytvplayer.data.Settings
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.theme.BoardStyle
@@ -118,7 +121,7 @@ fun TopBar(selected: Tab?) {
             }) { TabLabel(stringResource(tab.label), tab == selected) }
         }
         Box(Modifier.weight(1f))
-        settings?.takeIf { it.warnVpn }?.let { VpnStatus(showIp = it.showExternalIp) }
+        rememberVpn(settings)?.let { VpnStatus(it, VpnLook.Bar, Modifier.padding(horizontal = BAR_PAD_H, vertical = BAR_PAD_V)) }
         Clock(Modifier.padding(horizontal = BAR_PAD_H, vertical = BAR_PAD_V), BarText.current, Palette.textDim)
         BarItem({ nav.open(Screen.Search()) }) { BarIcon(AppIcons.Search, stringResource(R.string.common_search)) }
         BarItem({ nav.open(Screen.Settings) }) { BarIcon(AppIcons.Settings, stringResource(R.string.common_settings)) }
@@ -180,58 +183,119 @@ private fun BarItem(onClick: () -> Unit, content: @Composable () -> Unit) {
     }
 }
 
+/** What [VpnStatus] shows: whether a VPN is connected, and the public address once known (with its setting). */
+data class Vpn(val connected: Boolean, val ip: PublicIp?)
+
 /**
- * Whether a VPN is connected (setting "Warn if VPN is not connected"): a shield and "VPN on" when it is, today's
- * warning pill when not. With [showIp], also the public IP address and its country, once known, on a second line.
+ * With the setting "Warn if VPN is not connected" on, whether a VPN is connected, and with "Show your external IP
+ * address" also the address; null with it off, and then nothing is watched or asked.
  */
 @Composable
-private fun VpnStatus(showIp: Boolean) {
+fun rememberVpn(settings: Settings?): Vpn? {
+    if (settings?.warnVpn != true) return null
     val container = LocalContext.current.container
     val connected by container.vpn.connected.collectAsState()
-    val ip = if (showIp) container.externalIp.current.collectAsState().value else null
+    val ip = if (settings.showExternalIp) container.externalIp.current.collectAsState().value else null
+    return Vpn(connected, ip)
+}
+
+/**
+ * How [VpnStatus] is drawn: in the top bar, or larger over the video next to the player's clock. Not connected, it has
+ * its own label and icon sizes ([offLabel], [offIcon]), on a warning pill ([offPill]) or in the warning colour.
+ */
+class VpnLook(
+    val label: @Composable () -> TextStyle,
+    val offLabel: @Composable () -> TextStyle,
+    val ipText: @Composable () -> TextStyle,
+    val connectedText: Color,
+    val icon: Dp,
+    val offIcon: Dp,
+    val gap: Dp,
+    val ipWidth: Dp,
+    val offPill: Boolean
+) {
+    companion object {
+        val Bar = VpnLook(
+            label = { VpnText.current },
+            offLabel = { MaterialTheme.typography.labelMedium },
+            ipText = { MaterialTheme.typography.labelSmall },
+            connectedText = Palette.textDim,
+            icon = 14.bd,
+            offIcon = 20.dp,
+            gap = 4.bd,
+            // A long IPv6 address is cut, not let to widen the bar.
+            ipWidth = 150.dp,
+            offPill = true
+        )
+
+        /** Next to the player's clock (the owner, 2026-11-12). */
+        val Player = VpnLook(
+            label = { MaterialTheme.typography.titleMedium },
+            offLabel = { MaterialTheme.typography.titleMedium },
+            ipText = { MaterialTheme.typography.labelMedium },
+            connectedText = Palette.text,
+            icon = 22.dp,
+            offIcon = 22.dp,
+            gap = 6.dp,
+            ipWidth = 240.dp,
+            // Already on the clock's dark panel: a pill in it would be a frame in a frame.
+            offPill = false
+        )
+    }
+}
+
+/**
+ * Whether a VPN is connected: a shield and "VPN on" when it is, the warning pill when not. With the address, also it
+ * and its country on a second line.
+ */
+@Composable
+fun VpnStatus(vpn: Vpn, look: VpnLook, modifier: Modifier = Modifier) {
+    val connected = vpn.connected
+    val ip = vpn.ip
     val accent = LocalAccent.current.color
-    val text = if (connected) Palette.textDim else Palette.background
+    val pill = !connected && look.offPill
+    val text = when {
+        connected -> look.connectedText
+        pill -> Palette.background
+        else -> Palette.warning
+    }
     // The address goes on a second, smaller line, so the status is no wider.
     val vertical = if (ip == null) 8.dp else 3.dp
     Row(
-        if (connected) {
-            Modifier.padding(horizontal = BAR_PAD_H, vertical = BAR_PAD_V)
-        } else {
-            // The same room beside it as the other items have, so the bar is spaced alike either way.
-            Modifier.padding(horizontal = BAR_PAD_H).clip(RoundedCornerShape(50)).background(Palette.warning)
+        if (pill) {
+            modifier.clip(RoundedCornerShape(50)).background(Palette.warning)
                 .padding(start = 10.dp, end = 14.dp, top = vertical, bottom = vertical)
+        } else {
+            modifier
         },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.bd)
+        horizontalArrangement = Arrangement.spacedBy(look.gap)
     ) {
         // Connected: as the boards draw it. Not connected: the warning pill as before 1.12.2.
         Icon(
             AppIcons.Shield,
             contentDescription = null,
             tint = if (connected) accent else text,
-            modifier = Modifier.size(if (connected) 14.bd else 20.dp)
+            modifier = Modifier.size(if (connected) look.icon else look.offIcon)
         )
         Column {
             Text(
                 stringResource(if (connected) R.string.common_vpn_on else R.string.common_vpn_off),
-                style = if (connected) VpnText.current else MaterialTheme.typography.labelMedium,
+                style = if (connected) look.label() else look.offLabel(),
                 color = text
             )
             ip?.let {
                 Text(
                     it.country?.let { country -> stringResource(R.string.common_ip_country, it.ip, country) } ?: it.ip,
-                    style = MaterialTheme.typography.labelSmall.copy(color = text),
+                    style = look.ipText().copy(color = text),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    // A long IPv6 address is cut, not let to widen the bar.
-                    modifier = Modifier.widthIn(max = IP_WIDTH)
+                    modifier = Modifier.widthIn(max = look.ipWidth)
                 )
             }
         }
     }
 }
-
-private val IP_WIDTH = 150.dp
 
 /** The time of day, updated each minute: in the top bar, and over the video while the player's controls show. */
 @Composable

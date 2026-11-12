@@ -24,6 +24,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,10 +67,12 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.R
+import com.biskyt.mytvplayer.container
 import com.biskyt.mytvplayer.core.player.OverlayState
 import com.biskyt.mytvplayer.core.player.RemoteKey
 import com.biskyt.mytvplayer.core.player.isMedia
 import com.biskyt.mytvplayer.core.player.passedOnByPanels
+import com.biskyt.mytvplayer.data.Settings
 import com.biskyt.mytvplayer.data.programmeTitle
 import com.biskyt.mytvplayer.player.PlaybackError
 import com.biskyt.mytvplayer.player.displayAddress
@@ -86,6 +90,8 @@ import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.ProgrammeAbout
 import com.biskyt.mytvplayer.ui.common.ProgressLine
 import com.biskyt.mytvplayer.ui.common.TvCard
+import com.biskyt.mytvplayer.ui.common.VpnLook
+import com.biskyt.mytvplayer.ui.common.VpnStatus
 import com.biskyt.mytvplayer.ui.common.digit
 import com.biskyt.mytvplayer.ui.common.formatRuntime
 import com.biskyt.mytvplayer.ui.common.formatTime
@@ -97,6 +103,7 @@ import com.biskyt.mytvplayer.ui.common.onAnyTouch
 import com.biskyt.mytvplayer.ui.common.onPlainTap
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
+import com.biskyt.mytvplayer.ui.common.rememberVpn
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
 
@@ -129,6 +136,9 @@ internal fun PlayerFrame(
     val buttons = remember { FocusRequester() }
     var videoFocused by remember { mutableStateOf(false) }
     val acted = remember { arrayOfNulls<Key>(1) }
+    // Read only by the clock's row (as a State, so that a settings write recomposes only it, not the frame).
+    val container = LocalContext.current.container
+    val settings = remember { container.settings.settings }.collectAsState(initial = null)
 
     if (vm.exit) {
         LaunchedEffect(Unit) { nav.pop() }
@@ -199,12 +209,7 @@ internal fun PlayerFrame(
         if (vm.overlay == OverlayState.CONTROLS) {
             // With the video focused (Up from the buttons), left and right skip: the bar shows its handle (no remote: none).
             CompositionLocalProvider(LocalBarSelected provides (videoFocused && !LocalTouch.current)) { controls(buttons, root) }
-            Clock(
-                Modifier.align(Alignment.TopEnd).padding(top = 27.dp, end = 56.dp)
-                    .clip(RoundedCornerShape(9.dp)).background(PanelShade).padding(horizontal = 14.dp, vertical = 6.dp),
-                MaterialTheme.typography.headlineSmall,
-                Palette.text
-            )
+            ClockAndVpn(settings, Modifier.align(Alignment.TopEnd).padding(top = 27.dp, end = 56.dp))
             // A touch screen has no remote with a Back button in reach: this goes back to the list.
             if (LocalTouch.current) {
                 RoundButton(
@@ -222,6 +227,24 @@ internal fun PlayerFrame(
     }
     vm.sheet?.let { PlayerSheet(it, vm) }
     FocusFollowsOverlay(vm, root)
+}
+
+/**
+ * The time over the video while the controls show, and before it, with the setting "Warn if VPN is not connected",
+ * whether a VPN is connected, as the top bar shows it (the owner, 2026-11-12).
+ */
+@Composable
+private fun ClockAndVpn(settings: State<Settings?>, modifier: Modifier) {
+    // Watched only while it shows, as in the top bar (VpnMonitor, ExternalIp).
+    val vpn = rememberVpn(settings.value)
+    Row(
+        modifier.clip(RoundedCornerShape(9.dp)).background(PanelShade).padding(horizontal = 14.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        vpn?.let { VpnStatus(it, VpnLook.Player) }
+        Clock(Modifier, MaterialTheme.typography.headlineSmall, Palette.text)
+    }
 }
 
 /** How dark the paused screen goes when it dims. */
