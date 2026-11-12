@@ -33,6 +33,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.ConnectionPool
@@ -58,6 +60,11 @@ class PlaylistRepository(
     private val channels = db.channels()
 
     fun observePlaylists(): Flow<List<PlaylistEntity>> = playlists.observeAll()
+
+    /** The playlist in use: the one chosen in Settings, or else the first (none: null). */
+    fun observeActive(): Flow<PlaylistEntity?> = combine(settings.settings, playlists.observeAll()) { s, all ->
+        all.firstOrNull { it.id == s.activePlaylistId } ?: all.firstOrNull()
+    }.distinctUntilChanged()
 
     suspend fun get(id: Long): PlaylistEntity? = playlists.get(id)
 

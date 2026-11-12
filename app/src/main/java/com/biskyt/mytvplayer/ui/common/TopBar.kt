@@ -92,8 +92,7 @@ fun TopBar(selected: Tab?) {
     val container = LocalContext.current.container
     // remember: a new Room flow on each recomposition would re-run the query and briefly show nothing.
     val settings by remember { container.settings.settings }.collectAsState(initial = null)
-    val playlists by remember { container.playlists.observePlaylists() }.collectAsState(initial = emptyList())
-    val active = playlists.firstOrNull { it.id == settings?.activePlaylistId } ?: playlists.firstOrNull()
+    val active = remember { container.playlists.observeActive() }.collectAsState(initial = null).value
 
     // Catch-up only for playlists that have some.
     val hasCatchup by remember(active?.id) { active?.let { container.channels.observeHasCatchup(it.id) } ?: flowOf(false) }

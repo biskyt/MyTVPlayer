@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.15.9
+- Channel logos and posters now load through the active playlist's proxy too, as its lists, guide and streams already do.
+
 ## 1.15.8
 - With "Warn if VPN is not connected" on, the player also shows whether a VPN is connected, next to its clock, with your external IP address if that setting is on too.
 
