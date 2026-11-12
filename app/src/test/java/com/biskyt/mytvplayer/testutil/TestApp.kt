@@ -1,6 +1,8 @@
 package com.biskyt.mytvplayer.testutil
 
 import android.os.SystemClock
+import coil3.SingletonImageLoader
+import coil3.annotation.DelicateCoilApi
 import com.biskyt.mytvplayer.MyTvApp
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.cancel
@@ -23,8 +25,11 @@ class TestApp : MyTvApp() {
      * shared by the whole run: a test's syncs and queries left running would hold them up in the next test (seen as a
      * Room query that never answers, now and then, on busy runners).
      */
+    @OptIn(DelicateCoilApi::class)
     override fun onTerminate() {
         try {
+            // The image loader is process-wide: the next test's app makes its own, on its own container.
+            SingletonImageLoader.reset()
             stopMainThreadEffects()
             runMainLooperDown()
             container.appScope.cancel()

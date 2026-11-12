@@ -37,6 +37,7 @@ import com.biskyt.mytvplayer.data.CrashLog
 import com.biskyt.mytvplayer.data.EpgRepository
 import com.biskyt.mytvplayer.data.ExternalIp
 import com.biskyt.mytvplayer.data.Favourites
+import com.biskyt.mytvplayer.data.ImageCalls
 import com.biskyt.mytvplayer.data.ParentalRepository
 import com.biskyt.mytvplayer.data.PlaylistRepository
 import com.biskyt.mytvplayer.data.ProgressSync
@@ -49,11 +50,14 @@ import com.biskyt.mytvplayer.data.VodRepository
 import com.biskyt.mytvplayer.data.VpnMonitor
 import com.biskyt.mytvplayer.data.dataStore
 import com.biskyt.mytvplayer.data.db.AppDatabase
+import com.biskyt.mytvplayer.data.db.proxy
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 
@@ -108,6 +112,9 @@ class AppContainer(context: Context) {
     val categoryStore = CategoryStore(db, choiceLog)
     val playlists = PlaylistRepository(db, http, settings, epg, context.cacheDir.resolve("playlists"), categoryStore, proxies)
     val channels = ChannelRepository(db, choiceLog)
+
+    /** For images: through the active playlist's proxy. Made at the first image, not for a process that loads none. */
+    val imageCalls by lazy { ImageCalls(appScope, playlists.observeActive().map { it?.proxy }.distinctUntilChanged(), proxies) }
     val vod = VodRepository(db, playlists, categoryStore, progressSync, choiceLog)
     private val syncedChoices by lazy { SyncedChoices(db, channels, vod, categoryStore, parental, epg) }
     val favourites = Favourites(appScope, settings, channels, vod)
@@ -169,7 +176,7 @@ open class MyTvApp : Application(), SingletonImageLoader.Factory {
 
     /** Channel logos: decoded at row size, small memory cache, disk cache capped so storage stays low. */
     override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)
-        .components { add(OkHttpNetworkFetcherFactory(callFactory = { container.http })) }
+        .components { add(OkHttpNetworkFetcherFactory(callFactory = { container.imageCalls })) }
         .memoryCache { MemoryCache.Builder().maxSizePercent(context, 0.12).build() }
         .diskCache { DiskCache.Builder().directory(context.cacheDir.resolve("logos")).maxSizeBytes(LOGO_CACHE_BYTES).build() }
         .crossfade(false)

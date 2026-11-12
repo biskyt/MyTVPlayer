@@ -88,8 +88,9 @@ cropped ([credits, with each image's author and licence](app/src/test/resources/
 ### And more
 - **Several playlists**: add as many as you like and switch between them from the top bar. Settings shows when a
   provider's subscription expires.
-- **A proxy for each playlist** (HTTP or SOCKS5, with an optional login): the playlist's login, lists, TV guide and
-  streams go through it, and Check proxy shows the address that the provider then sees.
+- **A proxy for each playlist** (HTTP or SOCKS5, with an optional login): the playlist's login, lists, TV guide,
+  streams and images (logos and posters) go through it, and the proxy looks up the provider's names. Check proxy shows
+  the address that the provider then sees.
 - **Backup and restore** of your playlists, choices, favourites, guide matching and progress, to a file you can
   copy to another TV.
 - **Appearance**: preset accent colours and large text.
