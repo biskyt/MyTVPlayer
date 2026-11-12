@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.15.8
+- With "Warn if VPN is not connected" on, the player also shows whether a VPN is connected, next to its clock, with your external IP address if that setting is on too.
+
 ## 1.15.7
 - The player's buttons are filled with your accent colour only while they have focus, as in menus and Settings, so play/pause is no longer always coloured.
 - When a stream's server cannot send the part of a file that was asked for (error 416), the message says which part was asked for and how big the server says the file is.
