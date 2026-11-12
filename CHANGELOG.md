@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.15.7
+- The player's buttons are filled with your accent colour only while they have focus, as in menus and Settings, so play/pause is no longer always coloured.
+- When a stream's server cannot send the part of a file that was asked for (error 416), the message says which part was asked for and how big the server says the file is.
+
 ## 1.15.6
 - When the app comes back, Home is on its first item even if its first row was scrolled to the side.
 - After Android restarts the app, the app no longer keeps the saved details of its screens from before.

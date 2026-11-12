@@ -74,6 +74,8 @@
     <string name="player_error_http_gone">Le flux n\'est plus à cette adresse (erreur %1$d). La liste des chaînes n\'est peut-être plus à jour.</string>
     <string name="player_error_http_server">Le serveur du flux rencontre un problème (erreur %1$d). Il est peut-être hors service pour le moment.</string>
     <string name="player_error_http_other">Le serveur du flux a répondu avec l\'erreur %1$d.</string>
+    <string name="player_error_http_range">Le serveur du flux n\'a pas pu envoyer la partie du fichier demandée (erreur 416). L\'octet %1$d a été demandé, et le serveur indique que le fichier fait %2$d octets.</string>
+    <string name="player_error_http_range_no_size">Le serveur du flux n\'a pas pu envoyer la partie du fichier demandée (erreur 416). L\'octet %1$d a été demandé, et le serveur n\'a pas indiqué la taille du fichier.</string>
     <string name="player_about_programme">À propos de ce programme</string>
     <string name="player_description">Description de l\'épisode</string>
     <string name="player_stream_info">Infos sur le flux</string>

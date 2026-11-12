@@ -74,6 +74,8 @@
     <string name="player_error_http_gone">La transmisión ya no está en su dirección (error %1$d). Puede que la lista de canales esté desactualizada.</string>
     <string name="player_error_http_server">El servidor de la transmisión tiene un problema (error %1$d). Puede que esté caído por ahora.</string>
     <string name="player_error_http_other">El servidor de la transmisión respondió con el error %1$d.</string>
+    <string name="player_error_http_range">El servidor de la transmisión no pudo enviar la parte del archivo que se pidió (error 416). Se pidió el byte %1$d y el servidor dice que el archivo tiene %2$d bytes.</string>
+    <string name="player_error_http_range_no_size">El servidor de la transmisión no pudo enviar la parte del archivo que se pidió (error 416). Se pidió el byte %1$d y el servidor no dijo el tamaño del archivo.</string>
     <string name="player_about_programme">Sobre este programa</string>
     <string name="player_description">Descripción del episodio</string>
     <string name="player_stream_info">Información de la transmisión</string>
