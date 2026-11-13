@@ -91,6 +91,7 @@ import com.biskyt.mytvplayer.ui.settings.SettingsPage
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.bd
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -105,6 +106,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 // ---------------------------------------------------------------- sources
 
@@ -231,17 +234,52 @@ class GuideSourcesViewModel(private val c: AppContainer) : ViewModel() {
 
     fun remove(s: EpgSourceEntity) = viewModelScope.launch { c.epg.removeSource(s.id) }
 
+    /** The moves made here (see [move]). */
+    private class Moves {
+        /** One at a time: each reads the order the last one left. */
+        val lock = Mutex()
+
+        /** Each playlist's guides in their order before the first move here. */
+        val starts = HashMap<Long, List<Long>>()
+    }
+
+    private val moves = Moves()
+
     /**
-     * Moves [row]'s guide one place [up] or down in the playlist's order, then matches the channels again in the new
-     * order (the owner, 2026-11-13). Nothing while other work runs.
+     * Moves [row]'s guide one place [up] or down in the playlist's order (the owner, 2026-11-13). The channels are matched
+     * to the guides in the new order only on leaving the screen, so that a guide can be moved several places at once.
      */
     fun move(row: GuideRow, up: Boolean) {
         val pid = playlist.value?.id ?: return
-        work.run(appString(R.string.live_guide_rematching)) {
-            if (!c.epg.moveSource(pid, row.source.id, up)) return@run WorkStatus(appString(R.string.live_guide_order_end))
-            val before = coverage()
-            c.sync.rematchGuides(pid).getOrElse { return@run WorkRunner.failed(appString(R.string.common_match_failed), it) }
-            WorkStatus(appString(R.string.live_guide_rematched), coverageText(before, coverage()))
+        // Copied, so that the job holds these and not the whole screen.
+        val moves = moves
+        val epg = c.epg
+        val dao = c.db.epg()
+        val work = work
+        val end = WorkStatus(appString(R.string.live_guide_order_end))
+        // In the app's scope, so that Back just after a move does not stop it half done. Started at once on the main
+        // thread, so that the moves take the lock in the order they were pressed.
+        c.appScope.launch(Dispatchers.Main.immediate) {
+            moves.lock.withLock {
+                if (pid !in moves.starts) moves.starts[pid] = dao.guideOrder(pid)
+                when {
+                    !epg.moveSource(pid, row.source.id, up) -> work.show(end)
+                    work.status == end -> work.show(null)
+                }
+            }
+        }
+    }
+
+    // In the sync's own scope, as this one ends: the matching's progress shows in the corner (see SyncToast).
+    override fun onCleared() {
+        val moves = moves
+        val dao = c.db.epg()
+        val sync = c.sync
+        // After the moves pressed before it (see move).
+        c.appScope.launch(Dispatchers.Main.immediate) {
+            moves.lock.withLock {
+                moves.starts.forEach { (pid, order) -> if (dao.guideOrder(pid) != order) sync.refreshFor(pid, emptySet(), rematch = true) }
+            }
         }
     }
 

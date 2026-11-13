@@ -2,6 +2,7 @@ package com.biskyt.mytvplayer.testutil
 
 import com.biskyt.mytvplayer.AppContainer
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 
 /**
@@ -20,3 +21,6 @@ suspend fun AppContainer.addHomeTv(provider: FakeProvider, vod: Boolean = false,
     }
     return id
 }
+
+/** The guide that [playlistId]'s channel [streamId] is matched to. */
+fun AppContainer.guideOf(playlistId: Long, streamId: Long) = runBlocking { epg.mappingInfo(playlistId, listOf(streamId)).single().sourceId }

@@ -21,6 +21,7 @@ import com.biskyt.mytvplayer.testutil.drawScreen
 import com.biskyt.mytvplayer.testutil.focusedText
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.ui.common.BoardOption
+import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.SettingRow
 import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
@@ -34,8 +35,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Settings rows and menu options with focus are filled with the accent colour, with no ring (the owner, 2026-11-06),
- * and their text takes the accent's text colour.
+ * Settings rows, menu options and buttons with focus are filled with the accent colour, with no ring (the owner,
+ * 2026-11-06, and 2026-11-13 for every button), and their text takes the accent's text colour.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "+w960dp-h540dp-tvdpi")
@@ -65,6 +66,11 @@ class FocusFillUiTest {
     @Test
     fun `a settings row with focus is filled with the accent colour`() = assertFilled("Playback") { label, first ->
         SettingRow(label, "Skip times and subtitles", {}, if (first) rememberFirstFocus() else Modifier)
+    }
+
+    @Test
+    fun `a button with focus is filled with the accent colour, with no white ring`() = assertFilled("Save") { label, first ->
+        PillButton(label, {}, if (first) rememberFirstFocus() else Modifier)
     }
 
     @Test

@@ -23,6 +23,7 @@ import com.biskyt.mytvplayer.ui.common.AppIcons
 import com.biskyt.mytvplayer.ui.common.LinkPanel
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.PillButton
+import com.biskyt.mytvplayer.ui.common.cardColor
 
 /** Where to support the app: the name on its button, and the page's address (also in README.md and .github/FUNDING.yml). */
 enum class SupportLink(val label: String, val url: String, val icon: ImageVector, val tint: Color) {
@@ -39,7 +40,9 @@ fun SupportSection() {
         Muted(stringResource(R.string.settings_support_help), maxLines = 2)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SupportLink.entries.forEach { link ->
-                PillButton(link.label, { shown = link }) { Icon(link.icon, null, tint = link.tint, modifier = Modifier.size(20.dp)) }
+                PillButton(link.label, {
+                    shown = link
+                }) { Icon(link.icon, null, tint = cardColor(link.tint), modifier = Modifier.size(20.dp)) }
             }
         }
     }

@@ -5,6 +5,7 @@ import com.biskyt.mytvplayer.core.sync.SyncedChoice
 import com.biskyt.mytvplayer.testutil.FakeProvider
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.addHomeTv
+import com.biskyt.mytvplayer.testutil.guideOf
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -42,14 +43,12 @@ class GuideOrderTest {
     @After
     fun tearDown() = provider.close()
 
-    private fun guideOf(streamId: Long) = runBlocking { c.epg.mappingInfo(pid, listOf(streamId)).single().sourceId }
-
     @Test
     fun `until the user sets an order, guides stay at place 0 and the provider's is shown first, and after it a new guide goes last`() =
         runBlocking<Unit> {
             assertEquals(listOf(0, 0), c.db.epg().links(pid).map { it.position })
             assertEquals(listOf(providers, extra), c.db.epg().guideOrder(pid))
-            assertEquals(providers, guideOf(101))
+            assertEquals(providers, c.guideOf(pid, 101))
 
             c.epg.moveSource(pid, extra, up = true)
             val third = c.epg.addSource("Third", provider.url + "xmltv.php?username=me&password=secret&extra=2", pid)
@@ -61,7 +60,7 @@ class GuideOrderTest {
         assertTrue(c.epg.moveSource(pid, extra, up = true))
         assertEquals(listOf(extra, providers), c.db.epg().guideOrder(pid))
         c.epg.rematch(pid)
-        assertEquals(extra, guideOf(101))
+        assertEquals(extra, c.guideOf(pid, 101))
         val order = c.db.choices().all().filter { it.kind == ChoiceKinds.GUIDE_ORDER }.associate { it.itemId to it.value }
         assertEquals(mapOf(c.db.epg().source(extra)!!.url to "0", "" to "1"), order)
     }
@@ -88,7 +87,7 @@ class GuideOrderTest {
         c.epg.setManual(pid, 103, providers, "cine.fr")
         c.epg.moveSource(pid, extra, up = true)
         c.epg.rematch(pid)
-        assertEquals(providers, guideOf(103))
+        assertEquals(providers, c.guideOf(pid, 103))
     }
 
     @Test

@@ -194,6 +194,10 @@ fun <F> CategoryColumn(
     LaunchedEffect(selectedIndex) { if (selectedIndex >= 0 && !selectedShown()) state.scrollToItem(selectedIndex) }
     var refocus by remember { mutableStateOf<Refocus<F>?>(null) }
     RefocusEffect(refocus, selected, { currentIndex }, state, selectedEntry)
+    val page = remember { PageFocus() }
+
+    /** Entry [i] is about to take focus: its items show, as for up and down. */
+    fun focusing(i: Int) = entries.getOrNull(i)?.let { onFocus(it.filter) }
     LazyColumn(
         Modifier.width(CATEGORY_WIDTH)
             // Coming in, focus goes to the selected entry; if it isn't in view yet (a slow box still scrolling to it),
@@ -209,7 +213,12 @@ fun <F> CategoryColumn(
                     }
                 }
             }
-            .focusGroup(),
+            .focusGroup()
+            // Channel up and down: a page of categories (the owner, 2026-11-13), shown as up and down show one.
+            .pageKeys(page, { entries.size }, rows = { state.rowsInView() }) { i ->
+                focusing(i)
+                state.reveal(i)
+            },
         state = state,
         verticalArrangement = Arrangement.spacedBy(4.dp),
         contentPadding = PaddingValues(bottom = 24.dp)
@@ -226,6 +235,7 @@ fun <F> CategoryColumn(
                 modifier = Modifier.fillMaxWidth()
                     .then(if (isSelected) Modifier.focusRequester(selectedEntry) else Modifier)
                     .rightTo(right)
+                    .pageItem(page, i)
                     .onPreviewKeyEvent { e ->
                         if (e.type == KeyEventType.KeyDown) {
                             val next = when (e.key) {
@@ -233,7 +243,7 @@ fun <F> CategoryColumn(
                                 Key.DirectionDown -> i + 1
                                 else -> -1
                             }
-                            entries.getOrNull(next)?.let { onFocus(it.filter) }
+                            focusing(next)
                         }
                         false // focus moves as usual
                     }

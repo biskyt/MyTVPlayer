@@ -75,6 +75,11 @@ class WorkRunner(private val appScope: CoroutineScope, private val scope: Corout
         return true
     }
 
+    /** Shows [outcome] (or nothing), unless an operation is running. */
+    fun show(outcome: WorkStatus?) {
+        if (status?.working != true) status = outcome
+    }
+
     companion object {
         fun failed(title: String, e: Throwable) = WorkStatus(title, e.message, failed = true)
     }

@@ -37,8 +37,6 @@
     <string name="live_guide_order_help">Sube una guía para usarla primero cuando más de una guía tenga un canal. Hasta entonces, se usa la mejor coincidencia.</string>
     <string name="live_guide_move_up">Subir</string>
     <string name="live_guide_move_down">Bajar</string>
-    <string name="live_guide_rematching">Asignando los canales a las guías en el nuevo orden…</string>
-    <string name="live_guide_rematched">Canales asignados a las guías en el nuevo orden.</string>
     <string name="live_guide_order_end">Esta guía ya está en el extremo de la lista.</string>
     <string name="live_guide_none_yet">Aún no hay guías. Agrega una guía gratuita de tu país o tu propia dirección XMLTV.</string>
     <string name="live_guide_last_failed">Falló la última actualización: %1$s</string>
