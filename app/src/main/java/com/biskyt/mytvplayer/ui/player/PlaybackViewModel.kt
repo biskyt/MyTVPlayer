@@ -244,8 +244,9 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     fun onKey(key: RemoteKey, digit: Int = 0, repeat: Int = 0): Boolean {
         if (!::mapper.isInitialized) return false
         // A held OK, Menu or Guide does it once (its repeats would toggle the controls, the pause, a menu or the guide);
-        // one the player doesn't act on is the TV's, repeats and all.
-        if (repeat > 0 && (key == RemoteKey.OK || (key == RemoteKey.MENU || key == RemoteKey.GUIDE) && actsOn(key))) return true
+        // one the player doesn't act on is the TV's, repeats and all. A held play/pause or stop also acts once: a
+        // keyboard's Space and X repeat quickly (the owner, 2026-11-13).
+        if (repeat > 0 && (key in onceKeys || (key == RemoteKey.MENU || key == RemoteKey.GUIDE) && actsOn(key))) return true
         val action = actionFor(key, digit)
         // The remote's Play or Play/Pause, from paused, also puts the controls away (the owner, 2026-11-11): first, so
         // that playing does not keep them up. Not with a panel open over them, or the channel guide. The play button on
@@ -553,3 +554,6 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         const val END_MARGIN_MS = 5_000L
     }
 }
+
+/** Keys that act once however long they are held (see PlaybackViewModel.onKey). */
+private val onceKeys = setOf(RemoteKey.OK, RemoteKey.PLAY_PAUSE, RemoteKey.STOP)

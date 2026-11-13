@@ -45,6 +45,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -322,6 +325,8 @@ private fun playerKey(e: KeyEvent, vm: PlaybackViewModel, buttons: FocusRequeste
         e.key == Key.Back -> true.also { if (e.type == KeyEventType.KeyUp) vm.back() }
         e.type == KeyEventType.KeyUp -> (e.key == acted[0]).also { acted[0] = null }
         e.type != KeyEventType.KeyDown -> false
+        // A key with Ctrl, Alt or Meta is a keyboard shortcut, not a player key: Ctrl+X does not stop playback.
+        e.isCtrlPressed || e.isAltPressed || e.isMetaPressed -> false
         else -> (videoFocused || e.key !in buttonKeys) && handleKey(e, vm, buttons).also { if (it) acted[0] = e.key }
     }
 
@@ -343,10 +348,12 @@ private fun remoteKey(key: Key): RemoteKey? = when (key) {
     Key.DirectionDown -> RemoteKey.DOWN
     Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> RemoteKey.OK
     Key.Info -> RemoteKey.INFO
-    Key.MediaPlayPause -> RemoteKey.PLAY_PAUSE
+    // A keyboard's Space and X work as the media buttons do (the owner, 2026-11-13). They also work in a panel and on
+    // a dimmed screen.
+    Key.MediaPlayPause, Key.Spacebar -> RemoteKey.PLAY_PAUSE
     Key.MediaPlay -> RemoteKey.PLAY
     Key.MediaPause -> RemoteKey.PAUSE
-    Key.MediaStop -> RemoteKey.STOP
+    Key.MediaStop, Key.X -> RemoteKey.STOP
     Key.MediaRewind -> RemoteKey.REWIND
     Key.MediaFastForward -> RemoteKey.FAST_FORWARD
     Key.Guide -> RemoteKey.GUIDE
