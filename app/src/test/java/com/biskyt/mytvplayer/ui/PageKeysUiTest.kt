@@ -4,6 +4,7 @@ import android.content.pm.PackageManager
 import android.view.KeyEvent as NativeKeyEvent
 import androidx.compose.runtime.remember
 import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performKeyPress
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.data.ChannelFilter
@@ -30,7 +31,7 @@ import org.robolectric.annotation.Config
 
 /**
  * The remote's channel up and down buttons move a page up or down (the owner, 2026-11-08): in the channel list, the TV
- * guide and the film grid. Held, they go on a page at a time, and they stop at the first and last rows.
+ * guide, the film grid and the categories (2026-11-13). Held, they go on a page at a time, and they stop at the first and last rows.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "+w960dp-h540dp-tvdpi")
@@ -41,7 +42,9 @@ class PageKeysUiTest {
     val navigators = Navigators()
 
     private val provider = FakeProvider().apply {
-        streams = (1..COUNT).map { FakeProvider.Stream(1000L + it, it, "Channel %02d".format(it), "1", "c$it.uk") }
+        // A category for each channel, so that the categories need pages too.
+        categories = (1..COUNT).map { "$it" to "Group %02d".format(it) }
+        streams = (1..COUNT).map { FakeProvider.Stream(1000L + it, it, "Channel %02d".format(it), "$it", "c$it.uk") }
         guideChannels = (1..COUNT).map { "c$it.uk" to "Channel $it" }
         movies = (1..COUNT).map { Triple(5000L + it, "UK - Film %02d".format(it), "10") }
     }
@@ -121,6 +124,28 @@ class PageKeysUiTest {
         compose.waitAdvancingClock(stepMs = 50) { "Film $last" in compose.focusedText() }
         press(NativeKeyEvent.KEYCODE_CHANNEL_UP, repeats = 10)
         compose.waitAdvancingClock(stepMs = 50) { "Film 01" in compose.focusedText() }
+    }
+
+    /** The number of the category that has focus ("Group 07"), or 0 for another entry. */
+    private fun focusedGroup(): Int = Regex("""Group (\d+)""").find(compose.focusedText())?.groupValues?.get(1)?.toInt() ?: 0
+
+    @Test
+    fun `channel down and up move a page in the categories, and the channels shown follow`() {
+        show(Screen.Live(ChannelFilter.All), "Channel 01")
+        press(NativeKeyEvent.KEYCODE_DPAD_LEFT)
+        compose.waitAdvancingClock(stepMs = 50) { "All channels" in compose.focusedText() }
+        press(NativeKeyEvent.KEYCODE_CHANNEL_DOWN)
+        val paged = focusedGroup()
+        assertTrue("A page down, more than one row: on ${compose.focusedText()}", paged > 2)
+        // The category's channel, as with up and down.
+        compose.waitAdvancingClock(stepMs = 50) {
+            compose.onAllNodesWithText("Channel %02d".format(paged)).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        press(NativeKeyEvent.KEYCODE_CHANNEL_DOWN, repeats = 10)
+        compose.waitAdvancingClock(stepMs = 50) { focusedGroup() == COUNT }
+        press(NativeKeyEvent.KEYCODE_CHANNEL_UP, repeats = 10)
+        compose.waitAdvancingClock(stepMs = 50) { "Favourites" in compose.focusedText() }
     }
 
     private companion object {

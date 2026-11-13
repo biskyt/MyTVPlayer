@@ -435,16 +435,15 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
             )
         }
         ControlsBar(vm, buttons, root) {
-            PillButton(stringResource(R.string.player_channel_guide), vm::openGuide, fill = true)
+            PillButton(stringResource(R.string.player_channel_guide), vm::openGuide)
             if (details?.description != null || details?.subtitle != null) {
-                PillButton(stringResource(R.string.player_about_programme), { vm.sheet = PlaybackViewModel.Sheet.ABOUT }, fill = true)
+                PillButton(stringResource(R.string.player_about_programme), { vm.sheet = PlaybackViewModel.Sheet.ABOUT })
             }
             if (ch.archiveDays > 0) {
                 val nav = LocalNavigator.current
                 PillButton(
                     stringResource(R.string.common_start_over),
-                    { nav.replace(Screen.CatchupPlayer(ch.playlistId, ch.streamId, filter = vm.filter)) },
-                    fill = true
+                    { nav.replace(Screen.CatchupPlayer(ch.playlistId, ch.streamId, filter = vm.filter)) }
                 )
             }
         }
@@ -560,11 +559,11 @@ internal fun ControlsBar(
             }
             RoundButton(AppIcons.Stop, stringResource(R.string.player_stop)) { vm.stop() }
             ButtonRow {
-                PillButton(stringResource(R.string.player_audio), { vm.sheet = PlaybackViewModel.Sheet.AUDIO }, fill = true)
-                PillButton(stringResource(R.string.player_subtitles), { vm.sheet = PlaybackViewModel.Sheet.SUBTITLES }, fill = true)
+                PillButton(stringResource(R.string.player_audio), { vm.sheet = PlaybackViewModel.Sheet.AUDIO })
+                PillButton(stringResource(R.string.player_subtitles), { vm.sheet = PlaybackViewModel.Sheet.SUBTITLES })
                 PillButton(stringResource(R.string.player_more), {
                     vm.sheet = PlaybackViewModel.Sheet.MORE
-                }, Modifier.focusRequester(more), fill = true)
+                }, Modifier.focusRequester(more))
             }
         },
         // The OK that brought the controls up is still down: its release (and repeats) mustn't press play/pause too.
@@ -638,8 +637,8 @@ private fun ErrorBox(error: PlaybackError, vm: PlaybackViewModel) {
             // The address, so that the viewer can report it. It is not translated, and the login in it is hidden.
             error.address?.let { Muted(displayAddress(it), maxLines = 3) }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PillButton(stringResource(R.string.common_retry), vm::retry, retry, fill = true)
-                PillButton(stringResource(R.string.player_back), vm::stop, fill = true)
+                PillButton(stringResource(R.string.common_retry), vm::retry, retry)
+                PillButton(stringResource(R.string.player_back), vm::stop)
             }
         }
     }

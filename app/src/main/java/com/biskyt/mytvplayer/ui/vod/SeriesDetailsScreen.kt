@@ -296,7 +296,7 @@ fun SeriesColumn(
         extraFacts()
         // 4 lines at most, so the buttons stay in reach; More… shows the rest.
         d?.info?.plot?.let { PlotWithMore(show.title, it, SeriesPlot.current, maxLines = 4, moreModifier) }
-        // Room under the last button for its focus ring: the scrolled column clips what is outside it.
+        // A little room under the last button: the scrolled column clips what is outside it.
         Column(
             Modifier.padding(top = 4.bd, bottom = FocusStroke.width),
             verticalArrangement = Arrangement.spacedBy(10.bd),

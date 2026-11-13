@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.17.1
+- The remote's channel up and down buttons now move a page at a time in the category lists.
+- On Guide sources, Move up and Move down now move a guide at once, so you can move it several places quickly.
+- The channels are matched to the guides in their new order when you leave Guide sources.
+- A button with focus is now filled with your accent colour, without a white border.
+
 ## 1.17.0
 - On Guide sources, Move up and Move down put a playlist's guides in order, and when two guides both have a channel, the guide higher in the list is used.
 
