@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.16.1
+- With a keyboard, Space plays and pauses and X stops playback, whatever button has focus on the player, and a held play/pause or stop button acts only once.
+
 ## 1.16.0
 - A new setting, "Warn if the proxy is not working", shows in the top bar and on the player whether the active playlist's proxy works, with the address your provider sees through it.
 - A proxy with no port typed now uses the port shown in the box (1080 for SOCKS5, 8080 for HTTP), where before Check proxy said that a port was needed.
