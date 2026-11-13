@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -68,6 +69,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.container
+import com.biskyt.mytvplayer.core.net.ProxyCheck
 import com.biskyt.mytvplayer.core.player.OverlayState
 import com.biskyt.mytvplayer.core.player.RemoteKey
 import com.biskyt.mytvplayer.core.player.isMedia
@@ -89,8 +91,10 @@ import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.ProgrammeAbout
 import com.biskyt.mytvplayer.ui.common.ProgressLine
+import com.biskyt.mytvplayer.ui.common.ProxyStatus
+import com.biskyt.mytvplayer.ui.common.StatusLook
 import com.biskyt.mytvplayer.ui.common.TvCard
-import com.biskyt.mytvplayer.ui.common.VpnLook
+import com.biskyt.mytvplayer.ui.common.Vpn
 import com.biskyt.mytvplayer.ui.common.VpnStatus
 import com.biskyt.mytvplayer.ui.common.digit
 import com.biskyt.mytvplayer.ui.common.formatRuntime
@@ -103,6 +107,7 @@ import com.biskyt.mytvplayer.ui.common.onAnyTouch
 import com.biskyt.mytvplayer.ui.common.onPlainTap
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
+import com.biskyt.mytvplayer.ui.common.rememberProxy
 import com.biskyt.mytvplayer.ui.common.rememberVpn
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
@@ -209,7 +214,7 @@ internal fun PlayerFrame(
         if (vm.overlay == OverlayState.CONTROLS) {
             // With the video focused (Up from the buttons), left and right skip: the bar shows its handle (no remote: none).
             CompositionLocalProvider(LocalBarSelected provides (videoFocused && !LocalTouch.current)) { controls(buttons, root) }
-            ClockAndVpn(settings, Modifier.align(Alignment.TopEnd).padding(top = 27.dp, end = 56.dp))
+            ClockAndStatus(settings, Modifier.align(Alignment.TopEnd).padding(top = 27.dp, end = 56.dp))
             // A touch screen has no remote with a Back button in reach: this goes back to the list.
             if (LocalTouch.current) {
                 RoundButton(
@@ -230,22 +235,35 @@ internal fun PlayerFrame(
 }
 
 /**
- * The time over the video while the controls show, and before it, with the setting "Warn if VPN is not connected",
- * whether a VPN is connected, as the top bar shows it (the owner, 2026-11-12).
+ * The time over the video while the controls show, and before it, as the top bar shows them: with the setting "Warn if
+ * VPN is not connected", whether a VPN is connected (the owner, 2026-11-12), and with "Warn if the proxy is not
+ * working", whether the proxy works (2026-11-13).
  */
 @Composable
-private fun ClockAndVpn(settings: State<Settings?>, modifier: Modifier) {
-    // Watched only while it shows, as in the top bar (VpnMonitor, ExternalIp).
-    val vpn = rememberVpn(settings.value)
+private fun ClockAndStatus(settings: State<Settings?>, modifier: Modifier) {
+    // Watched only while they show, as in the top bar (VpnMonitor, ExternalIp, ProxyMonitor).
+    ClockRow(rememberVpn(settings.value), rememberProxy(settings.value), modifier)
+}
+
+/**
+ * The clock's panel: the statuses smaller and dimmer than the time, so the time stands out, with a thin line between
+ * them and it (the owner, 2026-11-13).
+ */
+@Composable
+internal fun ClockRow(vpn: Vpn?, proxy: ProxyCheck?, modifier: Modifier = Modifier) {
     Row(
         modifier.clip(RoundedCornerShape(9.dp)).background(PanelShade).padding(horizontal = 14.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        vpn?.let { VpnStatus(it, VpnLook.Player) }
+        vpn?.let { VpnStatus(it, StatusLook.Player) }
+        proxy?.let { ProxyStatus(it, StatusLook.Player) }
+        if (vpn != null || proxy != null) Box(Modifier.width(1.dp).height(24.dp).background(Palette.text.copy(alpha = DIVIDER_ALPHA)))
         Clock(Modifier, MaterialTheme.typography.headlineSmall, Palette.text)
     }
 }
+
+private const val DIVIDER_ALPHA = 0.25f
 
 /** How dark the paused screen goes when it dims. */
 private const val DIM_ALPHA = 0.85f

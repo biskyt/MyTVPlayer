@@ -41,6 +41,7 @@ import com.biskyt.mytvplayer.data.ImageCalls
 import com.biskyt.mytvplayer.data.ParentalRepository
 import com.biskyt.mytvplayer.data.PlaylistRepository
 import com.biskyt.mytvplayer.data.ProgressSync
+import com.biskyt.mytvplayer.data.ProxyMonitor
 import com.biskyt.mytvplayer.data.SearchRepository
 import com.biskyt.mytvplayer.data.SettingsRepository
 import com.biskyt.mytvplayer.data.SyncAccount
@@ -56,8 +57,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 
@@ -113,8 +116,15 @@ class AppContainer(context: Context) {
     val playlists = PlaylistRepository(db, http, settings, epg, context.cacheDir.resolve("playlists"), categoryStore, proxies)
     val channels = ChannelRepository(db, choiceLog)
 
+    /**
+     * The active playlist's proxy (null: none), read once for the images and the proxy warning. Nothing until the
+     * playlists are read (the images wait for it).
+     */
+    private val activeProxy =
+        playlists.observeActive().map { it?.proxy }.distinctUntilChanged().shareIn(appScope, SharingStarted.WhileSubscribed(), replay = 1)
+
     /** For images: through the active playlist's proxy. Made at the first image, not for a process that loads none. */
-    val imageCalls by lazy { ImageCalls(appScope, playlists.observeActive().map { it?.proxy }.distinctUntilChanged(), proxies) }
+    val imageCalls by lazy { ImageCalls(appScope, activeProxy, proxies) }
     val vod = VodRepository(db, playlists, categoryStore, progressSync, choiceLog)
     private val syncedChoices by lazy { SyncedChoices(db, channels, vod, categoryStore, parental, epg) }
     val favourites = Favourites(appScope, settings, channels, vod)
@@ -122,6 +132,9 @@ class AppContainer(context: Context) {
     val catchup = CatchupRepository(playlists)
     val sync: SyncManager = SyncManager(appScope, playlists, vod, epg, settings)
     val vpn = VpnMonitor(context, appScope)
+
+    /** Whether the active playlist's proxy works: checked only while it shows (setting "Warn if the proxy is not working"). */
+    val proxyMonitor by lazy { ProxyMonitor(vpn.network, activeProxy, playlists::checkProxy, appScope) }
 
     // No pooled connection: one opened before a VPN started would still show the address without it.
     // A limit for the whole call: a server that answers very slowly fails after 10 s, and the lookup is tried again.

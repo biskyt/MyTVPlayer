@@ -44,6 +44,11 @@ data class Settings(
     val warnVpn: Boolean = false,
     /** With [warnVpn]: also show the public IP address (see ExternalIp). It asks ipinfo.io, so it is off by default. */
     val showExternalIp: Boolean = false,
+    /**
+     * Show whether the active playlist's proxy works, and its address (see ProxyMonitor). It asks ipinfo.io, so it is off
+     * by default.
+     */
+    val warnProxy: Boolean = false,
     /** Parental controls: leave restricted categories out of these (see ParentalRepository). */
     val hideRestrictedRecent: Boolean = true,
     val hideRestrictedCarryOn: Boolean = true,
@@ -72,6 +77,7 @@ class SettingsRepository(private val context: Context) {
         val accent = intPreferencesKey("accent")
         val largeText = booleanPreferencesKey("large_text")
         val warnVpn = booleanPreferencesKey("warn_vpn")
+        val warnProxy = booleanPreferencesKey("warn_proxy")
         val showIp = booleanPreferencesKey("show_external_ip")
         val hideRecent = booleanPreferencesKey("restricted_hide_recent")
         val hideCarryOn = booleanPreferencesKey("restricted_hide_carry_on")
@@ -128,6 +134,7 @@ class SettingsRepository(private val context: Context) {
             accent = this[K.accent] ?: d.accent,
             largeText = this[K.largeText] ?: d.largeText,
             warnVpn = this[K.warnVpn] ?: d.warnVpn,
+            warnProxy = this[K.warnProxy] ?: d.warnProxy,
             showExternalIp = this[K.showIp] ?: d.showExternalIp,
             hideRestrictedRecent = this[K.hideRecent] ?: d.hideRestrictedRecent,
             hideRestrictedCarryOn = this[K.hideCarryOn] ?: d.hideRestrictedCarryOn,
@@ -155,6 +162,7 @@ class SettingsRepository(private val context: Context) {
             prefs[K.accent] = s.accent
             prefs[K.largeText] = s.largeText
             prefs[K.warnVpn] = s.warnVpn
+            prefs[K.warnProxy] = s.warnProxy
             prefs[K.showIp] = s.showExternalIp
             prefs[K.hideRecent] = s.hideRestrictedRecent
             prefs[K.hideCarryOn] = s.hideRestrictedCarryOn

@@ -10,8 +10,11 @@ import kotlinx.coroutines.coroutineScope
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 
-/** How a playlist reaches its provider: through an HTTP proxy, or a SOCKS5 one. */
-enum class ProxyType { HTTP, SOCKS }
+/**
+ * How a playlist reaches its provider: through an HTTP proxy, or a SOCKS5 one. [usualPort] is the port taken when none
+ * is typed (the port box shows it).
+ */
+enum class ProxyType(val usualPort: Int) { HTTP(8080), SOCKS(1080) }
 
 /** A playlist's proxy. [username] and [password] are optional: blank when the proxy needs none. */
 data class ProxySettings(
@@ -56,13 +59,15 @@ data class ProxySettings(
 
         /**
          * A proxy from what the user typed: a scheme ("http://", "socks5://") and a path are dropped, and "host:port"
-         * fills in a [port] left empty. The result can still be invalid ([valid]).
+         * fills in a [port] left empty. With neither, the type's usual port (the owner, 2026-11-13: the box showed it, but
+         * the check said a port was needed). The result can still be invalid ([valid]).
          */
         fun typed(type: ProxyType, host: String, port: String, username: String, password: String): ProxySettings {
             val address = host.trim().replaceFirst(SCHEME, "").substringBefore('/')
             val hostPart = address.substringBeforeLast(':', address)
-            val typedPort = address.substringAfterLast(':', "").takeIf { hostPart != address }
-            val portNumber = (port.trim().ifEmpty { typedPort.orEmpty() }).toIntOrNull() ?: 0
+            // ("host:" with nothing after the colon: no port typed.)
+            val typedPort = address.substringAfterLast(':', "").takeIf { hostPart != address && it.isNotEmpty() }
+            val portNumber = port.trim().ifEmpty { typedPort ?: type.usualPort.toString() }.toIntOrNull() ?: 0
             return ProxySettings(type, hostPart, portNumber, username.trim(), password)
         }
     }

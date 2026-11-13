@@ -115,7 +115,7 @@ fun SettingsScreen() {
                 nav.push(Screen.Appearance)
             })
         }
-        item { VpnWarningRows() }
+        item { NetworkWarningRows() }
         item { ParentalControlsRow() }
         item { SyncRow() }
         item {
@@ -133,10 +133,10 @@ fun SettingsScreen() {
 
 /**
  * "Warn if VPN is not connected" (see VpnMonitor): shown in the top bar. While it is on, also "Show your external IP
- * address" (see ExternalIp), next to it.
+ * address" (see ExternalIp), next to it. Then "Warn if the proxy is not working" (see ProxyMonitor, the owner, 2026-11-13).
  */
 @Composable
-private fun VpnWarningRows() {
+private fun NetworkWarningRows() {
     val vm = appViewModel { SettingsViewModel(it) }
     val s = vm.settings.collectAsState().value ?: return
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -148,6 +148,9 @@ private fun VpnWarningRows() {
                 vm.update { it.copy(showExternalIp = !it.showExternalIp) }
             }) { Toggle(s.showExternalIp) }
         }
+        SettingRow(stringResource(R.string.settings_warn_proxy), stringResource(R.string.settings_warn_proxy_help), {
+            vm.update { it.copy(warnProxy = !it.warnProxy) }
+        }) { Toggle(s.warnProxy) }
     }
 }
 

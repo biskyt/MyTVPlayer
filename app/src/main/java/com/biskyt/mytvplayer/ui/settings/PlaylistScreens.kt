@@ -291,7 +291,8 @@ class PlaylistEditViewModel(private val c: AppContainer, private val id: Long?) 
                     seriesUrl = it.seriesUrl.orEmpty()
                     proxyType = ProxyType.entries.firstOrNull { t -> t.name == it.proxyType }
                     proxyHost = it.proxyHost.orEmpty()
-                    proxyPort = it.proxyPort?.toString().orEmpty()
+                    // The usual port shows as the empty box's hint, so a change of type takes the new type's usual port.
+                    proxyPort = it.proxyPort?.takeIf { port -> port != proxyType?.usualPort }?.toString().orEmpty()
                     proxyUsername = it.proxyUsername.orEmpty()
                     proxyPassword = it.proxyPassword.orEmpty()
                 }
@@ -570,7 +571,6 @@ private fun ProxyFields(vm: PlaylistEditViewModel, hostEdit: MutableState<Boolea
                 }
         }
         if (vm.proxyType == null) return@Column
-        Muted(stringResource(R.string.settings_proxy_help), maxLines = 2)
         val portEdit = rememberSaveable { mutableStateOf(false) }
         val userEdit = rememberSaveable { mutableStateOf(false) }
         val passwordEdit = rememberSaveable { mutableStateOf(false) }
@@ -590,7 +590,8 @@ private fun ProxyFields(vm: PlaylistEditViewModel, hostEdit: MutableState<Boolea
                 TvTextField(
                     vm.proxyPort,
                     { vm.proxyPort = it.filter(Char::isDigit).take(PORT_DIGITS) },
-                    if (vm.proxyType == ProxyType.SOCKS) "1080" else "8080",
+                    // An empty box takes this port (ProxySettings.typed).
+                    vm.proxyType?.usualPort?.toString().orEmpty(),
                     Modifier.fillMaxWidth(),
                     keyboardType = KeyboardType.Number,
                     editing = portEdit,
