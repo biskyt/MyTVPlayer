@@ -82,8 +82,14 @@ class PlaylistRepository(
     suspend fun checkProxy(proxy: ProxySettings): ProxyCheck =
         ProxyCheck.run({ IpLookup(fresh(http)).lookup() }, { IpLookup(fresh(proxies.forProxy(proxy))).lookup() })
 
-    /** No pooled connection: one opened before a VPN started would still show the address without it. */
-    private fun fresh(client: OkHttpClient) = client.newBuilder().connectionPool(ConnectionPool(0, 1, TimeUnit.SECONDS)).build()
+    /**
+     * No pooled connection: one opened before a VPN started would still show the address without it. A limit for the
+     * whole call, as for the external IP: a server that answers very slowly fails after it.
+     */
+    private fun fresh(client: OkHttpClient) = client.newBuilder()
+        .connectionPool(ConnectionPool(0, 1, TimeUnit.SECONDS))
+        .callTimeout(CHECK_TIMEOUT_S, TimeUnit.SECONDS)
+        .build()
 
     /**
      * Reads the account's expiry date and connection limit, from an Xtream login or from an Xtream panel's M3U link
@@ -485,3 +491,6 @@ class PlaylistRepository(
         private const val BATCH = 500
     }
 }
+
+/** The longest a proxy check's lookup may take, as for the external IP. */
+private const val CHECK_TIMEOUT_S = 10L

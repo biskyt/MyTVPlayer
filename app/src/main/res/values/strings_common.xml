@@ -140,5 +140,7 @@
     <string name="common_move_hint_touch">Tap the arrows to move it, tap it to keep it there, Back to cancel</string>
     <string name="common_vpn_on">VPN on</string>
     <string name="common_vpn_off">VPN not connected</string>
+    <string name="common_proxy_on">Proxy on</string>
+    <string name="common_proxy_off">Proxy not working</string>
     <string name="common_ip_country" translatable="false">%1$s · %2$s</string>
 </resources>

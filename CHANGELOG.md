@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.16.0
+- A new setting, "Warn if the proxy is not working", shows in the top bar and on the player whether the active playlist's proxy works, with the address your provider sees through it.
+- A proxy with no port typed now uses the port shown in the box (1080 for SOCKS5, 8080 for HTTP), where before Check proxy said that a port was needed.
+- The proxy settings no longer show a help text under the proxy type.
+- The VPN and proxy status next to the player's clock is now smaller than the time, so the time stands out.
+
 ## 1.15.9
 - Channel logos and posters now load through the active playlist's proxy too, as its lists, guide and streams already do.
 

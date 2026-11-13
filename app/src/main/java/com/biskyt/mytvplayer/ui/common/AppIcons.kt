@@ -30,6 +30,17 @@ object AppIcons {
         verticalLineTo(6f)
         close()
     }
+
+    /** A proxy: an arrow that turns, as traffic goes another way. */
+    val Relay = icon("relay", false) {
+        moveTo(5f, 19f)
+        verticalLineTo(13f)
+        curveTo(5f, 10f, 7f, 8f, 10f, 8f)
+        horizontalLineTo(19f)
+        moveTo(15f, 4f)
+        lineTo(19f, 8f)
+        lineTo(15f, 12f)
+    }
     val Lock = icon("lock", false) {
         moveTo(6f, 11f)
         horizontalLineTo(18f)

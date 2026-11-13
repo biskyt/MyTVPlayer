@@ -182,6 +182,8 @@
     <string name="settings_warn_vpn_help">Muestra en la barra superior si Android indica una VPN en este dispositivo. No se puede detectar una VPN configurada en el router o en otro dispositivo.</string>
     <string name="settings_external_ip">Mostrar tu dirección IP externa</string>
     <string name="settings_external_ip_help">Muestra junto al indicador de VPN la dirección que ven los sitios web y su país. Para obtenerla, MyTVPlayer consulta ipinfo.io cuando cambia la red o la VPN.</string>
+    <string name="settings_warn_proxy">Avisar si el proxy no funciona</string>
+    <string name="settings_warn_proxy_help">Muestra en la barra superior y junto al reloj del reproductor si el proxy de la lista activa funciona, y la dirección que ve su proveedor a través de él. Para comprobarlo, MyTVPlayer consulta a ipinfo.io tu dirección con y sin el proxy cuando cambia la red o el proxy.</string>
     <string name="settings_proxy_title">Proxy</string>
     <string name="settings_proxy_none">Ninguno</string>
     <string name="settings_proxy_http">HTTP</string>
@@ -190,7 +192,6 @@
     <string name="settings_proxy_port">Puerto</string>
     <string name="settings_proxy_username">Usuario del proxy (opcional)</string>
     <string name="settings_proxy_password">Contraseña del proxy (opcional)</string>
-    <string name="settings_proxy_help">Todo el tráfico de esta lista pasa por el proxy: el inicio de sesión, las listas, la guía de TV y las emisiones. Los logotipos y carteles no.</string>
     <string name="settings_proxy_check">Comprobar proxy</string>
     <string name="settings_proxy_checking">Comprobando el proxy…</string>
     <string name="settings_proxy_bad">Introduce la dirección del proxy y un puerto de 1 a 65535.</string>

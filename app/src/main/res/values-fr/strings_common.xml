@@ -91,4 +91,6 @@
     <string name="common_move_hint_touch">Touchez les flèches pour le déplacer, touchez-le pour le laisser là, Retour pour annuler</string>
     <string name="common_vpn_on">VPN activé</string>
     <string name="common_vpn_off">VPN non connecté</string>
+    <string name="common_proxy_on">Proxy actif</string>
+    <string name="common_proxy_off">Le proxy ne fonctionne pas</string>
 </resources>

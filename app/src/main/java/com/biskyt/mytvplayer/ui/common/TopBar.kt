@@ -61,6 +61,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.container
+import com.biskyt.mytvplayer.core.net.ProxyCheck
 import com.biskyt.mytvplayer.core.net.PublicIp
 import com.biskyt.mytvplayer.data.ChannelFilter
 import com.biskyt.mytvplayer.data.Settings
@@ -120,7 +121,8 @@ fun TopBar(selected: Tab?) {
             }) { TabLabel(stringResource(tab.label), tab == selected) }
         }
         Box(Modifier.weight(1f))
-        rememberVpn(settings)?.let { VpnStatus(it, VpnLook.Bar, Modifier.padding(horizontal = BAR_PAD_H, vertical = BAR_PAD_V)) }
+        rememberVpn(settings)?.let { VpnStatus(it, StatusLook.Bar, Modifier.padding(horizontal = BAR_PAD_H, vertical = BAR_PAD_V)) }
+        rememberProxy(settings)?.let { ProxyStatus(it, StatusLook.Bar, Modifier.padding(horizontal = BAR_PAD_H, vertical = BAR_PAD_V)) }
         Clock(Modifier.padding(horizontal = BAR_PAD_H, vertical = BAR_PAD_V), BarText.current, Palette.textDim)
         BarItem({ nav.open(Screen.Search()) }) { BarIcon(AppIcons.Search, stringResource(R.string.common_search)) }
         BarItem({ nav.open(Screen.Settings) }) { BarIcon(AppIcons.Settings, stringResource(R.string.common_settings)) }
@@ -199,10 +201,11 @@ fun rememberVpn(settings: Settings?): Vpn? {
 }
 
 /**
- * How [VpnStatus] is drawn: in the top bar, or larger over the video next to the player's clock. Not connected, it has
- * its own label and icon sizes ([offLabel], [offIcon]), on a warning pill ([offPill]) or in the warning colour.
+ * How [VpnStatus] and [ProxyStatus] are drawn: in the top bar, or larger over the video next to the player's clock. As a
+ * warning, they have their own label and icon sizes ([offLabel], [offIcon]), on a warning pill ([offPill]) or in the
+ * warning colour.
  */
-class VpnLook(
+class StatusLook(
     val label: @Composable () -> TextStyle,
     val offLabel: @Composable () -> TextStyle,
     val ipText: @Composable () -> TextStyle,
@@ -214,7 +217,7 @@ class VpnLook(
     val offPill: Boolean
 ) {
     companion object {
-        val Bar = VpnLook(
+        val Bar = StatusLook(
             label = { VpnText.current },
             offLabel = { MaterialTheme.typography.labelMedium },
             ipText = { MaterialTheme.typography.labelSmall },
@@ -227,34 +230,68 @@ class VpnLook(
             offPill = true
         )
 
-        /** Next to the player's clock (the owner, 2026-11-12). */
-        val Player = VpnLook(
-            label = { MaterialTheme.typography.titleMedium },
-            offLabel = { MaterialTheme.typography.titleMedium },
-            ipText = { MaterialTheme.typography.labelMedium },
-            connectedText = Palette.text,
-            icon = 22.dp,
-            offIcon = 22.dp,
+        /** Next to the player's clock (the owner, 2026-11-12): smaller and dimmer than the time (2026-11-13). */
+        val Player = StatusLook(
+            label = { MaterialTheme.typography.labelLarge },
+            offLabel = { MaterialTheme.typography.labelLarge },
+            ipText = { MaterialTheme.typography.labelSmall },
+            connectedText = Palette.textDim,
+            icon = 16.dp,
+            offIcon = 16.dp,
             gap = 6.dp,
-            ipWidth = 240.dp,
+            ipWidth = 200.dp,
             // Already on the clock's dark panel: a pill in it would be a frame in a frame.
             offPill = false
         )
     }
 }
 
+/** Whether a VPN is connected: a shield and "VPN on" when it is, the warning when not (see [Status]). */
+@Composable
+fun VpnStatus(vpn: Vpn, look: StatusLook, modifier: Modifier = Modifier) = Status(
+    vpn.connected,
+    stringResource(if (vpn.connected) R.string.common_vpn_on else R.string.common_vpn_off),
+    vpn.ip,
+    AppIcons.Shield,
+    look,
+    modifier
+)
+
 /**
- * Whether a VPN is connected: a shield and "VPN on" when it is, the warning pill when not. With the address, also it
- * and its country on a second line.
+ * With the setting "Warn if the proxy is not working" on, what the last check of the active playlist's proxy found; null
+ * with it off, with no proxy, or before the first answer (see ProxyMonitor).
  */
 @Composable
-fun VpnStatus(vpn: Vpn, look: VpnLook, modifier: Modifier = Modifier) {
-    val connected = vpn.connected
-    val ip = vpn.ip
+fun rememberProxy(settings: Settings?): ProxyCheck? {
+    if (settings?.warnProxy != true) return null
+    return LocalContext.current.container.proxyMonitor.status.collectAsState().value
+}
+
+/**
+ * Whether the active playlist's proxy works (the owner, 2026-11-13): "Proxy on" and the address that the internet sees
+ * through it; the warning when that address is the one without the proxy, or the proxy did not answer.
+ */
+@Composable
+fun ProxyStatus(check: ProxyCheck, look: StatusLook, modifier: Modifier = Modifier) {
+    val ip = when (check) {
+        is ProxyCheck.Working -> check.via
+        is ProxyCheck.SameAddress -> check.ip
+        is ProxyCheck.Failed -> null
+    }
+    val ok = check is ProxyCheck.Working
+    Status(ok, stringResource(if (ok) R.string.common_proxy_on else R.string.common_proxy_off), ip, AppIcons.Relay, look, modifier)
+}
+
+/**
+ * A status in the top bar or by the player's clock: [ok] with its [icon] in the accent colour, else a warning. With the
+ * address, also it and its country on a second line.
+ */
+@Composable
+private fun Status(ok: Boolean, label: String, ip: PublicIp?, icon: ImageVector, look: StatusLook, modifier: Modifier) {
     val accent = LocalAccent.current.color
-    val pill = !connected && look.offPill
+    val pill = !ok && look.offPill
     val text = when {
-        connected -> look.connectedText
+        ok -> look.connectedText
         pill -> Palette.background
         else -> Palette.warning
     }
@@ -270,19 +307,15 @@ fun VpnStatus(vpn: Vpn, look: VpnLook, modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(look.gap)
     ) {
-        // Connected: as the boards draw it. Not connected: the warning pill as before 1.12.2.
+        // OK: as the boards draw it. A warning: the warning pill as before 1.12.2.
         Icon(
-            AppIcons.Shield,
+            icon,
             contentDescription = null,
-            tint = if (connected) accent else text,
-            modifier = Modifier.size(if (connected) look.icon else look.offIcon)
+            tint = if (ok) accent else text,
+            modifier = Modifier.size(if (ok) look.icon else look.offIcon)
         )
         Column {
-            Text(
-                stringResource(if (connected) R.string.common_vpn_on else R.string.common_vpn_off),
-                style = if (connected) look.label() else look.offLabel(),
-                color = text
-            )
+            Text(label, style = if (ok) look.label() else look.offLabel(), color = text)
             ip?.let {
                 Text(
                     it.country?.let { country -> stringResource(R.string.common_ip_country, it.ip, country) } ?: it.ip,

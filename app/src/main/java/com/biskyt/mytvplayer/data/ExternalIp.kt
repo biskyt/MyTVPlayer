@@ -59,7 +59,8 @@ class ExternalIp(
         return null
     }
 
-    private companion object {
+    /** Also the proxy check's timing (see ProxyMonitor). */
+    internal companion object {
         /** A VPN that starts makes several changes at once: wait for them to settle. */
         const val SETTLE_MS = 1_500L
         const val TRIES = 3

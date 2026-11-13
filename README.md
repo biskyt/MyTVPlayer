@@ -96,6 +96,8 @@ cropped ([credits, with each image's author and licence](app/src/test/resources/
 - **Appearance**: preset accent colours and large text.
 - **VPN check**: a badge in the top bar shows whether Android reports a VPN, and can also show your external IP address
   and its country (from ipinfo.io, off by default).
+- **Proxy check**: a badge in the top bar and on the player shows whether the active playlist's proxy works, with the
+  address that its provider sees, and warns when that address is your own (from ipinfo.io, off by default).
 - **Looks after its own storage**: only the guide for channels you use is kept, logos are capped and the database is
   kept compact.
 

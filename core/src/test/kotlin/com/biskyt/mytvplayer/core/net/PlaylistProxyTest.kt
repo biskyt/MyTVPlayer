@@ -81,7 +81,28 @@ class PlaylistProxyTest {
             ProxySettings.typed(ProxyType.SOCKS, "socks5://proxy.example:1080", "", " me ", "")
         )
         assertFalse(ProxySettings.typed(ProxyType.HTTP, "proxy example", "8080", "", "").valid)
-        assertFalse(ProxySettings.typed(ProxyType.HTTP, "proxy.example", "", "", "").valid)
+        assertFalse(ProxySettings.typed(ProxyType.HTTP, "proxy.example", "0", "", "").valid)
+    }
+
+    @Test
+    fun `with no port typed, a proxy takes the usual port for its type, as the port box shows`() {
+        assertEquals(
+            ProxySettings(ProxyType.SOCKS, "proxy.example", 1080),
+            ProxySettings.typed(ProxyType.SOCKS, "proxy.example", "", "", "")
+        )
+        assertEquals(
+            ProxySettings(ProxyType.HTTP, "proxy.example", 8080),
+            ProxySettings.typed(ProxyType.HTTP, "proxy.example", " ", "", "")
+        )
+        assertEquals(
+            ProxySettings(ProxyType.SOCKS, "proxy.example", 1080),
+            ProxySettings.typed(ProxyType.SOCKS, "proxy.example:", "", "", "")
+        )
+        // A port in the address still wins.
+        assertEquals(
+            ProxySettings(ProxyType.SOCKS, "proxy.example", 9050),
+            ProxySettings.typed(ProxyType.SOCKS, "proxy.example:9050", "", "", "")
+        )
     }
 
     @Test
