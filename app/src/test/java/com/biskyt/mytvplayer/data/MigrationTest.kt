@@ -251,4 +251,19 @@ class MigrationTest {
             }
         }
     }
+
+    @Test
+    fun `version 13 to 14 keeps the guides switched on, in no order of their own yet`() {
+        helper.createDatabase("migration-test-14", 13).use { db ->
+            db.execSQL("INSERT INTO epg_source (id, name, url, enabled, lastImportAt, channelCount) VALUES (7, 'G', 'http://g', 1, 0, 0)")
+            db.execSQL("INSERT INTO playlist_epg_source (playlistId, sourceId) VALUES (1, 7)")
+        }
+        helper.runMigrationsAndValidate("migration-test-14", 14, true).use { db ->
+            db.query("SELECT sourceId, position FROM playlist_epg_source WHERE playlistId = 1").use {
+                it.moveToFirst()
+                assertEquals(7, it.getInt(0))
+                assertEquals(0, it.getInt(1))
+            }
+        }
+    }
 }

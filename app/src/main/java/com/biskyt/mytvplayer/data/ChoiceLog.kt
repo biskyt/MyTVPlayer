@@ -28,6 +28,12 @@ object ChoiceKinds {
     /** A guide switched on for the playlist: the id is its address, the value its name. */
     const val GUIDE = "guide"
 
+    /**
+     * A guide's place in the playlist's order (see EpgRepository.moveSource): the id is its address ("" for the
+     * provider's own guide), the value its place.
+     */
+    const val GUIDE_ORDER = "guide-order"
+
     /** The guide channel that the user chose for a channel: see [GuideChoice]. */
     const val GUIDE_CHANNEL = "guide-channel"
 
@@ -81,7 +87,7 @@ data class GuideChoice(val guide: String, val xmlId: String?, val offsetMinutes:
         fun of(m: ChannelEpgMappingEntity, source: EpgSourceEntity?): GuideChoice? = when {
             !m.manual -> null
             m.sourceId == null || m.xmlId == null || source == null -> noGuide
-            else -> GuideChoice(if (source.isProviders) "" else source.url, m.xmlId, m.offsetMinutes)
+            else -> GuideChoice(source.syncKey, m.xmlId, m.offsetMinutes)
         }
 
         fun decode(value: String): GuideChoice? {
@@ -128,3 +134,6 @@ class ChoiceLog(
 
 /** A provider's own guide: its address holds the login, so the sync never sends it. Each TV adds its own. */
 val EpgSourceEntity.isProviders: Boolean get() = playlistId != null
+
+/** A guide's id in the synced choices: its address, or "" for a provider's own guide (its address holds the login). */
+val EpgSourceEntity.syncKey: String get() = if (isProviders) "" else url

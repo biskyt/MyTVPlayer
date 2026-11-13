@@ -108,6 +108,11 @@ class SyncManager(
     suspend fun matchMissingGuides(): Result<MatchResult> =
         attempt(R.string.common_match_failed) { epg.matchMissing(inUse()) { _state.value = SyncState.Guide(it) } }
 
+    /** After the order of [playlistId]'s guides changed: matches its channels again (see EpgRepository.rematch). */
+    suspend fun rematchGuides(playlistId: Long): Result<Map<Long, String>> = attempt(R.string.common_match_failed) {
+        ifInUse(playlistId) { epg.rematch(playlistId) { _state.value = SyncState.Guide(it) } }.orEmpty()
+    }
+
     /** Runs [block] while no refresh is running, e.g. replacing everything from a backup. */
     suspend fun <T> whileIdle(block: suspend () -> T): T = mutex.withLock { block() }
 
@@ -146,14 +151,16 @@ class SyncManager(
 
     /**
      * After the ticked categories of [types] changed: everything when live TV's did, else only movies and series. With
-     * [guides] (a guide switched on), the guides that are out of date too.
+     * [guides] (a guide switched on), the guides that are out of date too. With [rematch] (the guides' order changed),
+     * the channels are matched to them again.
      */
-    fun refreshFor(playlistId: Long, types: Set<String>, guides: Boolean = false) {
+    fun refreshFor(playlistId: Long, types: Set<String>, guides: Boolean = false, rematch: Boolean = false) {
         when {
             CAT_LIVE in types -> refresh(playlistId)
             types.isNotEmpty() -> refreshVod(playlistId)
         }
         if (guides && CAT_LIVE !in types) scope.launch { updateOutOfDateGuides(playlistId) }
+        if (rematch) scope.launch { rematchGuides(playlistId) }
     }
 
     /** Only movies and series (after their categories change). */

@@ -102,6 +102,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -115,15 +116,20 @@ private fun guideRows(
     sources: List<EpgSourceEntity>,
     links: List<PlaylistEpgSourceEntity>,
     playlists: List<PlaylistEntity>,
-    shown: PlaylistEntity?
+    shown: PlaylistEntity?,
+    order: List<Long>
 ): List<GuideRow> {
     val byId = playlists.associateBy { it.id }
     val usedBy = links.groupBy({ it.sourceId }, { it.playlistId })
+    val place = order.withIndex().associate { it.value to it.index }
     return sources.map { s ->
         val users = usedBy[s.id].orEmpty()
         val others = users.filter { it != shown?.id }.mapNotNull { byId[it]?.name }
         GuideRow(s, on = shown?.id in users, others = others, provider = s.playlistId?.let(byId::get))
-    }.sortedByDescending { shown != null && it.provider?.id == shown.id }
+    }.sortedWith(
+        // The guides on, in the playlist's order ([order]), then the others, the provider's own first.
+        compareBy<GuideRow> { place[it.source.id] ?: Int.MAX_VALUE }.thenByDescending { shown != null && it.provider?.id == shown.id }
+    )
 }
 
 /**
@@ -140,9 +146,13 @@ class GuideSourcesViewModel(private val c: AppContainer) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** Every guide as the playlist shown sees it (see [guideRows]). */
-    val sources = combine(c.epg.observeSources(), c.epg.observeLinks(), playlists, playlist) { s, l, p, shown ->
-        guideRows(s, l, p, shown)
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val sources = combine(
+        c.epg.observeSources(),
+        c.epg.observeLinks(),
+        playlists,
+        playlist,
+        playlist.flatMapLatest { p -> p?.let { c.epg.observeGuideOrder(it.id) } ?: flowOf(emptyList()) }
+    ) { s, l, p, shown, order -> guideRows(s, l, p, shown, order) }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     var name by mutableStateOf("")
     var url by mutableStateOf("")
     private val work = WorkRunner(c.appScope, viewModelScope, c.sync.state)
@@ -221,6 +231,20 @@ class GuideSourcesViewModel(private val c: AppContainer) : ViewModel() {
 
     fun remove(s: EpgSourceEntity) = viewModelScope.launch { c.epg.removeSource(s.id) }
 
+    /**
+     * Moves [row]'s guide one place [up] or down in the playlist's order, then matches the channels again in the new
+     * order (the owner, 2026-11-13). Nothing while other work runs.
+     */
+    fun move(row: GuideRow, up: Boolean) {
+        val pid = playlist.value?.id ?: return
+        work.run(appString(R.string.live_guide_rematching)) {
+            if (!c.epg.moveSource(pid, row.source.id, up)) return@run WorkStatus(appString(R.string.live_guide_order_end))
+            val before = coverage()
+            c.sync.rematchGuides(pid).getOrElse { return@run WorkRunner.failed(appString(R.string.common_match_failed), it) }
+            WorkStatus(appString(R.string.live_guide_rematched), coverageText(before, coverage()))
+        }
+    }
+
     private fun coverageText(before: GuideCoverage, now: GuideCoverage): String {
         val gained = now.withGuide - before.withGuide
         val n = now.withGuide
@@ -263,6 +287,8 @@ fun GuideSourcesScreen() {
                 modifier = Modifier.padding(top = 12.dp)
             )
         }
+        val ordered = sources.count { it.on } > 1
+        if (ordered) item { Muted(stringResource(R.string.live_guide_order_help), maxLines = 2) }
         if (sources.isEmpty()) item { Muted(stringResource(R.string.live_guide_none_yet)) }
         items(sources, key = { it.source.id }) { row ->
             val s = row.source
@@ -284,6 +310,11 @@ fun GuideSourcesScreen() {
                         }
                         Toggle(row.on)
                     }
+                }
+                // A guide on, of two or more: its place in the order, which decides between guides that both match.
+                if (ordered && row.on) {
+                    PillButton(stringResource(R.string.live_guide_move_up), { vm.move(row, up = true) }, compact = true)
+                    PillButton(stringResource(R.string.live_guide_move_down), { vm.move(row, up = false) }, compact = true)
                 }
                 if (s.playlistId == null) PillButton(stringResource(R.string.common_remove), { vm.remove(s) })
             }

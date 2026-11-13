@@ -313,10 +313,13 @@ data class EpgSourceEntity(
     @ColumnInfo(defaultValue = "0") val programmesUntil: Long = 0
 )
 
-/** A guide switched on for a playlist: only its playlists' channels are matched to it, and it's updated only for them. */
+/**
+ * A guide switched on for a playlist: only its playlists' channels are matched to it, and it's updated only for them.
+ * [position] is its place in the playlist's order of guides (see EpgDao.guideOrder): 0 for all before database 14.
+ */
 @Entity(tableName = "playlist_epg_source", primaryKeys = ["playlistId", "sourceId"], indices = [Index("sourceId")])
 @Serializable
-data class PlaylistEpgSourceEntity(val playlistId: Long, val sourceId: Long)
+data class PlaylistEpgSourceEntity(val playlistId: Long, val sourceId: Long, @ColumnInfo(defaultValue = "0") val position: Int = 0)
 
 @Entity(tableName = "epg_channel", primaryKeys = ["sourceId", "xmlId"])
 data class EpgChannelEntity(

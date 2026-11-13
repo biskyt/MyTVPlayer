@@ -52,6 +52,12 @@
     <!-- Button -->
     <string name="live_guide_match_missing">Match channels without a guide</string>
     <string name="live_guide_for">Guides for %1$s</string>
+    <string name="live_guide_order_help">Move a guide up to use it first when more than one guide has a channel. Until you do, the best match is used.</string>
+    <string name="live_guide_move_up">Move up</string>
+    <string name="live_guide_move_down">Move down</string>
+    <string name="live_guide_rematching">Matching channels to the guides in the new order…</string>
+    <string name="live_guide_rematched">Channels matched to the guides in the new order.</string>
+    <string name="live_guide_order_end">This guide is already at the end of the list.</string>
     <!-- "XMLTV" is a file format name: don't translate it -->
     <string name="live_guide_none_yet">No guides yet. Add a free guide for your country, or your own XMLTV address.</string>
     <!-- %1$s is an error message -->

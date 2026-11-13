@@ -34,6 +34,12 @@
     <string name="live_guide_update_now">Mettre à jour le guide</string>
     <string name="live_guide_match_missing">Associer les chaînes sans guide</string>
     <string name="live_guide_for">Guides de %1$s</string>
+    <string name="live_guide_order_help">Montez un guide pour l\'utiliser en premier quand plusieurs guides ont une chaîne. Jusque-là, la meilleure correspondance est utilisée.</string>
+    <string name="live_guide_move_up">Monter</string>
+    <string name="live_guide_move_down">Descendre</string>
+    <string name="live_guide_rematching">Association des chaînes aux guides dans le nouvel ordre…</string>
+    <string name="live_guide_rematched">Chaînes associées aux guides dans le nouvel ordre.</string>
+    <string name="live_guide_order_end">Ce guide est déjà au bout de la liste.</string>
     <string name="live_guide_none_yet">Aucun guide pour l\'instant. Ajoutez un guide gratuit pour votre pays, ou votre propre adresse XMLTV.</string>
     <string name="live_guide_last_failed">Échec de la dernière mise à jour : %1$s</string>
     <string name="live_guide_wait">Attendez d\'abord la fin de cette tâche : %1$s</string>
