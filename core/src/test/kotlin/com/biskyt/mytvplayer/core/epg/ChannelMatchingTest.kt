@@ -49,6 +49,22 @@ class ChannelMatchingTest {
     private val matcher = ChannelMatcher(candidates)
 
     @Test
+    fun `of guides that both match a channel well, the guide ranked first wins`() {
+        // Guide 1 (the provider's) has the channel's id; guide 2 has its exact name.
+        val both = listOf(candidate("kite.uk", "Kite Kids TV", source = 1), candidate("kite2.uk", "Kite Kids", source = 2))
+        assertEquals(1L, ChannelMatcher(both).autoMatch("Kite Kids", "kite.uk")!!.candidate.sourceId)
+        val guide2First = ChannelMatcher(both) { if (it == 2L) 0 else 1 }
+        assertEquals(2L, guide2First.autoMatch("Kite Kids", "kite.uk")!!.candidate.sourceId)
+    }
+
+    @Test
+    fun `a poor match from the guide ranked first does not win over a good one from another guide`() {
+        val both = listOf(candidate("kite.uk", "Kite Kids", source = 1), candidate("docplanet.uk", "Doc Planet", source = 2))
+        val guide2First = ChannelMatcher(both) { if (it == 2L) 0 else 1 }
+        assertEquals(1L, guide2First.autoMatch("Kite Kids", null)!!.candidate.sourceId)
+    }
+
+    @Test
     fun `provider epg id wins`() {
         val m = matcher.autoMatch("something unrelated", "KITE.uk")!!
         assertEquals("kite.uk", m.candidate.xmlId)

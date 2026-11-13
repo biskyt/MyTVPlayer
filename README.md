@@ -54,6 +54,8 @@ cropped ([credits, with each image's author and licence](app/src/test/resources/
 - **Manual overrides**: for any channel, pick its guide from ranked suggestions or search every guide channel, and
   set a time shift. Your choices are kept when the playlist updates.
 - **Match channels without a guide** finds guides for the channels that still have none.
+- **Guide order**: put a playlist's guides in order with Move up and Move down. When two guides both have a channel,
+  the guide higher in the list is used.
 
 ### Catch-up TV
 - A **Catch-up** tab lists those channels by category; a small ⟲ mark shows them everywhere else too.

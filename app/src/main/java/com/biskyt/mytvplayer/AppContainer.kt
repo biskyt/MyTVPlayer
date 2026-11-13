@@ -99,7 +99,7 @@ class AppContainer(context: Context) {
         appScope,
         { token -> DriveStore(http, token) },
         choices = { syncedChoices },
-        onChoices = { pid, reload -> sync.refreshFor(pid, reload.types, reload.guides) }
+        onChoices = { pid, reload -> sync.refreshFor(pid, reload.types, reload.guides, reload.rematch) }
     )
 
     /** Keeps the user's changes for the sync between TVs. */

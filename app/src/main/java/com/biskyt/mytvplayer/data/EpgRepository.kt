@@ -99,15 +99,32 @@ class EpgRepository(
     @Volatile private var matcherCache: Pair<Long, ChannelMatcher>? = null
 
     private suspend fun matcher(playlistId: Long): ChannelMatcher = matcherCache?.takeIf { it.first == playlistId }?.second
-        ?: ChannelMatcher(
-            // Normalized afresh rather than from nameNorm, so guides stored by an older version follow today's rules.
-            epg.channelsFor(playlistId).map { EpgCandidate(it.sourceId, it.xmlId, it.displayName, ChannelNames.normalize(it.displayName)) }
-        ).also { matcherCache = playlistId to it }
+        ?: run {
+            val generation = matcherGeneration
+            // The user's order of guides, once they have set one (see moveSource); until then, the best match wins.
+            val ordered = epg.links(playlistId).any { it.position != 0 }
+            val rank = if (ordered) epg.guideOrder(playlistId).withIndex().associate { it.value to it.index } else emptyMap()
+            val matcher = ChannelMatcher(
+                // Normalized afresh rather than from nameNorm, so guides stored by an older version follow today's rules.
+                epg.channelsFor(playlistId).map {
+                    EpgCandidate(it.sourceId, it.xmlId, it.displayName, ChannelNames.normalize(it.displayName))
+                }
+            ) { rank[it] ?: 0 }
+            // Not kept if it was let go while being built: it may hold the guides or their order from before.
+            if (generation == matcherGeneration) matcherCache = playlistId to matcher
+            matcher
+        }
+
+    /** Counts each [releaseMatcher]. */
+    @Volatile private var matcherGeneration = 0
 
     fun observeSources() = epg.observeSources()
 
     /** Which guides are switched on for which playlists. */
     fun observeLinks() = epg.observeLinks()
+
+    /** The guides switched on for [playlistId], in its order (see moveSource). */
+    fun observeGuideOrder(playlistId: Long) = epg.observeGuideOrder(playlistId)
 
     fun observeMatchCounts(playlistId: Long) = epg.observeMatchCounts(playlistId)
 
@@ -128,7 +145,7 @@ class EpgRepository(
                 val id = epg.insertSource(
                     EpgSourceEntity(name = appString(R.string.data_provider_guide_name, p.name), url = xmltvUrl, playlistId = p.id)
                 )
-                epg.link(listOf(PlaylistEpgSourceEntity(p.id, id)))
+                linkLast(p.id, id)
             }
         } else if (existing.url != xmltvUrl) {
             epg.upsertSource(existing.copy(url = xmltvUrl, lastImportAt = 0)) // a different guide: match everything again
@@ -145,7 +162,7 @@ class EpgRepository(
             val source = epg.sourceByUrl(address) ?: EpgSourceEntity(name = name.trim().ifEmpty { address }, url = address).let {
                 it.copy(id = epg.insertSource(it))
             }
-            epg.link(listOf(PlaylistEpgSourceEntity(playlistId, source.id)))
+            linkLast(playlistId, source.id)
             source
         }
         if (!source.isProviders) log.record(playlistId, ChoiceKinds.GUIDE, address, source.name)
@@ -163,7 +180,7 @@ class EpgRepository(
         val wasUsed = db.withTransaction {
             epg.isUsed(source.id).also {
                 if (on) {
-                    epg.link(listOf(PlaylistEpgSourceEntity(playlistId, source.id)))
+                    linkLast(playlistId, source.id)
                     epg.deleteFailedAutoMappings(playlistId)
                 } else {
                     epg.unlink(playlistId, source.id)
@@ -177,6 +194,55 @@ class EpgRepository(
         // Not a provider's own guide: its address holds the login, and each TV adds its own.
         if (!source.isProviders) log.record(playlistId, ChoiceKinds.GUIDE, source.url, if (on) source.name else null)
         return on && (!wasUsed || isOutOfDate(source))
+    }
+
+    /**
+     * Switches guide [sourceId] on for [playlistId] (one already on keeps its place): last in its order, once the user has
+     * set one; until then, at place 0 as the others (see matcher).
+     */
+    private suspend fun linkLast(playlistId: Long, sourceId: Long) {
+        val ordered = epg.links(playlistId).any { it.position != 0 }
+        epg.link(listOf(PlaylistEpgSourceEntity(playlistId, sourceId, if (ordered) epg.nextPosition(playlistId) else 0)))
+    }
+
+    /**
+     * Moves guide [sourceId] one place [up] or down in [playlistId]'s order of guides, which decides between guides that
+     * both match a channel (see ChannelMatcher.autoMatch; the owner, 2026-11-13). Returns false at either end. The
+     * channels matched automatically are matched again by [rematch].
+     */
+    suspend fun moveSource(playlistId: Long, sourceId: Long, up: Boolean): Boolean {
+        val order = db.withTransaction {
+            val before = epg.guideOrder(playlistId)
+            Favourites.moved(before, sourceId, if (up) -1 else 1).takeIf { it != before }
+                // Every guide's place, so that the order is set in full (before database 14 all were 0).
+                ?.also { it.forEachIndexed { place, id -> epg.setPosition(playlistId, id, place) } }
+        } ?: return false
+        releaseMatcher()
+        // Synced by address; not another playlist's own guide, whose address holds its login (see syncKey).
+        val sources = epg.sourcesFor(listOf(playlistId)).associateBy { it.id }
+        val places = order.withIndex().mapNotNull { (place, id) ->
+            sources[id]?.takeIf { !it.isProviders || it.playlistId == playlistId }?.let { it.syncKey to place.toString() }
+        }
+        log.record(playlistId, ChoiceKinds.GUIDE_ORDER, places.toMap())
+        return true
+    }
+
+    /**
+     * After the order of [playlistId]'s guides changed: its channels are matched again (not those the user chose), and
+     * the programmes of the guide channels newly matched are loaded. Returns the error of each guide that failed.
+     */
+    suspend fun rematch(playlistId: Long, onProgress: (GuideStep) -> Unit = {}): Map<Long, String> = reading.withLock {
+        withContext(Dispatchers.IO) {
+            HashMap<Long, String>().also { errors ->
+                matchAndLoad(
+                    listOf(playlistId),
+                    epg.sourcesFor(listOf(playlistId)),
+                    Downloads(emptySet(), MatchScope.ALL),
+                    errors,
+                    onProgress
+                )
+            }
+        }
     }
 
     /** After a playlist went: the programmes of guides no playlist uses any more. */
@@ -200,7 +266,7 @@ class EpgRepository(
             epg.deleteSource(id)
         }
         sourceFile(id).delete()
-        matcherCache = null
+        releaseMatcher()
         changed()
         if (!source.isProviders) users.forEach { log.record(it, ChoiceKinds.GUIDE, source.url, null) }
         // The channels matched to it by the user are matched automatically again.
@@ -241,23 +307,39 @@ class EpgRepository(
         if (outOfDate && due.isEmpty()) return@withContext errors
         db.withTransaction { clearSwitchedOff() }
         val downloads = downloadAll(due, errors, onProgress)
+        matchAndLoad(playlistIds, sources, downloads, errors, onProgress)
+        errors
+    }
+
+    /**
+     * Matches [playlistIds]' channels to [sources] (the [downloads]' scope says which channels), then loads the
+     * programmes: all of those just downloaded or out of date, else only those of the guide channels newly matched. Each
+     * failure is added to [errors].
+     */
+    private suspend fun matchAndLoad(
+        playlistIds: List<Long>,
+        sources: List<EpgSourceEntity>,
+        downloads: Downloads,
+        errors: MutableMap<Long, String>,
+        onProgress: (GuideStep) -> Unit
+    ) {
         // Sources not read in full afterwards: which guide channels they supply before matching, so only what
         // matching adds is read.
-        val mappedBefore = sources.filterNot { readInFull(it, it.id in downloads.fresh) }
+        val fresh = downloads.fresh
+        val mappedBefore = sources.filterNot { readInFull(it, it.id in fresh) }
             .associate { it.id to epg.mappedXmlIds(it.id).toHashSet() }
         onProgress(GuideStep.Matching())
         playlistIds.forEach { autoMatch(it, downloads.scope, onProgress) }
         releaseMatcher()
         val late = HashMap<Long, List<EpgChannelEntity>>()
         for (s in sources) {
-            importProgrammesOf(s, s.id in downloads.fresh, mappedBefore[s.id].orEmpty(), errors, onProgress)
+            importProgrammesOf(s, s.id in fresh, mappedBefore[s.id].orEmpty(), errors, onProgress)
                 ?.let { if (it.isNotEmpty()) late[s.id] = it }
         }
         if (late.isNotEmpty()) addLateChannels(late, playlistIds, onProgress)
         epg.pruneProgrammes(clock() - KEEP_PAST_MS)
         synchronized(noProgrammes) { noProgrammes.clear() }
         changed()
-        errors
     }
 
     /** Never loaded, or not since the last daily update was due: what switching to a playlist updates. */
@@ -341,7 +423,7 @@ class EpgRepository(
             rows.chunked(BATCH).forEach { epg.upsertChannels(it) }
             interleavedMarker(id).createNewFile()
         }
-        matcherCache = null
+        releaseMatcher()
         playlistIds.forEach { autoMatch(it, MatchScope.RETRY, onProgress) }
         releaseMatcher()
         late.keys.forEach { id -> runCatching { importProgrammes(id, epg.mappedXmlIds(id).toHashSet()) } }
@@ -439,6 +521,7 @@ class EpgRepository(
     }
 
     fun releaseMatcher() {
+        matcherGeneration++
         matcherCache = null
     }
 
@@ -605,7 +688,7 @@ class EpgRepository(
 
     /** After the sources were replaced wholesale (restoring a backup): their downloaded files and matcher are stale. */
     suspend fun forgetDownloads() = withContext(Dispatchers.IO) {
-        matcherCache = null
+        releaseMatcher()
         File(cacheDir, "epg").listFiles()?.forEach { it.delete() }
         changed()
     }
@@ -718,7 +801,7 @@ class EpgRepository(
             epg.clearChannels(s.id)
             rows.chunked(BATCH).forEach { epg.upsertChannels(it) }
         }
-        matcherCache = null
+        releaseMatcher()
         return rows.size
     }
 

@@ -54,7 +54,8 @@ class GuideSourcesUiTest {
         other.close()
     }
 
-    private fun links() = runBlocking { app.container.db.backup().guideLinks().toSet() }
+    /** Which guides are on for which playlists (not their order: see GuideOrderTest). */
+    private fun links() = runBlocking { app.container.db.backup().guideLinks().map { it.copy(position = 0) }.toSet() }
 
     @Test
     fun `the playlist in use's guides, switched on for it alone`() {

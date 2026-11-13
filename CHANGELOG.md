@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.17.0
+- On Guide sources, Move up and Move down put a playlist's guides in order, and when two guides both have a channel, the guide higher in the list is used.
+
 ## 1.16.1
 - With a keyboard, Space plays and pauses and X stops playback, whatever button has focus on the player, and a held play/pause or stop button acts only once.
 

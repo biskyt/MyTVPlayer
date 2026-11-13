@@ -17,8 +17,11 @@ data class EpgMatch(val candidate: EpgCandidate, val score: Double)
  * Matching runs for thousands of channels against tens of thousands of guide channels on a slow CPU, so: candidate
  * tokens are computed once here, shared tokens are counted while walking an inverted index, very common words are
  * ignored when rarer ones exist, and the string-distance check only runs on the best few candidates.
+ *
+ * [rank] puts the guides in the user's order (0 first; the owner, 2026-11-13): when guides match a channel well enough
+ * to match it automatically, the guide ranked first wins (see [autoMatch]).
  */
-class ChannelMatcher(candidates: List<EpgCandidate>) {
+class ChannelMatcher(candidates: List<EpgCandidate>, private val rank: (sourceId: Long) -> Int = { 0 }) {
     /** [index]: the candidate's place in the list, which decides between equal ranks. */
     private class Entry(val index: Int, val candidate: EpgCandidate, val tokens: Set<String>) {
         val shifts = tokens.shifts()
@@ -56,17 +59,35 @@ class ChannelMatcher(candidates: List<EpgCandidate>) {
         token !in NOT_CALL_SIGNS &&
         (byToken[token]?.size ?: 0) <= CALL_SIGN_MAX_GUIDES
 
-    /** Best automatic match, or null when nothing reaches [threshold]. */
-    fun autoMatch(channelName: String, providerEpgId: String?, threshold: Double = AUTO_THRESHOLD): EpgMatch? =
-        // A candidate below the threshold cannot be the match, so the search leaves it out early.
-        suggestions(channelName, providerEpgId, limit = 1, floor = max(threshold, MIN_SUGGESTION)).firstOrNull()
-            ?.takeIf { it.score >= threshold }
+    /**
+     * The best automatic match, or null when nothing reaches [threshold]. Of the matches that reach it, the one from the
+     * guide ranked first ([rank]), then the best score: a poor match from that guide never wins over a good one.
+     */
+    fun autoMatch(channelName: String, providerEpgId: String?, threshold: Double = AUTO_THRESHOLD): EpgMatch? {
+        // A candidate below the threshold cannot be the match, so the search leaves it out early. One pass, no sort: this
+        // runs for every channel of a playlist.
+        var best: Map.Entry<EpgCandidate, Double>? = null
+        var bestRank = Int.MAX_VALUE
+        for (e in scored(channelName, providerEpgId, max(threshold, MIN_SUGGESTION)).entries) {
+            if (e.value < threshold) continue
+            val r = rank(e.key.sourceId)
+            val current = best
+            if (current == null || r < bestRank || r == bestRank && e.value > current.value) {
+                best = e
+                bestRank = r
+            }
+        }
+        return best?.let { EpgMatch(it.key, it.value) }
+    }
 
+    /** The best [limit] candidates that score at least [MIN_SUGGESTION], best first. */
     fun suggestions(channelName: String, providerEpgId: String?, limit: Int = 5): List<EpgMatch> =
-        suggestions(channelName, providerEpgId, limit, MIN_SUGGESTION)
+        scored(channelName, providerEpgId, MIN_SUGGESTION).entries.sortedByDescending {
+            it.value
+        }.take(limit).map { EpgMatch(it.key, it.value) }
 
-    /** The best [limit] candidates that score at least [floor]. */
-    private fun suggestions(channelName: String, providerEpgId: String?, limit: Int, floor: Double): List<EpgMatch> {
+    /** The candidates that score at least [floor] (in the order found), with their scores. */
+    private fun scored(channelName: String, providerEpgId: String?, floor: Double): Map<EpgCandidate, Double> {
         val results = LinkedHashMap<EpgCandidate, Double>()
         providerEpgId?.lowercase()?.let { id -> byXmlId[id]?.forEach { results[it.candidate] = 1.0 } }
 
@@ -75,7 +96,7 @@ class ChannelMatcher(candidates: List<EpgCandidate>) {
             byNormalized[norm]?.forEach { results.putIfAbsent(it.candidate, EXACT_NAME_SCORE) }
             fuzzy(norm, results, floor)
         }
-        return results.entries.sortedByDescending { it.value }.take(limit).map { EpgMatch(it.key, it.value) }
+        return results
     }
 
     /** A playlist channel's name, worked out once per lookup. */

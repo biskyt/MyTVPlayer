@@ -471,6 +471,28 @@ interface EpgDao {
     @Query("DELETE FROM playlist_epg_source WHERE playlistId = :pid AND sourceId = :sourceId")
     suspend fun unlink(pid: Long, sourceId: Long)
 
+    /**
+     * The guides switched on for [pid], in its order: the user's, and where that says nothing (before database 14), the
+     * provider's own guide first and then the order they were added in.
+     */
+    @Query(GUIDE_ORDER)
+    suspend fun guideOrder(pid: Long): List<Long>
+
+    /** [guideOrder], as it changes: what the Guide sources screen shows. */
+    @Query(GUIDE_ORDER)
+    fun observeGuideOrder(pid: Long): Flow<List<Long>>
+
+    @Query("SELECT * FROM playlist_epg_source WHERE playlistId = :pid")
+    suspend fun links(pid: Long): List<PlaylistEpgSourceEntity>
+
+    /** Returns 0 if the guide is not on for [pid]. */
+    @Query("UPDATE playlist_epg_source SET position = :position WHERE playlistId = :pid AND sourceId = :sourceId")
+    suspend fun setPosition(pid: Long, sourceId: Long, position: Int): Int
+
+    /** The place after [pid]'s last guide. */
+    @Query("SELECT COALESCE(MAX(position) + 1, 0) FROM playlist_epg_source WHERE playlistId = :pid")
+    suspend fun nextPosition(pid: Long): Int
+
     @Query("DELETE FROM playlist_epg_source WHERE sourceId = :sourceId")
     suspend fun deleteLinksForSource(sourceId: Long)
 
@@ -1070,3 +1092,8 @@ interface SyncChoiceDao {
     )
     suspend fun seedGuides(kind: String)
 }
+
+/** The order of a playlist's guides: see EpgDao.guideOrder. */
+private const val GUIDE_ORDER =
+    "SELECT l.sourceId FROM playlist_epg_source l JOIN epg_source s ON s.id = l.sourceId WHERE l.playlistId = :pid " +
+        "ORDER BY l.position, s.playlistId IS NULL, l.sourceId"

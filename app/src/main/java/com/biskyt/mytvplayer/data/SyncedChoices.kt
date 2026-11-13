@@ -9,8 +9,8 @@ import com.biskyt.mytvplayer.data.db.EpgSourceEntity
 import com.biskyt.mytvplayer.data.db.SyncChoiceEntity
 
 /** What a playlist must download again after choices from another TV. */
-data class Reload(val types: MutableSet<String> = HashSet(), var guides: Boolean = false) {
-    val any: Boolean get() = types.isNotEmpty() || guides
+data class Reload(val types: MutableSet<String> = HashSet(), var guides: Boolean = false, var rematch: Boolean = false) {
+    val any: Boolean get() = types.isNotEmpty() || guides || rematch
 }
 
 /** This TV's side of the choices that the sync between TVs keeps the same (see ProgressSync). */
@@ -92,6 +92,7 @@ class SyncedChoices(
         ChoiceKinds.isIncluded(kind) -> included(playlistId, ChoiceKinds.typeOf(kind), choices, reload)
         ChoiceKinds.isRestricted(kind) -> restricted(playlistId, ChoiceKinds.typeOf(kind), choices)
         kind == ChoiceKinds.GUIDE -> choices.onEach { guide(playlistId, it.id, it.value, reload) }
+        kind == ChoiceKinds.GUIDE_ORDER -> guideOrder(playlistId, choices).also { if (it.isNotEmpty()) reload.rematch = true }
         kind == ChoiceKinds.GUIDE_CHANNEL -> choices.filter {
             guideChannel(playlistId, it.id.toLong(), it.value)
         }.also { epg.releaseMatcher() }
@@ -150,6 +151,26 @@ class SyncedChoices(
         if (name != null) reload.guides = true
     }
 
+    /**
+     * Guides' places in the playlist's order, from another TV. Returns those applied: a guide not here (yet) is left for
+     * a later sync; one here but off for the playlist is done with (switched on again, it goes last).
+     */
+    private suspend fun guideOrder(playlistId: Long, choices: List<SyncedChoice>): List<SyncedChoice> {
+        val dao = db.epg()
+        val applied = choices.filter { c ->
+            val place = c.value?.toIntOrNull() ?: return@filter true
+            val source = sourceByKey(playlistId, c.id) ?: return@filter false
+            dao.setPosition(playlistId, source.id, place)
+            true
+        }
+        epg.releaseMatcher()
+        return applied
+    }
+
+    /** The guide that [key] names here (see syncKey). */
+    private suspend fun sourceByKey(playlistId: Long, key: String) =
+        if (key.isEmpty()) db.epg().providerSource(playlistId) else db.epg().sourceByUrl(key)
+
     /** [value] null: matched automatically again. Returns false when the channel, or its guide, is not here yet. */
     private suspend fun guideChannel(playlistId: Long, streamId: Long, value: String?): Boolean {
         val channel = db.channels().get(playlistId, streamId) ?: return false
@@ -158,8 +179,7 @@ class SyncedChoices(
             choice == null -> epg.resetToAutomatic(playlistId, streamId, channel.name, channel.providerEpgId)
             choice.xmlId == null -> epg.setNoGuide(playlistId, streamId)
             else -> {
-                val dao = db.epg()
-                val source = (if (choice.guide.isEmpty()) dao.providerSource(playlistId) else dao.sourceByUrl(choice.guide)) ?: return false
+                val source = sourceByKey(playlistId, choice.guide) ?: return false
                 epg.setManual(playlistId, streamId, source.id, choice.xmlId, choice.offsetMinutes)
             }
         }

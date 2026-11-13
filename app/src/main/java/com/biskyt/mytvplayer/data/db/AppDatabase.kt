@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.biskyt.mytvplayer.core.epg.CategoryLanguageDetector
 
 @Database(
-    version = 13,
+    version = 14,
     exportSchema = true,
     // 2: M3U playlists (playlist.kind; channel.streamUrl/userAgent/referrer).
     // 3: movies and series (category.type; movie, series, watch_progress, vod_favourite).
@@ -37,7 +37,8 @@ import com.biskyt.mytvplayer.core.epg.CategoryLanguageDetector
         AutoMigration(from = 9, to = 10, spec = AppDatabase.RestrictAdult::class),
         AutoMigration(from = 10, to = 11),
         AutoMigration(from = 11, to = 12),
-        AutoMigration(from = 12, to = 13)
+        AutoMigration(from = 12, to = 13),
+        AutoMigration(from = 13, to = 14)
     ],
     entities = [
         PlaylistEntity::class, CategoryEntity::class, ChannelEntity::class, FavouriteEntity::class, RecentEntity::class,
