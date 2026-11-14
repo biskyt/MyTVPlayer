@@ -4,6 +4,8 @@ import android.os.SystemClock
 import coil3.SingletonImageLoader
 import coil3.annotation.DelicateCoilApi
 import com.biskyt.mytvplayer.MyTvApp
+import com.biskyt.mytvplayer.launcher.LauncherRows
+import com.biskyt.mytvplayer.launcher.LauncherWriter
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.cancel
 import org.robolectric.shadows.ShadowLooper
@@ -16,6 +18,18 @@ class TestApp : MyTvApp() {
     }
 
     override fun scheduleDailyRefresh() = Unit
+
+    /**
+     * The JVM has no TV provider: the app's own launcher sync writes nowhere, so that a test that turns the setting on
+     * (see LauncherSyncTest, with a writer of its own) leaves nothing running into the next test.
+     */
+    override fun launcherWriter(): LauncherWriter = object : LauncherWriter {
+        override fun isOn() = false
+
+        override fun publish(rows: LauncherRows): Long? = null
+
+        override fun clear() = Unit
+    }
 
     // A process-wide handler: each test's app would wrap the last one's (tests that need it install it themselves).
     override fun installCrashLog() = Unit
