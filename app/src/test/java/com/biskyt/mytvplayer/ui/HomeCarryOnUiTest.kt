@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.data.db.VOD_EPISODE
 import com.biskyt.mytvplayer.data.db.VOD_MOVIE
@@ -18,6 +19,8 @@ import com.biskyt.mytvplayer.testutil.focusedText
 import com.biskyt.mytvplayer.testutil.settle
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.testutil.waitForText
+import com.biskyt.mytvplayer.testutil.waitWithoutFrames
+import com.biskyt.mytvplayer.ui.home.HomeViewModel
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -92,8 +95,12 @@ class HomeCarryOnUiTest {
         assertTrue(compose.onAllNodes(hasText("1h 30m")).fetchSemanticsNodes().isNotEmpty())
     }
 
-    /** Plays the episode's card, then closes the player as at its end: Home is back, with the old card still there. */
-    private fun playAndClose() {
+    /**
+     * Plays the episode's card, then closes the player as at its end: Home is back, with the old card still there. Its
+     * view model: the tests wait for its rows without frames (see waitWithoutFrames), as Home's wait for the last save
+     * (5 s) counts frame time.
+     */
+    private fun playAndClose(): HomeViewModel {
         val navigator = navigators.new(Screen.Home)
         compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
         compose.waitAdvancingClock(50) { compose.focusedText().contains("Line of Duty") }
@@ -101,18 +108,23 @@ class HomeCarryOnUiTest {
         compose.waitAdvancingClock(50) { navigator.current.screen is Screen.VodPlayer }
         compose.runOnIdle { navigator.pop() }
         compose.waitAdvancingClock(50) { "S1E2" in compose.focusedText() } // the old card, still there
+        return ViewModelProvider(navigator.current)[HomeViewModel::class.java]
     }
+
+    private fun HomeViewModel.rows() = carryOn.value.orEmpty()
 
     @Test
     fun `back from an episode played to its end, focus is on the next episode, the first card`() {
-        playAndClose()
+        val home = playAndClose()
         // A real TV gives the top bar's Home focus as the card with focus goes (Robolectric gives none): here at once.
         compose.onNode(hasText("Home") and hasClickAction()).performSemanticsAction(SemanticsActions.RequestFocus)
         compose.waitAdvancingClock(50) { compose.focusedText() == "Home" }
         // A save during playback (every 15 s) came in first, then the last one: watched, with the next episode up.
         runBlocking { saveAt(600_000) }
-        compose.settle()
+        waitWithoutFrames { home.rows().any { it.itemId == 9002L && it.positionMs == 600_000L } }
+        compose.waitAdvancingClock { compose.onAllNodes(hasText("S1E2 14m")).fetchSemanticsNodes().isNotEmpty() } // shown
         runBlocking { saveWatched() }
+        waitWithoutFrames { home.rows().none { it.itemId == 9002L } }
         compose.waitAdvancingClock(50) { "S2E1" in compose.focusedText() }
         compose.settle()
         assertTrue(compose.focusedText(), "S2E1" in compose.focusedText())
@@ -120,10 +132,11 @@ class HomeCarryOnUiTest {
 
     @Test
     fun `back from an episode stopped part way, its card keeps focus`() {
-        playAndClose()
+        val home = playAndClose()
         runBlocking { saveAt(600_000) }
-        compose.waitAdvancingClock(50) { "S1E2 14m" in compose.focusedText() }
-        compose.mainClock.advanceTimeBy(6_000) // past the wait for a last save
+        waitWithoutFrames { home.rows().any { it.itemId == 9002L && it.positionMs == 600_000L } }
+        compose.waitAdvancingClock { "S1E2 14m" in compose.focusedText() }
+        compose.mainClock.advanceTimeBy(6_000) // past Home's wait for a last save (frame time)
         compose.settle()
         assertTrue(compose.focusedText(), "S1E2" in compose.focusedText())
     }

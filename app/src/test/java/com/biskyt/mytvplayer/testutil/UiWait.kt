@@ -43,6 +43,22 @@ fun ComposeTestRule.waitAdvancingClock(stepMs: Long = 0, condition: () -> Boolea
     condition()
 }
 
+/**
+ * Waits for [condition] in real time, running the main looper's due work but no frames. For data that comes in from
+ * another thread (a database), while an app's own timeout counts frame time: each check of a compose wait moves the
+ * frame clock on, so a slow machine would use that time up.
+ */
+fun waitWithoutFrames(condition: () -> Boolean) {
+    val end = System.currentTimeMillis() + UI_WAIT_MS
+    while (!condition()) {
+        if (System.currentTimeMillis() > end) throw AssertionError("Condition not met in $UI_WAIT_MS ms. Threads:\n${otherThreads()}")
+        ShadowLooper.idleMainLooper(0, TimeUnit.MILLISECONDS)
+        Thread.sleep(WAIT_POLL_MS)
+    }
+}
+
+private const val WAIT_POLL_MS = 10L
+
 /** Waits for [text] (or text containing it) on screen, as [waitAdvancingClock] does; on a timeout, says what's shown. */
 fun ComposeTestRule.waitForText(text: String, stepMs: Long = 0) = try {
     waitAdvancingClock(stepMs) { onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty() }
