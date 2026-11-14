@@ -120,6 +120,14 @@ val openSourceNotices = listOf(
         listOf("androidx.work:work-runtime-ktx")
     ),
     OpenSourceNotice(
+        "AndroidX TV Provider",
+        "1.1.0",
+        R.string.settings_lib_tvprovider,
+        Licence.APACHE,
+        "https://developer.android.com/jetpack/androidx/releases/tvprovider",
+        listOf("androidx.tvprovider:tvprovider")
+    ),
+    OpenSourceNotice(
         "AndroidX DataStore",
         "1.1.7",
         R.string.settings_lib_datastore,

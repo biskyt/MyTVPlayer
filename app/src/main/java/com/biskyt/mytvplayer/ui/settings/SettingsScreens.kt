@@ -1,5 +1,6 @@
 package com.biskyt.mytvplayer.ui.settings
 
+import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -43,6 +45,7 @@ import com.biskyt.mytvplayer.data.BufferSize
 import com.biskyt.mytvplayer.data.Settings
 import com.biskyt.mytvplayer.data.StreamFormat
 import com.biskyt.mytvplayer.data.accentName
+import com.biskyt.mytvplayer.launcher.TvLauncher
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
@@ -57,6 +60,7 @@ import com.biskyt.mytvplayer.ui.common.nativeLanguageName
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import java.util.Locale
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -115,6 +119,7 @@ fun SettingsScreen() {
                 nav.push(Screen.Appearance)
             })
         }
+        item { LauncherRow() }
         item { NetworkWarningRows() }
         item { ParentalControlsRow() }
         item { SyncRow() }
@@ -129,6 +134,28 @@ fun SettingsScreen() {
         }
         item { SupportSection() }
     }
+}
+
+/**
+ * "Show on the TV's home screen" (see LauncherSync), off by default: only on a TV. Turned on, the TV is asked to show the
+ * app's channel there, the first time it is made (the TV asks the user).
+ */
+@Composable
+private fun LauncherRow() {
+    val context = LocalContext.current
+    if (!remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }) return
+    val vm = appViewModel { SettingsViewModel(it) }
+    val s = vm.settings.collectAsState().value ?: return
+    LaunchedEffect(Unit) {
+        val made = context.container.launcherSync.madeChannel
+        made.filterNotNull().collect {
+            made.value = null
+            TvLauncher.askToShow(context, it)
+        }
+    }
+    SettingRow(stringResource(R.string.settings_launcher), stringResource(R.string.settings_launcher_help), {
+        vm.update { it.copy(launcherRows = !it.launcherRows) }
+    }) { Toggle(s.launcherRows) }
 }
 
 /**

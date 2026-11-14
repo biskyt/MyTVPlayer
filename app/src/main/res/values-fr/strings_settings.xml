@@ -67,6 +67,7 @@
     <string name="settings_lib_room">Base de données des chaînes, du guide et de la progression</string>
     <string name="settings_lib_paging">Longues listes de chaînes</string>
     <string name="settings_lib_work">Actualisation des playlists et des guides en arrière-plan</string>
+    <string name="settings_lib_tvprovider">Reprendre la lecture et chaînes favorites sur l\'écran d\'accueil de la TV</string>
     <string name="settings_lib_datastore">Paramètres</string>
     <string name="settings_lib_coil">Logos des chaînes et affiches</string>
     <string name="settings_lib_okhttp">Téléchargements (avec Okio)</string>
@@ -184,6 +185,9 @@
     <string name="settings_external_ip_help">Affiche à côté de l\'indicateur VPN l\'adresse que voient les sites web, et son pays. Pour l\'obtenir, MyTVPlayer interroge ipinfo.io quand le réseau ou le VPN change.</string>
     <string name="settings_warn_proxy">Avertir si le proxy ne fonctionne pas</string>
     <string name="settings_warn_proxy_help">Affiche dans la barre du haut et à côté de l\'horloge du lecteur si le proxy de la playlist active fonctionne, et l\'adresse que voit son fournisseur à travers lui. Pour le vérifier, MyTVPlayer demande à ipinfo.io votre adresse avec et sans le proxy quand le réseau ou le proxy change.</string>
+    <string name="settings_launcher">Afficher sur l\'écran d\'accueil de la TV</string>
+    <string name="settings_launcher_help">Reprendre la lecture dans la rangée « À suivre » de l\'écran d\'accueil, et vos chaînes favorites dans une rangée à part. Les titres et chaînes restreints n\'y apparaissent jamais.</string>
+    <string name="launcher_favourites">Chaînes favorites</string>
     <string name="settings_proxy_title">Proxy</string>
     <string name="settings_proxy_none">Aucun</string>
     <string name="settings_proxy_http">HTTP</string>

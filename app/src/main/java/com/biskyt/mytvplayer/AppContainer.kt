@@ -38,6 +38,8 @@ import com.biskyt.mytvplayer.data.EpgRepository
 import com.biskyt.mytvplayer.data.ExternalIp
 import com.biskyt.mytvplayer.data.Favourites
 import com.biskyt.mytvplayer.data.ImageCalls
+import com.biskyt.mytvplayer.data.LauncherSync
+import com.biskyt.mytvplayer.data.LauncherTarget
 import com.biskyt.mytvplayer.data.ParentalRepository
 import com.biskyt.mytvplayer.data.PlaylistRepository
 import com.biskyt.mytvplayer.data.ProgressSync
@@ -52,6 +54,8 @@ import com.biskyt.mytvplayer.data.VpnMonitor
 import com.biskyt.mytvplayer.data.dataStore
 import com.biskyt.mytvplayer.data.db.AppDatabase
 import com.biskyt.mytvplayer.data.db.proxy
+import com.biskyt.mytvplayer.launcher.LauncherHost
+import com.biskyt.mytvplayer.launcher.LauncherImages
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -63,6 +67,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
+import okhttp3.Request
 
 /**
  * How the app names itself to servers. Some hosts (Wikimedia, archive.org) refuse or throttle clients that don't say
@@ -155,9 +160,15 @@ class AppContainer(context: Context) {
 
     /** A backup file another app (e.g. a file manager's "Open with") handed to MyTVPlayer, until it's offered to restore. */
     val openedFile = MutableStateFlow<Uri?>(null)
+
+    /** Continue watching and the favourite channels on the TV's home screen: nothing runs while the setting is off. */
+    val launcherSync = LauncherSync(context, appScope, settings, db)
+
+    /** A card on the TV's home screen opened the app, until it's shown (see AppRoot). */
+    val launcherTarget = MutableStateFlow<LauncherTarget?>(null)
 }
 
-open class MyTvApp : Application(), SingletonImageLoader.Factory {
+open class MyTvApp : Application(), SingletonImageLoader.Factory, LauncherHost {
     lateinit var container: AppContainer
         private set
 
@@ -186,6 +197,18 @@ open class MyTvApp : Application(), SingletonImageLoader.Factory {
         val request = PeriodicWorkRequestBuilder<RefreshWorker>(1, TimeUnit.DAYS).setConstraints(online).build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork("daily-refresh", ExistingPeriodicWorkPolicy.KEEP, request)
     }
+
+    /** A poster or logo for the TV's home screen, fetched as the app fetches its pictures (the playlist's proxy). */
+    override fun launcherImage(url: String): ByteArray? = runCatching {
+        container.imageCalls.newCall(Request.Builder().url(url).build()).execute().use { r ->
+            val source = r.body?.source()?.takeIf { r.isSuccessful } ?: return@use null
+            // Not more than a picture can be: a server that sends something else is not read to the end.
+            source.request(LauncherImages.MAX_BYTES + 1L)
+            if (source.buffer.size > LauncherImages.MAX_BYTES) null else source.readByteArray()
+        }
+    }.getOrNull()
+
+    override fun republishLauncher() = container.launcherSync.republish()
 
     /** Channel logos: decoded at row size, small memory cache, disk cache capped so storage stays low. */
     override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)
