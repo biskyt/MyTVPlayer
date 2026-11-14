@@ -89,6 +89,7 @@
     <string name="settings_lib_room">The channels, guide and progress database</string>
     <string name="settings_lib_paging">Long channel lists</string>
     <string name="settings_lib_work">Refreshing playlists and guides in the background</string>
+    <string name="settings_lib_tvprovider">Continue watching and favourite channels on the TV\'s home screen</string>
     <string name="settings_lib_datastore">Settings</string>
     <string name="settings_lib_coil">Channel logos and posters</string>
     <string name="settings_lib_okhttp">Downloads (with Okio)</string>

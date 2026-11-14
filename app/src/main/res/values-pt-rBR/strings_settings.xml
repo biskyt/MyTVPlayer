@@ -67,6 +67,7 @@
     <string name="settings_lib_room">O banco de dados de canais, guia e progresso</string>
     <string name="settings_lib_paging">Listas longas de canais</string>
     <string name="settings_lib_work">Atualização de playlists e guias em segundo plano</string>
+    <string name="settings_lib_tvprovider">Continuar assistindo e canais favoritos na tela inicial da TV</string>
     <string name="settings_lib_datastore">Configurações</string>
     <string name="settings_lib_coil">Logos dos canais e pôsteres</string>
     <string name="settings_lib_okhttp">Downloads (com Okio)</string>

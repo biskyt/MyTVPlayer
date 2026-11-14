@@ -17,4 +17,5 @@
     <string name="settings_playlist_add_free">+ Add free TV, films and series</string>
     <string name="settings_launcher_help">Continue watching in the home screen\'s Play Next row, and your favourite channels as a row of their own. Restricted titles and channels never go there.</string>
     <string name="launcher_favourites">Favourite channels</string>
+    <string name="settings_lib_tvprovider">Continue watching and favourite channels on the TV\'s home screen</string>
 </resources>

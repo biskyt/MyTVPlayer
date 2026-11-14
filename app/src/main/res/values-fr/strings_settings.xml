@@ -67,6 +67,7 @@
     <string name="settings_lib_room">Base de données des chaînes, du guide et de la progression</string>
     <string name="settings_lib_paging">Longues listes de chaînes</string>
     <string name="settings_lib_work">Actualisation des playlists et des guides en arrière-plan</string>
+    <string name="settings_lib_tvprovider">Reprendre la lecture et chaînes favorites sur l\'écran d\'accueil de la TV</string>
     <string name="settings_lib_datastore">Paramètres</string>
     <string name="settings_lib_coil">Logos des chaînes et affiches</string>
     <string name="settings_lib_okhttp">Téléchargements (avec Okio)</string>
