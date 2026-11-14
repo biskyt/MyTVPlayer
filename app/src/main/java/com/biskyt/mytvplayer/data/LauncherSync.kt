@@ -66,7 +66,7 @@ class LauncherSync(
 ) {
     /**
      * The app's channel, made and not yet shown: Settings asks the TV to show it (the TV asks the user), then sets it
-     * back to null. Kept until then: it can be made while Settings is not open.
+     * back to null. Kept until then (it can be made while Settings is not open), unless the channel is taken away first.
      */
     val madeChannel = MutableStateFlow<Long?>(null)
 
@@ -77,7 +77,7 @@ class LauncherSync(
         scope.launch {
             settings.settings.map { it.launcherRows }.distinctUntilChanged().collectLatest { on ->
                 when {
-                    on -> rows().collect(::publish)
+                    on -> rows().collect { writing { write(it) } }
                     // Turned off (or off since it was last on): the cards come off the TV. Off from the start: nothing.
                     writing { launcher.isOn() } == true -> writing {
                         launcher.clear()
@@ -97,7 +97,7 @@ class LauncherSync(
             val rows = data(pid).first().rows()
             writing {
                 val now = settings.current()
-                if (now.launcherRows && now.activePlaylistId == pid) launcher.publish(rows)?.let { madeChannel.value = it }
+                if (now.launcherRows && now.activePlaylistId == pid) write(rows)
             }
         }
     }
@@ -171,8 +171,13 @@ class LauncherSync(
     private fun ChannelEntity.card() =
         ChannelCard("$playlistId:$streamId", name, logoUrl, open(LauncherTarget(LauncherTarget.CHANNEL, playlistId, streamId)))
 
-    private suspend fun publish(rows: LauncherRows) {
-        writing { launcher.publish(rows)?.let { madeChannel.value = it } }
+    /**
+     * Writes [rows] (under [writes]). A channel made now is to be shown; with no channel, none is (one made before and not
+     * shown yet is gone: the TV must not be asked to show it).
+     */
+    private fun write(rows: LauncherRows) {
+        val made = launcher.publish(rows)
+        if (made != null || rows.channel == null) madeChannel.value = made
     }
 
     /** One at a time. A TV without the TV provider (a phone), or one that refuses: the app goes on as before (null). */
