@@ -28,6 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.container
 import com.biskyt.mytvplayer.data.ChannelFilter
+import com.biskyt.mytvplayer.data.LauncherTarget
 import com.biskyt.mytvplayer.data.Settings
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
@@ -102,6 +103,8 @@ fun AppRoot() {
         LaunchedEffect(nav) {
             container.openedFile.filterNotNull().collect { if (nav.current.screen != Screen.Backup) nav.push(Screen.Backup) }
         }
+        // A card on the TV's home screen: its film, episode or channel plays over Home, if it still may (see LauncherSync).
+        LaunchedEffect(nav) { container.launcherTarget.filterNotNull().collect { openFromLauncher(container, nav, it) } }
         // Restricted content hidden again (the app was left): a player or details page that may show it closes, back to
         // Home. Lists hide it by themselves; other screens (a backup's file picker, say) stay.
         LaunchedEffect(nav) {
@@ -145,9 +148,10 @@ private suspend fun firstScreen(container: AppContainer, s: Settings, safeStart:
         playlist.isStale() -> container.sync.refresh(playlist.id)
         needsVod(container, playlist) -> container.sync.refreshVod(playlist.id)
     }
-    // Not when opened with a backup file: that's what to show (see MainActivity).
+    // Not when opened with a backup file or from a card on the TV's home screen: that's what to show (see MainActivity).
     if (s.startOnLastChannel &&
         container.openedFile.value == null &&
+        container.launcherTarget.value == null &&
         s.lastChannelId != 0L &&
         // Not a restricted channel while locked (parental controls).
         container.channels.getOpen(playlist.id, s.lastChannelId) != null
@@ -155,6 +159,28 @@ private suspend fun firstScreen(container: AppContainer, s: Settings, safeStart:
         nav.push(Screen.Player(playlist.id, s.lastChannelId, ChannelFilter.All))
     }
     return nav
+}
+
+/** Opens [t], a card on the TV's home screen, in its playlist; nothing if it may no longer open (see LauncherSync.allows). */
+private suspend fun openFromLauncher(container: AppContainer, nav: Navigator, t: LauncherTarget) {
+    container.launcherTarget.value = null
+    if (!container.launcherSync.allows(t)) return
+    // As the playlist screen switches (see PlaylistsViewModel.activate): with its update, if it is due.
+    if (container.settings.current().activePlaylistId != t.playlistId) {
+        container.settings.update { it.copy(activePlaylistId = t.playlistId) }
+        container.sync.switchTo(t.playlistId)
+    }
+    when (t.kind) {
+        LauncherTarget.FAVOURITES -> nav.reset(Screen.Live(ChannelFilter.Favourites))
+        LauncherTarget.CHANNEL -> {
+            nav.reset(Screen.Home)
+            nav.push(Screen.Player(t.playlistId, t.itemId, ChannelFilter.Favourites))
+        }
+        else -> {
+            nav.reset(Screen.Home)
+            nav.push(Screen.VodPlayer(t.playlistId, t.itemId, t.seriesId, continueSeries = true))
+        }
+    }
 }
 
 /**

@@ -17,8 +17,8 @@ android {
         applicationId = "com.biskyt.mytvplayer"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = 36
-        versionCode = 107
-        versionName = "1.17.3"
+        versionCode = 108
+        versionName = "1.18.0"
         ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a") }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -157,6 +157,7 @@ dependencies {
     ksp(libs.room.compiler)
     implementation(libs.paging.compose)
     implementation(libs.work.runtime)
+    implementation(libs.tvprovider)
     implementation(libs.datastore.preferences)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)

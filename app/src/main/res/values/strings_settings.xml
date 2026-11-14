@@ -89,6 +89,7 @@
     <string name="settings_lib_room">The channels, guide and progress database</string>
     <string name="settings_lib_paging">Long channel lists</string>
     <string name="settings_lib_work">Refreshing playlists and guides in the background</string>
+    <string name="settings_lib_tvprovider">Continue watching and favourite channels on the TV\'s home screen</string>
     <string name="settings_lib_datastore">Settings</string>
     <string name="settings_lib_coil">Channel logos and posters</string>
     <string name="settings_lib_okhttp">Downloads (with Okio)</string>
@@ -249,6 +250,10 @@
     <string name="settings_external_ip_help">Shows next to the VPN badge the address that websites see, and its country. To find it, MyTVPlayer asks ipinfo.io when the network or the VPN changes.</string>
     <string name="settings_warn_proxy">Warn if the proxy is not working</string>
     <string name="settings_warn_proxy_help">Shows in the top bar and next to the player\'s clock whether the active playlist\'s proxy works, and the address that its provider sees through it. To check, MyTVPlayer asks ipinfo.io for your address with and without the proxy when the network or the proxy changes.</string>
+    <string name="settings_launcher">Show on the TV\'s home screen</string>
+    <string name="settings_launcher_help">Continue watching in the home screen\'s Play Next row, and your favourite channels as a row of their own. Restricted titles and channels never go there.</string>
+    <!-- The name of the app\'s row of favourite channels on the TV\'s home screen. -->
+    <string name="launcher_favourites">Favourite channels</string>
     <string name="settings_proxy_title">Proxy</string>
     <string name="settings_proxy_none">None</string>
     <string name="settings_proxy_http">HTTP</string>

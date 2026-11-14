@@ -152,6 +152,12 @@ private const val PROGRESS_RESTRICTED =
         " AND m.streamId = watch_progress.itemId AND $M_RESTRICTED)" +
         " OR EXISTS (SELECT 1 FROM series s WHERE s.playlistId = :pid AND s.seriesId = watch_progress.seriesId AND $S_RESTRICTED)"
 
+// Continue watching: not finished (or an episode with another after it), and of a series only its latest episode.
+private const val CARRY_ON_LEFT = "(NOT (durationMs > 0 AND positionMs >= durationMs * :finished) OR hasNext)"
+private const val CARRY_ON_LATEST =
+    "(seriesId IS NULL OR updatedAt = (SELECT MAX(x.updatedAt) FROM watch_progress x" +
+        " WHERE x.playlistId = watch_progress.playlistId AND x.seriesId = watch_progress.seriesId))"
+
 /** A channel (the table unnamed) that may be shown: not restricted while locked. */
 private const val CHANNEL_OPEN = "NOT ($P_LOCKED AND $CHANNEL_RESTRICTED)"
 
@@ -169,8 +175,9 @@ private const val CHANNEL_SEARCHABLE = "NOT ($P_SEARCH AND $CHANNEL_RESTRICTED)"
 private const val C_RECENT_OPEN = "NOT ($P_RECENT AND $C_RESTRICTED)"
 
 // The favourite channels of :pid (c the channel, f the favourite), and their order: the user's, else channel numbers.
-private const val CHANNEL_FAVOURITES =
-    "FROM channel c JOIN favourite f ON f.playlistId = c.playlistId AND f.streamId = c.streamId WHERE c.playlistId = :pid AND $C_OPEN"
+private const val CHANNEL_FAVOURITE_JOIN =
+    "FROM channel c JOIN favourite f ON f.playlistId = c.playlistId AND f.streamId = c.streamId WHERE c.playlistId = :pid"
+private const val CHANNEL_FAVOURITES = "$CHANNEL_FAVOURITE_JOIN AND $C_OPEN"
 private const val CHANNEL_FAVOURITE_ORDER = "ORDER BY f.position, c.position, c.name"
 
 /** A channel number starting with the typed digits (channels without a number are stored as 0 and never match). */
@@ -283,6 +290,14 @@ interface ChannelDao {
 
     @Query("SELECT c.* $CHANNEL_FAVOURITES $CHANNEL_FAVOURITE_ORDER LIMIT :limit")
     fun observeFavourites(pid: Long, limit: Int): Flow<List<ChannelEntity>>
+
+    /** The favourite channels for the TV's home screen: never a restricted one, locked or not (see LauncherSync). */
+    @Query("SELECT c.* $CHANNEL_FAVOURITE_JOIN AND NOT $C_RESTRICTED $CHANNEL_FAVOURITE_ORDER LIMIT :limit")
+    fun observeLauncherFavourites(pid: Long, limit: Int): Flow<List<ChannelEntity>>
+
+    /** Whether channel [id] may open from the TV's home screen: a favourite, and not restricted. */
+    @Query("SELECT EXISTS(SELECT 1 $CHANNEL_FAVOURITE_JOIN AND c.streamId = :id AND NOT $C_RESTRICTED)")
+    suspend fun launcherMayOpen(pid: Long, id: Long): Boolean
 
     @Query(
         "SELECT c.* FROM channel c JOIN recent r ON r.playlistId = c.playlistId AND r.streamId = c.streamId WHERE c.playlistId = :pid AND $C_RECENT_OPEN ORDER BY r.watchedAt DESC LIMIT :limit"
@@ -933,13 +948,24 @@ interface VodDao {
      * finished and the last one. [finished] is [WatchProgressEntity.FINISHED_FRACTION].
      */
     @Query(
-        """SELECT * FROM watch_progress WHERE playlistId = :pid
-           AND NOT ($P_CARRY_ON AND ($PROGRESS_RESTRICTED))
-           AND (NOT (durationMs > 0 AND positionMs >= durationMs * :finished) OR hasNext)
-           AND (seriesId IS NULL OR updatedAt = (SELECT MAX(x.updatedAt) FROM watch_progress x WHERE x.playlistId = watch_progress.playlistId AND x.seriesId = watch_progress.seriesId))
-           ORDER BY updatedAt DESC LIMIT :limit"""
+        "SELECT * FROM watch_progress WHERE playlistId = :pid AND NOT ($P_CARRY_ON AND ($PROGRESS_RESTRICTED))" +
+            " AND $CARRY_ON_LEFT AND $CARRY_ON_LATEST ORDER BY updatedAt DESC LIMIT :limit"
     )
     fun observeCarryOn(pid: Long, limit: Int, finished: Double): Flow<List<WatchProgressEntity>>
+
+    /** [observeCarryOn] for the TV's home screen: never a restricted film or series, locked or not (see LauncherSync). */
+    @Query(
+        "SELECT * FROM watch_progress WHERE playlistId = :pid AND NOT ($PROGRESS_RESTRICTED)" +
+            " AND $CARRY_ON_LEFT AND $CARRY_ON_LATEST ORDER BY updatedAt DESC LIMIT :limit"
+    )
+    fun observeLauncherCarryOn(pid: Long, limit: Int, finished: Double): Flow<List<WatchProgressEntity>>
+
+    /** Whether film or episode [id] ([kind]) may open from the TV's home screen: it has a place saved, and is not restricted. */
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM watch_progress WHERE playlistId = :pid AND kind = :kind AND itemId = :id" +
+            " AND NOT ($PROGRESS_RESTRICTED))"
+    )
+    suspend fun launcherMayOpen(pid: Long, kind: String, id: Long): Boolean
 
     @Query(
         "DELETE FROM watch_progress WHERE playlistId = :pid AND rowid NOT IN (SELECT rowid FROM watch_progress WHERE playlistId = :pid ORDER BY updatedAt DESC LIMIT :keep)"

@@ -24,6 +24,8 @@ import androidx.compose.ui.test.performKeyPress
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.printToString
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
 import org.robolectric.shadows.ShadowLooper
 
@@ -58,6 +60,11 @@ fun waitWithoutFrames(condition: () -> Boolean) {
 }
 
 private const val WAIT_POLL_MS = 10L
+
+/** Waits (in a coroutine, in real time) until [condition] holds; fails with [what] if it does not within [UI_WAIT_MS]. */
+suspend fun eventually(what: String, condition: () -> Boolean) {
+    withTimeoutOrNull(UI_WAIT_MS) { while (!condition()) delay(WAIT_POLL_MS) } ?: throw AssertionError("Not $what in $UI_WAIT_MS ms")
+}
 
 /** Waits for [text] (or text containing it) on screen, as [waitAdvancingClock] does; on a timeout, says what's shown. */
 fun ComposeTestRule.waitForText(text: String, stepMs: Long = 0) = try {

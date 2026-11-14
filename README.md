@@ -100,6 +100,10 @@ cropped ([credits, with each image's author and licence](app/src/test/resources/
   and its country (from ipinfo.io, off by default).
 - **Proxy check**: a badge in the top bar and on the player shows whether the active playlist's proxy works, with the
   address that its provider sees, and warns when that address is your own (from ipinfo.io, off by default).
+- **The TV's home screen** (off by default): Continue watching in the home screen's Play Next row, with posters, and
+  your favourite channels as a row of their own. The app serves the pictures itself (through the playlist's proxy),
+  and restricted titles and channels never go there. Android TV's own launcher and others that read the TV provider
+  show them; Google TV's home screen shows no app rows.
 - **Looks after its own storage**: only the guide for channels you use is kept, logos are capped and the database is
   kept compact.
 
