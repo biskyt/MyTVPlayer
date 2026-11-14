@@ -91,6 +91,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** How many favourite movies, and series, Home shows. */
 private const val VOD_ROW_LIMIT = 20
@@ -144,6 +145,9 @@ class HomeViewModel(private val c: AppContainer) : ViewModel() {
 
     fun forget(p: WatchProgressEntity) = viewModelScope.launch { c.vod.forgetProgress(p) }
 
+    /** The Continue watching card that was played last, while it plays (see [PlayedCardEffect]). */
+    var played: WatchProgressEntity? = null
+
     val nowNext = guideNowNext(viewModelScope, c) { playlistId.value }
 }
 
@@ -174,6 +178,7 @@ fun HomeScreen() {
     val again = remember { FocusRequester() }
     LaunchedEffect(refocus) { if (refocus != null) runCatching { again.requestFocus() } }
     val scope = rememberCoroutineScope()
+    PlayedCardEffect(vm, { carryOnRead }, top) { options != null || vm.mover.moving != null }
 
     // (Reads the states, so a change shows in a snapshotFlow.)
     fun shown(tile: HomeTile) = tile.isIn(recent, favourites.orEmpty(), carryOnRead.orEmpty()) { favouriteVod.getValue(it).value }
@@ -196,6 +201,7 @@ fun HomeScreen() {
                     Column {
                         SectionTitle(stringResource(R.string.home_carry_on))
                         CarryOnRow(carryOn, first, refocus?.carryOn, again, top.carryOnRow, { options = HomeTile.CarryOn(it) }) {
+                            vm.played = it
                             nav.push(Screen.VodPlayer(pid, it.itemId, it.seriesId, continueSeries = true))
                         }
                     }
@@ -254,7 +260,7 @@ fun HomeScreen() {
             options = null
             if (removed) {
                 val index = (tile as? HomeTile.CarryOn)?.let { t ->
-                    carryOn.indexOfFirst { it.kind == t.p.kind && it.itemId == t.p.itemId }
+                    carryOn.indexOfFirst { it.sameCard(t.p) }
                 }
                 scope.launch {
                     snapshotFlow { shown(tile) }.first { !it }
@@ -265,6 +271,31 @@ fun HomeScreen() {
         }
     }
 }
+
+/**
+ * Back from playing a Continue watching card: if the card played goes from the row soon after (the player's last save,
+ * which it starts as it closes, takes it off: an episode or a film watched to its end), focus goes to the first card of
+ * the row (the next episode, if there is one). A card still there (playback stopped part way) keeps focus, as any card
+ * Home opened does (see ReturnFocus). Not once the remote is used, nor while [busy]. The owner, 2026-11-14.
+ */
+@Composable
+private fun PlayedCardEffect(vm: HomeViewModel, rows: () -> List<WatchProgressEntity>?, top: TopFocus, busy: () -> Boolean) {
+    LaunchedEffect(Unit) {
+        val played = vm.played ?: return@LaunchedEffect
+        vm.played = null
+        val inputs = top.inputs
+        val gone = withTimeoutOrNull(PLAYED_SAVE_MS) {
+            snapshotFlow { rows() }.filterNotNull().first { list -> list.none { it.sameCard(played) } }
+        }
+        if (gone != null && top.inputs == inputs && !busy()) top.take()
+    }
+}
+
+/** Whether this is [other]'s card on Continue watching (its progress then or now). */
+private fun WatchProgressEntity.sameCard(other: WatchProgressEntity) = kind == other.kind && itemId == other.itemId
+
+/** How long the player's last save can take to show on Home (a slow box's database included). */
+private const val PLAYED_SAVE_MS = 5_000L
 
 /**
  * Where focus goes after a card is taken off Home: the card now in its place on Continue watching ([carryOn], its
@@ -280,7 +311,7 @@ private fun HomeTile.isIn(
     favouriteVod: (String) -> List<VodCard>
 ): Boolean = when (this) {
     is HomeTile.Channel -> (if (list == ChannelFilter.Recent) recent else favourites).any { it.streamId == ch.streamId }
-    is HomeTile.CarryOn -> carryOn.any { it.kind == p.kind && it.itemId == p.itemId }
+    is HomeTile.CarryOn -> carryOn.any { it.sameCard(p) }
     is HomeTile.Vod -> favouriteVod(type).any { it.id == card.id }
 }
 
@@ -483,8 +514,13 @@ private class TopFocus(
     var taken = false
     var used by mutableStateOf(false)
 
+    /** Each press of the remote or touch, counted (see PlayedCardEffect). */
+    var inputs = 0
+        private set
+
     /** The remote or a touch: counts once Home has taken its first focus (not a key pressed while the rows load). */
     fun use() {
+        inputs++
         if (taken && !used) used = true
     }
 

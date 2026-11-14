@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.17.3
+- When an episode or film from Continue watching plays to its end, Home now selects the first card of Continue watching, which is the next episode if there is one.
+
 ## 1.17.2
 - When a server refuses a playlist's connection, the error now also shows what the server said and which server answered.
 
