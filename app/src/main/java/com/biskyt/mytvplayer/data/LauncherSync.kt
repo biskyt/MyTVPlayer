@@ -13,6 +13,7 @@ import com.biskyt.mytvplayer.data.db.VOD_EPISODE
 import com.biskyt.mytvplayer.data.db.VOD_MOVIE
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
 import com.biskyt.mytvplayer.launcher.ChannelCard
+import com.biskyt.mytvplayer.launcher.LauncherChannel
 import com.biskyt.mytvplayer.launcher.LauncherLink
 import com.biskyt.mytvplayer.launcher.LauncherRows
 import com.biskyt.mytvplayer.launcher.LauncherWriter
@@ -78,7 +79,10 @@ class LauncherSync(
                 when {
                     on -> rows().collect(::publish)
                     // Turned off (or off since it was last on): the cards come off the TV. Off from the start: nothing.
-                    writing { launcher.isOn() } == true -> writing(launcher::clear)
+                    writing { launcher.isOn() } == true -> writing {
+                        launcher.clear()
+                        madeChannel.value = null
+                    }
                 }
             }
         }
@@ -87,9 +91,14 @@ class LauncherSync(
     /** A launcher asked for the cards (see LauncherReceiver): written again, if the rows are on (then, not before). */
     fun republish() {
         scope.launch {
-            val pid = settings.current().activePlaylistId
+            // Not even read while the rows are off (or with no playlist). Checked again under the lock: they may have been
+            // turned off since, or another playlist's cards written.
+            val pid = settings.current().takeIf { it.launcherRows }?.activePlaylistId?.takeIf { it != 0L } ?: return@launch
             val rows = data(pid).first().rows()
-            writing { if (settings.current().launcherRows) launcher.publish(rows)?.let { madeChannel.value = it } }
+            writing {
+                val now = settings.current()
+                if (now.launcherRows && now.activePlaylistId == pid) launcher.publish(rows)?.let { madeChannel.value = it }
+            }
         }
     }
 
@@ -127,9 +136,16 @@ class LauncherSync(
 
     private fun Cards.rows() = LauncherRows(
         playNext = carryOn.map { it.card() },
-        channelName = appString(R.string.launcher_favourites),
-        channel = favourites.map { it.card() },
-        channelOpen = open(LauncherTarget(LauncherTarget.FAVOURITES, pid)),
+        // No favourite channels: no row (not an empty one, nor the TV asking to show it).
+        channel = favourites.takeIf { it.isNotEmpty() }?.let { list ->
+            LauncherChannel(
+                appString(R.string.launcher_favourites),
+                list.map {
+                    it.card()
+                },
+                open(LauncherTarget(LauncherTarget.FAVOURITES, pid))
+            )
+        },
     )
 
     /**

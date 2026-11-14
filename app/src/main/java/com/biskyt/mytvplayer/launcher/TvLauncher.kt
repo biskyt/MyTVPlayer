@@ -51,7 +51,8 @@ class TvLauncher(private val context: Context) : LauncherWriter {
     @Synchronized
     override fun publish(rows: LauncherRows): Long? {
         if (!isOn()) setEnabled(true)
-        val pictures = LauncherImages.publish(context, rows.playNext.mapNotNull { it.posterUrl } + rows.channel.mapNotNull { it.logoUrl })
+        val logos = rows.channel?.cards.orEmpty().mapNotNull { it.logoUrl }
+        val pictures = LauncherImages.publish(context, rows.playNext.mapNotNull { it.posterUrl } + logos)
         val playNext = stored(TvContractCompat.WatchNextPrograms.CONTENT_URI, WATCH_NEXT)
         write(
             plan(playNext, rows.playNext, {
@@ -62,19 +63,21 @@ class TvLauncher(private val context: Context) : LauncherWriter {
         ) {
             it.values(pictures)
         }
-        val (channel, made) = channel(rows)
-        // The launcher puts the heaviest first: the favourites' own order.
-        val weight = rows.channel.withIndex().associate { (i, card) -> card.key to rows.channel.size - i }
+        val channel = rows.channel ?: run {
+            dropChannel() // none now: one made before goes, with its cards
+            return null
+        }
+        val (id, made) = channel(channel)
+        // The launcher puts the heaviest first: the app's own order.
+        val weight = channel.cards.withIndex().associate { (i, card) -> card.key to channel.cards.size - i }
         write(
-            plan(stored(TvContractCompat.buildPreviewProgramsUriForChannel(channel), PREVIEW), rows.channel, {
-                it.key
-            }),
+            plan(stored(TvContractCompat.buildPreviewProgramsUriForChannel(id), PREVIEW), channel.cards, { it.key }),
             TvContractCompat::buildPreviewProgramUri,
             TvContractCompat.PreviewPrograms.CONTENT_URI
         ) {
-            it.values(channel, weight.getValue(it.key), pictures)
+            it.values(id, weight.getValue(it.key), pictures)
         }
-        return channel.takeIf { made }
+        return id.takeIf { made }
     }
 
     /** Its pictures are no longer served either, and the parts the launcher calls are off again. */
@@ -83,7 +86,7 @@ class TvLauncher(private val context: Context) : LauncherWriter {
         stored(TvContractCompat.WatchNextPrograms.CONTENT_URI, WATCH_NEXT).forEach {
             resolver.delete(TvContractCompat.buildWatchNextProgramUri(it.id), null, null)
         }
-        ownChannel()?.let { resolver.delete(TvContractCompat.buildChannelUri(it), null, null) }
+        dropChannel()
         written.clear()
         LauncherImages.clear(context)
         setEnabled(false)
@@ -107,11 +110,11 @@ class TvLauncher(private val context: Context) : LauncherWriter {
     }
 
     /** The app's channel, made now if there is none (with the app's icon as its logo); whether it was made now. */
-    private fun channel(rows: LauncherRows): Pair<Long, Boolean> {
+    private fun channel(channel: LauncherChannel): Pair<Long, Boolean> {
         val values = Channel.Builder()
             .setType(TvContractCompat.Channels.TYPE_PREVIEW)
-            .setDisplayName(rows.channelName)
-            .setAppLinkIntentUri(rows.channelOpen.asUri())
+            .setDisplayName(channel.name)
+            .setAppLinkIntentUri(channel.open.asUri())
             .setInternalProviderId(CHANNEL_KEY)
             .build()
             .toContentValues()
@@ -127,6 +130,13 @@ class TvLauncher(private val context: Context) : LauncherWriter {
             ChannelLogoUtils.storeChannelLogo(context, id, context.packageManager.getApplicationIcon(context.packageName).toBitmap())
         }
         return id to true
+    }
+
+    /** The app's channel taken off the launcher, with its cards (the TV provider deletes them with it). */
+    private fun dropChannel() {
+        val id = ownChannel() ?: return
+        resolver.delete(TvContractCompat.buildChannelUri(id), null, null)
+        written.clear() // (its cards' rows went with it: the rest are written again once)
     }
 
     private fun ownChannel(): Long? = resolver.query(
@@ -168,7 +178,7 @@ class TvLauncher(private val context: Context) : LauncherWriter {
     }
 
     companion object {
-        /** The app's one channel (a row of its favourite channels). */
+        /** The app's one channel (a row of its own, such as MyTVPlayer's favourite channels). */
         private const val CHANNEL_KEY = "favourites"
 
         private val WATCH_NEXT = Columns(
