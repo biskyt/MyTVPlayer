@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.18.2
+- When the app takes the "Favourite channels" row away (your last favourite channel removed) before you see it, Settings no longer asks the TV to show it.
+
 ## 1.18.1
 - With no favourite channels, the TV's home screen no longer gets an empty "Favourite channels" row.
 - With "Show on the TV's home screen" off, a launcher that asks for the app's cards no longer makes the app read its lists.

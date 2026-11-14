@@ -24,7 +24,10 @@ interface LauncherWriter {
     /** Whether the app's cards are on the launcher now (written, and not cleared since): kept by Android. */
     fun isOn(): Boolean
 
-    /** Writes [rows]; the id of the app's channel if it was made now. */
+    /**
+     * Writes [rows]; the id of the app's channel if it was made now. With no channel in [rows], the app's channel is
+     * taken away (and null returned).
+     */
     fun publish(rows: LauncherRows): Long?
 
     /** Takes everything off the launcher. */

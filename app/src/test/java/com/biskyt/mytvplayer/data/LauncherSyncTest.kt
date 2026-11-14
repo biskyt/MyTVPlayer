@@ -139,6 +139,22 @@ class LauncherSyncTest {
         assertEquals(2, writer.published.last().playNext.size)
     }
 
+    @Test
+    fun `a channel made and then taken away is not asked to show`() = runBlocking {
+        val sync = LauncherSync(app, scope, c.settings, c.db, writer)
+        c.settings.update { it.copy(launcherRows = true) }
+        eventually("the channel to show") { sync.madeChannel.value == CHANNEL }
+        // Written again with the channel still there (none made now): it is still to be shown.
+        sync.republish()
+        eventually("written again") { writer.published.size == 2 }
+        assertEquals(CHANNEL, sync.madeChannel.value)
+        // The last favourite gone before Settings showed the channel: the cards are written again, with no channel.
+        c.channels.setFavourite(pid, 102, false)
+        sync.republish()
+        eventually("no channel to show") { sync.madeChannel.value == null }
+        assertEquals(null, writer.published.last().channel)
+    }
+
     private companion object {
         const val CHANNEL = 7L
     }
