@@ -19,6 +19,9 @@
 
     <!-- Errors downloading a guide or talking to a provider's server. %1$d: the HTTP status code, e.g. 404. -->
     <string name="data_server_error">Server returned error %1$d</string>
+    <string name="data_reply_text">The server said: “%1$s”</string>
+    <string name="data_reply_server">Server: %1$s</string>
+    <string name="data_reply_host">Redirected to %1$s</string>
     <string name="data_guide_save_failed">Couldn\'t save guide file</string>
 
     <!-- Errors from a provider's (Xtream Codes) server. -->

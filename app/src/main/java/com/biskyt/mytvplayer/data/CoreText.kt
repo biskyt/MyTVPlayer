@@ -6,6 +6,7 @@ import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.countryName
 import com.biskyt.mytvplayer.core.epg.CategoryLanguageDetector
+import com.biskyt.mytvplayer.core.net.ServerReply
 import com.biskyt.mytvplayer.core.xtream.XtreamException
 import com.biskyt.mytvplayer.core.xtream.XtreamException.Reason
 import com.biskyt.mytvplayer.data.db.CategoryCount
@@ -23,11 +24,24 @@ fun XtreamException.userMessage(): String = when (reason) {
     Reason.NO_MOVIE_DETAILS -> appString(R.string.data_xtream_no_movie_details)
     Reason.NO_EPISODES -> appString(R.string.data_xtream_no_episodes)
     Reason.UNREACHABLE -> appString(R.string.data_xtream_unreachable, cause?.message.toString())
-    Reason.SERVER_ERROR -> appString(R.string.data_server_error, code)
+    Reason.SERVER_ERROR -> withReply(appString(R.string.data_server_error, code), reply)
     Reason.EMPTY_RESPONSE -> appString(R.string.data_xtream_empty)
     Reason.UNEXPECTED_RESPONSE -> appString(R.string.data_xtream_unexpected)
     Reason.INVALID_ADDRESS -> appString(R.string.data_xtream_invalid_address)
     Reason.OTHER -> message.orEmpty()
+}
+
+/**
+ * [error], then on one more line what the server said with it, as it said it: who refused, and perhaps why. One line,
+ * so that the panels that show two or three lines show all of it.
+ */
+fun withReply(error: String, reply: ServerReply?): String {
+    val said = listOfNotNull(
+        reply?.text?.let { appString(R.string.data_reply_text, it) },
+        reply?.server?.let { appString(R.string.data_reply_server, it) },
+        reply?.host?.let { appString(R.string.data_reply_host, it) },
+    )
+    return if (said.isEmpty()) error else error + "\n" + said.joinToString(" · ")
 }
 
 /**

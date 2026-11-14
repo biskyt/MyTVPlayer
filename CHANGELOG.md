@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.17.2
+- When a server refuses a playlist's connection, the error now also shows what the server said and which server answered.
+
 ## 1.17.1
 - The remote's channel up and down buttons now move a page at a time in the category lists.
 - On Guide sources, Move up and Move down now move a guide at once, so you can move it several places quickly.

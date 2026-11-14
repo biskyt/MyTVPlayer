@@ -9,6 +9,7 @@ import com.biskyt.mytvplayer.core.net.IpLookup
 import com.biskyt.mytvplayer.core.net.ProxyCheck
 import com.biskyt.mytvplayer.core.net.ProxyClients
 import com.biskyt.mytvplayer.core.net.ProxySettings
+import com.biskyt.mytvplayer.core.net.ServerReply
 import com.biskyt.mytvplayer.core.xtream.XtreamCategory
 import com.biskyt.mytvplayer.core.xtream.XtreamClient
 import com.biskyt.mytvplayer.core.xtream.XtreamCredentials
@@ -416,7 +417,9 @@ class PlaylistRepository(
             ?: throw XtreamException(appString(R.string.data_playlist_address_invalid))
         return try {
             proxies.forProxy(proxy).newCall(request).execute().use {
-                if (!it.isSuccessful) throw XtreamException(appString(R.string.data_playlist_refused, it.code))
+                if (!it.isSuccessful) {
+                    throw XtreamException(withReply(appString(R.string.data_playlist_refused, it.code), ServerReply.of(it, request.url)))
+                }
                 block(it.body!!)
             }
         } catch (e: XtreamException) {

@@ -20,6 +20,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -61,6 +63,25 @@ class M3uPlaylistTest {
         scope.cancel()
         db.close()
         provider.close()
+    }
+
+    @Test
+    fun `a refused playlist download shows what the server said`() = runBlocking<Unit> {
+        val server = MockWebServer().apply {
+            enqueue(
+                MockResponse().setResponseCode(403).setHeader("Server", "nginx").setBody("<html><body><h1>403 Forbidden</h1></body></html>")
+            )
+            start()
+        }
+        try {
+            val e = runCatching { playlists.testConnection(true, server.url("/list.m3u").toString(), "", "") }.exceptionOrNull()
+            assertEquals(
+                "The server refused the playlist download (error 403)\nThe server said: “403 Forbidden” · Server: nginx",
+                e?.message
+            )
+        } finally {
+            server.shutdown()
+        }
     }
 
     private val vodPlaylist = """

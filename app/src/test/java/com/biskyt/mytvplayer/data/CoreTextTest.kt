@@ -2,6 +2,7 @@ package com.biskyt.mytvplayer.data
 
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.epg.CategoryLanguageDetector
+import com.biskyt.mytvplayer.core.net.ServerReply
 import com.biskyt.mytvplayer.core.ui.AccentPalette
 import com.biskyt.mytvplayer.core.xtream.XtreamException
 import com.biskyt.mytvplayer.core.xtream.XtreamException.Reason
@@ -78,6 +79,17 @@ class CoreTextTest {
         assertEquals("Couldn't reach the server: timeout", userMessage(unreachable))
         val error = XtreamException("Server returned error 503", reason = Reason.SERVER_ERROR, code = 503)
         assertEquals("Server returned error 503", userMessage(error))
+        // With what the server said, on one more line (the owner, 2026-11-14).
+        val refused = XtreamException(
+            "Server returned error 403",
+            reason = Reason.SERVER_ERROR,
+            code = 403,
+            reply = ServerReply(server = "cloudflare", host = "other.example", text = "Access denied")
+        )
+        assertEquals(
+            "Server returned error 403\nThe server said: “Access denied” · Server: cloudflare · Redirected to other.example",
+            userMessage(refused)
+        )
         val login = XtreamException("Login failed (log)", reason = Reason.LOGIN_FAILED)
         assertEquals("Login failed: check the server address, username and password", userMessage(login))
         assertEquals("Login failed (log)", login.message)
