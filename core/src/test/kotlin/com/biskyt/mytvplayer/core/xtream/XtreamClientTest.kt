@@ -1,7 +1,13 @@
 package com.biskyt.mytvplayer.core.xtream
 
+import com.biskyt.mytvplayer.core.net.ServerReply
 import kotlinx.coroutines.test.runTest
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.SocketPolicy
@@ -45,6 +51,38 @@ class XtreamClientTest {
     }
 
     @Test
+    fun `a refusal keeps what the server said, so that the user can tell who refused`() = runTest {
+        val page = """
+            <!DOCTYPE html><html><head><title>Attention Required!</title><style>body { margin: 0 }</style></head>
+            <body><script>var a = 1;</script>
+              <h1>Sorry, you have been blocked</h1><p>You are unable to access this site.</p>
+            </body></html>
+        """.trimIndent()
+        server.enqueue(MockResponse().setResponseCode(403).setHeader("Server", "cloudflare").setBody(page))
+        val e = expectXtreamError(XtreamException.Reason.SERVER_ERROR) { client.account() }
+        assertEquals(403, e.code)
+        assertEquals(ServerReply(server = "cloudflare", text = "Sorry, you have been blocked"), e.reply)
+        assertTrue(e.message!!, "Sorry, you have been blocked" in e.message!!)
+
+        // A short plain answer, with no Server header.
+        server.enqueue(MockResponse().setResponseCode(403).setBody("\n  Access denied  \n"))
+        assertEquals(ServerReply(text = "Access denied"), expectXtreamError(XtreamException.Reason.SERVER_ERROR) { client.account() }.reply)
+    }
+
+    @Test
+    fun `a refusal from another host after a redirect names that host`() {
+        val asked = "http://panel.example:8080/player_api.php".toHttpUrl()
+        val response = Response.Builder()
+            .request(Request.Builder().url("https://other.example/blocked").build())
+            .protocol(Protocol.HTTP_1_1)
+            .code(403)
+            .message("Forbidden")
+            .body("".toResponseBody())
+            .build()
+        assertEquals(ServerReply(host = "other.example"), ServerReply.of(response, asked))
+    }
+
+    @Test
     fun `failed login gives a friendly error`() = runTest {
         server.enqueue(MockResponse().setBody("""{"user_info":{"auth":0}}"""))
         assertFalse(client.account().active)
@@ -55,7 +93,9 @@ class XtreamClientTest {
     @Test
     fun `http error and garbage are reported as XtreamException`() = runTest {
         server.enqueue(MockResponse().setResponseCode(503))
-        assertEquals(503, expectXtreamError(XtreamException.Reason.SERVER_ERROR) { client.liveCategories() }.code)
+        val plain = expectXtreamError(XtreamException.Reason.SERVER_ERROR) { client.liveCategories() }
+        assertEquals(503, plain.code)
+        assertNull("nothing said", plain.reply)
         server.enqueue(MockResponse().setBody("<html>not json</html>"))
         expectXtreamError(XtreamException.Reason.UNEXPECTED_RESPONSE) { client.liveCategories() }
     }

@@ -1,5 +1,6 @@
 package com.biskyt.mytvplayer.core.xtream
 
+import com.biskyt.mytvplayer.core.net.ServerReply
 import com.biskyt.mytvplayer.core.xtream.XtreamException.Reason
 import java.io.IOException
 import java.io.InputStream
@@ -26,6 +27,8 @@ class XtreamException(
     val reason: Reason = Reason.OTHER,
     /** The server's HTTP status, for [Reason.SERVER_ERROR]. */
     val code: Int = 0,
+    /** What the server said with that status, when it said something. */
+    val reply: ServerReply? = null,
 ) : IOException(message, cause) {
     enum class Reason {
         LOGIN_FAILED,
@@ -158,7 +161,11 @@ class XtreamClient(private val http: OkHttpClient, private val credentials: Xtre
             throw XtreamException("Couldn't reach the server: ${e.message}", e, Reason.UNREACHABLE)
         }
         response.use {
-            if (!it.isSuccessful) throw XtreamException("Server returned error ${it.code}", reason = Reason.SERVER_ERROR, code = it.code)
+            if (!it.isSuccessful) {
+                val reply = ServerReply.of(it, url)
+                val said = reply?.let { r -> " ($r)" }.orEmpty()
+                throw XtreamException("Server returned error ${it.code}$said", reason = Reason.SERVER_ERROR, code = it.code, reply = reply)
+            }
             val body = it.body?.byteStream() ?: throw XtreamException("Empty response from server", reason = Reason.EMPTY_RESPONSE)
             return try {
                 read(body)

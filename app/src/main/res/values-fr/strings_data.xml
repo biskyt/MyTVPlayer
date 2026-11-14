@@ -11,6 +11,9 @@
     <string name="data_loading_programmes_guide">Chargement des programmes du guide…</string>
 
     <string name="data_server_error">Le serveur a renvoyé l\'erreur %1$d</string>
+    <string name="data_reply_text">Le serveur a dit : « %1$s »</string>
+    <string name="data_reply_server">Serveur : %1$s</string>
+    <string name="data_reply_host">Redirigé vers %1$s</string>
     <string name="data_guide_save_failed">Impossible d\'enregistrer le fichier du guide</string>
 
     <string name="data_xtream_login_failed">Échec de la connexion : vérifiez l\'adresse du serveur, le nom d\'utilisateur et le mot de passe</string>

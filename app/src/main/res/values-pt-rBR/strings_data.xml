@@ -11,6 +11,9 @@
     <string name="data_loading_programmes_guide">Carregando programas do guia…</string>
 
     <string name="data_server_error">O servidor retornou o erro %1$d</string>
+    <string name="data_reply_text">O servidor disse: “%1$s”</string>
+    <string name="data_reply_server">Servidor: %1$s</string>
+    <string name="data_reply_host">Redirecionado para %1$s</string>
     <string name="data_guide_save_failed">Não foi possível salvar o arquivo do guia</string>
 
     <string name="data_xtream_login_failed">Falha no login: confira o endereço do servidor, o usuário e a senha</string>
