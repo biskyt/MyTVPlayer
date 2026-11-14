@@ -56,6 +56,8 @@ import com.biskyt.mytvplayer.data.db.AppDatabase
 import com.biskyt.mytvplayer.data.db.proxy
 import com.biskyt.mytvplayer.launcher.LauncherHost
 import com.biskyt.mytvplayer.launcher.LauncherImages
+import com.biskyt.mytvplayer.launcher.LauncherWriter
+import com.biskyt.mytvplayer.launcher.TvLauncher
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -83,7 +85,8 @@ private const val IP_TIMEOUT_S = 10L
 private val online = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
 /** Hand-wired dependencies: small enough that a DI framework would only add start-up time. */
-class AppContainer(context: Context) {
+/** [launcherWriter]: what writes the cards to the TV's home screen (see LauncherSync); none in the JVM tests. */
+class AppContainer(context: Context, launcherWriter: LauncherWriter = TvLauncher(context)) {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val db: AppDatabase = AppDatabase.create(context)
     val http: OkHttpClient = OkHttpClient.Builder()
@@ -162,7 +165,7 @@ class AppContainer(context: Context) {
     val openedFile = MutableStateFlow<Uri?>(null)
 
     /** Continue watching and the favourite channels on the TV's home screen: nothing runs while the setting is off. */
-    val launcherSync = LauncherSync(context, appScope, settings, db)
+    val launcherSync = LauncherSync(context, appScope, settings, db, launcherWriter)
 
     /** A card on the TV's home screen opened the app, until it's shown (see AppRoot). */
     val launcherTarget = MutableStateFlow<LauncherTarget?>(null)
@@ -178,7 +181,7 @@ open class MyTvApp : Application(), SingletonImageLoader.Factory, LauncherHost {
         installCrashLog()
         AppText.init(this)
         deviceLocales = resources.configuration.locales
-        container = AppContainer(this)
+        container = AppContainer(this, launcherWriter())
         scheduleDailyRefresh()
     }
 
@@ -209,6 +212,9 @@ open class MyTvApp : Application(), SingletonImageLoader.Factory, LauncherHost {
     }.getOrNull()
 
     override fun republishLauncher() = container.launcherSync.republish()
+
+    /** What writes the cards to the TV's home screen: the TV provider (the JVM tests have none). */
+    protected open fun launcherWriter(): LauncherWriter = TvLauncher(this)
 
     /** Channel logos: decoded at row size, small memory cache, disk cache capped so storage stays low. */
     override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)

@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.18.1
+- With no favourite channels, the TV's home screen no longer gets an empty "Favourite channels" row.
+- With "Show on the TV's home screen" off, a launcher that asks for the app's cards no longer makes the app read its lists.
+
 ## 1.18.0
 - A new setting shows Continue watching in the TV home screen's Play Next row, with posters, and your favourite channels as a row of their own.
 - The setting is off by default, and restricted titles and channels never appear on the home screen.
