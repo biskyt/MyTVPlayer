@@ -16,4 +16,6 @@
     <string name="settings_categories_intro">Only the categories you check are downloaded, so lists load faster and use less storage.</string>
     <string name="settings_playlist_updated_detail">Its channels, TV guide, movies and series are up to date.</string>
     <string name="settings_playlist_add_free">+ Add free TV, movies and series</string>
+    <string name="settings_launcher_help">Continue watching in the home screen\'s Play Next row, and your favorite channels as a row of their own. Restricted titles and channels never go there.</string>
+    <string name="launcher_favourites">Favorite channels</string>
 </resources>

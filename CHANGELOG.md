@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.18.0
+- A new setting shows Continue watching in the TV home screen's Play Next row, with posters, and your favourite channels as a row of their own.
+- The setting is off by default, and restricted titles and channels never appear on the home screen.
+
 ## 1.17.3
 - When an episode or film from Continue watching plays to its end, Home now selects the first card of Continue watching, which is the next episode if there is one.
 

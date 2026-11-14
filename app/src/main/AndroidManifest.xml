@@ -6,6 +6,9 @@
     <!-- Android 9 only: saving the backup to Download/MyTVPlayer (later versions need no permission for it). -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
+    <!-- The TV's home screen (Settings › Show on the TV's home screen, off by default): the app's cards in the TV provider. -->
+    <uses-permission android:name="com.android.providers.tv.permission.WRITE_EPG_DATA" />
+
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
@@ -51,5 +54,21 @@
                 <data android:mimeType="text/json" />
             </intent-filter>
         </activity>
+
+        <!-- The launcher's pictures and its request for the app's cards: off until the user turns the home screen rows on
+             (see TvLauncher.setEnabled), so they cost nothing while it is off. -->
+        <provider
+            android:name=".launcher.LauncherImageProvider"
+            android:authorities="${applicationId}.launcherimages"
+            android:enabled="false"
+            android:exported="true" />
+        <receiver
+            android:name=".launcher.LauncherReceiver"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.media.tv.action.INITIALIZE_PROGRAMS" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

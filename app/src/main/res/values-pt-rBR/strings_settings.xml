@@ -184,6 +184,9 @@
     <string name="settings_external_ip_help">Mostra ao lado do indicador de VPN o endereço que os sites veem e o país dele. Para obtê-lo, o MyTVPlayer consulta o ipinfo.io quando a rede ou a VPN muda.</string>
     <string name="settings_warn_proxy">Avisar se o proxy não estiver funcionando</string>
     <string name="settings_warn_proxy_help">Mostra na barra superior e ao lado do relógio do player se o proxy da playlist ativa funciona, e o endereço que o provedor vê através dele. Para verificar, o MyTVPlayer consulta o ipinfo.io sobre o seu endereço com e sem o proxy quando a rede ou o proxy muda.</string>
+    <string name="settings_launcher">Mostrar na tela inicial da TV</string>
+    <string name="settings_launcher_help">Continuar assistindo na fileira "A seguir" da tela inicial, e seus canais favoritos em uma fileira própria. Títulos e canais restritos nunca aparecem lá.</string>
+    <string name="launcher_favourites">Canais favoritos</string>
     <string name="settings_proxy_title">Proxy</string>
     <string name="settings_proxy_none">Nenhum</string>
     <string name="settings_proxy_http">HTTP</string>

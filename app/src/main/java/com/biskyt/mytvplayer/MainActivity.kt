@@ -15,6 +15,7 @@ import androidx.core.content.IntentCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.biskyt.mytvplayer.data.LauncherSync
 import com.biskyt.mytvplayer.ui.AppRoot
 import com.biskyt.mytvplayer.ui.common.hasTouchScreen
 import com.biskyt.mytvplayer.ui.common.isActing
@@ -57,8 +58,15 @@ class MainActivity : ComponentActivity() {
         takeOpenedFile(intent)
     }
 
-    /** A backup file opened with MyTVPlayer from another app, for Backup & restore to offer (see AppRoot). */
+    /**
+     * A backup file opened with MyTVPlayer from another app, for Backup & restore to offer, or a card on the TV's home
+     * screen, for the app to open (see AppRoot).
+     */
     private fun takeOpenedFile(intent: Intent) {
+        LauncherSync.target(this, intent)?.let {
+            container.launcherTarget.value = it
+            return
+        }
         intent.openedFile()?.let { container.openedFile.value = it }
     }
 

@@ -17,6 +17,7 @@ ffmpegDecoder = "1.8.0+1"
 room = "2.7.2"
 paging = "3.3.6"
 work = "2.10.2"
+tvprovider = "1.1.0"
 datastore = "1.1.7"
 coil = "3.3.0"
 junit = "4.13.2"
@@ -73,6 +74,7 @@ room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
 paging-compose = { module = "androidx.paging:paging-compose", version.ref = "paging" }
 paging-testing = { module = "androidx.paging:paging-testing", version.ref = "paging" }
 work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
+tvprovider = { module = "androidx.tvprovider:tvprovider", version.ref = "tvprovider" }
 work-testing = { module = "androidx.work:work-testing", version.ref = "work" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }

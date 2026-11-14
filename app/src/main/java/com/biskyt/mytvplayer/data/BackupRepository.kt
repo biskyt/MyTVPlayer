@@ -176,8 +176,9 @@ class BackupRepository(
         }
         val ids = backup.playlists.map { it.id }
         val active = backup.settings.activePlaylistId.takeIf { it in ids } ?: ids.firstOrNull() ?: 0
-        // This TV's parental controls PIN stays (backups have none), and with one set, the hide settings too.
-        val restored = backup.settings.copy(activePlaylistId = active, pinHash = now.pinHash)
+        // This TV's parental controls PIN stays (backups have none), and with one set, the hide settings too. So does
+        // whether this TV shows its cards on its home screen (a phone has none, and it is off unless turned on here).
+        val restored = backup.settings.copy(activePlaylistId = active, pinHash = now.pinHash, launcherRows = now.launcherRows)
         settings.update {
             if (now.pinHash.isEmpty()) {
                 restored
