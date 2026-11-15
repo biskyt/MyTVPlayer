@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.LocaleList
+import android.util.Log
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -37,6 +38,7 @@ import com.biskyt.mytvplayer.data.CrashLog
 import com.biskyt.mytvplayer.data.EpgRepository
 import com.biskyt.mytvplayer.data.ExternalIp
 import com.biskyt.mytvplayer.data.Favourites
+import com.biskyt.mytvplayer.data.HomeRowsReceiver
 import com.biskyt.mytvplayer.data.ImageCalls
 import com.biskyt.mytvplayer.data.LauncherSync
 import com.biskyt.mytvplayer.data.LauncherTarget
@@ -64,6 +66,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
@@ -100,9 +103,10 @@ class AppContainer(context: Context, launcherWriter: LauncherWriter = TvLauncher
         }
         .build()
     val settings = SettingsRepository(context)
+    private val syncAccount = SyncAccount(context.dataStore)
     val progressSync: ProgressSync = ProgressSync(
         db,
-        SyncAccount(context.dataStore),
+        syncAccount,
         BuildConfig.GOOGLE_CLIENT_ID.takeIf { it.isNotBlank() }?.let { GoogleAuth(http, it, BuildConfig.GOOGLE_CLIENT_SECRET) },
         appScope,
         { token -> DriveStore(http, token) },
@@ -169,6 +173,12 @@ class AppContainer(context: Context, launcherWriter: LauncherWriter = TvLauncher
 
     /** Continue watching and the favourite channels on the TV's home screen: nothing runs while the setting is off. */
     val launcherSync = LauncherSync(context, appScope, settings, db, launcherWriter)
+
+    init {
+        // A launcher's request starts the app only while there is something to refresh: the sync or the home rows.
+        val needed = combine(settings.settings.map { it.launcherRows }, syncAccount.state.map { it.on }) { rows, sync -> rows || sync }
+        HomeRowsReceiver.follow(context, appScope, needed)
+    }
 
     /** A card on the TV's home screen opened the app, until it's shown (see AppRoot). */
     val launcherTarget = MutableStateFlow<LauncherTarget?>(null)
@@ -257,6 +267,46 @@ class ProgressSyncWorker(context: Context, params: WorkerParameters) : Coroutine
             val request = OneTimeWorkRequestBuilder<ProgressSyncWorker>().setConstraints(online).build()
             // One at a time: if one waits already, it sends these changes too.
             WorkManager.getInstance(context).enqueueUniqueWork("progress-sync", ExistingWorkPolicy.KEEP, request)
+        }
+    }
+}
+
+/**
+ * A launcher's request to refresh the app's rows on the TV's home screen (see HomeRowsReceiver; MyTVLauncher sends it as
+ * the TV wakes and as its Home shows, the owner 2026-11-15): what was watched on the other TVs comes in (when the sync
+ * between TVs is on), then Continue watching and the app's rows are written again (when that setting is on). With both
+ * off, nothing is done. At most once in [MIN_GAP_MS], as any app can ask.
+ */
+class HomeRowsWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result {
+        val prefs = applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (System.currentTimeMillis() - prefs.getLong(LAST, 0) in 0 until MIN_GAP_MS) return Result.success()
+        val c = applicationContext.container
+        try {
+            c.progressSync.finish(always = true)
+        } catch (e: SyncException) {
+            // (Written from what this TV has: the next request, or opening the app, syncs again.)
+            Log.w(TAG, "Could not sync for the home rows", e)
+        }
+        // Not written again if nothing changed since this process last wrote them.
+        c.launcherSync.refresh(again = false)
+        // Only once done: a run that WorkManager stopped (the TV went offline) is done in full when it runs again.
+        prefs.edit().putLong(LAST, System.currentTimeMillis()).apply()
+        return Result.success()
+    }
+
+    companion object {
+        private const val TAG = "HomeRowsWorker"
+        internal const val PREFS = "home-rows"
+        private const val LAST = "last-refresh"
+
+        /** MyTVLauncher asks at most once in 5 minutes: a little less, so that its requests are not skipped. */
+        const val MIN_GAP_MS = 3 * 60_000L
+
+        fun start(context: Context) {
+            val request = OneTimeWorkRequestBuilder<HomeRowsWorker>().setConstraints(online).build()
+            // One at a time: a request while one waits or runs is that one.
+            WorkManager.getInstance(context).enqueueUniqueWork("home-rows", ExistingWorkPolicy.KEEP, request)
         }
     }
 }

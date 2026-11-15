@@ -86,7 +86,7 @@ class LauncherSync(
         scope.launch {
             settings.settings.map { it.launcherRows }.distinctUntilChanged().collectLatest { on ->
                 when {
-                    // Read again under the lock: a write made meanwhile (see writeNow) may be newer than this read.
+                    // Read again under the lock: a write made meanwhile (see refresh) may be newer than this read.
                     on -> rows().collect { writing { write(data(it.pid).first()) } }
                     // Turned off (or off since it was last on): the cards come off the TV. Off from the start: nothing.
                     writing { launcher.isOn() } == true -> writing {
@@ -100,25 +100,31 @@ class LauncherSync(
     }
 
     /** A launcher asked for the cards (see LauncherReceiver): written again now, if the rows are on. */
-    fun republish() = writeNow(again = true)
+    fun republish() {
+        scope.launch { refresh(again = true) }
+    }
 
     /**
      * Playback stopped, or the user forgot something (see AppContainer): the cards written now, if the rows are on, so
      * that Continue watching on the TV's home screen is up to date when the user goes back there. Changes are otherwise
      * written once they settle (see rows).
      */
-    fun playbackStopped() = writeNow(again = false)
+    fun playbackStopped() {
+        scope.launch { refresh(again = false) }
+    }
 
-    /** [again]: also if nothing changed since the last write (a launcher whose data was cleared asks again). */
-    private fun writeNow(again: Boolean) {
-        scope.launch {
-            // Not even read while the rows are off (or with no playlist). Read under the lock, so that an older read is never
-            // written after a newer one; checked again there, as the rows may have been turned off since.
-            settings.current().takeIf { it.launcherRows && it.activePlaylistId != 0L } ?: return@launch
-            writing {
-                val now = settings.current()
-                if (now.launcherRows && now.activePlaylistId != 0L) write(data(now.activePlaylistId).first(), again)
-            }
+    /**
+     * The cards written now, if the rows are on, and returns once they are: for a launcher's request to refresh the home
+     * rows (see HomeRowsWorker). [again]: also if nothing changed since the last write (a launcher whose data was
+     * cleared asks again).
+     */
+    suspend fun refresh(again: Boolean) {
+        // Not even read while the rows are off (or with no playlist). Read under the lock, so that an older read is never
+        // written after a newer one; checked again there, as the rows may have been turned off since.
+        settings.current().takeIf { it.launcherRows && it.activePlaylistId != 0L } ?: return
+        writing {
+            val now = settings.current()
+            if (now.launcherRows && now.activePlaylistId != 0L) write(data(now.activePlaylistId).first(), again)
         }
     }
 

@@ -81,5 +81,14 @@
                 <action android:name="android.media.tv.action.INITIALIZE_PROGRAMS" />
             </intent-filter>
         </receiver>
+        <!-- A launcher's request to refresh the home rows (MyTVLauncher): a background sync, then the rows. -->
+        <receiver
+            android:name=".data.HomeRowsReceiver"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="${applicationId}.action.REFRESH_HOME_ROWS" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
