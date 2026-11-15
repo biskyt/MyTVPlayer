@@ -249,8 +249,8 @@ fun PlaybackSettingsScreen() {
                 { vm.update { it.copy(audioPassthrough = !it.audioPassthrough) } }
             ) { Toggle(s.audioPassthrough) }
         }
-        // Only from Android 10 (see AacUnchanged.available).
-        if (AacUnchanged.available) {
+        // Only from Android 10 (see AacUnchanged.available), and with passthrough on (it is a kind of passthrough).
+        if (AacUnchanged.available && s.audioPassthrough) {
             item {
                 SettingRow(
                     stringResource(R.string.settings_aac_unchanged),

@@ -4,12 +4,9 @@ import android.content.Context
 import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
-import android.media.AudioTrack
 import android.os.Build
 import android.util.Log
-import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
-import androidx.media3.common.util.UnstableApi
 
 /**
  * Whether the TV (or box) can send AAC sound unchanged over HDMI, to an amplifier or a TV: a check in Settings (the
@@ -31,10 +28,6 @@ enum class AacPassthrough {
     companion object {
         /** AudioDeviceInfo.TYPE_HDMI_EARC (Android 12): an eARC amplifier shows as ARC before that. */
         private const val TYPE_HDMI_EARC = 29
-        private const val SAMPLE_RATE = 48_000
-
-        /** The AAC types that HDMI can carry unchanged. */
-        private val ENCODINGS = listOf(AudioFormat.ENCODING_AAC_LC, AudioFormat.ENCODING_AAC_HE_V1, AudioFormat.ENCODING_AAC_HE_V2)
         private val LAYOUTS = listOf(AudioFormat.CHANNEL_OUT_5POINT1, AudioFormat.CHANNEL_OUT_STEREO)
         private val HDMI = setOf(AudioDeviceInfo.TYPE_HDMI, AudioDeviceInfo.TYPE_HDMI_ARC, TYPE_HDMI_EARC)
 
@@ -49,22 +42,18 @@ enum class AacPassthrough {
             }
         }
 
-        @OptIn(UnstableApi::class)
         @RequiresApi(Build.VERSION_CODES.Q)
         private fun ask(context: Context): AacPassthrough {
-            val attributes = PlaybackEngine.MOVIE.audioAttributesV21.audioAttributes
             // Only over HDMI: a TV's own speakers (or a phone's) can take AAC as it is too.
             val outputs = context.getSystemService(AudioManager::class.java).getDevices(AudioManager.GET_DEVICES_OUTPUTS)
             val hdmi = outputs.filter { it.type in HDMI }
             if (hdmi.isEmpty()) return NO
-            val direct = ENCODINGS.any { encoding ->
-                LAYOUTS.any { layout ->
-                    val format = AudioFormat.Builder().setEncoding(encoding).setSampleRate(SAMPLE_RATE).setChannelMask(layout).build()
-                    AudioTrack.isDirectPlaybackSupported(format, attributes)
-                }
+            // The player's question (see AacUnchanged), for 5.1 and stereo at 48 kHz.
+            val direct = AacUnchanged.ENCODINGS.any { encoding ->
+                LAYOUTS.any { layout -> AacUnchanged.takesDirectly(encoding, layout, AacUnchanged.SAMPLE_RATE) }
             }
             // (A device can list no encodings at all: null, whatever its type says.)
-            val amplifier = hdmi.any { device -> device.encodings?.any(ENCODINGS::contains) == true }
+            val amplifier = hdmi.any { device -> device.encodings?.any(AacUnchanged.ENCODINGS::contains) == true }
             return of(direct, amplifier)
         }
 

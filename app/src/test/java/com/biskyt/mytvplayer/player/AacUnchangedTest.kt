@@ -80,6 +80,40 @@ class AacUnchangedTest {
     }
 
     @Test
+    fun `an answer for one sample rate is not used for another`() {
+        takeAacDirectly()
+        assertTrue(AacUnchanged.sendsUnchanged(aac))
+        assertFalse("44.1 kHz", AacUnchanged.sendsUnchanged(aac.buildUpon().setSampleRate(44_100).build()))
+    }
+
+    @Test
+    fun `a track the TV refuses goes to the decoder when the player tries again`() {
+        takeAacDirectly()
+        assertTrue(AacUnchanged.sendsUnchanged(aac))
+        AacUnchanged.refused(aac)
+        assertFalse(AacUnchanged.sendsUnchanged(aac))
+        assertFalse(AacUnchanged.Sink(inner).supportsFormat(aac))
+    }
+
+    @Test
+    fun `a direct track that fails to start is noted as refused, and the error still reaches the player`() {
+        takeAacDirectly()
+        val failing = Proxy.newProxyInstance(AudioSink::class.java.classLoader, arrayOf(AudioSink::class.java)) { _, method, _ ->
+            if (method.name == "handleBuffer") throw AudioSink.InitializationException("refused", 0, aac, false, null)
+            when (method.returnType) {
+                Boolean::class.javaPrimitiveType -> false
+                Int::class.javaPrimitiveType -> AudioSink.SINK_FORMAT_UNSUPPORTED
+                else -> null
+            }
+        } as AudioSink
+        val sink = AacUnchanged.Sink(failing)
+        assertTrue(AacUnchanged.sendsUnchanged(aac))
+        val thrown = runCatching { sink.handleBuffer(java.nio.ByteBuffer.allocate(0), 0, 1) }.exceptionOrNull()
+        assertTrue("the player still gets the error", thrown is AudioSink.InitializationException)
+        assertFalse("decoded on the next try", AacUnchanged.sendsUnchanged(aac))
+    }
+
+    @Test
     @Config(sdk = [28])
     fun `not on Android 9, where Media3 uses no offload`() {
         assertFalse(AacUnchanged.available)
