@@ -136,12 +136,9 @@ class PlaybackEngineTest {
     }
 
     @Test
-    fun `with AAC decoded in the app, the TV's own decoders are left out for AAC only`() {
-        assertEquals(emptyList<Any>(), PlaybackEngine.WITHOUT_AAC.getDecoderInfos(androidx.media3.common.MimeTypes.AUDIO_AAC, false, false))
-        val ac3 = androidx.media3.common.MimeTypes.AUDIO_AC3
-        assertEquals(
-            androidx.media3.exoplayer.mediacodec.MediaCodecSelector.DEFAULT.getDecoderInfos(ac3, false, false).map { it.name },
-            PlaybackEngine.WITHOUT_AAC.getDecoderInfos(ac3, false, false).map { it.name }
-        )
+    fun `AAC sent unchanged says so`() {
+        val aac51 = track(androidx.media3.common.MimeTypes.AUDIO_AAC, 6)
+        val sent = output(android.media.AudioFormat.ENCODING_AAC_LC, android.media.AudioFormat.CHANNEL_OUT_5POINT1)
+        assertEquals("Passthrough · AAC", engine.audioOutputLabel(playing = aac51, out = sent))
     }
 }

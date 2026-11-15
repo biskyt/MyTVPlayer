@@ -27,7 +27,6 @@ import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.mediacodec.MediaCodecAdapter
-import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.LoadEventInfo
 import androidx.media3.exoplayer.source.MediaLoadData
@@ -127,6 +126,12 @@ class PlaybackEngine(
         .setAudioAttributes(MOVIE, true)
         .setHandleAudioBecomingNoisy(true)
         .build()
+
+    /**
+     * What the TV's audio output takes unchanged, for the label before an output starts: read once for this player, not at
+     * each change of channel (it asks Android's audio service many times).
+     */
+    private val capabilities by lazy { AudioCapabilities.getCapabilities(context, MOVIE, null) }
 
     /** What goes to the audio output now: the format sent unchanged, or the decoded sound and its channels. Null: nothing yet. */
     private var output: AudioSink.AudioTrackConfig? = null
@@ -313,24 +318,32 @@ class PlaybackEngine(
     ): String {
         // The format being played when known; else the chosen track's.
         val f = playing ?: selectedAudioFormat(tracks) ?: return appString(R.string.player_audio_none)
-        val encoded = encodedName(f.sampleMimeType)
-        val name = encoded ?: decodedName(f.sampleMimeType)
-        // An output sent unchanged belongs to a format that can be sent so (also see audioInputChanged).
-        val out = out?.takeIf { Util.isEncodingLinearPcm(it.encoding) || encoded != null }
-        if (out != null && !Util.isEncodingLinearPcm(out.encoding)) {
-            // Named from what is sent: Dolby Atmos can be sent as plain Dolby Digital Plus, DTS-HD as DTS.
-            (encodingName(out.encoding) ?: name)?.let { return appString(R.string.player_audio_passthrough, it) }
-        }
-        if (out == null &&
-            encoded != null &&
-            settings.audioPassthrough &&
-            AudioCapabilities.getCapabilities(context, MOVIE, null).isPassthroughPlaybackSupported(f, MOVIE)
-        ) {
-            return appString(R.string.player_audio_passthrough, encoded)
-        }
-        val channels = out?.let { Integer.bitCount(it.channelConfig) } ?: f.channelCount.takeIf { it != Format.NO_VALUE } ?: 2
+        val name = encodedName(f.sampleMimeType) ?: decodedName(f.sampleMimeType)
+        // An output sent unchanged belongs to a format that can be sent so: Dolby, DTS, or AAC (setting "Send AAC
+        // unchanged"). Also see audioInputChanged.
+        val sent = out?.takeIf { Util.isEncodingLinearPcm(it.encoding) || encodedName(f.sampleMimeType) != null || AacUnchanged.isAac(f) }
+        unchangedName(f, sent)?.let { return appString(R.string.player_audio_passthrough, it) }
+        val channels = sent?.let { Integer.bitCount(it.channelConfig) } ?: f.channelCount.takeIf { it != Format.NO_VALUE } ?: 2
         val layout = if (channels > 2) appString(R.string.player_track_channels, channels) else appString(R.string.player_audio_stereo)
         return if (name != null) appString(R.string.player_audio_decoded, name, layout) else appString(R.string.player_audio_layout, layout)
+    }
+
+    /** The name of the format sent unchanged for [f] ([sent] when its output has started), or null when it is decoded. */
+    private fun unchangedName(f: Format, sent: AudioSink.AudioTrackConfig?): String? {
+        val encoded = encodedName(f.sampleMimeType)
+        return when {
+            // Named from what is sent: Dolby Atmos can be sent as plain Dolby Digital Plus, DTS-HD as DTS.
+            sent != null -> if (Util.isEncodingLinearPcm(sent.encoding)) {
+                null
+            } else {
+                encodingName(sent.encoding) ?: encoded
+                    ?: decodedName(f.sampleMimeType)
+            }
+            !settings.audioPassthrough -> null
+            encoded != null -> encoded.takeIf { capabilities.isPassthroughPlaybackSupported(f, MOVIE) }
+            settings.aacUnchanged && AacUnchanged.sendsUnchanged(f) -> decodedName(f.sampleMimeType)
+            else -> null
+        }
     }
 
     private fun selectedAudioFormat(tracks: Tracks): Format? = tracks.groups
@@ -347,16 +360,19 @@ class PlaybackEngine(
             allAudioChannels(dolbyVisionWithoutHdr10Plus(super.getCodecAdapterFactory()) { dolbyVisionScreen(context) })
 
         override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink? =
-            if (settings.audioPassthrough) {
-                super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams)
-            } else {
-                @Suppress("DEPRECATION")
-                DefaultAudioSink.Builder(context).setAudioCapabilities(AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES).build()
+            when {
+                !settings.audioPassthrough -> {
+                    @Suppress("DEPRECATION")
+                    DefaultAudioSink.Builder(context).setAudioCapabilities(AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES).build()
+                }
+                settings.aacUnchanged && AacUnchanged.available -> AacUnchanged.sink(
+                    context,
+                    enableFloatOutput,
+                    enableAudioTrackPlaybackParams
+                )
+                else -> super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams)
             }
-    }.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON).setEnableDecoderFallback(true).apply {
-        // The extension decoder (FFmpeg) comes after the TV's own, so it plays AAC when the TV's are left out.
-        if (settings.aacInApp) setMediaCodecSelector(WITHOUT_AAC)
-    }
+    }.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON).setEnableDecoderFallback(true)
 
     private fun loadControl(size: BufferSize): DefaultLoadControl {
         // Byte caps matter on low-RAM boxes: high-bitrate streams would otherwise fill memory before the time limit.
@@ -382,11 +398,6 @@ class PlaybackEngine(
 
         /** How the player's sound is played (also what [AacPassthrough] checks). */
         val MOVIE: AudioAttributes = AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build()
-
-        /** The TV's own decoders, except for AAC (see Settings.aacInApp). */
-        internal val WITHOUT_AAC = MediaCodecSelector { mime, secure, tunneling ->
-            if (mime == MimeTypes.AUDIO_AAC) emptyList() else MediaCodecSelector.DEFAULT.getDecoderInfos(mime, secure, tunneling)
-        }
 
         /** The name of a format that is always decoded before it is played, such as "AAC"; null for others (and PCM). */
         fun decodedName(mime: String?): String? = when (mime) {

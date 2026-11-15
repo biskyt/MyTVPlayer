@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.22.3
+- A new test setting, Settings › Playback › Send AAC unchanged, sends AAC sound to your amplifier for it to decode, and replaces Decode AAC in the app.
+
 ## 1.22.2
 - The sound line in the More panel no longer shows the last track's sound after a seek or a change of track.
 - The sound line names Dolby Atmos sent as Dolby Digital Plus as it is sent.

@@ -20,8 +20,8 @@
     <string name="settings_seconds">%1$d s</string>
     <string name="settings_passthrough">Passthrough audio</string>
     <string name="settings_passthrough_help">Envoie le Dolby / DTS / Atmos à votre barre de son ou téléviseur pour le décodage. Désactivez-le si vous n\'avez pas de son.</string>
-    <string name="settings_aac_in_app">Décoder l\'AAC dans l\'appli</string>
-    <string name="settings_aac_in_app_help">Un test : MyTVPlayer décode le son AAC et garde tous ses canaux surround. Désactivez-le si vous n\'avez pas de son.</string>
+    <string name="settings_aac_unchanged">Envoyer l\'AAC sans modification (test)</string>
+    <string name="settings_aac_unchanged_help">Le son AAC est envoyé tel quel à votre amplificateur, qui le décode. Désactivez-le si vous n\'avez pas de son ou s\'il est décalé.</string>
     <string name="settings_aac_passthrough">Vérifier le passthrough AAC</string>
     <string name="settings_aac_passthrough_yes">L\'AAC peut être envoyé sans modification en HDMI.</string>
     <string name="settings_aac_passthrough_not_by_tv">L\'appareil HDMI accepte l\'AAC, mais cet appareil ne l\'envoie pas sans modification.</string>

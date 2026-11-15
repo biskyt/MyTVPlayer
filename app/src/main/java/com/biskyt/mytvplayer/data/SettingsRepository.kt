@@ -29,8 +29,8 @@ data class Settings(
     val skipBackSec: Int = 10,
     val skipForwardSec: Int = 30,
     val audioPassthrough: Boolean = true,
-    /** AAC sound decoded by the app's own decoder (FFmpeg), which keeps all its channels: for a test (the owner, 2026-11-15). */
-    val aacInApp: Boolean = false,
+    /** AAC sound sent unchanged, for the amplifier to decode (see AacUnchanged): a test (the owner, 2026-11-15). */
+    val aacUnchanged: Boolean = false,
     val subtitleMode: SubtitleMode = SubtitleMode.FORCED_ONLY,
     /** Empty means "follow the TV's system language". */
     val subtitleLanguage: String = "",
@@ -71,6 +71,7 @@ class SettingsRepository(private val context: Context) {
         val skipBack = intPreferencesKey("skip_back")
         val skipForward = intPreferencesKey("skip_forward")
         val passthrough = booleanPreferencesKey("audio_passthrough")
+        val aacUnchanged = booleanPreferencesKey("aac_unchanged")
         val aacInApp = booleanPreferencesKey("aac_in_app")
         val subtitleMode = stringPreferencesKey("subtitle_mode")
         val subtitleLang = stringPreferencesKey("subtitle_lang")
@@ -133,7 +134,7 @@ class SettingsRepository(private val context: Context) {
             skipBackSec = valueOr(K.skipBack, d.skipBackSec),
             skipForwardSec = valueOr(K.skipForward, d.skipForwardSec),
             audioPassthrough = valueOr(K.passthrough, d.audioPassthrough),
-            aacInApp = valueOr(K.aacInApp, d.aacInApp),
+            aacUnchanged = valueOr(K.aacUnchanged, d.aacUnchanged),
             subtitleMode = enumOr(this[K.subtitleMode], d.subtitleMode),
             subtitleLanguage = valueOr(K.subtitleLang, d.subtitleLanguage),
             bufferSize = enumOr(this[K.buffer], d.bufferSize),
@@ -163,7 +164,8 @@ class SettingsRepository(private val context: Context) {
             prefs[K.skipBack] = s.skipBackSec
             prefs[K.skipForward] = s.skipForwardSec
             prefs[K.passthrough] = s.audioPassthrough
-            prefs[K.aacInApp] = s.aacInApp
+            prefs[K.aacUnchanged] = s.aacUnchanged
+            prefs.remove(K.aacInApp) // (1.22.1 and 1.22.2: "Decode AAC in the app", replaced by aacUnchanged)
             prefs[K.subtitleMode] = s.subtitleMode.name
             prefs[K.subtitleLang] = s.subtitleLanguage
             prefs[K.buffer] = s.bufferSize.name

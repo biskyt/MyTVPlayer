@@ -52,6 +52,7 @@ import com.biskyt.mytvplayer.data.StreamFormat
 import com.biskyt.mytvplayer.data.accentName
 import com.biskyt.mytvplayer.launcher.TvLauncher
 import com.biskyt.mytvplayer.player.AacPassthrough
+import com.biskyt.mytvplayer.player.AacUnchanged
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
@@ -145,20 +146,19 @@ fun SettingsScreen() {
 }
 
 /**
- * Whether the TV can send AAC unchanged to the amplifier (see AacPassthrough): checked when the row first shows, and
- * again on OK. Off the main thread: the check asks Android's audio service several times.
+ * Whether AAC can be sent unchanged over HDMI (see AacPassthrough): checked when the row first shows, and again on OK.
+ * Off the main thread: the check asks Android's audio service several times.
  */
 @Composable
 private fun AacPassthroughRow() {
     val context = LocalContext.current
-    // Kept while the row scrolls out of view (a list item): checked again only on OK, showing the last result meanwhile.
     // Kept while the row scrolls out of view (a list item). OK asks again, also while a check runs (it starts over).
     var asked by rememberSaveable { mutableIntStateOf(0) }
     var answered by rememberSaveable { mutableIntStateOf(-1) }
     var result by rememberSaveable { mutableStateOf<AacPassthrough?>(null) }
     LaunchedEffect(asked) {
         if (answered == asked) return@LaunchedEffect
-        result = withContext(Dispatchers.Default) { AacPassthrough.check(context) }
+        result = withContext(Dispatchers.IO) { AacPassthrough.check(context) }
         answered = asked
     }
     val text = when (result) {
@@ -249,12 +249,15 @@ fun PlaybackSettingsScreen() {
                 { vm.update { it.copy(audioPassthrough = !it.audioPassthrough) } }
             ) { Toggle(s.audioPassthrough) }
         }
-        item {
-            SettingRow(
-                stringResource(R.string.settings_aac_in_app),
-                stringResource(R.string.settings_aac_in_app_help),
-                { vm.update { it.copy(aacInApp = !it.aacInApp) } }
-            ) { Toggle(s.aacInApp) }
+        // Only from Android 10 (see AacUnchanged.available).
+        if (AacUnchanged.available) {
+            item {
+                SettingRow(
+                    stringResource(R.string.settings_aac_unchanged),
+                    stringResource(R.string.settings_aac_unchanged_help),
+                    { vm.update { it.copy(aacUnchanged = !it.aacUnchanged) } }
+                ) { Toggle(s.aacUnchanged) }
+            }
         }
         item { AacPassthroughRow() }
         item {
