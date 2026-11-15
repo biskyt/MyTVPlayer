@@ -1,6 +1,7 @@
 package com.biskyt.mytvplayer
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.net.Uri
@@ -60,14 +61,30 @@ class MainActivity : ComponentActivity() {
 
     /**
      * A backup file opened with MyTVPlayer from another app, for Backup & restore to offer, or a card on the TV's home
-     * screen, for the app to open (see AppRoot).
+     * screen or the TV guide (the .TvGuide entry, for another app), for the app to open (see AppRoot).
      */
     private fun takeOpenedFile(intent: Intent) {
         LauncherSync.target(this, intent)?.let {
             container.launcherTarget.value = it
             return
         }
+        if (asksForGuide(this, intent)) {
+            container.openGuide.value = true
+            return
+        }
         intent.openedFile()?.let { container.openedFile.value = it }
+    }
+
+    companion object {
+        /**
+         * Whether [intent] asks for the TV guide, through the .TvGuide entry for other apps (such as a launcher), an alias
+         * of this activity in the manifest: by its name or by its action.
+         */
+        fun asksForGuide(context: Context, intent: Intent): Boolean = intent.action == "${context.packageName}.action.TV_GUIDE" ||
+            intent.component?.className == GUIDE_ENTRY
+
+        /** The entry's name: as in the manifest (the app's namespace and ".TvGuide"). */
+        const val GUIDE_ENTRY = "com.biskyt.mytvplayer.TvGuide"
     }
 
     /** OK, Options and Guide presses that began in this window (see [dispatchKeyEvent]). */

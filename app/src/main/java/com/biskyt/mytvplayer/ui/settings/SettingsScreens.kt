@@ -1,5 +1,8 @@
 package com.biskyt.mytvplayer.ui.settings
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -60,8 +63,8 @@ import com.biskyt.mytvplayer.ui.common.nativeLanguageName
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import java.util.Locale
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(private val c: AppContainer) : ViewModel() {
@@ -137,8 +140,8 @@ fun SettingsScreen() {
 }
 
 /**
- * "Show on the TV's home screen" (see LauncherSync), off by default: only on a TV. Turned on, the TV is asked to show the
- * app's channel there, the first time it is made (the TV asks the user).
+ * "Show on the TV's home screen" (see LauncherSync), off by default: only on a TV. Turned on, the TV is asked to show each
+ * of the app's rows there, the first time it is made (the TV can ask the user).
  */
 @Composable
 private fun LauncherRow() {
@@ -147,10 +150,11 @@ private fun LauncherRow() {
     val vm = appViewModel { SettingsViewModel(it) }
     val s = vm.settings.collectAsState().value ?: return
     LaunchedEffect(Unit) {
-        val made = context.container.launcherSync.madeChannel
-        made.filterNotNull().collect {
-            made.compareAndSet(it, null) // (not a newer one made meanwhile)
-            TvLauncher.askToShow(context, it)
+        val made = context.container.launcherSync.madeChannels
+        made.collect { ids ->
+            if (ids.isEmpty()) return@collect
+            made.update { it - ids } // (not those made meanwhile)
+            context.findActivity()?.let { TvLauncher.askToShow(it, ids) }
         }
     }
     SettingRow(stringResource(R.string.settings_launcher), stringResource(R.string.settings_launcher_help), {
@@ -374,4 +378,11 @@ fun AboutScreen() {
         }
         item { SupportSection() }
     }
+}
+
+/** The activity [this] context belongs to (a composable's context can wrap it, such as for the app's language). */
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

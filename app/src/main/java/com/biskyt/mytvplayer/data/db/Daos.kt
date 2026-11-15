@@ -769,10 +769,12 @@ private const val MOVIE_CARD = "SELECT streamId AS id, title, year, posterUrl AS
 private const val SERIES_CARD = "SELECT seriesId AS id, title, year, coverUrl AS imageUrl"
 
 // Favourite movies and series of :pid (f is the favourite), and their order: the user's, else newest first.
-private const val MOVIE_FAVOURITES =
-    "FROM movie m JOIN vod_favourite f ON f.playlistId = m.playlistId AND f.kind = 'movie' AND f.itemId = m.streamId WHERE m.playlistId = :pid AND $M_OPEN"
-private const val SERIES_FAVOURITES =
-    "FROM series s JOIN vod_favourite f ON f.playlistId = s.playlistId AND f.kind = 'series' AND f.itemId = s.seriesId WHERE s.playlistId = :pid AND $S_OPEN"
+private const val MOVIE_FAVOURITE_JOIN =
+    "FROM movie m JOIN vod_favourite f ON f.playlistId = m.playlistId AND f.kind = 'movie' AND f.itemId = m.streamId WHERE m.playlistId = :pid"
+private const val SERIES_FAVOURITE_JOIN =
+    "FROM series s JOIN vod_favourite f ON f.playlistId = s.playlistId AND f.kind = 'series' AND f.itemId = s.seriesId WHERE s.playlistId = :pid"
+private const val MOVIE_FAVOURITES = "$MOVIE_FAVOURITE_JOIN AND $M_OPEN"
+private const val SERIES_FAVOURITES = "$SERIES_FAVOURITE_JOIN AND $S_OPEN"
 private const val FAVOURITE_ORDER = "ORDER BY f.position, f.addedAt DESC"
 
 /** Movies, series, favourites among them, and how far the user has watched. */
@@ -813,6 +815,22 @@ interface VodDao {
 
     @Query("$SERIES_CARD $SERIES_FAVOURITES $FAVOURITE_ORDER LIMIT :limit")
     fun observeSeriesFavourites(pid: Long, limit: Int): Flow<List<VodCard>>
+
+    /** The favourite movies for the TV's home screen: never a restricted one, locked or not (see LauncherSync). */
+    @Query("$MOVIE_CARD $MOVIE_FAVOURITE_JOIN AND NOT $M_RESTRICTED $FAVOURITE_ORDER LIMIT :limit")
+    fun observeLauncherMovieFavourites(pid: Long, limit: Int): Flow<List<VodCard>>
+
+    /** The favourite series for the TV's home screen: never a restricted one, locked or not (see LauncherSync). */
+    @Query("$SERIES_CARD $SERIES_FAVOURITE_JOIN AND NOT $S_RESTRICTED $FAVOURITE_ORDER LIMIT :limit")
+    fun observeLauncherSeriesFavourites(pid: Long, limit: Int): Flow<List<VodCard>>
+
+    /** Whether movie [id] may open from the TV's home screen: a favourite, and not restricted. */
+    @Query("SELECT EXISTS(SELECT 1 $MOVIE_FAVOURITE_JOIN AND m.streamId = :id AND NOT $M_RESTRICTED)")
+    suspend fun launcherMayOpenMovie(pid: Long, id: Long): Boolean
+
+    /** Whether series [id] may open from the TV's home screen: a favourite, and not restricted. */
+    @Query("SELECT EXISTS(SELECT 1 $SERIES_FAVOURITE_JOIN AND s.seriesId = :id AND NOT $S_RESTRICTED)")
+    suspend fun launcherMayOpenSeries(pid: Long, id: Long): Boolean
 
     /** The favourite movies' ids, in order. */
     @Query("SELECT m.streamId $MOVIE_FAVOURITES $FAVOURITE_ORDER")

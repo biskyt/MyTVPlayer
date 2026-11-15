@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.19.0
+- With "Show on the TV's home screen" on, your favourite movies and series are now rows of posters on the TV's home screen too, and each card opens its page.
+- Another app, such as a launcher, can now open MyTVPlayer's TV guide directly, as the remote's Guide button does on Home.
+
 ## 1.18.2
 - When the app takes the "Favourite channels" row away (your last favourite channel removed) before you see it, Settings no longer asks the TV to show it.
 

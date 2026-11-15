@@ -11,13 +11,14 @@ import com.biskyt.mytvplayer.data.db.AppDatabase
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.VOD_EPISODE
 import com.biskyt.mytvplayer.data.db.VOD_MOVIE
+import com.biskyt.mytvplayer.data.db.VodCard
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
-import com.biskyt.mytvplayer.launcher.ChannelCard
 import com.biskyt.mytvplayer.launcher.LauncherChannel
 import com.biskyt.mytvplayer.launcher.LauncherLink
 import com.biskyt.mytvplayer.launcher.LauncherRows
 import com.biskyt.mytvplayer.launcher.LauncherWriter
 import com.biskyt.mytvplayer.launcher.PlayNextCard
+import com.biskyt.mytvplayer.launcher.RowCard
 import com.biskyt.mytvplayer.launcher.TvLauncher
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -34,24 +35,29 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
- * What a launcher card opens: a film or an episode ([kind] VOD_MOVIE or VOD_EPISODE, as the progress), a channel, or
- * the favourite channels (the channel's own link).
+ * What a launcher card opens: a film or an episode to play ([kind] VOD_MOVIE or VOD_EPISODE, as the progress), a
+ * channel, a favourite film's or series' page, or a row's list (the row's own link).
  */
 data class LauncherTarget(val kind: String, val playlistId: Long, val itemId: Long = 0, val seriesId: Long? = null) {
     companion object {
         const val CHANNEL = "channel"
         const val FAVOURITES = "favourites"
+        const val MOVIE_PAGE = "movie-page"
+        const val SERIES_PAGE = "series-page"
+        const val FAVOURITE_MOVIES = "favourite-movies"
+        const val FAVOURITE_SERIES = "favourite-series"
     }
 }
 
 /**
- * Continue watching and the favourite channels on the TV's home screen (setting "Show on the TV's home screen", the
+ * Continue watching and the favourite channels, movies and series (a row each) on the TV's home screen (setting "Show on the TV's home screen", the
  * owner 2026-11-14), through the launcher package. Off by default: while it is off, nothing here reads the database or
  * writes to the TV, and the parts the launcher calls are turned off (see TvLauncher.setEnabled). Turned off, the cards
  * are taken off the TV. Restricted titles and channels never go there, locked or not (parental controls). Only the
@@ -65,10 +71,10 @@ class LauncherSync(
     private val launcher: LauncherWriter = TvLauncher(context),
 ) {
     /**
-     * The app's channel, made and not yet shown: Settings asks the TV to show it (the TV asks the user), then sets it
-     * back to null. Kept until then (it can be made while Settings is not open), unless the channel is taken away first.
+     * The app's rows (channels) made and not yet shown: Settings asks the TV to show them (the TV can ask the user),
+     * then takes them out. Kept until then (they can be made while Settings is not open), unless taken away first.
      */
-    val madeChannel = MutableStateFlow<Long?>(null)
+    val madeChannels = MutableStateFlow<Set<Long>>(emptySet())
 
     /** One write at a time, and none after the rows are turned off (see [republish]). */
     private val writes = Mutex()
@@ -81,7 +87,7 @@ class LauncherSync(
                     // Turned off (or off since it was last on): the cards come off the TV. Off from the start: nothing.
                     writing { launcher.isOn() } == true -> writing {
                         launcher.clear()
-                        madeChannel.value = null
+                        madeChannels.value = emptySet()
                     }
                 }
             }
@@ -104,7 +110,10 @@ class LauncherSync(
 
     /** Whether [t] may still open: a card can be older than a change in the app (a favourite taken off, a title restricted). */
     suspend fun allows(t: LauncherTarget): Boolean = when (t.kind) {
-        LauncherTarget.FAVOURITES -> db.playlists().get(t.playlistId) != null
+        LauncherTarget.FAVOURITES, LauncherTarget.FAVOURITE_MOVIES, LauncherTarget.FAVOURITE_SERIES -> db.playlists().get(t.playlistId) !=
+            null
+        LauncherTarget.MOVIE_PAGE -> db.vod().launcherMayOpenMovie(t.playlistId, t.itemId)
+        LauncherTarget.SERIES_PAGE -> db.vod().launcherMayOpenSeries(t.playlistId, t.itemId)
         LauncherTarget.CHANNEL -> db.channels().launcherMayOpen(t.playlistId, t.itemId)
         VOD_MOVIE, VOD_EPISODE -> db.vod().launcherMayOpen(t.playlistId, t.kind, t.itemId)
         else -> false
@@ -123,30 +132,44 @@ class LauncherSync(
             .map { it.rows() }
     }
 
-    private fun data(pid: Long): Flow<Cards> =
-        combine(db.vod().observeLauncherCarryOn(pid, LIMIT, FINISHED), db.channels().observeLauncherFavourites(pid, LIMIT)) {
-                carryOn,
-                favourites
-            ->
-            Cards(pid, carryOn, favourites)
-        }.distinctUntilChanged()
+    private fun data(pid: Long): Flow<Cards> = combine(
+        db.vod().observeLauncherCarryOn(pid, LIMIT, FINISHED),
+        db.channels().observeLauncherFavourites(pid, LIMIT),
+        db.vod().observeLauncherMovieFavourites(pid, LIMIT),
+        db.vod().observeLauncherSeriesFavourites(pid, LIMIT),
+    ) { carryOn, channels, movies, series -> Cards(pid, carryOn, channels, movies, series) }.distinctUntilChanged()
 
     /** The data the cards are made from: compared before the cards (their intents are never equal). */
-    private data class Cards(val pid: Long, val carryOn: List<WatchProgressEntity>, val favourites: List<ChannelEntity>)
+    private data class Cards(
+        val pid: Long,
+        val carryOn: List<WatchProgressEntity>,
+        val channels: List<ChannelEntity>,
+        val movies: List<VodCard>,
+        val series: List<VodCard>,
+    )
 
+    /** A row with no cards is left out (not an empty one, nor the TV asking to show it). */
     private fun Cards.rows() = LauncherRows(
         playNext = carryOn.map { it.card() },
-        // No favourite channels: no row (not an empty one, nor the TV asking to show it).
-        channel = favourites.takeIf { it.isNotEmpty() }?.let { list ->
-            LauncherChannel(
-                appString(R.string.launcher_favourites),
-                list.map {
-                    it.card()
-                },
-                open(LauncherTarget(LauncherTarget.FAVOURITES, pid))
-            )
-        },
+        channels = listOfNotNull(
+            row(LauncherTarget.FAVOURITES, R.string.launcher_favourites, channels.map { it.card() }),
+            row(LauncherTarget.FAVOURITE_MOVIES, R.string.home_favourite_movies, movies.map { card(it, RowCard.Kind.MOVIE) }),
+            row(LauncherTarget.FAVOURITE_SERIES, R.string.home_favourite_series, series.map { card(it, RowCard.Kind.SERIES) }),
+        ),
     )
+
+    /**
+     * A row, keyed by [list], the kind of target its own link opens: the same each time (the favourite channels' row kept
+     * its key, "favourites", from 1.18.0).
+     */
+    private fun Cards.row(list: String, name: Int, cards: List<RowCard>) =
+        cards.takeIf { it.isNotEmpty() }?.let { LauncherChannel(list, appString(name), it, open(LauncherTarget(list, pid))) }
+
+    /** A favourite film's or series' card ([kind] MOVIE or SERIES): its poster, opening its page. */
+    private fun Cards.card(v: VodCard, kind: RowCard.Kind): RowCard {
+        val page = if (kind == RowCard.Kind.MOVIE) LauncherTarget.MOVIE_PAGE else LauncherTarget.SERIES_PAGE
+        return RowCard("$pid:$page:${v.id}", v.title, v.imageUrl, open(LauncherTarget(page, pid, v.id)), kind)
+    }
 
     /**
      * A finished episode with another after it (the next one not known yet) is up next, as Home shows it: a tap plays the
@@ -169,15 +192,15 @@ class LauncherSync(
     )
 
     private fun ChannelEntity.card() =
-        ChannelCard("$playlistId:$streamId", name, logoUrl, open(LauncherTarget(LauncherTarget.CHANNEL, playlistId, streamId)))
+        RowCard("$playlistId:$streamId", name, logoUrl, open(LauncherTarget(LauncherTarget.CHANNEL, playlistId, streamId)))
 
     /**
-     * Writes [rows] (under [writes]). A channel made now is to be shown; with no channel, none is (one made before and not
-     * shown yet is gone: the TV must not be asked to show it).
+     * Writes [rows] (under [writes]). The rows made now are to be shown; one made before and not shown yet that is gone
+     * now is not (the TV must not be asked to show it).
      */
     private fun write(rows: LauncherRows) {
-        val made = launcher.publish(rows)
-        if (made != null || rows.channel == null) madeChannel.value = made
+        val written = launcher.publish(rows)
+        madeChannels.update { (it intersect written.channels) + written.made }
     }
 
     /** One at a time. A TV without the TV provider (a phone), or one that refuses: the app goes on as before (null). */
