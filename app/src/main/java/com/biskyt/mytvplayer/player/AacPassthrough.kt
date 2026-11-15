@@ -12,20 +12,20 @@ import androidx.annotation.RequiresApi
 import androidx.media3.common.util.UnstableApi
 
 /**
- * Whether the TV can send AAC sound unchanged to the amplifier, for a check in Settings (the owner, 2026-11-15). The
+ * Whether the TV (or box) can send AAC sound unchanged over HDMI, to an amplifier or a TV, for a check in Settings (the owner, 2026-11-15). The
  * player (Media3) sends only Dolby and DTS unchanged: this shows whether an AAC path is worth building.
  */
 enum class AacPassthrough {
     /** The TV accepts AAC for its audio output as it is. */
     YES,
 
-    /** The amplifier says that it accepts AAC, but the TV does not send it unchanged. */
+    /** The HDMI device says that it accepts AAC, but this device does not send it unchanged. */
     NOT_BY_TV,
 
     /** Neither says yes. */
     NO,
 
-    /** Android 9 cannot tell. */
+    /** The TV cannot tell (Android 9, or its audio service failed). */
     UNKNOWN;
 
     companion object {
@@ -53,15 +53,20 @@ enum class AacPassthrough {
         @RequiresApi(Build.VERSION_CODES.Q)
         private fun ask(context: Context): AacPassthrough {
             val attributes = PlaybackEngine.MOVIE.audioAttributesV21.audioAttributes
+            // Only over HDMI: a TV's own speakers (or a phone's) can take AAC as it is too.
+            val hdmi = context.getSystemService(AudioManager::class.java).getDevices(AudioManager.GET_DEVICES_OUTPUTS).filter {
+                it.type in
+                    HDMI
+            }
+            if (hdmi.isEmpty()) return NO
             val direct = ENCODINGS.any { encoding ->
                 LAYOUTS.any { layout ->
                     val format = AudioFormat.Builder().setEncoding(encoding).setSampleRate(SAMPLE_RATE).setChannelMask(layout).build()
                     AudioTrack.isDirectPlaybackSupported(format, attributes)
                 }
             }
-            val amplifier = !direct &&
-                context.getSystemService(AudioManager::class.java).getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-                    .any { it.type in HDMI && it.encodings.any(ENCODINGS::contains) }
+            // (A device can list no encodings at all: null, whatever its type says.)
+            val amplifier = hdmi.any { device -> device.encodings?.any(ENCODINGS::contains) == true }
             return of(direct, amplifier)
         }
 

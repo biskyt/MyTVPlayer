@@ -23,10 +23,10 @@
     <string name="settings_aac_in_app">Decodificar AAC en la app</string>
     <string name="settings_aac_in_app_help">Una prueba: MyTVPlayer decodifica el sonido AAC y mantiene todos sus canales envolventes. Desactívalo si no tienes sonido.</string>
     <string name="settings_aac_passthrough">Comprobar passthrough de AAC</string>
-    <string name="settings_aac_passthrough_yes">Tu TV puede enviar AAC sin cambios a tu amplificador.</string>
-    <string name="settings_aac_passthrough_not_by_tv">Tu amplificador acepta AAC, pero tu TV no lo envía sin cambios.</string>
-    <string name="settings_aac_passthrough_no">Tu TV no puede enviar AAC sin cambios a tu amplificador.</string>
-    <string name="settings_aac_passthrough_unknown">Android 9 no puede comprobarlo.</string>
+    <string name="settings_aac_passthrough_yes">El AAC se puede enviar sin cambios por HDMI.</string>
+    <string name="settings_aac_passthrough_not_by_tv">El dispositivo HDMI acepta AAC, pero este dispositivo no lo envía sin cambios.</string>
+    <string name="settings_aac_passthrough_no">El AAC no se puede enviar sin cambios por HDMI.</string>
+    <string name="settings_aac_passthrough_unknown">Este dispositivo no puede comprobarlo.</string>
     <string name="settings_subtitles">Subtítulos predeterminados</string>
     <string name="settings_subtitles_help">Solo forzados muestra subtítulos solo para los diálogos en otro idioma</string>
     <string name="settings_subtitles_forced_only">Solo forzados</string>

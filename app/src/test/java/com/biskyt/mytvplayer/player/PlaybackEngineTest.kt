@@ -104,13 +104,35 @@ class PlaybackEngineTest {
     }
 
     @Test
-    fun `an output started for an earlier format sent unchanged says nothing about the next one`() {
-        // Zapped from a Dolby channel to an AAC one: the Dolby output is still noted until the new one starts.
-        val dolby = output(android.media.AudioFormat.ENCODING_AC3, android.media.AudioFormat.CHANNEL_OUT_5POINT1)
-        assertEquals(
-            "AAC decoded · Stereo",
-            engine.audioOutputLabel(playing = track(androidx.media3.common.MimeTypes.AUDIO_AAC, 2), out = dolby)
-        )
+    fun `Dolby Atmos sent as plain Dolby Digital Plus is named as it is sent`() {
+        val atmos = track(androidx.media3.common.MimeTypes.AUDIO_E_AC3_JOC, 6)
+        val sent = output(androidx.media3.common.C.ENCODING_E_AC3, android.media.AudioFormat.CHANNEL_OUT_5POINT1)
+        assertEquals("Passthrough · Dolby Digital Plus", engine.audioOutputLabel(playing = atmos, out = sent))
+    }
+
+    @Test
+    fun `after a seek the new output is kept, another track's format forgets it, and so does stopping`() {
+        val first = output(android.media.AudioFormat.ENCODING_PCM_16BIT, android.media.AudioFormat.CHANNEL_OUT_STEREO)
+        val aac51 = track(androidx.media3.common.MimeTypes.AUDIO_AAC, 6)
+        engine.audioTrackStarted(first, aac51)
+        // A seek: a new output starts (the old one's release, told late, is not used).
+        engine.audioTrackStarted(first, aac51)
+        assertEquals("AAC decoded · Stereo", engine.audioOutputLabel(playing = aac51))
+        // The same format again (a new bitrate): still known.
+        engine.audioInputChanged(aac51)
+        assertEquals("AAC decoded · Stereo", engine.audioOutputLabel(playing = aac51))
+        // Another track of the same codec, in stereo: its own output is not known yet.
+        engine.audioInputChanged(track(androidx.media3.common.MimeTypes.AUDIO_AAC, 2))
+        assertEquals("AAC decoded · 6ch", engine.audioOutputLabel(playing = aac51))
+        engine.audioTrackStarted(first, aac51)
+        // Another track: its own output is not known yet.
+        val ac3 = track(androidx.media3.common.MimeTypes.AUDIO_AC3, 6)
+        engine.audioInputChanged(ac3)
+        assertEquals("Dolby Digital decoded · 6ch", engine.audioOutputLabel(playing = ac3))
+        // Its output started, then the sound stopped.
+        engine.audioTrackStarted(first, ac3)
+        engine.audioStopped()
+        assertEquals("Dolby Digital decoded · 6ch", engine.audioOutputLabel(playing = ac3))
     }
 
     @Test

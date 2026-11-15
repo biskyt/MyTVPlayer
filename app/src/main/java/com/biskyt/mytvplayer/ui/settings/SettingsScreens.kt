@@ -24,8 +24,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -144,14 +145,22 @@ fun SettingsScreen() {
 }
 
 /**
- * Whether the TV can send AAC unchanged to the amplifier (see AacPassthrough): checked when the row shows, and again on
- * OK. Off the main thread: the check asks Android's audio service several times.
+ * Whether the TV can send AAC unchanged to the amplifier (see AacPassthrough): checked when the row first shows, and
+ * again on OK. Off the main thread: the check asks Android's audio service several times.
  */
 @Composable
 private fun AacPassthroughRow() {
     val context = LocalContext.current
-    var checks by remember { mutableIntStateOf(0) }
-    val result by produceState<AacPassthrough?>(null, checks) { value = withContext(Dispatchers.Default) { AacPassthrough.check(context) } }
+    // Kept while the row scrolls out of view (a list item): checked again only on OK, showing the last result meanwhile.
+    // Kept while the row scrolls out of view (a list item). OK asks again, also while a check runs (it starts over).
+    var asked by rememberSaveable { mutableIntStateOf(0) }
+    var answered by rememberSaveable { mutableIntStateOf(-1) }
+    var result by rememberSaveable { mutableStateOf<AacPassthrough?>(null) }
+    LaunchedEffect(asked) {
+        if (answered == asked) return@LaunchedEffect
+        result = withContext(Dispatchers.Default) { AacPassthrough.check(context) }
+        answered = asked
+    }
     val text = when (result) {
         null -> null
         AacPassthrough.YES -> R.string.settings_aac_passthrough_yes
@@ -159,7 +168,7 @@ private fun AacPassthroughRow() {
         AacPassthrough.NO -> R.string.settings_aac_passthrough_no
         AacPassthrough.UNKNOWN -> R.string.settings_aac_passthrough_unknown
     }
-    SettingRow(stringResource(R.string.settings_aac_passthrough), text?.let { stringResource(it) }, { checks++ })
+    SettingRow(stringResource(R.string.settings_aac_passthrough), text?.let { stringResource(it) }, { asked++ })
 }
 
 /**
