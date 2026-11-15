@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.22.1
+- On Android 12 and earlier, MyTVPlayer now asks the TV to decode surround sound with all its channels, as it already did on later versions, so that the TV does not mix 5.1 sound down to stereo.
+- The sound line in the More panel now names the sound format and shows how many channels really go to your TV or amplifier, for example "AAC decoded · Stereo".
+- A new test setting, Settings › Playback › Decode AAC in the app, plays AAC sound with MyTVPlayer's own decoder, which keeps all its surround channels.
+- A new check in Settings › Playback says whether your TV can send AAC sound unchanged to your amplifier.
+
 ## 1.22.0
 - When MyTVLauncher asks, as the TV wakes, MyTVPlayer now brings in what you watched on your other TVs and updates its rows on the TV's home screen, without being opened.
 - A selected poster in a list now comes into view with its title and details.
