@@ -2,20 +2,23 @@ package com.biskyt.mytvplayer.launcher
 
 import android.content.Intent
 
-// The TV's home screen (the launcher), the owner 2026-11-14: Continue watching in its Play Next row, and, if the app has
-// one, a channel (a row) of its own, such as MyTVPlayer's favourite channels. Off unless the user turns it on. This
-// package knows nothing of the app's data, so that MyPlexPlayer can use it as it is: each app gives it the cards (see
-// LauncherHost).
+// The TV's home screen (the launcher), the owner 2026-11-14: Continue watching in its Play Next row, and the app's own
+// rows, each a channel on the launcher (MyTVPlayer's favourite channels, movies and series; the owner 2026-11-15). Off
+// unless the user turns it on. This package knows nothing of the app's data, so that MyPlexPlayer can use it as it is:
+// each app gives it the cards (see LauncherHost).
 
 /**
- * What the launcher shows: the Play Next cards, and the app's one channel (row), if it has one now. With no [channel]
- * (an app with nothing to show in it, such as a Plex server without Live TV), the app has no row on the launcher: one
- * made before is taken away, and the TV does not ask the user to show one.
+ * What the launcher shows: the Play Next cards, and the app's rows, each a channel of the launcher, in this order. A row
+ * not given now (one with nothing in it, such as favourites with none, or Live TV on a Plex server without it) is not
+ * on the launcher: one made before is taken away, and the TV does not ask the user to show it.
  */
-data class LauncherRows(val playNext: List<PlayNextCard>, val channel: LauncherChannel?)
+data class LauncherRows(val playNext: List<PlayNextCard>, val channels: List<LauncherChannel>)
 
-/** The app's channel: its name (in the app's language), its cards, and what its own link opens. */
-data class LauncherChannel(val name: String, val cards: List<ChannelCard>, val open: Intent)
+/**
+ * One of the app's rows: [key] names it, the same each time (a row is matched to it); its name (in the app's language),
+ * its cards, and what its own link opens.
+ */
+data class LauncherChannel(val key: String, val name: String, val cards: List<RowCard>, val open: Intent)
 
 /** A film or an episode, part watched or up next, for the launcher's Play Next row (Android TV's Watch Next). */
 data class PlayNextCard(
@@ -39,8 +42,17 @@ data class PlayNextCard(
     data class Episode(val season: Int?, val number: Int?, val title: String?)
 }
 
-/** A card on the app's channel: a TV channel, with its logo. */
-data class ChannelCard(val key: String, val name: String, val logoUrl: String?, val open: Intent)
+/**
+ * A card on one of the app's rows: a TV channel with its logo (wide), or a film, series or episode with its poster
+ * (portrait), by [kind].
+ */
+data class RowCard(val key: String, val name: String, val imageUrl: String?, val open: Intent, val kind: Kind = Kind.CHANNEL) {
+    /** (EPISODE is not used by MyTVPlayer: it is for MyPlexPlayer's recently added episodes.) */
+    enum class Kind { CHANNEL, MOVIE, SERIES, EPISODE }
+}
+
+/** What a write did: the app's rows on the launcher now (their channel ids), and those made now (to show). */
+data class Published(val channels: Set<Long>, val made: Set<Long>)
 
 /**
  * The app's side of the launcher rows: the Application implements it. [launcherImage] downloads a poster or logo the

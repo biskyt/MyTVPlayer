@@ -6,6 +6,7 @@ import coil3.annotation.DelicateCoilApi
 import com.biskyt.mytvplayer.MyTvApp
 import com.biskyt.mytvplayer.launcher.LauncherRows
 import com.biskyt.mytvplayer.launcher.LauncherWriter
+import com.biskyt.mytvplayer.launcher.Published
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.cancel
 import org.robolectric.shadows.ShadowLooper
@@ -26,7 +27,7 @@ class TestApp : MyTvApp() {
     override fun launcherWriter(): LauncherWriter = object : LauncherWriter {
         override fun isOn() = false
 
-        override fun publish(rows: LauncherRows): Long? = null
+        override fun publish(rows: LauncherRows) = Published(emptySet(), emptySet())
 
         override fun clear() = Unit
     }

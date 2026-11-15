@@ -61,9 +61,13 @@ fun waitWithoutFrames(condition: () -> Boolean) {
 
 private const val WAIT_POLL_MS = 10L
 
-/** Waits (in a coroutine, in real time) until [condition] holds; fails with [what] if it does not within [UI_WAIT_MS]. */
+/**
+ * Waits (in a coroutine, in real time) until [condition] holds. If it does not within [UI_WAIT_MS], it fails with [what]
+ * and the other threads (to show what held it up).
+ */
 suspend fun eventually(what: String, condition: () -> Boolean) {
-    withTimeoutOrNull(UI_WAIT_MS) { while (!condition()) delay(WAIT_POLL_MS) } ?: throw AssertionError("Not $what in $UI_WAIT_MS ms")
+    withTimeoutOrNull(UI_WAIT_MS) { while (!condition()) delay(WAIT_POLL_MS) }
+        ?: throw AssertionError("Not $what in $UI_WAIT_MS ms. Other threads:\n${otherThreads()}")
 }
 
 /** Waits for [text] (or text containing it) on screen, as [waitAdvancingClock] does; on a timeout, says what's shown. */

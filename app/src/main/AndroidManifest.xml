@@ -54,6 +54,17 @@
                 <data android:mimeType="text/json" />
             </intent-filter>
         </activity>
+        <!-- The TV guide, for another app to open (such as a launcher): as the remote's Guide button on Home. -->
+        <activity-alias
+            android:name=".TvGuide"
+            android:exported="true"
+            android:label="@string/live_view_guide"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="${applicationId}.action.TV_GUIDE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity-alias>
 
         <!-- The launcher's pictures and its request for the app's cards: off until the user turns the home screen rows on
              (see TvLauncher.setEnabled), so they cost nothing while it is off. -->
