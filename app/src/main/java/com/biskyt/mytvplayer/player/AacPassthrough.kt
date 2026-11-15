@@ -12,8 +12,8 @@ import androidx.annotation.RequiresApi
 import androidx.media3.common.util.UnstableApi
 
 /**
- * Whether the TV (or box) can send AAC sound unchanged over HDMI, to an amplifier or a TV, for a check in Settings (the owner, 2026-11-15). The
- * player (Media3) sends only Dolby and DTS unchanged: this shows whether an AAC path is worth building.
+ * Whether the TV (or box) can send AAC sound unchanged over HDMI, to an amplifier or a TV: a check in Settings (the
+ * owner, 2026-11-15). Media3 sends only Dolby and DTS unchanged: this shows whether "Send AAC unchanged" can work.
  */
 enum class AacPassthrough {
     /** The TV accepts AAC for its audio output as it is. */
@@ -54,10 +54,8 @@ enum class AacPassthrough {
         private fun ask(context: Context): AacPassthrough {
             val attributes = PlaybackEngine.MOVIE.audioAttributesV21.audioAttributes
             // Only over HDMI: a TV's own speakers (or a phone's) can take AAC as it is too.
-            val hdmi = context.getSystemService(AudioManager::class.java).getDevices(AudioManager.GET_DEVICES_OUTPUTS).filter {
-                it.type in
-                    HDMI
-            }
+            val outputs = context.getSystemService(AudioManager::class.java).getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+            val hdmi = outputs.filter { it.type in HDMI }
             if (hdmi.isEmpty()) return NO
             val direct = ENCODINGS.any { encoding ->
                 LAYOUTS.any { layout ->

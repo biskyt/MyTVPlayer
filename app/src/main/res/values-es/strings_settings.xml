@@ -20,8 +20,8 @@
     <string name="settings_seconds">%1$d s</string>
     <string name="settings_passthrough">Passthrough de audio</string>
     <string name="settings_passthrough_help">Envía Dolby / DTS / Atmos a tu barra de sonido o TV para que lo decodifique. Desactívalo si no tienes sonido.</string>
-    <string name="settings_aac_in_app">Decodificar AAC en la app</string>
-    <string name="settings_aac_in_app_help">Una prueba: MyTVPlayer decodifica el sonido AAC y mantiene todos sus canales envolventes. Desactívalo si no tienes sonido.</string>
+    <string name="settings_aac_unchanged">Enviar AAC sin cambios (prueba)</string>
+    <string name="settings_aac_unchanged_help">El sonido AAC va a tu amplificador tal cual, para que lo decodifique. Desactívalo si no tienes sonido o no está sincronizado.</string>
     <string name="settings_aac_passthrough">Comprobar passthrough de AAC</string>
     <string name="settings_aac_passthrough_yes">El AAC se puede enviar sin cambios por HDMI.</string>
     <string name="settings_aac_passthrough_not_by_tv">El dispositivo HDMI acepta AAC, pero este dispositivo no lo envía sin cambios.</string>

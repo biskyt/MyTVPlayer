@@ -26,8 +26,8 @@
     <!-- "Dolby", "DTS" and "Atmos" are brand names: don't translate them. -->
     <string name="settings_passthrough">Audio passthrough</string>
     <string name="settings_passthrough_help">Send Dolby / DTS / Atmos to your soundbar or TV to decode. Turn off if you get no sound.</string>
-    <string name="settings_aac_in_app">Decode AAC in the app</string>
-    <string name="settings_aac_in_app_help">A test: AAC sound is decoded by MyTVPlayer, which keeps all its surround channels. Turn off if you get no sound.</string>
+    <string name="settings_aac_unchanged">Send AAC unchanged (test)</string>
+    <string name="settings_aac_unchanged_help">AAC sound goes to your amplifier as it is, for it to decode. Turn off if you get no sound or the sound is out of sync.</string>
     <string name="settings_aac_passthrough">AAC passthrough check</string>
     <string name="settings_aac_passthrough_yes">AAC can be sent unchanged over HDMI.</string>
     <string name="settings_aac_passthrough_not_by_tv">The HDMI device accepts AAC, but this device does not send it unchanged.</string>
