@@ -20,6 +20,13 @@
     <string name="settings_seconds">%1$d s</string>
     <string name="settings_passthrough">Passthrough de áudio</string>
     <string name="settings_passthrough_help">Envia Dolby / DTS / Atmos para a soundbar ou TV decodificar. Desative se ficar sem som.</string>
+    <string name="settings_aac_in_app">Decodificar AAC no app</string>
+    <string name="settings_aac_in_app_help">Um teste: o MyTVPlayer decodifica o som AAC e mantém todos os canais surround. Desative se ficar sem som.</string>
+    <string name="settings_aac_passthrough">Verificar passthrough de AAC</string>
+    <string name="settings_aac_passthrough_yes">Sua TV pode enviar AAC sem alterações para o amplificador.</string>
+    <string name="settings_aac_passthrough_not_by_tv">Seu amplificador aceita AAC, mas sua TV não o envia sem alterações.</string>
+    <string name="settings_aac_passthrough_no">Sua TV não pode enviar AAC sem alterações para o amplificador.</string>
+    <string name="settings_aac_passthrough_unknown">O Android 9 não consegue verificar isso.</string>
     <string name="settings_subtitles">Legendas padrão</string>
     <string name="settings_subtitles_help">Só forçadas mostra legendas apenas para falas em outro idioma</string>
     <string name="settings_subtitles_forced_only">Só forçadas</string>

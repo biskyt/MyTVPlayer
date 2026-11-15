@@ -64,7 +64,62 @@ class PlaybackEngineTest {
             booleanArrayOf(true)
         )
         // Nothing has played, so the player itself has no audio format yet: this used to say "No audio".
-        assertEquals("Audio · Stereo", engine.audioOutputLabel(androidx.media3.common.Tracks(listOf(group))))
+        assertEquals("AAC decoded · Stereo", engine.audioOutputLabel(androidx.media3.common.Tracks(listOf(group))))
         assertEquals("No audio", engine.audioOutputLabel(androidx.media3.common.Tracks.EMPTY))
+    }
+
+    /** What goes to the audio output: [encoding] and [channelConfig] as Android's AudioTrack has them. */
+    private fun output(encoding: Int, channelConfig: Int) =
+        androidx.media3.exoplayer.audio.AudioSink.AudioTrackConfig(encoding, 48_000, channelConfig, false, false, 0)
+
+    private fun track(mime: String, channels: Int) =
+        androidx.media3.common.Format.Builder().setSampleMimeType(mime).setChannelCount(channels).build()
+
+    @Test
+    fun `once the sound plays, the label says what goes to the audio output (the owner, 2026-11-15)`() {
+        val aac51 = track(androidx.media3.common.MimeTypes.AUDIO_AAC, 6)
+        // A TV's decoder can mix a 5.1 track down to stereo: the label says so, not "6ch".
+        assertEquals(
+            "AAC decoded · Stereo",
+            engine.audioOutputLabel(
+                playing = aac51,
+                out = output(android.media.AudioFormat.ENCODING_PCM_16BIT, android.media.AudioFormat.CHANNEL_OUT_STEREO)
+            )
+        )
+        assertEquals(
+            "AAC decoded · 6ch",
+            engine.audioOutputLabel(
+                playing = aac51,
+                out = output(android.media.AudioFormat.ENCODING_PCM_FLOAT, android.media.AudioFormat.CHANNEL_OUT_5POINT1)
+            )
+        )
+        val ac3 = track(androidx.media3.common.MimeTypes.AUDIO_AC3, 6)
+        assertEquals(
+            "Passthrough · Dolby Digital",
+            engine.audioOutputLabel(
+                playing = ac3,
+                out = output(android.media.AudioFormat.ENCODING_AC3, android.media.AudioFormat.CHANNEL_OUT_5POINT1)
+            )
+        )
+    }
+
+    @Test
+    fun `an output started for an earlier format sent unchanged says nothing about the next one`() {
+        // Zapped from a Dolby channel to an AAC one: the Dolby output is still noted until the new one starts.
+        val dolby = output(android.media.AudioFormat.ENCODING_AC3, android.media.AudioFormat.CHANNEL_OUT_5POINT1)
+        assertEquals(
+            "AAC decoded · Stereo",
+            engine.audioOutputLabel(playing = track(androidx.media3.common.MimeTypes.AUDIO_AAC, 2), out = dolby)
+        )
+    }
+
+    @Test
+    fun `with AAC decoded in the app, the TV's own decoders are left out for AAC only`() {
+        assertEquals(emptyList<Any>(), PlaybackEngine.WITHOUT_AAC.getDecoderInfos(androidx.media3.common.MimeTypes.AUDIO_AAC, false, false))
+        val ac3 = androidx.media3.common.MimeTypes.AUDIO_AC3
+        assertEquals(
+            androidx.media3.exoplayer.mediacodec.MediaCodecSelector.DEFAULT.getDecoderInfos(ac3, false, false).map { it.name },
+            PlaybackEngine.WITHOUT_AAC.getDecoderInfos(ac3, false, false).map { it.name }
+        )
     }
 }

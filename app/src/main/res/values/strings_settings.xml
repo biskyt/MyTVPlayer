@@ -26,6 +26,13 @@
     <!-- "Dolby", "DTS" and "Atmos" are brand names: don't translate them. -->
     <string name="settings_passthrough">Audio passthrough</string>
     <string name="settings_passthrough_help">Send Dolby / DTS / Atmos to your soundbar or TV to decode. Turn off if you get no sound.</string>
+    <string name="settings_aac_in_app">Decode AAC in the app</string>
+    <string name="settings_aac_in_app_help">A test: AAC sound is decoded by MyTVPlayer, which keeps all its surround channels. Turn off if you get no sound.</string>
+    <string name="settings_aac_passthrough">AAC passthrough check</string>
+    <string name="settings_aac_passthrough_yes">Your TV can send AAC unchanged to your amplifier.</string>
+    <string name="settings_aac_passthrough_not_by_tv">Your amplifier accepts AAC, but your TV does not send it unchanged.</string>
+    <string name="settings_aac_passthrough_no">Your TV cannot send AAC unchanged to your amplifier.</string>
+    <string name="settings_aac_passthrough_unknown">Android 9 cannot check this.</string>
     <string name="settings_subtitles">Default subtitles</string>
     <!-- "Forced only" is the name of the option settings_subtitles_forced_only. -->
     <string name="settings_subtitles_help">Forced only shows subtitles just for foreign-language lines</string>

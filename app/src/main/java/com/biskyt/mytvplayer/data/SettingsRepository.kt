@@ -29,6 +29,8 @@ data class Settings(
     val skipBackSec: Int = 10,
     val skipForwardSec: Int = 30,
     val audioPassthrough: Boolean = true,
+    /** AAC sound decoded by the app's own decoder (FFmpeg), which keeps all its channels: for a test (the owner, 2026-11-15). */
+    val aacInApp: Boolean = false,
     val subtitleMode: SubtitleMode = SubtitleMode.FORCED_ONLY,
     /** Empty means "follow the TV's system language". */
     val subtitleLanguage: String = "",
@@ -69,6 +71,7 @@ class SettingsRepository(private val context: Context) {
         val skipBack = intPreferencesKey("skip_back")
         val skipForward = intPreferencesKey("skip_forward")
         val passthrough = booleanPreferencesKey("audio_passthrough")
+        val aacInApp = booleanPreferencesKey("aac_in_app")
         val subtitleMode = stringPreferencesKey("subtitle_mode")
         val subtitleLang = stringPreferencesKey("subtitle_lang")
         val buffer = stringPreferencesKey("buffer")
@@ -120,30 +123,34 @@ class SettingsRepository(private val context: Context) {
 
     private fun formatKey(playlistId: Long) = stringPreferencesKey("$FORMAT_FOR$playlistId")
 
+    /** The value saved for [key], or [default] when none is saved. */
+    private fun <T> Preferences.valueOr(key: Preferences.Key<T>, default: T): T = this[key] ?: default
+
     private fun Preferences.toSettings(): Settings {
         val d = Settings()
         return Settings(
-            activePlaylistId = this[K.activePlaylist] ?: d.activePlaylistId,
-            skipBackSec = this[K.skipBack] ?: d.skipBackSec,
-            skipForwardSec = this[K.skipForward] ?: d.skipForwardSec,
-            audioPassthrough = this[K.passthrough] ?: d.audioPassthrough,
+            activePlaylistId = valueOr(K.activePlaylist, d.activePlaylistId),
+            skipBackSec = valueOr(K.skipBack, d.skipBackSec),
+            skipForwardSec = valueOr(K.skipForward, d.skipForwardSec),
+            audioPassthrough = valueOr(K.passthrough, d.audioPassthrough),
+            aacInApp = valueOr(K.aacInApp, d.aacInApp),
             subtitleMode = enumOr(this[K.subtitleMode], d.subtitleMode),
-            subtitleLanguage = this[K.subtitleLang] ?: d.subtitleLanguage,
+            subtitleLanguage = valueOr(K.subtitleLang, d.subtitleLanguage),
             bufferSize = enumOr(this[K.buffer], d.bufferSize),
             streamFormat = enumOr(this[K.format], d.streamFormat),
-            startOnLastChannel = this[K.startLast] ?: d.startOnLastChannel,
-            zapWithUpDown = this[K.zapUpDown] ?: d.zapWithUpDown,
-            lastChannelId = this[K.lastChannel] ?: d.lastChannelId,
-            accent = this[K.accent] ?: d.accent,
-            largeText = this[K.largeText] ?: d.largeText,
-            warnVpn = this[K.warnVpn] ?: d.warnVpn,
-            warnProxy = this[K.warnProxy] ?: d.warnProxy,
-            launcherRows = this[K.launcherRows] ?: d.launcherRows,
-            showExternalIp = this[K.showIp] ?: d.showExternalIp,
-            hideRestrictedRecent = this[K.hideRecent] ?: d.hideRestrictedRecent,
-            hideRestrictedCarryOn = this[K.hideCarryOn] ?: d.hideRestrictedCarryOn,
-            hideRestrictedSearch = this[K.hideSearch] ?: d.hideRestrictedSearch,
-            pinHash = this[K.pinHash] ?: d.pinHash,
+            startOnLastChannel = valueOr(K.startLast, d.startOnLastChannel),
+            zapWithUpDown = valueOr(K.zapUpDown, d.zapWithUpDown),
+            lastChannelId = valueOr(K.lastChannel, d.lastChannelId),
+            accent = valueOr(K.accent, d.accent),
+            largeText = valueOr(K.largeText, d.largeText),
+            warnVpn = valueOr(K.warnVpn, d.warnVpn),
+            warnProxy = valueOr(K.warnProxy, d.warnProxy),
+            launcherRows = valueOr(K.launcherRows, d.launcherRows),
+            showExternalIp = valueOr(K.showIp, d.showExternalIp),
+            hideRestrictedRecent = valueOr(K.hideRecent, d.hideRestrictedRecent),
+            hideRestrictedCarryOn = valueOr(K.hideCarryOn, d.hideRestrictedCarryOn),
+            hideRestrictedSearch = valueOr(K.hideSearch, d.hideRestrictedSearch),
+            pinHash = valueOr(K.pinHash, d.pinHash),
         )
     }
 
@@ -156,6 +163,7 @@ class SettingsRepository(private val context: Context) {
             prefs[K.skipBack] = s.skipBackSec
             prefs[K.skipForward] = s.skipForwardSec
             prefs[K.passthrough] = s.audioPassthrough
+            prefs[K.aacInApp] = s.aacInApp
             prefs[K.subtitleMode] = s.subtitleMode.name
             prefs[K.subtitleLang] = s.subtitleLanguage
             prefs[K.buffer] = s.bufferSize.name
