@@ -12,7 +12,6 @@ import androidx.paging.cachedIn
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.core.epg.ProgrammeKind
 import com.biskyt.mytvplayer.data.ChannelFilter
-import com.biskyt.mytvplayer.data.categoryLabel
 import com.biskyt.mytvplayer.data.db.CAT_LIVE
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
@@ -20,7 +19,6 @@ import com.biskyt.mytvplayer.data.db.CategoryCount
 import com.biskyt.mytvplayer.data.db.CategoryEntity
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
-import com.biskyt.mytvplayer.data.label
 import com.biskyt.mytvplayer.ui.PickedLists
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.common.CategoryFilter
@@ -140,14 +138,6 @@ class LiveViewModel(
         else -> p.kind
     }
 
-    /** What the options' More info shows about [ch]: read only when it opens (see ChannelInfoView). */
-    suspend fun channelInfo(ch: ChannelEntity) = ChannelInfo(
-        category = c.db.categories().get(ch.playlistId, CAT_LIVE, ch.categoryId)?.label ?: categoryLabel("", null),
-        playlist = c.playlists.get(ch.playlistId)?.name,
-        guide = c.epg.mappingInfo(ch.playlistId, listOf(ch.streamId)).firstOrNull()?.takeIf { it.xmlId != null },
-        lastWatched = c.db.favourites().watchedAt(ch.playlistId, ch.streamId),
-    )
-
     private var findJob: Job? = null
 
     /** Opens the programme's series (at its episode) or film, or a search for its title when the playlist doesn't have it. */
@@ -212,8 +202,10 @@ class LiveViewModel(
     /** Digits typed on the remote jump straight to that channel number. */
     val numberEntry = NumberEntry(viewModelScope) { n -> c.channels.byNumber(playlistId.value, n)?.let { playNumber(it) } }
 
-    fun toggleFavourite(ch: ChannelEntity) = viewModelScope.launch {
-        c.channels.setFavourite(ch.playlistId, ch.streamId, ch.streamId !in favouriteIds.value.orEmpty())
+    fun toggleFavourite(ch: ChannelEntity) = setFavourite(ch, ch.streamId !in favouriteIds.value.orEmpty())
+
+    fun setFavourite(ch: ChannelEntity, favourite: Boolean) = viewModelScope.launch {
+        c.channels.setFavourite(ch.playlistId, ch.streamId, favourite)
     }
 
     fun hide(ch: ChannelEntity) = viewModelScope.launch {
