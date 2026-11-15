@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -29,6 +30,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -51,6 +53,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -61,9 +67,11 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import coil3.BitmapImage
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowRgb565
+import coil3.request.transformations
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.data.db.ChannelEntity
@@ -71,7 +79,10 @@ import com.biskyt.mytvplayer.data.db.VodCard
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.LocalOnAccentTypography
 import com.biskyt.mytvplayer.ui.theme.Palette
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** The ring around what has focus. */
 val FocusStroke = BorderStroke(3.dp, Palette.text)
@@ -274,17 +285,22 @@ fun ProgressLine(fraction: Float, modifier: Modifier = Modifier, height: Dp = 5.
  */
 @Composable
 fun ChannelLogo(url: String?, name: String, width: Dp = 72.dp, height: Dp = 40.dp, favourite: Boolean = false) = FavouriteBadge(favourite) {
-    ImageWithInitials(url, name, width, height, RoundedCornerShape(9.dp), ContentScale.Fit, 4.dp, MaterialTheme.typography.labelMedium)
+    val style = MaterialTheme.typography.labelMedium
+    ImageWithInitials(url, name, width, height, LogoShape, ContentScale.Fit, 4.dp, style, logo = true)
 }
 
-/** A favourite's logo or poster: [content] with a heart on its top-right corner. */
+/**
+ * A favourite's logo or poster: [content] with a heart on its top-right corner, just outside it, or just inside it when
+ * [inside] (a poster that is its card: the card's shape would cut it off).
+ */
 @Composable
-private fun FavouriteBadge(favourite: Boolean, content: @Composable () -> Unit) = Box {
+private fun FavouriteBadge(favourite: Boolean, inside: Boolean = false, content: @Composable () -> Unit) = Box {
     // Always in the Box: the image stays put (and loaded) when a favourite is added or removed.
     content()
     if (favourite) {
+        val place = if (inside) Modifier.offset(x = (-6).dp, y = 6.dp) else Modifier.offset(x = 5.dp, y = (-5).dp)
         Box(
-            Modifier.align(Alignment.TopEnd).offset(x = 5.dp, y = (-5).dp).size(20.dp).clip(CircleShape).background(Palette.background),
+            Modifier.align(Alignment.TopEnd).then(place).size(20.dp).clip(CircleShape).background(Palette.background),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -303,13 +319,49 @@ fun StateFlow<Set<Long>?>.collectIds(): Set<Long> = collectAsState().value.orEmp
 
 /** A movie or series poster (2:3). Posters are opaque, so they're decoded at half the memory of logos. */
 @Composable
-fun Poster(url: String?, title: String, width: Dp, modifier: Modifier = Modifier, radius: Dp = 10.dp) = ImageWithInitials(
+fun Poster(url: String?, title: String, width: Dp, modifier: Modifier = Modifier, radius: Dp = POSTER_RADIUS) = ImageWithInitials(
     url, title, width, width * 3 / 2, RoundedCornerShape(radius), ContentScale.Crop, 0.dp, MaterialTheme.typography.titleMedium, modifier,
     opaque = true
 )
 
 /** Poster width in grids and rows of movies and series. */
 val POSTER_WIDTH = 124.dp
+
+private val LogoShape = RoundedCornerShape(9.dp)
+
+/** A poster's corners (see [Poster]), and so a poster card's, so that its glow follows the poster. */
+private val POSTER_RADIUS = 10.dp
+private val PosterShape = RoundedCornerShape(POSTER_RADIUS)
+
+/**
+ * A poster as a card, with its title and details under it (the owner, 2026-11-15, as in MyTVLauncher): only the poster
+ * grows and glows when it has focus (see focusGlow), [GLOW_GAP] clear of the text, which stays as it is. [modifier] is the
+ * card's (focus, keys); [below] gets whether it has focus, for text that scrolls then (see [OneLine]). [texts], the text
+ * under it, is the card's own for accessibility (a screen reader reads it with the card, and tests find the card by it).
+ */
+@Composable
+fun PosterTile(
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
+    modifier: Modifier,
+    texts: List<String>,
+    poster: @Composable () -> Unit,
+    below: @Composable (focused: Boolean) -> Unit
+) = Column(Modifier.width(POSTER_WIDTH)) {
+    var focused by remember { mutableStateOf(false) }
+    TvCard(
+        onClick = onClick,
+        onLongClick = onLongClick,
+        modifier = modifier.onFocusChanged { focused = it.hasFocus }
+            .semantics { this[SemanticsProperties.Text] = texts.filter { it.isNotBlank() }.map(::AnnotatedString) },
+        shape = PosterShape,
+        color = Palette.background,
+        glow = true
+    ) { poster() }
+    Spacer(Modifier.height(GLOW_GAP))
+    // (Read with the card: see texts.)
+    Column(Modifier.clearAndSetSemantics {}, verticalArrangement = Arrangement.spacedBy(4.dp)) { below(focused) }
+}
 
 /** A movie or series poster with its title and year, as in grids and search. */
 @Composable
@@ -321,15 +373,19 @@ fun PosterCard(
     detail: String? = null,
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
-) {
-    TvCard(onClick = onClick, onLongClick = onLongClick, color = Palette.background, modifier = modifier, glow = true) {
-        Column(Modifier.padding(6.dp).width(POSTER_WIDTH), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            FavouriteBadge(favourite) { Poster(card.imageUrl, card.title, POSTER_WIDTH) }
-            OneLine(card.title, MaterialTheme.typography.labelLarge)
-            Muted(card.year?.toString() ?: " ")
-            if (detail != null) OneLine(detail, MaterialTheme.typography.bodyMedium, color = Palette.textMuted)
-        }
+) = PosterTile(
+    onClick,
+    onLongClick,
+    modifier,
+    listOfNotNull(card.title, card.year?.toString(), detail),
+    // (Its initials, shown until the picture loads, are not read: the card's texts are.)
+    poster = {
+        FavouriteBadge(favourite, inside = true) { Poster(card.imageUrl, card.title, POSTER_WIDTH, Modifier.clearAndSetSemantics {}) }
     }
+) { focused ->
+    OneLine(card.title, MaterialTheme.typography.labelLarge, focused = focused)
+    Muted(card.year?.toString() ?: " ")
+    if (detail != null) OneLine(detail, MaterialTheme.typography.bodyMedium, color = Palette.textMuted, focused = focused)
 }
 
 /**
@@ -370,28 +426,51 @@ private fun ImageWithInitials(
     padding: Dp,
     textStyle: TextStyle,
     modifier: Modifier = Modifier,
-    opaque: Boolean = false
+    opaque: Boolean = false,
+    /** A TV channel's logo: a dark one gets a light tile (see LogoDark). */
+    logo: Boolean = false
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
+    // A channel logo's address: one that may get a light tile (only then is any of that work done).
+    val logoUrl = url.takeIf { logo }
     val request = remember(url) {
         url?.let {
             with(density) {
                 ImageRequest.Builder(context).data(it).size(width.roundToPx(), height.roundToPx()).apply {
                     if (opaque) allowRgb565(true)
+                    if (logoUrl != null) transformations(LogoDark(logoUrl))
                 }.build()
             }
         }
     }
     var loaded by remember(url) { mutableStateOf(false) }
-    Box(modifier.size(width, height).clip(shape).background(Palette.surfaceHigh), contentAlignment = Alignment.Center) {
+    val dark = logoUrl?.let { remember(it) { mutableStateOf(LogoDark.known(it) == true) } }
+    val scope = if (logoUrl != null) rememberCoroutineScope() else null
+    // Only once it shows: the initials, while it loads or when it fails, keep the dark tile they are made for.
+    val tile = if (loaded && dark?.value == true) LIGHT_LOGO_TILE else Palette.surfaceHigh
+    Box(modifier.size(width, height).clip(shape).background(tile), contentAlignment = Alignment.Center) {
         if (!loaded) Text(remember(name) { initials(name) }, style = textStyle, color = Palette.textDim, maxLines = 1)
         if (request != null) {
             AsyncImage(
                 model = request,
                 contentDescription = null,
                 contentScale = contentScale,
-                onSuccess = { loaded = true },
+                onSuccess = { state ->
+                    loaded = true
+                    if (logoUrl != null && dark != null && scope != null) {
+                        val known = LogoDark.known(logoUrl)
+                        // From Coil's memory cache after this note was dropped: looked at again, off the main thread.
+                        val bitmap = (state.result.image as? BitmapImage)?.bitmap
+                        when {
+                            known != null -> dark.value = known
+                            bitmap != null -> scope.launch {
+                                dark.value =
+                                    withContext(Dispatchers.Default) { LogoDark.look(logoUrl, bitmap) }
+                            }
+                        }
+                    }
+                },
                 modifier = Modifier.size(width, height).padding(padding)
             )
         }

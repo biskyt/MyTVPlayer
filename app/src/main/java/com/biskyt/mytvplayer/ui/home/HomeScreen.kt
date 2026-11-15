@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
@@ -30,6 +29,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LifecycleStartEffect
@@ -65,12 +65,11 @@ import com.biskyt.mytvplayer.ui.common.POSTER_WIDTH
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.Poster
 import com.biskyt.mytvplayer.ui.common.PosterCard
+import com.biskyt.mytvplayer.ui.common.PosterTile
 import com.biskyt.mytvplayer.ui.common.ProgressLine
 import com.biskyt.mytvplayer.ui.common.SectionTitle
 import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TabScaffold
-import com.biskyt.mytvplayer.ui.common.TvCard
-import com.biskyt.mytvplayer.ui.common.channelActions
 import com.biskyt.mytvplayer.ui.common.collectIds
 import com.biskyt.mytvplayer.ui.common.glowRoom
 import com.biskyt.mytvplayer.ui.common.glowRoomPadding
@@ -83,7 +82,7 @@ import com.biskyt.mytvplayer.ui.common.settleFor
 import com.biskyt.mytvplayer.ui.common.titledRow
 import com.biskyt.mytvplayer.ui.common.vodActions
 import com.biskyt.mytvplayer.ui.common.vodDetails
-import com.biskyt.mytvplayer.ui.theme.Palette
+import com.biskyt.mytvplayer.ui.live.ChannelOptionsPanel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -145,6 +144,8 @@ class HomeViewModel(private val c: AppContainer) : ViewModel() {
     }
 
     fun removeRecent(ch: ChannelEntity) = viewModelScope.launch { c.channels.removeRecent(ch.playlistId, ch.streamId) }
+
+    fun hide(ch: ChannelEntity) = viewModelScope.launch { c.channels.setHidden(ch.playlistId, ch.streamId, true) }
 
     fun forget(p: WatchProgressEntity) = viewModelScope.launch { c.vod.forgetProgress(p) }
 
@@ -336,29 +337,36 @@ private fun TileOptions(tile: HomeTile, vm: HomeViewModel, pid: Long, onDismiss:
     val close = { onDismiss(false) }
     when (tile) {
         is HomeTile.Channel -> {
+            // As in Live TV (the owner, 2026-11-15), with the row's own: Move on Favourites, Remove on Recently watched.
             val ch = tile.ch
+            val nav = LocalNavigator.current
             val favourites = vm.favouriteSets.channels.collectIds()
-            val watch = stringResource(R.string.common_watch)
             val removeRecent = stringResource(R.string.home_remove_recent)
-            val actions = buildList {
-                add(ItemAction.Open(watch, Screen.Player(ch.playlistId, ch.streamId, tile.list)))
-                addAll(
-                    channelActions(ch, ch.streamId in favourites) { favourite ->
-                        vm.setFavourite(ch, favourite)
-                        if (!favourite && tile.list == ChannelFilter.Favourites) onDismiss(true)
-                    }
-                )
-                if (tile.list == ChannelFilter.Favourites) add(moveAction(vm.mover, CAT_LIVE, ch.streamId, close, CHANNEL_ROW_LIMIT))
-                if (tile.list == ChannelFilter.Recent) {
-                    add(
-                        ItemAction.Run(removeRecent) {
-                            vm.removeRecent(ch)
-                            onDismiss(true)
-                        }
-                    )
-                }
-            }
-            ItemActionsPanel(ch.name, actions, close)
+            ChannelOptionsPanel(
+                ch,
+                favourite = ch.streamId in favourites,
+                onDismiss = close,
+                play = { nav.push(Screen.Player(ch.playlistId, ch.streamId, tile.list)) },
+                setFavourite = { favourite ->
+                    vm.setFavourite(ch, favourite)
+                    if (!favourite && tile.list == ChannelFilter.Favourites) onDismiss(true)
+                },
+                // Hidden from the channel lists. Favourites and Recently watched keep it, as in Live TV: its card stays.
+                hide = {
+                    vm.hide(ch)
+                    close()
+                },
+                restartFilter = { tile.list },
+                beforeHide = listOfNotNull(
+                    moveAction(vm.mover, CAT_LIVE, ch.streamId, close, CHANNEL_ROW_LIMIT).takeIf { tile.list == ChannelFilter.Favourites }
+                ),
+                last = listOfNotNull(
+                    ItemAction.Run(removeRecent) {
+                        vm.removeRecent(ch)
+                        onDismiss(true)
+                    }.takeIf { tile.list == ChannelFilter.Recent }
+                ),
+            )
         }
         is HomeTile.CarryOn -> {
             val p = tile.p
@@ -456,37 +464,42 @@ private fun CarryOnRow(
         horizontalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         itemsIndexed(items, key = { _, p -> "${p.kind}${p.itemId}" }) { i, p ->
-            val focus = Modifier.raiseOnFocus().then(if (i == 0) first else Modifier)
-                .then(if (i == againAt) Modifier.focusRequester(again) else Modifier)
-            CarryOnCard(p, focus, { onOptions(p) }) { onPlay(p) }
+            val focus = (if (i == 0) first else Modifier).then(if (i == againAt) Modifier.focusRequester(again) else Modifier)
+            // Drawn over the cards beside it while it has focus, as it grows and glows (see focusGlow).
+            Box(Modifier.raiseOnFocus()) { CarryOnCard(p, focus, { onOptions(p) }) { onPlay(p) } }
         }
     }
 }
 
-/** A movie or episode carried on: its poster with how far it got, its title, and what's left or up next. */
+/** A movie or episode carried on: its poster with how far it got, and under it its title and what's left or up next. */
 @Composable
 private fun CarryOnCard(p: WatchProgressEntity, modifier: Modifier, onLongClick: () -> Unit, onClick: () -> Unit) {
-    TvCard(onClick = onClick, onLongClick = onLongClick, color = Palette.background, modifier = modifier, glow = true) {
-        Column(Modifier.padding(6.dp).width(POSTER_WIDTH), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    val left = when {
+        // A finished episode with another after it that has no card of its own (saved before 1.8.2, or
+        // watched already): the card leads on to that one.
+        p.finished -> stringResource(R.string.home_up_next_after, episodeCode(p))
+        // (The next one up, its running time not known: no time.)
+        p.season != null && p.episode != null ->
+            if (p.durationMs > 0) "${episodeCode(p)} ${shortLeft(p.remainingMs)}" else episodeCode(p)
+        p.durationMs > 0 -> shortLeft(p.remainingMs)
+        else -> ""
+    }
+    PosterTile(
+        onClick,
+        onLongClick,
+        modifier,
+        listOf(p.title, left),
+        poster = {
             Box {
-                Poster(p.imageUrl, p.title, POSTER_WIDTH)
+                // (Its initials, shown until the picture loads, are not read: the card's texts are.)
+                Poster(p.imageUrl, p.title, POSTER_WIDTH, Modifier.clearAndSetSemantics {})
                 // (Not before it has been started: an episode up next.)
                 if (!p.finished && p.started) ProgressLine(p.fraction, Modifier.align(Alignment.BottomCenter).padding(6.dp))
             }
-            OneLine(p.title, MaterialTheme.typography.labelLarge)
-            Muted(
-                when {
-                    // A finished episode with another after it that has no card of its own (saved before 1.8.2, or
-                    // watched already): the card leads on to that one.
-                    p.finished -> stringResource(R.string.home_up_next_after, episodeCode(p))
-                    // (The next one up, its running time not known: no time.)
-                    p.season != null && p.episode != null ->
-                        if (p.durationMs > 0) "${episodeCode(p)} ${shortLeft(p.remainingMs)}" else episodeCode(p)
-                    p.durationMs > 0 -> shortLeft(p.remainingMs)
-                    else -> ""
-                }
-            )
         }
+    ) { focused ->
+        OneLine(p.title, MaterialTheme.typography.labelLarge, focused = focused)
+        Muted(left)
     }
 }
 

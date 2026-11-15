@@ -73,7 +73,7 @@ private class FocusGlowNode(var shape: Shape, var color: Color) :
     private var outlineShape: Shape? = null
 
     /**
-     * The card and its glow, grown together by one transform of the drawing, so that they always match (in 0.8.1 the
+     * The card and its glow, grown together by one transform of the drawing, so that they always match (in MyTVLauncher 0.8.1 the
      * card grew in a layer and the glow by its own transform, and on the TV the card did not fill the glow, the owner,
      * 2026-11-15). The glow is the card's shape, blurred outwards only, in two passes: a wide soft one and a narrow
      * bright one at the edge. The blur grows with the transform too.
@@ -123,6 +123,7 @@ private class FocusGlowNode(var shape: Shape, var color: Color) :
     override fun onReset() {
         focused = false
         lift = Animatable(0f)
+        invalidateDraw()
     }
 }
 
@@ -163,8 +164,14 @@ private const val LIFT_MS = 150
 private val GLOW_RADIUS = 12.dp
 private val EDGE_RADIUS = 4.dp
 
-/** Room above and below a row of cards for the card with focus to grow and glow into. */
-val GLOW_ROOM = 20.dp
+/**
+ * Room above and below a row of cards for the card with focus to grow and glow into: a poster grows by about 9 dp on each
+ * side, and its glow reaches 12 dp beyond that (MyTVPlayer's: MyTVLauncher's cards are shorter, with 20).
+ */
+val GLOW_ROOM = 24.dp
+
+/** The gap under a full size card to its title, clear of the card as it grows (half its growth, and a little more). */
+val GLOW_GAP = 12.dp
 
 // (MyTVPlayer's own, below: MyTVLauncher's rows leave room in their layout instead.)
 

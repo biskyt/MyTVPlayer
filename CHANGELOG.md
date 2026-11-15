@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.21.0
+- A poster now grows and glows by itself when selected, with its title and details under it, as on MyTVLauncher.
+- Channel logos with dark text on a clear background now get a light tile, so the text can be read.
+- A channel's options on Home, in Favourites and Recently watched, now have the same options as in Live TV, such as More info, What's on and Hide channel.
+- A selected poster's glow is no longer cut off at its top and bottom.
+
 ## 1.20.0
 - Cards on Home, in the film and series lists and in Search now grow and glow in the accent colour when selected, in place of the white border.
 - A channel's options in Live TV now have More info, which shows the channel's category, playlist, TV guide, guide ID, catch-up and when you last watched it.
