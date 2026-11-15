@@ -21,10 +21,13 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -345,23 +348,41 @@ fun PosterTile(
     onLongClick: (() -> Unit)?,
     modifier: Modifier,
     texts: List<String>,
+    /** The poster's width (MyPlexPlayer's person page has larger posters). */
+    width: Dp = POSTER_WIDTH,
     poster: @Composable () -> Unit,
     below: @Composable (focused: Boolean) -> Unit
-) = Column(Modifier.width(POSTER_WIDTH)) {
-    var focused by remember { mutableStateOf(false) }
-    TvCard(
-        onClick = onClick,
-        onLongClick = onLongClick,
-        modifier = modifier.onFocusChanged { focused = it.hasFocus }
-            .semantics { this[SemanticsProperties.Text] = texts.filter { it.isNotBlank() }.map(::AnnotatedString) },
-        shape = PosterShape,
-        color = Palette.background,
-        glow = true
-    ) { poster() }
-    Spacer(Modifier.height(GLOW_GAP))
-    // (Read with the card: see texts.)
-    Column(Modifier.clearAndSetSemantics {}, verticalArrangement = Arrangement.spacedBy(4.dp)) { below(focused) }
+) {
+    // Set as focus moves, read only by the text under it (see Below): a focus move does not compose the tile again.
+    val focused = remember { mutableStateOf(false) }
+    // With focus, the whole tile comes into view, its text too (a grid's bottom row would otherwise keep it cut off).
+    val tile = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+    Column(Modifier.width(width).bringIntoViewRequester(tile)) {
+        TvCard(
+            onClick = onClick,
+            onLongClick = onLongClick,
+            modifier = modifier.onFocusChanged {
+                focused.value = it.hasFocus
+                if (it.hasFocus) scope.launch { tile.bringIntoView() }
+            }.semantics { this[SemanticsProperties.Text] = texts.filter { it.isNotBlank() }.map(::AnnotatedString) },
+            shape = PosterShape,
+            color = Palette.background,
+            glow = true
+        ) { poster() }
+        // Clear of the poster as it grows: half its growth (see focusGlow), and a little more, GLOW_GAP at least.
+        Spacer(Modifier.height(maxOf(GLOW_GAP, width * POSTER_GROWTH + 3.dp)))
+        Below(focused, below)
+    }
 }
+
+/** The text under a [PosterTile] (read with the card: see its texts), given whether the card has focus. */
+@Composable
+private fun Below(focused: State<Boolean>, below: @Composable (focused: Boolean) -> Unit) =
+    Column(Modifier.clearAndSetSemantics {}, verticalArrangement = Arrangement.spacedBy(4.dp)) { below(focused.value) }
+
+/** How far a poster grows downwards with focus, for its width: half of its growth ([LIFT_SCALE]) of its height (1.5 times its width). */
+private const val POSTER_GROWTH = LIFT_SCALE / 2 * 1.5f
 
 /** A movie or series poster with its title and year, as in grids and search. */
 @Composable

@@ -281,14 +281,17 @@ class ProgressSync(
     }
 
     /**
-     * Lets a running sync end, then syncs once more if this TV still has changes (or [always]). For leaving the app,
-     * where the last changes must not wait for the next time it opens. Throws if the sync fails.
+     * Lets a running sync end, then syncs once more if this TV still has changes (or [always], unless a sync ran). For leaving the app,
+     * where the last changes must not wait for the next time it opens, and for a launcher's request to refresh the home
+     * rows (see HomeRowsWorker). Throws if the sync fails.
      */
     suspend fun finish(always: Boolean = false) {
-        // In a new process (the app was closed): what was saved first.
-        if (account.state.first().pending) dirty.set(true)
-        synchronized(this) { running }?.join()
-        if (on && (always || dirty.get())) start()?.await()
+        // In a new process (the app was closed, or one started for a launcher's request): once it is read from storage.
+        val s = state.filterNotNull().first()
+        if (s.pending) dirty.set(true)
+        // A sync that runs brings in the other TVs' changes too: not done twice.
+        val ran = synchronized(this) { running }?.takeIf { it.isActive }?.also { it.join() } != null
+        if (s.on && ((always && !ran) || dirty.get())) start()?.await()
     }
 
     /** Null when a sync runs already: only one at a time. */

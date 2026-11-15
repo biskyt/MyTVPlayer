@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.22.0
+- When MyTVLauncher asks, as the TV wakes, MyTVPlayer now brings in what you watched on your other TVs and updates its rows on the TV's home screen, without being opened.
+- A selected poster in a list now comes into view with its title and details.
+
 ## 1.21.0
 - A poster now grows and glows by itself when selected, with its title and details under it, as on MyTVLauncher.
 - Channel logos with dark text on a clear background now get a light tile, so the text can be read.

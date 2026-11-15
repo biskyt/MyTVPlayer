@@ -152,11 +152,12 @@ private class RaiseNode :
 
     override fun onReset() {
         focused = false
+        invalidatePlacement()
     }
 }
 
 /** How much the card with focus grows: a tenth (the owner, 2026-11-15: larger than the 6% before). */
-private const val LIFT_SCALE = 0.1f
+internal const val LIFT_SCALE = 0.1f
 
 private const val LIFT_MS = 150
 

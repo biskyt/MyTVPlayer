@@ -177,12 +177,7 @@ class TvLauncher(private val context: Context) : LauncherWriter {
     /** A table's columns: the app's key, whether the user left it on, and when it was watched (none for a channel card). */
     private class Columns(val key: String, val browsable: String, val watchedAt: String?)
 
-    private fun setEnabled(on: Boolean) {
-        val state = if (on) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-        listOf(LauncherImageProvider::class.java, LauncherReceiver::class.java).forEach {
-            context.packageManager.setComponentEnabledSetting(ComponentName(context, it), state, PackageManager.DONT_KILL_APP)
-        }
-    }
+    private fun setEnabled(on: Boolean) = context.setComponentsEnabled(on, LauncherImageProvider::class.java, LauncherReceiver::class.java)
 
     companion object {
         private val WATCH_NEXT = Columns(
@@ -293,3 +288,11 @@ private fun RowCard.Kind.type() = when (this) {
 /** [RowCard.Kind]'s picture shape: a channel's logo is wide, a poster portrait. */
 private fun RowCard.Kind.shape() =
     if (this == RowCard.Kind.CHANNEL) PreviewProgramColumns.ASPECT_RATIO_16_9 else PreviewProgramColumns.ASPECT_RATIO_2_3
+
+/** Turns the app's [components] on or off (each only if it is not so already: each change is written to disk). */
+internal fun Context.setComponentsEnabled(on: Boolean, vararg components: Class<*>) {
+    val state = if (on) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+    components.map { ComponentName(this, it) }.filter { packageManager.getComponentEnabledSetting(it) != state }.forEach {
+        packageManager.setComponentEnabledSetting(it, state, PackageManager.DONT_KILL_APP)
+    }
+}
