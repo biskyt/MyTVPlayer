@@ -690,18 +690,22 @@ private fun StatusChip(row: MatchRow) {
     )
 }
 
+/** "Currently: " the guide channel [m] and the guide it comes from, with its time shift (also in a channel's More info). */
+@Composable
+fun currentGuideText(m: MappingInfo): String {
+    val name = (m.displayName ?: m.xmlId).toString()
+    val src = m.sourceName ?: ""
+    return if (m.offsetMinutes == 0) {
+        stringResource(R.string.live_guide_current, name, src)
+    } else {
+        stringResource(R.string.live_guide_current_shifted, name, src, m.offsetMinutes / 60)
+    }
+}
+
 /** The guide chosen for the channel, and what is on now in it ([nowNext]: null until loaded). */
 @Composable
 private fun CurrentGuide(m: MappingInfo, nowNext: NowNext?) {
-    val name = (m.displayName ?: m.xmlId).toString()
-    val src = m.sourceName ?: ""
-    Muted(
-        if (m.offsetMinutes == 0) {
-            stringResource(R.string.live_guide_current, name, src)
-        } else {
-            stringResource(R.string.live_guide_current_shifted, name, src, m.offsetMinutes / 60)
-        }
-    )
+    Muted(currentGuideText(m))
     val now = nowNext?.now
     when {
         nowNext == null -> Unit

@@ -72,9 +72,12 @@ import com.biskyt.mytvplayer.ui.common.TabScaffold
 import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.channelActions
 import com.biskyt.mytvplayer.ui.common.collectIds
+import com.biskyt.mytvplayer.ui.common.glowRoom
+import com.biskyt.mytvplayer.ui.common.glowRoomPadding
 import com.biskyt.mytvplayer.ui.common.guideNowNext
 import com.biskyt.mytvplayer.ui.common.moveAction
 import com.biskyt.mytvplayer.ui.common.onAnyTouch
+import com.biskyt.mytvplayer.ui.common.raiseOnFocus
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.common.settleFor
 import com.biskyt.mytvplayer.ui.common.titledRow
@@ -416,10 +419,18 @@ private fun ChannelCardRow(
 ) {
     val now by rememberMinuteClock()
     KeepInView(state) { mover?.movingId(CAT_LIVE)?.let { p -> channels.indexOfFirst { it.streamId == p } } }
-    LazyRow(state = state, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+    LazyRow(
+        Modifier.glowRoom(),
+        state = state,
+        contentPadding = glowRoomPadding(),
+        horizontalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
         items(channels, key = { it.streamId }) { c ->
-            MovableTile(mover, CAT_LIVE, c.streamId, MoveLayout.ROW) {
-                ChannelCard(c, loader, now, { onOptions(c) }, if (c == channels.first()) modifier else Modifier) { onPlay(c) }
+            // Drawn over the cards beside it while it has focus, as it grows and glows (see focusGlow).
+            Box(Modifier.raiseOnFocus()) {
+                MovableTile(mover, CAT_LIVE, c.streamId, MoveLayout.ROW) {
+                    ChannelCard(c, loader, now, { onOptions(c) }, if (c == channels.first()) modifier else Modifier) { onPlay(c) }
+                }
             }
         }
     }
@@ -438,9 +449,15 @@ private fun CarryOnRow(
     onOptions: (WatchProgressEntity) -> Unit,
     onPlay: (WatchProgressEntity) -> Unit
 ) {
-    LazyRow(state = state, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+    LazyRow(
+        Modifier.glowRoom(),
+        state = state,
+        contentPadding = glowRoomPadding(),
+        horizontalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
         itemsIndexed(items, key = { _, p -> "${p.kind}${p.itemId}" }) { i, p ->
-            val focus = (if (i == 0) first else Modifier).then(if (i == againAt) Modifier.focusRequester(again) else Modifier)
+            val focus = Modifier.raiseOnFocus().then(if (i == 0) first else Modifier)
+                .then(if (i == againAt) Modifier.focusRequester(again) else Modifier)
             CarryOnCard(p, focus, { onOptions(p) }) { onPlay(p) }
         }
     }
@@ -449,7 +466,7 @@ private fun CarryOnRow(
 /** A movie or episode carried on: its poster with how far it got, its title, and what's left or up next. */
 @Composable
 private fun CarryOnCard(p: WatchProgressEntity, modifier: Modifier, onLongClick: () -> Unit, onClick: () -> Unit) {
-    TvCard(onClick = onClick, onLongClick = onLongClick, color = Palette.background, modifier = modifier) {
+    TvCard(onClick = onClick, onLongClick = onLongClick, color = Palette.background, modifier = modifier, glow = true) {
         Column(Modifier.padding(6.dp).width(POSTER_WIDTH), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Box {
                 Poster(p.imageUrl, p.title, POSTER_WIDTH)

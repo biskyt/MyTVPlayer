@@ -14,10 +14,10 @@
     <string name="live_option_search_for">Rechercher « %1$s »</string>
     <string name="live_option_find_help">Regarder à la demande</string>
     <string name="live_option_start_over_help">Regarder le programme en cours depuis le début</string>
-    <string name="live_option_channel_guide">Afficher le guide TV de cette chaîne</string>
+    <string name="live_option_channel_guide">Programmes</string>
     <string name="live_option_channel_guide_help">Programmes à venir</string>
     <string name="live_option_switch_to_list">Passer à la liste des chaînes</string>
-    <string name="live_option_switch_to_grid">Passer à la grille du guide TV</string>
+    <string name="live_option_switch_to_grid">Passer à la vue en grille</string>
     <string name="live_option_switch_help">Ou appuyez sur le bouton Guide de la télécommande</string>
     <string name="live_option_hide_channel">Masquer la chaîne</string>
     <string name="live_option_hide_channel_help">Réaffichez-la plus tard dans Paramètres › Catégories</string>
@@ -111,4 +111,20 @@
     <string name="live_guide_no_results">Aucune chaîne de guide trouvée. Essayez une recherche plus courte, ou ajoutez une autre source de guide.</string>
     <string name="live_guide_time_shift">Décalage : %1$d h</string>
     <string name="live_guide_reset">Revenir en auto</string>
+    <!-- Channel options: starts the programme on now again from its beginning (catch-up) -->
+    <string name="live_option_restart">Recommencer l\'émission en cours</string>
+    <!-- Channel options: opens what is known about the channel -->
+    <string name="live_option_more_info">Plus d\'infos</string>
+    <string name="live_option_more_info_help">Catégorie, guide TV et plus</string>
+    <!-- More info about a channel: labels, each followed by its value -->
+    <string name="live_info_category">Catégorie</string>
+    <string name="live_info_playlist">Playlist</string>
+    <!-- The channel's own id for the TV guide, from the playlist (tvg-id) -->
+    <string name="live_info_guide_id">ID du guide</string>
+    <string name="live_info_last_watched">Dernier visionnage</string>
+    <!-- Value: catch-up the channel does not have -->
+    <string name="live_info_none">Non disponible</string>
+    <string name="live_info_guide">Guide TV</string>
+    <!-- %1$s is a guide channel's name, %2$s the guide it comes from -->
+    <string name="live_info_guide_value">%1$s (%2$s)</string>
 </resources>

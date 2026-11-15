@@ -416,6 +416,10 @@ interface FavouriteDao {
 
     @Query("DELETE FROM recent WHERE playlistId = :pid AND streamId = :id")
     suspend fun removeRecent(pid: Long, id: Long)
+
+    /** When channel [id] was last watched (null: not among the recent ones). */
+    @Query("SELECT watchedAt FROM recent WHERE playlistId = :pid AND streamId = :id")
+    suspend fun watchedAt(pid: Long, id: Long): Long?
 }
 
 /** A programme found by search, with its channel. */

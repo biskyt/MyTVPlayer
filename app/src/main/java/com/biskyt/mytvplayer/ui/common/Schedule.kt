@@ -87,7 +87,7 @@ fun ScheduleList(programmes: List<ChannelProgramme>?, modifier: Modifier = Modif
                             )
                             if (live) OnNowLabel()
                             val detail = p.subtitle ?: p.description
-                            if (detail != null && (live || i < 3)) {
+                            if (detail != null) {
                                 Text(
                                     detail,
                                     style = MaterialTheme.typography.bodySmall,

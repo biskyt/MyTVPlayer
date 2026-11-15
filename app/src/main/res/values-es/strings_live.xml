@@ -14,10 +14,10 @@
     <string name="live_option_search_for">Buscar “%1$s”</string>
     <string name="live_option_find_help">Velo cuando quieras</string>
     <string name="live_option_start_over_help">Ve lo que están dando desde el inicio</string>
-    <string name="live_option_channel_guide">Mostrar la guía de este canal</string>
+    <string name="live_option_channel_guide">Programación</string>
     <string name="live_option_channel_guide_help">Próximos programas</string>
     <string name="live_option_switch_to_list">Cambiar a la lista de canales</string>
-    <string name="live_option_switch_to_grid">Cambiar a la cuadrícula de la guía</string>
+    <string name="live_option_switch_to_grid">Cambiar a vista de cuadrícula</string>
     <string name="live_option_switch_help">O presiona el botón Guide del control remoto</string>
     <string name="live_option_hide_channel">Ocultar canal</string>
     <string name="live_option_hide_channel_help">Vuelve a mostrarlo en Configuración › Categorías</string>
@@ -111,4 +111,20 @@
     <string name="live_guide_no_results">No se encontraron canales de guía. Prueba una búsqueda más corta o agrega otra fuente de guía.</string>
     <string name="live_guide_time_shift">Desfase: %1$d h</string>
     <string name="live_guide_reset">Volver a automático</string>
+    <!-- Channel options: starts the programme on now again from its beginning (catch-up) -->
+    <string name="live_option_restart">Reiniciar el programa actual</string>
+    <!-- Channel options: opens what is known about the channel -->
+    <string name="live_option_more_info">Más información</string>
+    <string name="live_option_more_info_help">Categoría, guía de TV y más</string>
+    <!-- More info about a channel: labels, each followed by its value -->
+    <string name="live_info_category">Categoría</string>
+    <string name="live_info_playlist">Lista</string>
+    <!-- The channel's own id for the TV guide, from the playlist (tvg-id) -->
+    <string name="live_info_guide_id">ID de guía</string>
+    <string name="live_info_last_watched">Visto por última vez</string>
+    <!-- Value: catch-up the channel does not have -->
+    <string name="live_info_none">No disponible</string>
+    <string name="live_info_guide">Guía de TV</string>
+    <!-- %1$s is a guide channel's name, %2$s the guide it comes from -->
+    <string name="live_info_guide_value">%1$s (%2$s)</string>
 </resources>
