@@ -32,6 +32,40 @@ class NavigationAndLoaderTest {
     }
 
     @Test
+    fun `closing what a launcher card opened goes back to the launcher, with Home under it`() {
+        val nav = Navigator(Screen.Home)
+        var left = 0
+        nav.onLeave = { left++ }
+        nav.push(Screen.MovieDetails(1, 5))
+        nav.launcherEntry = nav.current.id
+        // A screen over it closes as usual: back to the page.
+        nav.push(Screen.VodPlayer(1, 5, null))
+        assertTrue(nav.pop())
+        assertEquals(Screen.MovieDetails(1, 5), nav.current.screen)
+        assertEquals(0, left)
+        // The page closes: back to the launcher, and Home is there for the next time.
+        assertTrue(nav.pop())
+        assertEquals(1, left)
+        assertEquals(listOf(Screen.Home), nav.stack.map { it.screen })
+        assertEquals(null, nav.launcherEntry)
+
+        // The channel player and its catch-up replace each other: still the launcher's entry.
+        nav.push(Screen.Player(1, 7, ChannelFilter.Favourites))
+        nav.launcherEntry = nav.current.id
+        nav.replace(Screen.CatchupPlayer(1, 7, 0))
+        assertTrue(nav.pop())
+        assertEquals(2, left)
+
+        // Opened another way (the stack reset): closing it does not leave the app.
+        nav.push(Screen.Settings)
+        nav.launcherEntry = nav.current.id
+        nav.reset(Screen.Home)
+        nav.push(Screen.Settings)
+        assertTrue(nav.pop())
+        assertEquals(2, left)
+    }
+
+    @Test
     fun `open goes back to a screen already open rather than stacking a copy`() {
         val nav = Navigator(Screen.Home)
         nav.open(Screen.Playlists)

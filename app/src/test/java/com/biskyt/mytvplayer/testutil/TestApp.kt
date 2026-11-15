@@ -7,6 +7,7 @@ import com.biskyt.mytvplayer.MyTvApp
 import com.biskyt.mytvplayer.launcher.LauncherRows
 import com.biskyt.mytvplayer.launcher.LauncherWriter
 import com.biskyt.mytvplayer.launcher.Published
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.cancel
 import org.robolectric.shadows.ShadowLooper
@@ -27,10 +28,16 @@ class TestApp : MyTvApp() {
     override fun launcherWriter(): LauncherWriter = object : LauncherWriter {
         override fun isOn() = false
 
-        override fun publish(rows: LauncherRows) = Published(emptySet(), emptySet())
+        override fun publish(rows: LauncherRows): Published {
+            launcherWrites += rows
+            return Published(emptySet(), emptySet())
+        }
 
         override fun clear() = Unit
     }
+
+    /** What the app's own launcher sync wrote (to nowhere): for a test of when it writes. */
+    val launcherWrites = CopyOnWriteArrayList<LauncherRows>()
 
     // A process-wide handler: each test's app would wrap the last one's (tests that need it install it themselves).
     override fun installCrashLog() = Unit

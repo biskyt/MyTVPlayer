@@ -109,6 +109,15 @@ class Navigator(start: Screen) {
 
     val current: NavEntry get() = stack.last()
 
+    /**
+     * The entry a card on the TV's home screen opened (the owner, 2026-11-15): when it closes, the app goes back to the
+     * launcher, not to its own Home (Home is shown again under it, for the next time the app opens). See [onLeave].
+     */
+    var launcherEntry: Int? = null
+
+    /** Takes the app back to the launcher (AppRoot sets it while its activity is there). */
+    var onLeave: (() -> Unit)? = null
+
     fun push(screen: Screen) {
         stack += NavEntry(screen, nextId++)
     }
@@ -123,6 +132,13 @@ class Navigator(start: Screen) {
     /** Returns false when there is nothing left to go back to. */
     fun pop(): Boolean {
         if (stack.size <= 1) return false
+        if (current.id == launcherEntry) {
+            // (Home is under it: see AppRoot's openCard.)
+            launcherEntry = null
+            drop(stack.removeAt(stack.lastIndex))
+            onLeave?.invoke()
+            return true
+        }
         drop(stack.removeAt(stack.lastIndex))
         return true
     }
@@ -130,6 +146,7 @@ class Navigator(start: Screen) {
     /** Clears the stack and shows [screen], e.g. when switching tabs or finishing set-up. */
     fun reset(screen: Screen) {
         val old = stack.toList()
+        launcherEntry = null
         stack.clear()
         stack += NavEntry(screen, nextId++)
         old.forEach(::drop)
@@ -137,8 +154,11 @@ class Navigator(start: Screen) {
 
     /** Replaces the top entry, keeping what is below it. */
     fun replace(screen: Screen) {
+        val fromLauncher = current.id == launcherEntry
         drop(stack.removeAt(stack.lastIndex))
         push(screen)
+        // (The channel player and its catch-up replace each other: the launcher's entry is still the one shown.)
+        if (fromLauncher) launcherEntry = current.id
     }
 
     /** Releases every screen's ViewModels (and so the player) when the activity is finishing. */

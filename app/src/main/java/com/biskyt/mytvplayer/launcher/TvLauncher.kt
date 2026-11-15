@@ -19,6 +19,8 @@ import androidx.tvprovider.media.tv.PreviewProgram
 import androidx.tvprovider.media.tv.TvContractCompat
 import androidx.tvprovider.media.tv.TvContractCompat.PreviewProgramColumns
 import androidx.tvprovider.media.tv.WatchNextProgram
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Writes the cards to the launcher ([TvLauncher]): an interface, so that an app's tests can see what it writes. */
 interface LauncherWriter {
@@ -200,10 +202,13 @@ class TvLauncher(private val context: Context) : LauncherWriter {
          * shows the first row an app asks for without a question, so that one while none is shown; it asks the user about
          * the others, through its dialog where the launcher has one (else as for the first).
          */
-        fun askToShow(activity: Activity, channelIds: Collection<Long>) {
-            val shown = runCatching { activity.shownChannels() }.getOrDefault(emptyMap())
+        suspend fun askToShow(activity: Activity, channelIds: Collection<Long>) {
+            // Read in the background (the TV provider can be slow), and asked from the main thread.
             val dialog = Intent(TvContractCompat.ACTION_REQUEST_CHANNEL_BROWSABLE)
-            val hasDialog = dialog.resolveActivity(activity.packageManager) != null
+            val (shown, hasDialog) = withContext(Dispatchers.IO) {
+                runCatching { activity.shownChannels() }.getOrDefault(emptyMap()) to
+                    (dialog.resolveActivity(activity.packageManager) != null)
+            }
             var first = shown.values.none { it }
             channelIds.filter { shown[it] == false }.forEach { id ->
                 runCatching {

@@ -1,9 +1,7 @@
 package com.biskyt.mytvplayer.ui.settings
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
 import android.content.pm.PackageManager
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -149,12 +147,14 @@ private fun LauncherRow() {
     if (!remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }) return
     val vm = appViewModel { SettingsViewModel(it) }
     val s = vm.settings.collectAsState().value ?: return
-    LaunchedEffect(Unit) {
+    val activity = LocalActivity.current
+    LaunchedEffect(activity) {
+        activity ?: return@LaunchedEffect // (kept for later: no activity to ask from)
         val made = context.container.launcherSync.madeChannels
         made.collect { ids ->
             if (ids.isEmpty()) return@collect
-            made.update { it - ids } // (not those made meanwhile)
-            context.findActivity()?.let { TvLauncher.askToShow(it, ids) }
+            TvLauncher.askToShow(activity, ids)
+            made.update { it - ids } // (after asking: kept if Settings closes first; not those made meanwhile)
         }
     }
     SettingRow(stringResource(R.string.settings_launcher), stringResource(R.string.settings_launcher_help), {
@@ -378,11 +378,4 @@ fun AboutScreen() {
         }
         item { SupportSection() }
     }
-}
-
-/** The activity [this] context belongs to (a composable's context can wrap it, such as for the app's language). */
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
 }

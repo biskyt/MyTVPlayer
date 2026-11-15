@@ -102,7 +102,8 @@ cropped ([credits, with each image's author and licence](app/src/test/resources/
   address that its provider sees, and warns when that address is your own (from ipinfo.io, off by default).
 - **The TV's home screen** (off by default): Continue watching in the home screen's Play Next row, with posters, and
   your favourite channels, movies and series as rows of their own. The app serves the pictures itself (through the
-  playlist's proxy), and restricted titles and channels never go there. Android TV's own launcher and others that read the TV provider
+  playlist's proxy), and restricted titles and channels never go there. Back from what a card opens returns to the
+  TV's home screen, and Continue watching there is updated as soon as playback stops. Android TV's own launcher and others that read the TV provider
   show them; Google TV's home screen shows no app rows.
 - **The TV guide for other apps**: a launcher (such as MyTVLauncher) can open the TV guide directly, as the remote's
   Guide button does on Home. It opens the component `com.biskyt.mytvplayer/.TvGuide`, or the action

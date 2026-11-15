@@ -75,8 +75,10 @@ class LauncherOpenUiTest {
         assertTrue(compose.onAllNodes(hasText("Home")).fetchSemanticsNodes().isNotEmpty())
     }
 
+    private fun navigator() = ViewModelProvider(compose.activity)[RootViewModel::class.java].navigator
+
     /** The screens open now, from the first. */
-    private fun screens() = ViewModelProvider(compose.activity)[RootViewModel::class.java].navigator?.stack?.map { it.screen }
+    private fun screens() = navigator()?.stack?.map { it.screen }
 
     private fun opens(target: LauncherTarget, vararg screens: Screen) {
         app.container.launcherTarget.value = target
@@ -91,6 +93,21 @@ class LauncherOpenUiTest {
     @Test
     fun `a favourite film's card opens its page over Home`() =
         opens(LauncherTarget(LauncherTarget.MOVIE_PAGE, pid, 701), Screen.Home, Screen.MovieDetails(pid, 701))
+
+    @Test
+    fun `Back from a card's page goes back to the launcher, with Home under it`() {
+        opens(LauncherTarget(LauncherTarget.MOVIE_PAGE, pid, 701), Screen.Home, Screen.MovieDetails(pid, 701))
+        val nav = checkNotNull(navigator())
+        val leave = checkNotNull(nav.onLeave) { "AppRoot takes the app back to the launcher" }
+        var left = false
+        nav.onLeave = {
+            left = true
+            leave()
+        }
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitAdvancingClock(50) { left }
+        assertEquals(listOf<Screen>(Screen.Home), screens())
+    }
 
     @Test
     fun `the favourite movies' row opens their list`() =
@@ -110,5 +127,7 @@ class LauncherOpenUiTest {
         app.container.openGuide.value = true
         shows(Screen.Home, Screen.Live(guide = true))
         assertFalse("taken", app.container.openGuide.value)
+        val nav = checkNotNull(navigator())
+        assertEquals("Back goes back to the launcher", nav.current.id, nav.launcherEntry)
     }
 }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,6 +35,8 @@ import com.biskyt.mytvplayer.data.VodFilter
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
+import com.biskyt.mytvplayer.data.db.VOD_EPISODE
+import com.biskyt.mytvplayer.data.db.VOD_MOVIE
 import com.biskyt.mytvplayer.ui.common.LocalTopBarInset
 import com.biskyt.mytvplayer.ui.common.SyncToast
 import com.biskyt.mytvplayer.ui.common.Tab
@@ -112,10 +115,8 @@ fun AppRoot() {
         LaunchedEffect(nav) {
             container.openGuide.filter { it }.collect {
                 container.openGuide.value = false
-                if (container.playlists.get(container.settings.current().activePlaylistId) != null) {
-                    nav.reset(Screen.Home)
-                    openGuide(nav)
-                }
+                // As a card on the TV's home screen: Back goes back to the launcher.
+                if (container.playlists.get(container.settings.current().activePlaylistId) != null) nav.openCard(GUIDE)
             }
         }
         // Restricted content hidden again (the app was left): a player or details page that may show it closes, back to
@@ -124,6 +125,12 @@ fun AppRoot() {
             container.parental.relocked.collect { if (nav.current.screen.showsTitle) nav.reset(Screen.Home) }
         }
         val activity = LocalActivity.current
+        // Closing what a card on the TV's home screen opened goes back there (see openFromLauncher). The app stays in
+        // memory, as when the TV's Home button is pressed.
+        DisposableEffect(nav, activity) {
+            nav.onLeave = { activity?.moveTaskToBack(true) }
+            onDispose { nav.onLeave = null }
+        }
         BackHandler {
             when {
                 nav.pop() -> Unit
@@ -185,26 +192,23 @@ private suspend fun openFromLauncher(container: AppContainer, nav: Navigator, t:
         container.sync.switchTo(t.playlistId)
     }
     when (t.kind) {
+        // A row's list: the app's own screen, as before.
         LauncherTarget.FAVOURITES -> nav.reset(Screen.Live(ChannelFilter.Favourites))
         LauncherTarget.FAVOURITE_MOVIES -> nav.reset(Screen.Movies(VodFilter.Favourites))
         LauncherTarget.FAVOURITE_SERIES -> nav.reset(Screen.Series(VodFilter.Favourites))
-        LauncherTarget.MOVIE_PAGE -> {
-            nav.reset(Screen.Home)
-            nav.push(Screen.MovieDetails(t.playlistId, t.itemId))
-        }
-        LauncherTarget.SERIES_PAGE -> {
-            nav.reset(Screen.Home)
-            nav.push(Screen.SeriesDetails(t.playlistId, t.itemId))
-        }
-        LauncherTarget.CHANNEL -> {
-            nav.reset(Screen.Home)
-            nav.push(Screen.Player(t.playlistId, t.itemId, ChannelFilter.Favourites))
-        }
-        else -> {
-            nav.reset(Screen.Home)
-            nav.push(Screen.VodPlayer(t.playlistId, t.itemId, t.seriesId, continueSeries = true))
-        }
+        // A card: over Home, and closing it goes back to the launcher (the owner, 2026-11-15).
+        LauncherTarget.CHANNEL -> nav.openCard(Screen.Player(t.playlistId, t.itemId, ChannelFilter.Favourites))
+        LauncherTarget.MOVIE_PAGE -> nav.openCard(Screen.MovieDetails(t.playlistId, t.itemId))
+        LauncherTarget.SERIES_PAGE -> nav.openCard(Screen.SeriesDetails(t.playlistId, t.itemId))
+        VOD_MOVIE, VOD_EPISODE -> nav.openCard(Screen.VodPlayer(t.playlistId, t.itemId, t.seriesId, continueSeries = true))
     }
+}
+
+/** [screen], opened by a card on the TV's home screen: over Home, and closing it goes back to the launcher. */
+private fun Navigator.openCard(screen: Screen) {
+    reset(Screen.Home)
+    push(screen)
+    launcherEntry = current.id
 }
 
 /**
@@ -212,10 +216,10 @@ private suspend fun openFromLauncher(container: AppContainer, nav: Navigator, t:
  * the channel's schedule). Opened on top, so Back returns to whatever was there, unchanged.
  */
 private fun Modifier.guideButton(nav: Navigator, hasPlaylist: Boolean) =
-    onGuideKey({ hasPlaylist && guideButtonOpensGuide(nav.current.screen) }) { openGuide(nav) }
+    onGuideKey({ hasPlaylist && guideButtonOpensGuide(nav.current.screen) }) { nav.push(GUIDE) }
 
 /** The TV guide, opened on top (Back returns to what was there). */
-private fun openGuide(nav: Navigator) = nav.push(Screen.Live(guide = true))
+private val GUIDE = Screen.Live(guide = true)
 
 /**
  * Movies and series not loaded yet (e.g. just updated from a version without them). M3U ones only if never loaded:

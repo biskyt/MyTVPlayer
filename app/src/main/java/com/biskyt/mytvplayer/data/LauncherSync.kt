@@ -79,6 +79,9 @@ class LauncherSync(
     /** One write at a time, and none after the rows are turned off (see [republish]). */
     private val writes = Mutex()
 
+    /** The data written last (under [writes]): the same again is not written again, unless a launcher asks for it. */
+    private var written: Cards? = null
+
     init {
         scope.launch {
             settings.settings.map { it.launcherRows }.distinctUntilChanged().collectLatest { on ->
@@ -87,6 +90,7 @@ class LauncherSync(
                     // Turned off (or off since it was last on): the cards come off the TV. Off from the start: nothing.
                     writing { launcher.isOn() } == true -> writing {
                         launcher.clear()
+                        written = null
                         madeChannels.value = emptySet()
                     }
                 }
@@ -94,16 +98,25 @@ class LauncherSync(
         }
     }
 
-    /** A launcher asked for the cards (see LauncherReceiver): written again, if the rows are on (then, not before). */
-    fun republish() {
+    /** A launcher asked for the cards (see LauncherReceiver): written again now, if the rows are on. */
+    fun republish() = writeNow(again = true)
+
+    /**
+     * Playback stopped, or the user forgot something (see AppContainer): the cards written now, if the rows are on, so
+     * that Continue watching on the TV's home screen is up to date when the user goes back there. Changes are otherwise
+     * written once they settle (see rows).
+     */
+    fun playbackStopped() = writeNow(again = false)
+
+    /** [again]: also if nothing changed since the last write (a launcher whose data was cleared asks again). */
+    private fun writeNow(again: Boolean) {
         scope.launch {
-            // Not even read while the rows are off (or with no playlist). Checked again under the lock: they may have been
-            // turned off since, or another playlist's cards written.
-            val pid = settings.current().takeIf { it.launcherRows }?.activePlaylistId?.takeIf { it != 0L } ?: return@launch
-            val rows = data(pid).first().rows()
+            // Not even read while the rows are off (or with no playlist). Read under the lock, so that an older read is never
+            // written after a newer one; checked again there, as the rows may have been turned off since.
+            settings.current().takeIf { it.launcherRows && it.activePlaylistId != 0L } ?: return@launch
             writing {
                 val now = settings.current()
-                if (now.launcherRows && now.activePlaylistId == pid) write(rows)
+                if (now.launcherRows && now.activePlaylistId != 0L) write(data(now.activePlaylistId).first(), again)
             }
         }
     }
@@ -124,12 +137,11 @@ class LauncherSync(
      * every 15 s: the cards are written once it stops, not all the way through.
      */
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
-    private fun rows(): Flow<LauncherRows> {
+    private fun rows(): Flow<Cards> {
         var shown: Long? = null
         return settings.activePlaylistId.flatMapLatest(::data)
             .debounce { if (it.pid == shown) SETTLE_MS else 0L }
             .onEach { shown = it.pid }
-            .map { it.rows() }
     }
 
     private fun data(pid: Long): Flow<Cards> = combine(
@@ -195,12 +207,14 @@ class LauncherSync(
         RowCard("$playlistId:$streamId", name, logoUrl, open(LauncherTarget(LauncherTarget.CHANNEL, playlistId, streamId)))
 
     /**
-     * Writes [rows] (under [writes]). The rows made now are to be shown; one made before and not shown yet that is gone
-     * now is not (the TV must not be asked to show it).
+     * Writes the cards from [cards] (under [writes]), unless they were written last ([again]: also then). The rows made
+     * now are to be shown; one made before and not shown yet that is gone now is not (the TV must not be asked to show it).
      */
-    private fun write(rows: LauncherRows) {
-        val written = launcher.publish(rows)
-        madeChannels.update { (it intersect written.channels) + written.made }
+    private fun write(cards: Cards, again: Boolean = false) {
+        if (!again && cards == written) return
+        val published = launcher.publish(cards.rows())
+        written = cards
+        madeChannels.update { (it intersect published.channels) + published.made }
     }
 
     /** One at a time. A TV without the TV provider (a phone), or one that refuses: the app goes on as before (null). */
