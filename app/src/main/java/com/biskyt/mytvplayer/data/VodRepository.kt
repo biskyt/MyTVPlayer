@@ -79,6 +79,8 @@ class VodRepository(
     private val progressListener: ProgressListener = ProgressListener.NONE,
     /** Keeps the user's changes for the sync between TVs. */
     private val log: ChoiceLog = ChoiceLog(db),
+    /** Playback stopped, or the user forgot something: for the TV's home screen (see LauncherSync.republish). */
+    private val onStopped: () -> Unit = {},
 ) {
     private val vod = db.vod()
     private val categories = db.categories()
@@ -180,6 +182,12 @@ class VodRepository(
 
     fun observeCarryOn(playlistId: Long, limit: Int = 12) = vod.observeCarryOn(playlistId, limit, WatchProgressEntity.FINISHED_FRACTION)
 
+    /** [stopped]: playback stopped, or the user forgot something. */
+    private fun changed(stopped: Boolean) {
+        progressListener.changed(stopped)
+        if (stopped) onStopped()
+    }
+
     /**
      * Saves progress; [trim] (when playback stops) also drops the oldest rows beyond the cap, in the same write. A
      * finished episode with [next] after it puts that one on "Continue watching" in its place ([upNext]). Nothing is kept
@@ -188,7 +196,7 @@ class VodRepository(
     suspend fun saveProgress(p: WatchProgressEntity, trim: Boolean = false, next: EpisodeInfo? = null) {
         db.withTransaction { save(p, trim, next) }
         // Playback stopped (trim): a good moment to sync. During playback, a save only marks a change.
-        progressListener.changed(trim)
+        changed(trim)
     }
 
     private suspend fun save(p: WatchProgressEntity, trim: Boolean, next: EpisodeInfo?) {
@@ -229,7 +237,7 @@ class VodRepository(
                 vod.deleteSeriesProgress(p.playlistId, series)
             }
         }
-        progressListener.changed(true)
+        changed(true)
     }
 
     /** Keeps what the user forgot (kind to id), so the other TVs forget it too. */
@@ -282,7 +290,7 @@ class VodRepository(
             val upNext = next?.takeIf { vod.deleteUpNext(playlistId, it.id) > 0 }
             remember(playlistId, listOfNotNull(episodeId, upNext?.id).map { VOD_EPISODE to it })
         }
-        progressListener.changed(true)
+        changed(true)
     }
 
     // --- details (fetched when opened) ---

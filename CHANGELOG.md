@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.19.1
+- When you open a film, episode, channel or poster from the TV's home screen, or the TV guide from another app, Back now takes you back to the TV's home screen, not to the app's Home.
+- When playback stops, Continue watching on the TV's home screen is updated at once.
+- Settings no longer stutters when it asks the TV to show a new row on its home screen.
+
 ## 1.19.0
 - With "Show on the TV's home screen" on, your favourite movies and series are now rows of posters on the TV's home screen too, and each card opens its page.
 - Another app, such as a launcher, can now open MyTVPlayer's TV guide directly, as the remote's Guide button does on Home.

@@ -133,7 +133,10 @@ class AppContainer(context: Context, launcherWriter: LauncherWriter = TvLauncher
 
     /** For images: through the active playlist's proxy. Made at the first image, not for a process that loads none. */
     val imageCalls by lazy { ImageCalls(appScope, activeProxy, proxies) }
-    val vod = VodRepository(db, playlists, categoryStore, progressSync, choiceLog)
+
+    // When playback stops (or the user forgets something), Continue watching goes to the TV's home screen at once (the
+    // owner, 2026-11-15), not once changes settle. While that is off, only the setting is read.
+    val vod = VodRepository(db, playlists, categoryStore, progressSync, choiceLog) { launcherSync.playbackStopped() }
     private val syncedChoices by lazy { SyncedChoices(db, channels, vod, categoryStore, parental, epg) }
     val favourites = Favourites(appScope, settings, channels, vod)
     val search = SearchRepository(db)

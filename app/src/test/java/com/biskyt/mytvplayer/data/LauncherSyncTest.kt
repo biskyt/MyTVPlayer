@@ -209,6 +209,25 @@ class LauncherSyncTest {
         eventually("the series' row taken off") { writer.published.last().channels.map { it.key } == listOf("favourites") }
     }
 
+    @Test
+    fun `when playback stops, Continue watching goes to the launcher at once, not once changes settle`() = runBlocking {
+        // The app's own sync (TestApp records what it writes), as playback saves through the app's repository.
+        c.settings.update { it.copy(launcherRows = true) }
+        eventually("cards written") { app.launcherWrites.isNotEmpty() }
+        val before = app.launcherWrites.size
+        val now = System.currentTimeMillis()
+        c.vod.saveProgress(WatchProgressEntity(pid, VOD_MOVIE, 701, 900_000, 6_000_000, now, "Heat", null), trim = true)
+        // Sooner than the 20 s that changes otherwise wait for.
+        eventually("written again") { app.launcherWrites.drop(before).any { r -> r.playNext.any { it.key == "$pid:$VOD_MOVIE:701" } } }
+        // Stopped again with nothing changed: nothing written again (a launcher that asks gets the cards again).
+        val after = app.launcherWrites.size
+        c.launcherSync.playbackStopped()
+        delay(1_000)
+        assertEquals(after, app.launcherWrites.size)
+        c.launcherSync.republish()
+        eventually("written again when asked") { app.launcherWrites.size > after }
+    }
+
     private companion object {
         const val CHANNELS = 7L
         const val MOVIES = 8L
