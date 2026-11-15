@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.22.2
+- The sound line in the More panel no longer shows the last track's sound after a seek or a change of track.
+- The sound line names Dolby Atmos sent as Dolby Digital Plus as it is sent.
+- The AAC passthrough check now says yes only when an HDMI device is connected.
+- The AAC passthrough check keeps its result while you scroll.
+
 ## 1.22.1
 - On Android 12 and earlier, MyTVPlayer now asks the TV to decode surround sound with all its channels, as it already did on later versions, so that the TV does not mix 5.1 sound down to stereo.
 - The sound line in the More panel now names the sound format and shows how many channels really go to your TV or amplifier, for example "AAC decoded · Stereo".
