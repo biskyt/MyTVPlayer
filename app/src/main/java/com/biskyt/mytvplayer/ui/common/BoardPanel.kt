@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,13 +20,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.em
+import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.ui.theme.BOLD
@@ -123,6 +127,8 @@ fun BoardOption(
     modifier: Modifier = Modifier,
     danger: Boolean = false,
     selected: Boolean = false,
+    /** Shown after the label, in its colour (the favourite's heart, the owner 2026-11-15). */
+    icon: ImageVector? = null,
     onClick: () -> Unit
 ) {
     AccentFillSurface(
@@ -133,7 +139,16 @@ fun BoardOption(
         selected = selected
     ) {
         Column(Modifier.padding(horizontal = 14.bd, vertical = 8.bd), verticalArrangement = Arrangement.spacedBy(1.bd)) {
-            Text(label, style = BoardOptionText.current, color = LocalContentColor.current)
+            val text = @Composable { Text(label, style = BoardOptionText.current, color = LocalContentColor.current) }
+            if (icon == null) {
+                text()
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.bd)) {
+                    text()
+                    // (Described by the label.)
+                    Icon(icon, contentDescription = null, tint = LocalContentColor.current, modifier = Modifier.size(18.bd))
+                }
+            }
             if (help != null) Text(help, style = BoardHelpText.current, color = cardColor(Palette.textDim, HELP_ON_ACCENT))
         }
     }

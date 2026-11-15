@@ -108,6 +108,11 @@ fun TvCard(
     selectedColor: Color = LocalAccent.current.tint,
     /** Its text's colour without focus (a panel's Delete is red). */
     contentColor: Color = Palette.text,
+    /**
+     * With focus, it grows and glows in the accent colour, in place of the white ring (see focusGlow; the owner,
+     * 2026-11-15): for cards in rows and grids, whose items are raised (raiseOnFocus) and have room around them.
+     */
+    glow: Boolean = false,
     content: @Composable BoxScope.() -> Unit
 ) {
     val accent = LocalAccent.current
@@ -123,7 +128,9 @@ fun TvCard(
         onClick = onClick,
         onLongClick = onLongClick,
         // Back on its screen, the card used last has focus again.
-        modifier = (if (onLongClick != null) modifier.onOptionsKey(onLongClick) else modifier).returnsFocus()
+        modifier = (if (onLongClick != null) modifier.onOptionsKey(onLongClick) else modifier)
+            .then(if (glow) Modifier.focusGlow(shape, accent.color) else Modifier)
+            .returnsFocus()
             .onFocusChanged { focused = it.hasFocus }
             .onTap(onLongClick, onClick),
         shape = ClickableSurfaceDefaults.shape(shape),
@@ -139,7 +146,7 @@ fun TvCard(
             focusedBorder = when {
                 // In use and filled: a ring in the fill's text colour, so it still shows which one is in use.
                 fill && selected -> Border(BorderStroke(SelectedRing, accent.onAccent), SelectedRingInset)
-                ring && !fill -> FocusRing
+                ring && !fill && !glow -> FocusRing
                 else -> Border.None
             }
         )
@@ -315,7 +322,7 @@ fun PosterCard(
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
-    TvCard(onClick = onClick, onLongClick = onLongClick, color = Palette.background, modifier = modifier) {
+    TvCard(onClick = onClick, onLongClick = onLongClick, color = Palette.background, modifier = modifier, glow = true) {
         Column(Modifier.padding(6.dp).width(POSTER_WIDTH), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             FavouriteBadge(favourite) { Poster(card.imageUrl, card.title, POSTER_WIDTH) }
             OneLine(card.title, MaterialTheme.typography.labelLarge)
@@ -525,7 +532,13 @@ fun <T> LazyListScope.titledRow(
                 MoveHint(move.mover, move.type, MoveLayout.ROW)
                 KeepInView(state) { move.mover.movingId(move.type)?.let { p -> items.indexOfFirst { key(it) == p } } }
             }
-            LazyRow(state = state, horizontalArrangement = Arrangement.spacedBy(14.dp)) { items(items, key = key) { card(it) } }
+            // Room for the card with focus to grow and glow (see glowRoom), drawn over the cards beside it.
+            LazyRow(
+                Modifier.glowRoom(),
+                state = state,
+                contentPadding = glowRoomPadding(),
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) { items(items, key = key) { Box(Modifier.raiseOnFocus()) { card(it) } } }
         }
     }
 }

@@ -35,7 +35,7 @@ fun ChannelCard(
 ) {
     LaunchedEffect(c.streamId) { loader.request(c.streamId) }
     val nn = loader.entries[c.streamId]
-    TvCard(onClick = onClick, onLongClick = onLongClick, modifier = modifier.width(272.dp)) {
+    TvCard(onClick = onClick, onLongClick = onLongClick, modifier = modifier.width(272.dp), glow = true) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ChannelLogo(c.logoUrl, c.name, 64.dp, 38.dp, favourite)

@@ -225,7 +225,7 @@ class AppUiTest {
             advanceEventTime(1_500)
             keyUp(Key.DirectionCenter)
         }
-        waitFor("Start over")
+        waitFor("Restart current show")
         clickOption("Catch-up")
         compose.waitForIdle()
         assertEquals(Screen.Catchup(playlistId, 101), navigator.current.screen)
@@ -246,7 +246,7 @@ class AppUiTest {
             keyUp(Key.DirectionCenter)
         }
         waitFor("Hide channel")
-        assertTrue(compose.onAllNodes(hasText("Start over")).fetchSemanticsNodes().isEmpty())
+        assertTrue(compose.onAllNodes(hasText("Restart current show")).fetchSemanticsNodes().isEmpty())
     }
 
     @Test

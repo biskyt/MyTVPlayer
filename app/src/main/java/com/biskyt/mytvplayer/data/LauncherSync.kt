@@ -86,7 +86,8 @@ class LauncherSync(
         scope.launch {
             settings.settings.map { it.launcherRows }.distinctUntilChanged().collectLatest { on ->
                 when {
-                    on -> rows().collect { writing { write(it) } }
+                    // Read again under the lock: a write made meanwhile (see writeNow) may be newer than this read.
+                    on -> rows().collect { writing { write(data(it.pid).first()) } }
                     // Turned off (or off since it was last on): the cards come off the TV. Off from the start: nothing.
                     writing { launcher.isOn() } == true -> writing {
                         launcher.clear()

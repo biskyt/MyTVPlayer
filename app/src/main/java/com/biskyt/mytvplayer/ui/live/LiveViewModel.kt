@@ -12,6 +12,7 @@ import androidx.paging.cachedIn
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.core.epg.ProgrammeKind
 import com.biskyt.mytvplayer.data.ChannelFilter
+import com.biskyt.mytvplayer.data.categoryLabel
 import com.biskyt.mytvplayer.data.db.CAT_LIVE
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
@@ -19,6 +20,7 @@ import com.biskyt.mytvplayer.data.db.CategoryCount
 import com.biskyt.mytvplayer.data.db.CategoryEntity
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
+import com.biskyt.mytvplayer.data.label
 import com.biskyt.mytvplayer.ui.PickedLists
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.common.CategoryFilter
@@ -137,6 +139,14 @@ class LiveViewModel(
         c.playlists.get(ch.playlistId)?.hasVod != true -> ProgrammeKind.UNKNOWN
         else -> p.kind
     }
+
+    /** What the options' More info shows about [ch]: read only when it opens (see ChannelInfoView). */
+    suspend fun channelInfo(ch: ChannelEntity) = ChannelInfo(
+        category = c.db.categories().get(ch.playlistId, CAT_LIVE, ch.categoryId)?.label ?: categoryLabel("", null),
+        playlist = c.playlists.get(ch.playlistId)?.name,
+        guide = c.epg.mappingInfo(ch.playlistId, listOf(ch.streamId)).firstOrNull()?.takeIf { it.xmlId != null },
+        lastWatched = c.db.favourites().watchedAt(ch.playlistId, ch.streamId),
+    )
 
     private var findJob: Job? = null
 

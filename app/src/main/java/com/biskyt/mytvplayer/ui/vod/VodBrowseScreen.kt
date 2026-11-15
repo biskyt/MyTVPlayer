@@ -1,6 +1,7 @@
 package com.biskyt.mytvplayer.ui.vod
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -45,6 +46,7 @@ import com.biskyt.mytvplayer.ui.common.CategoryEntry
 import com.biskyt.mytvplayer.ui.common.CategoryFilter
 import com.biskyt.mytvplayer.ui.common.FavouriteMover
 import com.biskyt.mytvplayer.ui.common.FilteredCategoryColumn
+import com.biskyt.mytvplayer.ui.common.GLOW_ROOM
 import com.biskyt.mytvplayer.ui.common.ItemActionsPanel
 import com.biskyt.mytvplayer.ui.common.KeepInView
 import com.biskyt.mytvplayer.ui.common.ListHeader
@@ -63,11 +65,14 @@ import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TabScaffold
 import com.biskyt.mytvplayer.ui.common.categoryEntries
 import com.biskyt.mytvplayer.ui.common.collectIds
+import com.biskyt.mytvplayer.ui.common.glowRoom
+import com.biskyt.mytvplayer.ui.common.glowRoomPadding
 import com.biskyt.mytvplayer.ui.common.isLockedCategory
 import com.biskyt.mytvplayer.ui.common.moveAction
 import com.biskyt.mytvplayer.ui.common.openOnShown
 import com.biskyt.mytvplayer.ui.common.pageItem
 import com.biskyt.mytvplayer.ui.common.pageKeys
+import com.biskyt.mytvplayer.ui.common.raiseOnFocus
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.common.reveal
 import com.biskyt.mytvplayer.ui.common.rowsInView
@@ -277,7 +282,7 @@ private fun PosterGrid(vm: VodBrowseViewModel, pid: Long) {
     val page = remember(filter, query) { PageFocus() } // a page not reached in another list is not taken in this one
     LazyVerticalGrid(
         columns = GridCells.Fixed(COLUMNS),
-        modifier = Modifier.pageKeys(
+        modifier = Modifier.glowRoom(vertical = false).pageKeys(
             page,
             { items.itemCount },
             COLUMNS,
@@ -287,7 +292,7 @@ private fun PosterGrid(vm: VodBrowseViewModel, pid: Long) {
         state = state,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(bottom = 40.dp)
+        contentPadding = glowRoomPadding(PaddingValues(top = GLOW_ROOM, bottom = 40.dp), vertical = false)
     ) {
         items(count = items.itemCount, key = items.itemKey { it.id }) { index ->
             val card = items[index]
@@ -299,13 +304,16 @@ private fun PosterGrid(vm: VodBrowseViewModel, pid: Long) {
             } else {
                 // Back from a title, on it; after one is taken off Favourites, on the first.
                 val wantsFocus = vm.restoreFocusPending && (vm.focusId?.let { it == card.id } ?: (index == 0))
-                MovableTile(vm.mover, vm.type, card.id, MoveLayout.GRID, COLUMNS) {
-                    PosterCard(
-                        card,
-                        Modifier.restoreFocusIf(wantsFocus) { vm.restoreFocusPending = false }.pageItem(page, index),
-                        favourite = card.id in favourites,
-                        onLongClick = { vm.optionsFor = card }
-                    ) { nav.push(vm.open(card, pid)) }
+                // Drawn over the cards beside it while it has focus, as it grows and glows (see focusGlow).
+                Box(Modifier.raiseOnFocus()) {
+                    MovableTile(vm.mover, vm.type, card.id, MoveLayout.GRID, COLUMNS) {
+                        PosterCard(
+                            card,
+                            Modifier.restoreFocusIf(wantsFocus) { vm.restoreFocusPending = false }.pageItem(page, index),
+                            favourite = card.id in favourites,
+                            onLongClick = { vm.optionsFor = card }
+                        ) { nav.push(vm.open(card, pid)) }
+                    }
                 }
             }
         }

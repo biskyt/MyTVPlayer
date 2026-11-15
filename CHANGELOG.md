@@ -3,6 +3,14 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.20.0
+- Cards on Home, in the film and series lists and in Search now grow and glow in the accent colour when selected, in place of the white border.
+- A channel's options in Live TV now have More info, which shows the channel's category, playlist, TV guide, guide ID, catch-up and when you last watched it.
+- The channel's guide over the player now shows every programme's description, not only the first few.
+- In a channel's options, "Show TV guide for this channel" is now "What's on", and "Start over" is now "Restart current show".
+- "Switch to grid view" is now the last of a channel's options, and a heart beside "Add to favourites" shows whether the channel is a favourite.
+- When playback stops, the TV's home screen no longer shows an older position for a few seconds.
+
 ## 1.19.1
 - When you open a film, episode, channel or poster from the TV's home screen, or the TV guide from another app, Back now takes you back to the TV's home screen, not to the app's Home.
 - When playback stops, Continue watching on the TV's home screen is updated at once.
