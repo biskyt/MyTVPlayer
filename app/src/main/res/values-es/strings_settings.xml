@@ -20,6 +20,8 @@
     <string name="settings_seconds">%1$d s</string>
     <string name="settings_passthrough">Passthrough de audio</string>
     <string name="settings_passthrough_help">Envía Dolby / DTS / Atmos a tu barra de sonido o TV para que lo decodifique. Desactívalo si no tienes sonido.</string>
+    <string name="settings_surround_dolby">Enviar el sonido envolvente como Dolby Digital</string>
+    <string name="settings_surround_dolby_help">Para una TV que solo envía estéreo a tu barra de sonido: el sonido envolvente que decodifica la app, como AAC, se envía como Dolby Digital 5.1.</string>
     <string name="settings_subtitles">Subtítulos predeterminados</string>
     <string name="settings_subtitles_help">Solo forzados muestra subtítulos solo para los diálogos en otro idioma</string>
     <string name="settings_subtitles_forced_only">Solo forzados</string>
@@ -60,6 +62,7 @@
     <string name="settings_licence_link">Licencia: %1$s, %2$s</string>
     <string name="settings_lib_media3">Reproducción de video (ExoPlayer, HLS, DASH, subtítulos)</string>
     <string name="settings_lib_ffmpeg">Formatos de audio que la TV no puede decodificar; incluye FFmpeg (LGPL 2.1 o posterior)</string>
+    <string name="settings_lib_ac3">Codifica el sonido envolvente como Dolby Digital (solo el codificador AC-3 de FFmpeg)</string>
     <string name="settings_lib_compose">Las pantallas de la app</string>
     <string name="settings_lib_tv">Botones, tarjetas y foco para TV</string>
     <string name="settings_lib_activity">Alojamiento de las pantallas</string>

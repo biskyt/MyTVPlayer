@@ -26,6 +26,8 @@
     <!-- "Dolby", "DTS" and "Atmos" are brand names: don't translate them. -->
     <string name="settings_passthrough">Audio passthrough</string>
     <string name="settings_passthrough_help">Send Dolby / DTS / Atmos to your soundbar or TV to decode. Turn off if you get no sound.</string>
+    <string name="settings_surround_dolby">Send surround sound as Dolby Digital</string>
+    <string name="settings_surround_dolby_help">For a TV that sends only stereo to your soundbar: surround sound that the app decodes, such as AAC, goes as Dolby Digital 5.1.</string>
     <string name="settings_subtitles">Default subtitles</string>
     <!-- "Forced only" is the name of the option settings_subtitles_forced_only. -->
     <string name="settings_subtitles_help">Forced only shows subtitles just for foreign-language lines</string>
@@ -82,6 +84,7 @@
     <!-- What each open-source library is used for in the app (the library names aren't translated). -->
     <string name="settings_lib_media3">Video playback (ExoPlayer, HLS, DASH, subtitles)</string>
     <string name="settings_lib_ffmpeg">Audio formats the TV can\'t decode; includes FFmpeg (LGPL 2.1 or later)</string>
+    <string name="settings_lib_ac3">Encodes surround sound as Dolby Digital (FFmpeg\'s AC-3 encoder only)</string>
     <string name="settings_lib_compose">The app\'s screens</string>
     <string name="settings_lib_tv">TV buttons, cards and focus</string>
     <string name="settings_lib_activity">Hosting the screens</string>

@@ -318,9 +318,14 @@ class PlaybackEngine(
     ): String {
         // The format being played when known; else the chosen track's.
         val f = playing ?: selectedAudioFormat(tracks) ?: return appString(R.string.player_audio_none)
-        val name = encodedName(f.sampleMimeType) ?: decodedName(f.sampleMimeType)
+        val encoded = encodedName(f.sampleMimeType)
+        val name = encoded ?: decodedName(f.sampleMimeType)
+        // Decoded surround sound encoded in the app (DolbyDigitalSink): any source but Dolby Digital itself.
+        if (out?.encoding == C.ENCODING_AC3 && name != null && f.sampleMimeType != MimeTypes.AUDIO_AC3) {
+            return appString(R.string.player_audio_as_dolby, name)
+        }
         // An output sent unchanged belongs to a format that can be sent so: Dolby or DTS. Also see audioInputChanged.
-        val sent = out?.takeIf { Util.isEncodingLinearPcm(it.encoding) || encodedName(f.sampleMimeType) != null }
+        val sent = out?.takeIf { Util.isEncodingLinearPcm(it.encoding) || encoded != null }
         unchangedName(f, sent)?.let { return appString(R.string.player_audio_passthrough, it) }
         val channels = sent?.let { Integer.bitCount(it.channelConfig) } ?: f.channelCount.takeIf { it != Format.NO_VALUE } ?: 2
         val layout = if (channels > 2) appString(R.string.player_track_channels, channels) else appString(R.string.player_audio_stereo)
@@ -355,6 +360,7 @@ class PlaybackEngine(
         override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink? =
             if (settings.audioPassthrough) {
                 super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams)
+                    ?.let { if (settings.surroundAsDolby && Ac3Encoder.available) DolbyDigitalSink(it) else it }
             } else {
                 @Suppress("DEPRECATION")
                 DefaultAudioSink.Builder(context).setAudioCapabilities(AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES).build()

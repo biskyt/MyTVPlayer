@@ -29,6 +29,8 @@ data class Settings(
     val skipBackSec: Int = 10,
     val skipForwardSec: Int = 30,
     val audioPassthrough: Boolean = true,
+    /** Decoded surround sound is sent as Dolby Digital 5.1 (with passthrough on; see DolbyDigitalSink). */
+    val surroundAsDolby: Boolean = false,
     val subtitleMode: SubtitleMode = SubtitleMode.FORCED_ONLY,
     /** Empty means "follow the TV's system language". */
     val subtitleLanguage: String = "",
@@ -69,6 +71,7 @@ class SettingsRepository(private val context: Context) {
         val skipBack = intPreferencesKey("skip_back")
         val skipForward = intPreferencesKey("skip_forward")
         val passthrough = booleanPreferencesKey("audio_passthrough")
+        val surroundAsDolby = booleanPreferencesKey("surround_as_dolby")
         val aacUnchanged = booleanPreferencesKey("aac_unchanged")
         val aacInApp = booleanPreferencesKey("aac_in_app")
         val subtitleMode = stringPreferencesKey("subtitle_mode")
@@ -132,6 +135,7 @@ class SettingsRepository(private val context: Context) {
             skipBackSec = valueOr(K.skipBack, d.skipBackSec),
             skipForwardSec = valueOr(K.skipForward, d.skipForwardSec),
             audioPassthrough = valueOr(K.passthrough, d.audioPassthrough),
+            surroundAsDolby = valueOr(K.surroundAsDolby, d.surroundAsDolby),
             subtitleMode = enumOr(this[K.subtitleMode], d.subtitleMode),
             subtitleLanguage = valueOr(K.subtitleLang, d.subtitleLanguage),
             bufferSize = enumOr(this[K.buffer], d.bufferSize),
@@ -161,6 +165,7 @@ class SettingsRepository(private val context: Context) {
             prefs[K.skipBack] = s.skipBackSec
             prefs[K.skipForward] = s.skipForwardSec
             prefs[K.passthrough] = s.audioPassthrough
+            prefs[K.surroundAsDolby] = s.surroundAsDolby
             // Test settings of 1.22.1 to 1.22.3, since removed: their stored values go at the next save.
             prefs.remove(K.aacInApp)
             prefs.remove(K.aacUnchanged)

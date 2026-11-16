@@ -20,6 +20,8 @@
     <string name="settings_seconds">%1$d s</string>
     <string name="settings_passthrough">Passthrough audio</string>
     <string name="settings_passthrough_help">Envoie le Dolby / DTS / Atmos à votre barre de son ou téléviseur pour le décodage. Désactivez-le si vous n\'avez pas de son.</string>
+    <string name="settings_surround_dolby">Envoyer le son surround en Dolby Digital</string>
+    <string name="settings_surround_dolby_help">Pour un téléviseur qui n\'envoie que de la stéréo à votre barre de son : le son surround décodé par l\'application, comme l\'AAC, est envoyé en Dolby Digital 5.1.</string>
     <string name="settings_subtitles">Sous-titres par défaut</string>
     <string name="settings_subtitles_help">Forcés uniquement : sous-titres seulement pour les répliques en langue étrangère</string>
     <string name="settings_subtitles_forced_only">Forcés uniquement</string>
@@ -60,6 +62,7 @@
     <string name="settings_licence_link">Licence : %1$s, %2$s</string>
     <string name="settings_lib_media3">Lecture vidéo (ExoPlayer, HLS, DASH, sous-titres)</string>
     <string name="settings_lib_ffmpeg">Formats audio que le téléviseur ne sait pas décoder ; inclut FFmpeg (LGPL 2.1 ou ultérieure)</string>
+    <string name="settings_lib_ac3">Encode le son surround en Dolby Digital (seulement l\'encodeur AC-3 de FFmpeg)</string>
     <string name="settings_lib_compose">Les écrans de l\'appli</string>
     <string name="settings_lib_tv">Boutons, cartes et focus TV</string>
     <string name="settings_lib_activity">Hébergement des écrans</string>
