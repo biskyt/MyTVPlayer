@@ -29,7 +29,7 @@ data class Settings(
     val skipBackSec: Int = 10,
     val skipForwardSec: Int = 30,
     val audioPassthrough: Boolean = true,
-    /** Decoded surround sound is sent as Dolby Digital 5.1 (with passthrough on; see DolbyDigitalSink). */
+    /** Decoded AAC surround sound is sent as Dolby Digital 5.1 (with passthrough on; see DolbyDigitalSink). */
     val surroundAsDolby: Boolean = false,
     val subtitleMode: SubtitleMode = SubtitleMode.FORCED_ONLY,
     /** Empty means "follow the TV's system language". */
