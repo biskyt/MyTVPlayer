@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.23.1
+- The help text of Send surround sound as Dolby Digital is now shorter and clearer.
+
 ## 1.23.0
 - A new setting, Settings › Playback › Send surround sound as Dolby Digital, sends surround sound, such as AAC, as Dolby Digital 5.1, so that a soundbar behind a TV that sends only stereo can use all its speakers.
 - A film or episode that you resume and stop again within 30 seconds no longer moves to the front of Continue watching.

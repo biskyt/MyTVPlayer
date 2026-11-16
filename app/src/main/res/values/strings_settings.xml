@@ -27,7 +27,7 @@
     <string name="settings_passthrough">Audio passthrough</string>
     <string name="settings_passthrough_help">Send Dolby / DTS / Atmos to your soundbar or TV to decode. Turn off if you get no sound.</string>
     <string name="settings_surround_dolby">Send surround sound as Dolby Digital</string>
-    <string name="settings_surround_dolby_help">For a TV that sends only stereo to your soundbar: surround sound that the app decodes, such as AAC, goes as Dolby Digital 5.1.</string>
+    <string name="settings_surround_dolby_help">Changes AAC 5.1 to Dolby Digital 5.1, for a soundbar or receiver that cannot decode multichannel AAC.</string>
     <string name="settings_subtitles">Default subtitles</string>
     <!-- "Forced only" is the name of the option settings_subtitles_forced_only. -->
     <string name="settings_subtitles_help">Forced only shows subtitles just for foreign-language lines</string>

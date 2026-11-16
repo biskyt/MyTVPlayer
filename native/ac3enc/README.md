@@ -4,6 +4,8 @@
 (`player/DolbyDigitalSink.kt` and `player/Ac3Encoder.kt`).
 
 - It is FFmpeg 7.1 with only the AC-3 encoder, and the JNI wrapper `ac3enc.c`.
+- MyTVPlayer and MyPlexPlayer use the same library file. `JNI_OnLoad` registers the functions with the app's own
+  `Ac3Encoder` class (the list is `CLASSES` in `ac3enc.c`). Copy the libraries to MyPlexPlayer unchanged.
 - It is built once and committed to `app/src/main/jniLibs/<abi>/libac3enc.so`. CI and releases do not build it.
 - It is built for `arm64-v8a` and `armeabi-v7a` only. On other devices (emulators) and in JVM tests the library is
   missing, so the setting is not shown.
@@ -11,7 +13,7 @@
 
 ## When to rebuild it
 Rebuild it only when one of these changes:
-- `ac3enc.c` (for example, a new JNI function or a renamed Kotlin class: the function names hold the class name).
+- `ac3enc.c` (for example, a new JNI function, or a new or renamed `Ac3Encoder` class in `CLASSES`).
 - The FFmpeg version (for a security fix).
 - Android's needs (for example, a new page size or ABI).
 
@@ -23,7 +25,7 @@ Rebuild it only when one of these changes:
 4. Unpack it: `tar xf ffmpeg-7.1.tar.xz`.
 5. Run the build on Linux x86-64 from the repository root:
    `NDK=<ndk folder> FFMPEG_SRC=<path>/ffmpeg-7.1 native/ac3enc/build.sh`
-6. The script writes the two libraries and prints their sizes. Each must have 4 JNI functions.
+6. The script writes the two libraries and prints their sizes. Each must have 1 `JNI_OnLoad`.
 7. Test on a device: turn on the setting and play a film with 5.1 AAC sound. The sound line in Options must say "AAC sent
    as Dolby Digital 5.1".
 8. Update the checksums below and commit the libraries with this file.
@@ -33,7 +35,7 @@ Built from FFmpeg 7.1 with NDK 27.2.12479018 (16 KB page size):
 
 | ABI | Size (bytes) | SHA-256 |
 |---|---|---|
-| arm64-v8a | 632392 | `e7f6d6d33952b8f0c6f3bf897f2659916f7bdea03896478c97d54a06691a4724` |
-| armeabi-v7a | 494656 | `35d2cd708cce8e82eed7f482057f8a805232d4f73c659aa0bc5a8b547da9e72c` |
+| arm64-v8a | 632984 | `7ad0fec8e130d833384e07defe8f0f97a08ed5a7e27796faedbb6bc6ab483e27` |
+| armeabi-v7a | 494976 | `58ef3d43ca92ccefb07a4209e743f7015c52c375ca37846eb01ad923419a436a` |
 
 A rebuild can give different bytes (the build is not reproducible), so new checksums are normal.

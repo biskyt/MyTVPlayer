@@ -21,7 +21,7 @@
     <string name="settings_passthrough">Passthrough audio</string>
     <string name="settings_passthrough_help">Envoie le Dolby / DTS / Atmos à votre barre de son ou téléviseur pour le décodage. Désactivez-le si vous n\'avez pas de son.</string>
     <string name="settings_surround_dolby">Envoyer le son surround en Dolby Digital</string>
-    <string name="settings_surround_dolby_help">Pour un téléviseur qui n\'envoie que de la stéréo à votre barre de son : le son surround décodé par l\'application, comme l\'AAC, est envoyé en Dolby Digital 5.1.</string>
+    <string name="settings_surround_dolby_help">Convertit l\'AAC 5.1 en Dolby Digital 5.1, pour une barre de son ou un ampli qui ne décode pas l\'AAC multicanal.</string>
     <string name="settings_subtitles">Sous-titres par défaut</string>
     <string name="settings_subtitles_help">Forcés uniquement : sous-titres seulement pour les répliques en langue étrangère</string>
     <string name="settings_subtitles_forced_only">Forcés uniquement</string>

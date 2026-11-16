@@ -35,18 +35,17 @@ class Ac3Encoder private constructor(private var handle: Long) : FrameEncoder {
         /** A frame is at most 3840 bytes (640 kbit/s at 32 kHz). */
         private const val OUT_BYTES = 4096
 
-        /** True when the library loaded: it is built for ARM only, so emulators and JVM tests have no encoder. */
-        val available: Boolean by lazy { runCatching { System.loadLibrary("ac3enc") }.isSuccess }
+        /**
+         * True when the library loaded: it is built for ARM only, so emulators and JVM tests have no encoder. It also
+         * fails to load when it does not know this class (CLASSES in native/ac3enc/ac3enc.c).
+         */
+        val available: Boolean by lazy {
+            runCatching { System.loadLibrary("ac3enc") }.onFailure { Log.i("Ac3Encoder", "No Dolby Digital encoder: $it") }.isSuccess
+        }
 
         fun open(channels: Int, rate: Int, bitrate: Int): Ac3Encoder? {
             if (!available) return null
-            // A library that does not match this class (its functions are named after it) plays the sound as before.
-            val handle = try {
-                nativeOpen(channels, rate, bitrate)
-            } catch (e: UnsatisfiedLinkError) {
-                Log.w("Ac3Encoder", "libac3enc does not match Ac3Encoder", e)
-                0L
-            }
+            val handle = nativeOpen(channels, rate, bitrate)
             return if (handle == 0L) null else Ac3Encoder(handle)
         }
 
