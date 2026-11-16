@@ -100,6 +100,9 @@ class VpnBadgeUiTest {
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Warn if VPN is not connected"))
         assertFalse(shown("Show your external IP address"))
         compose.onNode(hasText("Warn if VPN is not connected") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
+        // The row shows once the setting is saved and read back: scrolling to it before then could miss it (a race,
+        // seen when other test JVMs slow this one down).
+        compose.waitAdvancingClock { runBlocking { app.container.settings.current().warnVpn } }
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Show your external IP address"))
         assertFalse(runBlocking { app.container.settings.current().showExternalIp })
         compose.onNode(hasText("Show your external IP address") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)

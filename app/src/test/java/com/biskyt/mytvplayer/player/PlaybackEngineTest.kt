@@ -104,6 +104,13 @@ class PlaybackEngineTest {
     }
 
     @Test
+    fun `an AAC output that is not PCM is not called passthrough`() {
+        val aac51 = track(androidx.media3.common.MimeTypes.AUDIO_AAC, 6)
+        val sent = output(android.media.AudioFormat.ENCODING_AAC_LC, android.media.AudioFormat.CHANNEL_OUT_5POINT1)
+        assertEquals("AAC decoded · 6ch", engine.audioOutputLabel(playing = aac51, out = sent))
+    }
+
+    @Test
     fun `Dolby Atmos sent as plain Dolby Digital Plus is named as it is sent`() {
         val atmos = track(androidx.media3.common.MimeTypes.AUDIO_E_AC3_JOC, 6)
         val sent = output(androidx.media3.common.C.ENCODING_E_AC3, android.media.AudioFormat.CHANNEL_OUT_5POINT1)
@@ -133,12 +140,5 @@ class PlaybackEngineTest {
         engine.audioTrackStarted(first, ac3)
         engine.audioStopped()
         assertEquals("Dolby Digital decoded · 6ch", engine.audioOutputLabel(playing = ac3))
-    }
-
-    @Test
-    fun `AAC sent unchanged says so`() {
-        val aac51 = track(androidx.media3.common.MimeTypes.AUDIO_AAC, 6)
-        val sent = output(android.media.AudioFormat.ENCODING_AAC_LC, android.media.AudioFormat.CHANNEL_OUT_5POINT1)
-        assertEquals("Passthrough · AAC", engine.audioOutputLabel(playing = aac51, out = sent))
     }
 }
