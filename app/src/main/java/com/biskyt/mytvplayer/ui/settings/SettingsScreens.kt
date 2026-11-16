@@ -47,6 +47,7 @@ import com.biskyt.mytvplayer.data.Settings
 import com.biskyt.mytvplayer.data.StreamFormat
 import com.biskyt.mytvplayer.data.accentName
 import com.biskyt.mytvplayer.launcher.TvLauncher
+import com.biskyt.mytvplayer.player.Ac3Encoder
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
@@ -214,6 +215,15 @@ fun PlaybackSettingsScreen() {
                 stringResource(R.string.settings_passthrough_help),
                 { vm.update { it.copy(audioPassthrough = !it.audioPassthrough) } }
             ) { Toggle(s.audioPassthrough) }
+        }
+        if (s.audioPassthrough && Ac3Encoder.available) {
+            item {
+                SettingRow(
+                    stringResource(R.string.settings_surround_dolby),
+                    stringResource(R.string.settings_surround_dolby_help),
+                    { vm.update { it.copy(surroundAsDolby = !it.surroundAsDolby) } }
+                ) { Toggle(s.surroundAsDolby) }
+            }
         }
         item {
             val mode = when (s.subtitleMode) {

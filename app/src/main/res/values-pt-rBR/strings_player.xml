@@ -41,6 +41,7 @@
     <string name="player_audio_none">Sem áudio</string>
     <string name="player_audio_passthrough">Passthrough · %1$s</string>
     <string name="player_audio_decoded">%1$s decodificado · %2$s</string>
+    <string name="player_audio_as_dolby">%1$s enviado como Dolby Digital 5.1</string>
     <string name="player_audio_layout">Áudio · %1$s</string>
     <string name="player_audio_stereo">Estéreo</string>
 

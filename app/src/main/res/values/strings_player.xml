@@ -63,6 +63,7 @@
     <string name="player_audio_passthrough">Passthrough · %1$s</string>
     <!-- %1$s: the format decoded by the TV box, e.g. "Dolby Digital"; %2$s: the sound channels, "Stereo" or e.g. "6ch" -->
     <string name="player_audio_decoded">%1$s decoded · %2$s</string>
+    <string name="player_audio_as_dolby">%1$s sent as Dolby Digital 5.1</string>
     <!-- Any other sound. %1$s: the sound channels, "Stereo" or e.g. "6ch" -->
     <string name="player_audio_layout">Audio · %1$s</string>
     <!-- Two sound channels, in the two strings above -->

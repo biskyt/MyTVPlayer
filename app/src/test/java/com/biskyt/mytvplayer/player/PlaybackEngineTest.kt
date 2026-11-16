@@ -111,6 +111,17 @@ class PlaybackEngineTest {
     }
 
     @Test
+    fun `AAC encoded to Dolby Digital in the app says so`() {
+        val aac51 = track(androidx.media3.common.MimeTypes.AUDIO_AAC, 6)
+        val sent = output(androidx.media3.common.C.ENCODING_AC3, android.media.AudioFormat.CHANNEL_OUT_5POINT1)
+        assertEquals("AAC sent as Dolby Digital 5.1", engine.audioOutputLabel(playing = aac51, out = sent))
+        val dts = track(androidx.media3.common.MimeTypes.AUDIO_DTS, 6)
+        assertEquals("DTS sent as Dolby Digital 5.1", engine.audioOutputLabel(playing = dts, out = sent))
+        val ac3 = track(androidx.media3.common.MimeTypes.AUDIO_AC3, 6)
+        assertEquals("Passthrough · Dolby Digital", engine.audioOutputLabel(playing = ac3, out = sent))
+    }
+
+    @Test
     fun `Dolby Atmos sent as plain Dolby Digital Plus is named as it is sent`() {
         val atmos = track(androidx.media3.common.MimeTypes.AUDIO_E_AC3_JOC, 6)
         val sent = output(androidx.media3.common.C.ENCODING_E_AC3, android.media.AudioFormat.CHANNEL_OUT_5POINT1)

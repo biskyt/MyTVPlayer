@@ -146,8 +146,8 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         // Read before playback starts, so nothing waits between starting it and the controls coming up.
         val known = c.vod.progress(p.id, playing.kind, playing.itemId)
         current = playing
-        // Something already started counts at once: only a new start waits.
-        onCarryOn = known != null && known.started && !known.finished
+        // A resumed title waits too: stopped at once, it keeps its place on Continue watching (the owner, 2026-11-16).
+        saving = false
         resetForNewStream()
         val engine = engine ?: return
         engine.play(url, hls = null, proxy = p.proxy)
@@ -217,14 +217,14 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
     /** How long this title has played since it started (pauses not counted): see [countsAsWatching]. */
     private var playedMs = 0L
 
-    /** Whether it was started already (or has been saved since it started playing). */
-    private var onCarryOn = false
+    /** Whether progress was saved since this title started playing: later saves then follow at once. */
+    private var saving = false
 
     /** Taken now and written in the app's scope, so it completes even as the screen closes. */
     private fun save(trim: Boolean = false) {
         val row = snapshot() ?: return
-        if (!countsAsWatching(playedMs, onCarryOn, row.finished)) return
-        onCarryOn = true
+        if (!countsAsWatching(playedMs, saving, row.finished)) return
+        saving = true
         c.appScope.launch { c.vod.saveProgress(row, trim, nextEpisode) }
     }
 
@@ -251,10 +251,10 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
 }
 
 /**
- * Whether playback is saved (and so on Continue watching): once it has played [COUNTS_AFTER_MS] (a look at the start
- * of something isn't watching it), or it was started already ([onCarryOn]), or it has been played to the end.
+ * Whether playback is saved (and so goes to the front of Continue watching): once it has played [COUNTS_AFTER_MS] since
+ * it started or resumed (a short look isn't watching it), once it was saved already ([saving]), or at the end.
  */
-internal fun countsAsWatching(playedMs: Long, onCarryOn: Boolean, finished: Boolean) = onCarryOn || finished || playedMs >= COUNTS_AFTER_MS
+internal fun countsAsWatching(playedMs: Long, saving: Boolean, finished: Boolean) = saving || finished || playedMs >= COUNTS_AFTER_MS
 
 internal const val COUNTS_AFTER_MS = 30_000L
 

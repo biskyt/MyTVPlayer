@@ -336,6 +336,8 @@ class ProgressSyncTest {
         b.signIn()
         a.channels.setFavourite(a.pid, 101, true)
         a.channels.setFavourite(a.pid, 102, true)
+        // A's own sync (started by the change) ends first: a sync that runs already is joined, not run again.
+        a.sync()
         b.channels.setFavourite(b.pid, 103, true)
         b.sync()
         a.sync()
