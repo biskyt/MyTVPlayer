@@ -1,4 +1,5 @@
-// The JNI wrapper around FFmpeg's AC-3 (Dolby Digital) encoder, for Ac3Encoder.kt. FFmpeg is built with nothing else.
+// The JNI wrapper around FFmpeg's AC-3 (Dolby Digital) encoder, for Ac3Encoder.kt in MyTVPlayer and MyPlexPlayer.
+// FFmpeg is built with nothing else. JNI_OnLoad registers the functions, so one library serves both apps.
 #include <jni.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,10 +13,8 @@ typedef struct {
     int channels;
 } Encoder;
 
-#define EXPORT __attribute__((visibility("default")))
 
-EXPORT JNIEXPORT jlong JNICALL
-Java_com_biskyt_mytvplayer_player_Ac3Encoder_nativeOpen(JNIEnv *env, jclass cls, jint channels, jint rate, jint bitrate) {
+static jlong nativeOpen(JNIEnv *env, jclass cls, jint channels, jint rate, jint bitrate) {
     const AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_AC3);
     if (!codec) return 0;
     Encoder *e = calloc(1, sizeof(Encoder));
@@ -40,14 +39,12 @@ Java_com_biskyt_mytvplayer_player_Ac3Encoder_nativeOpen(JNIEnv *env, jclass cls,
     return (jlong) (intptr_t) e;
 }
 
-EXPORT JNIEXPORT jint JNICALL
-Java_com_biskyt_mytvplayer_player_Ac3Encoder_nativeFrameSize(JNIEnv *env, jclass cls, jlong handle) {
+static jint nativeFrameSize(JNIEnv *env, jclass cls, jlong handle) {
     return ((Encoder *) (intptr_t) handle)->ctx->frame_size;
 }
 
 /** Encodes one frame of interleaved 16-bit samples; returns the bytes written to out, 0 if none yet, or < 0 on error. */
-EXPORT JNIEXPORT jint JNICALL
-Java_com_biskyt_mytvplayer_player_Ac3Encoder_nativeEncode(JNIEnv *env, jclass cls, jlong handle, jshortArray pcm, jbyteArray out) {
+static jint nativeEncode(JNIEnv *env, jclass cls, jlong handle, jshortArray pcm, jbyteArray out) {
     Encoder *e = (Encoder *) (intptr_t) handle;
     int n = e->ctx->frame_size, ch = e->channels;
     if (av_frame_make_writable(e->frame) < 0) return -1;
@@ -68,12 +65,42 @@ Java_com_biskyt_mytvplayer_player_Ac3Encoder_nativeEncode(JNIEnv *env, jclass cl
     return size;
 }
 
-EXPORT JNIEXPORT void JNICALL
-Java_com_biskyt_mytvplayer_player_Ac3Encoder_nativeClose(JNIEnv *env, jclass cls, jlong handle) {
+static void nativeClose(JNIEnv *env, jclass cls, jlong handle) {
     Encoder *e = (Encoder *) (intptr_t) handle;
     if (!e) return;
     av_packet_free(&e->pkt);
     av_frame_free(&e->frame);
     avcodec_free_context(&e->ctx);
     free(e);
+}
+
+/* The Kotlin classes that can own these functions: one for each app that uses this library (MyTVPlayer, MyPlexPlayer). */
+static const char *const CLASSES[] = {
+    "com/biskyt/mytvplayer/player/Ac3Encoder",
+    "com/biskyt/myplexplayer/player/Ac3Encoder",
+};
+
+static const JNINativeMethod METHODS[] = {
+    {"nativeOpen", "(III)J", (void *) nativeOpen},
+    {"nativeFrameSize", "(J)I", (void *) nativeFrameSize},
+    {"nativeEncode", "(J[S[B)I", (void *) nativeEncode},
+    {"nativeClose", "(J)V", (void *) nativeClose},
+};
+
+/* Registers the functions with the app's own class; with none of them, the library fails to load. */
+JNIEXPORT __attribute__((visibility("default"))) jint JNI_OnLoad(JavaVM *vm, void *reserved) {
+    JNIEnv *env;
+    if ((*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6) != JNI_OK) return JNI_ERR;
+    for (size_t i = 0; i < sizeof(CLASSES) / sizeof(CLASSES[0]); i++) {
+        jclass cls = (*env)->FindClass(env, CLASSES[i]);
+        if (cls == NULL) {
+            (*env)->ExceptionClear(env);
+            continue;
+        }
+        jint r = (*env)->RegisterNatives(env, cls, METHODS, sizeof(METHODS) / sizeof(METHODS[0]));
+        (*env)->DeleteLocalRef(env, cls);
+        if (r == JNI_OK) return JNI_VERSION_1_6;
+        (*env)->ExceptionClear(env);
+    }
+    return JNI_ERR;
 }

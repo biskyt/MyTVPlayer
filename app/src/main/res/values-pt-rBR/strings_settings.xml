@@ -21,7 +21,7 @@
     <string name="settings_passthrough">Passthrough de áudio</string>
     <string name="settings_passthrough_help">Envia Dolby / DTS / Atmos para a soundbar ou TV decodificar. Desative se ficar sem som.</string>
     <string name="settings_surround_dolby">Enviar som surround como Dolby Digital</string>
-    <string name="settings_surround_dolby_help">Para uma TV que só envia estéreo para a soundbar: o som surround que o app decodifica, como AAC, é enviado como Dolby Digital 5.1.</string>
+    <string name="settings_surround_dolby_help">Converte AAC 5.1 em Dolby Digital 5.1, para uma soundbar ou um receiver que não decodifica AAC multicanal.</string>
     <string name="settings_subtitles">Legendas padrão</string>
     <string name="settings_subtitles_help">Só forçadas mostra legendas apenas para falas em outro idioma</string>
     <string name="settings_subtitles_forced_only">Só forçadas</string>

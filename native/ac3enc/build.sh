@@ -28,5 +28,5 @@ for ABI in arm64-v8a armeabi-v7a; do
   "$CC" -shared -fPIC -O2 -fvisibility=hidden -I"$B/install/include" "$HERE/ac3enc.c" \
     -L"$B/install/lib" -lavcodec -lavutil -lm -Wl,--gc-sections -Wl,-z,max-page-size=16384 -o "$OUTDIR/$ABI/libac3enc.so"
   "$TC/bin/llvm-strip" --strip-unneeded "$OUTDIR/$ABI/libac3enc.so"
-  echo "$ABI: $(wc -c < "$OUTDIR/$ABI/libac3enc.so") bytes, $("$TC/bin/llvm-nm" -D --defined-only "$OUTDIR/$ABI/libac3enc.so" | grep -c Java_) JNI functions"
+  echo "$ABI: $(wc -c < "$OUTDIR/$ABI/libac3enc.so") bytes, $("$TC/bin/llvm-nm" -D --defined-only "$OUTDIR/$ABI/libac3enc.so" | grep -c JNI_OnLoad) JNI_OnLoad (must be 1)"
 done
