@@ -4,8 +4,7 @@ Each version's section becomes its GitHub release notes, so it is written for th
 English, one bullet of one sentence per change.
 
 ## 1.22.4
-- If your TV refuses AAC sound sent unchanged, MyTVPlayer now decodes it instead when it tries again.
-- Send AAC unchanged is now shown only while Audio passthrough is on.
+- Settings › Playback no longer has the test setting Send AAC unchanged or the AAC passthrough check, because tests showed that they do not work.
 
 ## 1.22.3
 - A new test setting, Settings › Playback › Send AAC unchanged, sends AAC sound to your amplifier for it to decode, and replaces Decode AAC in the app.

@@ -319,9 +319,8 @@ class PlaybackEngine(
         // The format being played when known; else the chosen track's.
         val f = playing ?: selectedAudioFormat(tracks) ?: return appString(R.string.player_audio_none)
         val name = encodedName(f.sampleMimeType) ?: decodedName(f.sampleMimeType)
-        // An output sent unchanged belongs to a format that can be sent so: Dolby, DTS, or AAC (setting "Send AAC
-        // unchanged"). Also see audioInputChanged.
-        val sent = out?.takeIf { Util.isEncodingLinearPcm(it.encoding) || encodedName(f.sampleMimeType) != null || AacUnchanged.isAac(f) }
+        // An output sent unchanged belongs to a format that can be sent so: Dolby or DTS. Also see audioInputChanged.
+        val sent = out?.takeIf { Util.isEncodingLinearPcm(it.encoding) || encodedName(f.sampleMimeType) != null }
         unchangedName(f, sent)?.let { return appString(R.string.player_audio_passthrough, it) }
         val channels = sent?.let { Integer.bitCount(it.channelConfig) } ?: f.channelCount.takeIf { it != Format.NO_VALUE } ?: 2
         val layout = if (channels > 2) appString(R.string.player_track_channels, channels) else appString(R.string.player_audio_stereo)
@@ -333,15 +332,9 @@ class PlaybackEngine(
         val encoded = encodedName(f.sampleMimeType)
         return when {
             // Named from what is sent: Dolby Atmos can be sent as plain Dolby Digital Plus, DTS-HD as DTS.
-            sent != null -> if (Util.isEncodingLinearPcm(sent.encoding)) {
-                null
-            } else {
-                encodingName(sent.encoding) ?: encoded
-                    ?: decodedName(f.sampleMimeType)
-            }
+            sent != null -> if (Util.isEncodingLinearPcm(sent.encoding)) null else encodingName(sent.encoding) ?: encoded
             !settings.audioPassthrough -> null
             encoded != null -> encoded.takeIf { capabilities.isPassthroughPlaybackSupported(f, MOVIE) }
-            settings.aacUnchanged && AacUnchanged.sendsUnchanged(f) -> decodedName(f.sampleMimeType)
             else -> null
         }
     }
@@ -360,17 +353,11 @@ class PlaybackEngine(
             allAudioChannels(dolbyVisionWithoutHdr10Plus(super.getCodecAdapterFactory()) { dolbyVisionScreen(context) })
 
         override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink? =
-            when {
-                !settings.audioPassthrough -> {
-                    @Suppress("DEPRECATION")
-                    DefaultAudioSink.Builder(context).setAudioCapabilities(AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES).build()
-                }
-                settings.aacUnchanged && AacUnchanged.available -> AacUnchanged.sink(
-                    context,
-                    enableFloatOutput,
-                    enableAudioTrackPlaybackParams
-                )
-                else -> super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams)
+            if (settings.audioPassthrough) {
+                super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams)
+            } else {
+                @Suppress("DEPRECATION")
+                DefaultAudioSink.Builder(context).setAudioCapabilities(AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES).build()
             }
     }.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON).setEnableDecoderFallback(true)
 
@@ -396,8 +383,10 @@ class PlaybackEngine(
         private const val STALL_MS = 20_000L
         private const val STALL_CHECK_MS = 5_000L
 
-        /** How the player's sound is played (also what [AacPassthrough] checks). */
-        val MOVIE: AudioAttributes = AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build()
+        /** How the player's sound is played. */
+        private val MOVIE: AudioAttributes = AudioAttributes.Builder().setUsage(
+            C.USAGE_MEDIA
+        ).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build()
 
         /** The name of a format that is always decoded before it is played, such as "AAC"; null for others (and PCM). */
         fun decodedName(mime: String?): String? = when (mime) {

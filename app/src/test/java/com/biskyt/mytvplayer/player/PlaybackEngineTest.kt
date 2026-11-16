@@ -104,6 +104,13 @@ class PlaybackEngineTest {
     }
 
     @Test
+    fun `an AAC output that is not PCM is not called passthrough`() {
+        val aac51 = track(androidx.media3.common.MimeTypes.AUDIO_AAC, 6)
+        val sent = output(android.media.AudioFormat.ENCODING_AAC_LC, android.media.AudioFormat.CHANNEL_OUT_5POINT1)
+        assertEquals("AAC decoded · 6ch", engine.audioOutputLabel(playing = aac51, out = sent))
+    }
+
+    @Test
     fun `Dolby Atmos sent as plain Dolby Digital Plus is named as it is sent`() {
         val atmos = track(androidx.media3.common.MimeTypes.AUDIO_E_AC3_JOC, 6)
         val sent = output(androidx.media3.common.C.ENCODING_E_AC3, android.media.AudioFormat.CHANNEL_OUT_5POINT1)
@@ -133,33 +140,5 @@ class PlaybackEngineTest {
         engine.audioTrackStarted(first, ac3)
         engine.audioStopped()
         assertEquals("Dolby Digital decoded · 6ch", engine.audioOutputLabel(playing = ac3))
-    }
-
-    @Test
-    fun `before its output starts, AAC the TV takes as it is says passthrough with the setting on, and decoded with passthrough off`() {
-        val aac51 = androidx.media3.common.Format.Builder().setSampleMimeType(androidx.media3.common.MimeTypes.AUDIO_AAC)
-            .setCodecs("mp4a.40.2").setChannelCount(6).setSampleRate(48_000).build()
-        val direct = android.media.AudioFormat.Builder().setEncoding(android.media.AudioFormat.ENCODING_AAC_LC)
-            .setSampleRate(48_000).setChannelMask(android.media.AudioFormat.CHANNEL_OUT_5POINT1).build()
-        org.robolectric.shadows.ShadowAudioTrack.addDirectPlaybackSupport(direct, PlaybackEngine.MOVIE.audioAttributesV21.audioAttributes)
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val on = PlaybackEngine(context, Settings(aacUnchanged = true))
-        val off = PlaybackEngine(context, Settings(aacUnchanged = true, audioPassthrough = false))
-        try {
-            assertEquals("Passthrough · AAC", on.audioOutputLabel(playing = aac51, out = null))
-            assertEquals("AAC decoded · 6ch", off.audioOutputLabel(playing = aac51, out = null))
-        } finally {
-            on.release()
-            off.release()
-            org.robolectric.shadows.ShadowAudioTrack.clearDirectPlaybackSupportedFormats()
-            AacUnchanged.forget()
-        }
-    }
-
-    @Test
-    fun `AAC sent unchanged says so`() {
-        val aac51 = track(androidx.media3.common.MimeTypes.AUDIO_AAC, 6)
-        val sent = output(android.media.AudioFormat.ENCODING_AAC_LC, android.media.AudioFormat.CHANNEL_OUT_5POINT1)
-        assertEquals("Passthrough · AAC", engine.audioOutputLabel(playing = aac51, out = sent))
     }
 }

@@ -29,8 +29,6 @@ data class Settings(
     val skipBackSec: Int = 10,
     val skipForwardSec: Int = 30,
     val audioPassthrough: Boolean = true,
-    /** AAC sound sent unchanged, for the amplifier to decode (see AacUnchanged): a test (the owner, 2026-11-15). */
-    val aacUnchanged: Boolean = false,
     val subtitleMode: SubtitleMode = SubtitleMode.FORCED_ONLY,
     /** Empty means "follow the TV's system language". */
     val subtitleLanguage: String = "",
@@ -134,7 +132,6 @@ class SettingsRepository(private val context: Context) {
             skipBackSec = valueOr(K.skipBack, d.skipBackSec),
             skipForwardSec = valueOr(K.skipForward, d.skipForwardSec),
             audioPassthrough = valueOr(K.passthrough, d.audioPassthrough),
-            aacUnchanged = valueOr(K.aacUnchanged, d.aacUnchanged),
             subtitleMode = enumOr(this[K.subtitleMode], d.subtitleMode),
             subtitleLanguage = valueOr(K.subtitleLang, d.subtitleLanguage),
             bufferSize = enumOr(this[K.buffer], d.bufferSize),
@@ -164,8 +161,9 @@ class SettingsRepository(private val context: Context) {
             prefs[K.skipBack] = s.skipBackSec
             prefs[K.skipForward] = s.skipForwardSec
             prefs[K.passthrough] = s.audioPassthrough
-            prefs[K.aacUnchanged] = s.aacUnchanged
-            prefs.remove(K.aacInApp) // (1.22.1 and 1.22.2: "Decode AAC in the app", replaced by aacUnchanged)
+            // Test settings of 1.22.1 to 1.22.3, since removed: their stored values go at the next save.
+            prefs.remove(K.aacInApp)
+            prefs.remove(K.aacUnchanged)
             prefs[K.subtitleMode] = s.subtitleMode.name
             prefs[K.subtitleLang] = s.subtitleLanguage
             prefs[K.buffer] = s.bufferSize.name

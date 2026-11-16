@@ -20,13 +20,6 @@
     <string name="settings_seconds">%1$d s</string>
     <string name="settings_passthrough">Passthrough de áudio</string>
     <string name="settings_passthrough_help">Envia Dolby / DTS / Atmos para a soundbar ou TV decodificar. Desative se ficar sem som.</string>
-    <string name="settings_aac_unchanged">Enviar AAC sem alterações (teste)</string>
-    <string name="settings_aac_unchanged_help">O som AAC vai para o amplificador como está, para ele decodificar. Desative se ficar sem som ou fora de sincronia.</string>
-    <string name="settings_aac_passthrough">Verificar passthrough de AAC</string>
-    <string name="settings_aac_passthrough_yes">O AAC pode ser enviado sem alterações por HDMI.</string>
-    <string name="settings_aac_passthrough_not_by_tv">O dispositivo HDMI aceita AAC, mas este dispositivo não o envia sem alterações.</string>
-    <string name="settings_aac_passthrough_no">O AAC não pode ser enviado sem alterações por HDMI.</string>
-    <string name="settings_aac_passthrough_unknown">Este dispositivo não consegue verificar isso.</string>
     <string name="settings_subtitles">Legendas padrão</string>
     <string name="settings_subtitles_help">Só forçadas mostra legendas apenas para falas em outro idioma</string>
     <string name="settings_subtitles_forced_only">Só forçadas</string>
