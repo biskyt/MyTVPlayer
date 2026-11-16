@@ -7,6 +7,9 @@ interface FrameEncoder : AutoCloseable {
     /** The number of samples for each channel in one frame. */
     val frameSize: Int
 
+    /** The encoder's delay: its sound starts this many samples (for each channel) after its input. */
+    val delaySamples: Int
+
     /** Encodes one frame ([frameSize] samples for each channel, interleaved). Returns null while it has no output yet. */
     fun encode(pcm: ShortArray): ByteArray?
 }
@@ -17,6 +20,9 @@ interface FrameEncoder : AutoCloseable {
  */
 class Ac3Encoder private constructor(private var handle: Long) : FrameEncoder {
     override val frameSize: Int = nativeFrameSize(handle)
+
+    /** FFmpeg's AC-3 encoder starts with one block of silence (its initial_padding). */
+    override val delaySamples = 256
     private val out = ByteArray(OUT_BYTES)
 
     override fun encode(pcm: ShortArray): ByteArray? {

@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,10 +62,12 @@ import com.biskyt.mytvplayer.ui.common.displayLanguage
 import com.biskyt.mytvplayer.ui.common.nativeLanguageName
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     val settings = c.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -191,6 +194,9 @@ fun PlaybackSettingsScreen() {
     val vm = appViewModel { SettingsViewModel(it) }
     val s = vm.settings.collectAsState().value ?: return
     val skipSteps = listOf(5, 10, 15, 20, 30, 45, 60, 90, 120)
+    // The Dolby Digital encoder's library is loaded the first time: not on the main thread. The page waits for it, so
+    // that its rows do not move under the focus.
+    val dolby = produceState<Boolean?>(null) { value = withContext(Dispatchers.IO) { Ac3Encoder.available } }.value ?: return
     SettingsPage(stringResource(R.string.settings_playback_title)) {
         item {
             CycleSettingRow(
@@ -216,7 +222,7 @@ fun PlaybackSettingsScreen() {
                 { vm.update { it.copy(audioPassthrough = !it.audioPassthrough) } }
             ) { Toggle(s.audioPassthrough) }
         }
-        if (s.audioPassthrough && Ac3Encoder.available) {
+        if (s.audioPassthrough && dolby) {
             item {
                 SettingRow(
                     stringResource(R.string.settings_surround_dolby),

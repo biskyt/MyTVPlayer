@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.23.2
+- Send surround sound as Dolby Digital now changes only AAC surround sound, which is the sound that soundbars and receivers cannot decode.
+- With this setting on, the sound and the picture are now more exactly in sync.
+
 ## 1.23.1
 - The help text of Send surround sound as Dolby Digital is now shorter and clearer.
 

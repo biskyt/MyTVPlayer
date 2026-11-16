@@ -14,9 +14,10 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * Sends decoded surround sound (16-bit PCM with 3 to 8 channels, mostly AAC) as Dolby Digital 5.1, encoded in the
- * app ("Send surround sound as Dolby Digital"). This is for a TV that mixes the app's sound down to stereo but sends
- * Dolby Digital on to the soundbar unchanged. Stereo and mono, and sound sent unchanged (Dolby, DTS), are not changed.
+ * Sends decoded AAC surround sound (16-bit PCM with 3 to 8 channels) as Dolby Digital 5.1, encoded in the app ("Send
+ * surround sound as Dolby Digital"). This is for a TV that mixes the app's sound down to stereo but sends Dolby
+ * Digital on to the soundbar unchanged. Only AAC is changed (the owner, 2026-11-16): other formats go through
+ * unchanged where the TV can, and the source is told by [AacSourceRenderer] ([sourceMime]). Stereo and mono stay.
  * It is used only when the TV accepts Dolby Digital. If the encoder fails, it is turned off until the app restarts,
  * and the player's retry plays the sound as before.
  */
@@ -30,12 +31,21 @@ class DolbyDigitalSink(
         val mix = mixFor(input.channelCount)
         val frameBytes = Util.getPcmFrameSize(input.pcmEncoding, input.channelCount)
 
+        /** How much later the encoder's sound starts than its input (its first frame begins with silence). */
+        val delayUs = Util.sampleCountToDurationUs(encoder.delaySamples.toLong(), input.sampleRate)
+
         /** One frame of samples being gathered (interleaved, in 5.1). */
         val block = ShortArray(encoder.frameSize * CHANNELS)
     }
 
+    /** The audio track's format before decoding, from [AacSourceRenderer] (on the playback thread); null when unknown. */
+    var sourceMime: String? = null
+
     private var encoding: Encoding? = null
     private var filled = 0
+
+    /** A stream change came: the samples gathered so far are padded with silence and sent with their own time. */
+    private var padGathered = false
 
     /** The time of the block's first sample; also of [pending], which is sent before the next block starts. */
     private var blockPtsUs = 0L
@@ -51,7 +61,8 @@ class DolbyDigitalSink(
     override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {
         close()
         // A channel map (Media3's fix for decoders that put channels in another order) is left to the output sink.
-        val ac3 = if (failed || outputChannels != null) null else ac3For(inputFormat)?.takeIf { super.supportsFormat(it) }
+        val encode = !failed && outputChannels == null && sourceMime == MimeTypes.AUDIO_AAC
+        val ac3 = if (encode) ac3For(inputFormat)?.takeIf { super.supportsFormat(it) } else null
         val e = ac3?.let { openEncoder(CHANNELS, it.sampleRate, it.averageBitrate) }
         if (ac3 == null || e == null) {
             super.configure(inputFormat, specifiedBufferSize, outputChannels)
@@ -72,8 +83,17 @@ class DolbyDigitalSink(
         val samples = checkNotNull(samples)
         while (true) {
             pending?.let {
-                if (!super.handleBuffer(it, blockPtsUs, 1)) return false
+                if (!super.handleBuffer(it, blockPtsUs - enc.delayUs, 1)) return false
                 pending = null
+            }
+            if (padGathered) {
+                padGathered = false
+                if (filled > 0) {
+                    enc.block.fill(0, filled * CHANNELS)
+                    filled = 0
+                    pending = encode(enc)?.let { ByteBuffer.wrap(it).order(ByteOrder.LITTLE_ENDIAN) }
+                    continue
+                }
             }
             if (buffer.remaining() < enc.frameBytes) {
                 buffer.position(buffer.limit())
@@ -102,6 +122,15 @@ class DolbyDigitalSink(
         throw AudioSink.WriteException(AudioTrack.ERROR, enc.input, false)
     }
 
+    /**
+     * At a stream change (the next item, or a jump in time), the samples gathered so far (less than 32 ms) are padded
+     * with silence and sent with their own time, before the new stream's samples.
+     */
+    override fun handleDiscontinuity() {
+        padGathered = true
+        super.handleDiscontinuity()
+    }
+
     override fun flush() {
         clearGathered()
         super.flush()
@@ -125,6 +154,7 @@ class DolbyDigitalSink(
 
     private fun clearGathered() {
         filled = 0
+        padGathered = false
         pending = null
         current = null
         samples = null

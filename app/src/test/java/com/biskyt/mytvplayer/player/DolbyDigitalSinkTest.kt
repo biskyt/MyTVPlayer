@@ -32,7 +32,9 @@ class DolbyDigitalSinkTest {
     private var accepts = true
     private var takesDolby = true
     private val encoder = FakeEncoder()
-    private val sink = DolbyDigitalSink(output()) { channels, _, _ -> encoder.takeIf { channels == 6 } }
+    private val sink = DolbyDigitalSink(output()) { channels, _, _ -> encoder.takeIf { channels == 6 } }.apply {
+        sourceMime = MimeTypes.AUDIO_AAC
+    }
 
     @After
     fun tearDown() {
@@ -64,6 +66,35 @@ class DolbyDigitalSinkTest {
         val buffer = samples(2, 4)
         assertTrue(sink.handleBuffer(buffer, 5, 1))
         assertEquals(buffer to 5L, written.single())
+    }
+
+    @Test
+    fun `only AAC is encoded (the owner, 2026-11-16)`() {
+        listOf(MimeTypes.AUDIO_TRUEHD, MimeTypes.AUDIO_FLAC, null).forEach {
+            sink.sourceMime = it
+            sink.configure(pcm(6), 0, null)
+            assertEquals(pcm(6), configured)
+        }
+    }
+
+    @Test
+    fun `samples gathered before a stream change are padded with silence and sent with their own time`() {
+        sink.configure(pcm(6), 0, null)
+        sink.handleBuffer(samples(6, 3, from = 1), 1_000_000, 1)
+        sink.handleDiscontinuity()
+        sink.handleBuffer(samples(6, 4, from = 100), 5_000_000, 1)
+        assertEquals(listOf(1_000_000L, 5_000_000L), written.map { it.second })
+        val padded = encoder.frames.first()
+        assertEquals(listOf(6, 12, 18, 0), (0 until 4).map { padded[it * 6].toInt() })
+        assertEquals(600, encoder.frames.last()[0].toInt())
+    }
+
+    @Test
+    fun `frames are timed for the encoder's delay`() {
+        encoder.delaySamples = 48
+        sink.configure(pcm(6), 0, null)
+        sink.handleBuffer(samples(6, 4), 1_000_000, 1)
+        assertEquals(1_000_000L - 1_000, written.single().second)
     }
 
     @Test
@@ -150,6 +181,7 @@ class DolbyDigitalSinkTest {
     /** An encoder with 4 samples in a frame, which keeps each frame it was given. */
     private class FakeEncoder : FrameEncoder {
         override val frameSize = 4
+        override var delaySamples = 0
         val frames = mutableListOf<ShortArray>()
         var fails = false
 

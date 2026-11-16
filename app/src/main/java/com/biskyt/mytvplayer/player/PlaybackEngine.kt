@@ -22,11 +22,14 @@ import androidx.media3.exoplayer.DecoderReuseEvaluation
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.audio.AudioCapabilities
+import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.mediacodec.MediaCodecAdapter
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.LoadEventInfo
 import androidx.media3.exoplayer.source.MediaLoadData
@@ -320,7 +323,7 @@ class PlaybackEngine(
         val f = playing ?: selectedAudioFormat(tracks) ?: return appString(R.string.player_audio_none)
         val encoded = encodedName(f.sampleMimeType)
         val name = encoded ?: decodedName(f.sampleMimeType)
-        // Decoded surround sound encoded in the app (DolbyDigitalSink): any source but Dolby Digital itself.
+        // Decoded AAC surround sound encoded in the app (DolbyDigitalSink).
         if (out?.encoding == C.ENCODING_AC3 && name != null && f.sampleMimeType != MimeTypes.AUDIO_AC3) {
             return appString(R.string.player_audio_as_dolby, name)
         }
@@ -356,6 +359,34 @@ class PlaybackEngine(
     private fun renderersFactory() = object : DefaultRenderersFactory(context) {
         override fun getCodecAdapterFactory(): MediaCodecAdapter.Factory =
             allAudioChannels(dolbyVisionWithoutHdr10Plus(super.getCodecAdapterFactory()) { dolbyVisionScreen(context) })
+
+        override fun buildAudioRenderers(
+            context: Context,
+            extensionRendererMode: Int,
+            mediaCodecSelector: MediaCodecSelector,
+            enableDecoderFallback: Boolean,
+            audioSink: AudioSink,
+            eventHandler: Handler,
+            eventListener: AudioRendererEventListener,
+            out: ArrayList<Renderer>
+        ) {
+            // Built first: each audio renderer takes the shared sink's listener when it is built, and the last one keeps
+            // it, as with Media3's own renderers.
+            val aac = (audioSink as? DolbyDigitalSink)?.let {
+                AacSourceRenderer(context, codecAdapterFactory, mediaCodecSelector, enableDecoderFallback, eventHandler, eventListener, it)
+            }
+            super.buildAudioRenderers(
+                context,
+                extensionRendererMode,
+                mediaCodecSelector,
+                enableDecoderFallback,
+                audioSink,
+                eventHandler,
+                eventListener,
+                out
+            )
+            aac?.let { AacSourceRenderer.replaceIn(out, it) }
+        }
 
         override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink? =
             if (settings.audioPassthrough) {
