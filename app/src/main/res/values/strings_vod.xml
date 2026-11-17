@@ -117,4 +117,17 @@
     <!-- A title's TMDB page: the button that searches the user's playlist for the title. -->
     <string name="vod_find_in_playlist">Find in your playlist</string>
     <string name="vod_tmdb_title_failed">Couldn\'t load this title from TMDB</string>
+    <!-- A series' status on TMDB, before its season and episode counts: "Continuing · 2 seasons · 18 episodes". -->
+    <string name="vod_status_continuing">Continuing</string>
+    <string name="vod_status_ended">Ended</string>
+    <string name="vod_status_cancelled">Cancelled</string>
+    <string name="vod_status_in_production">In production</string>
+    <string name="vod_status_planned">Planned</string>
+    <string name="vod_status_pilot">Pilot</string>
+    <plurals name="vod_episode_count">
+        <item quantity="one">%1$d episode</item>
+        <item quantity="other">%1$d episodes</item>
+    </plurals>
+    <!-- A continuing series' next episode. %1$s: its date and code, e.g. "4 Dec 2026 · S2E9". -->
+    <string name="vod_next_episode">Next episode: %1$s</string>
 </resources>

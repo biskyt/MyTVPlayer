@@ -77,4 +77,16 @@
     <string name="vod_similar_suggested">Suggestions de TMDB</string>
     <string name="vod_find_in_playlist">Chercher dans votre playlist</string>
     <string name="vod_tmdb_title_failed">Impossible de charger ce titre depuis TMDB</string>
+    <string name="vod_status_continuing">En cours</string>
+    <string name="vod_status_ended">Terminée</string>
+    <string name="vod_status_cancelled">Annulée</string>
+    <string name="vod_status_in_production">En production</string>
+    <string name="vod_status_planned">Prévue</string>
+    <string name="vod_status_pilot">Pilote</string>
+    <plurals name="vod_episode_count">
+        <item quantity="one">%1$d épisode</item>
+        <item quantity="many">%1$d épisodes</item>
+        <item quantity="other">%1$d épisodes</item>
+    </plurals>
+    <string name="vod_next_episode">Prochain épisode : %1$s</string>
 </resources>

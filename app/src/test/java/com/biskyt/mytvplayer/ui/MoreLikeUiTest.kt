@@ -16,7 +16,9 @@ import com.biskyt.mytvplayer.testutil.settle
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.testutil.waitForText
 import com.biskyt.mytvplayer.ui.common.Tab
+import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
+import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -121,6 +123,15 @@ class MoreLikeUiTest {
         compose.waitForText("2014 · Crime · TMDB 83%")
         compose.waitForText("Written by Sally Wainwright")
         compose.waitForText("Play trailer")
+        // A series: its status and counts, its seasons (not the specials) and the newest season's episodes with their dates.
+        compose.waitForText("Ended · 3 seasons · 18 episodes")
+        compose.waitForText("Series 3")
+        compose.waitForText("The Last One")
+        compose.waitForText(formatDate(LocalDate.of(2023, 1, 1)))
+        compose.waitForText("Afterwards")
+        assertTrue(!shown("Specials"))
+        click("Season 1")
+        compose.waitForText("Episode One")
         click("Find in your playlist")
         compose.waitAdvancingClock { navigator.current.screen is Screen.Search }
         assertEquals(Screen.Search("Happy Valley"), navigator.current.screen)

@@ -71,7 +71,12 @@ internal data class SeriesJson(
     @SerialName("production_countries") val countries: List<Named> = emptyList(),
     @SerialName("external_ids") val externalIds: ExternalIdsJson = ExternalIdsJson(),
     val credits: CreditsJson = CreditsJson(),
-    val videos: VideosJson = VideosJson()
+    val videos: VideosJson = VideosJson(),
+    val status: String? = null,
+    @SerialName("number_of_seasons") val seasonCount: Int? = null,
+    @SerialName("number_of_episodes") val episodeCount: Int? = null,
+    @SerialName("next_episode_to_air") val nextEpisode: EpisodeJson? = null,
+    val seasons: List<SeasonSummaryJson> = emptyList()
 )
 
 @Serializable
@@ -81,6 +86,14 @@ internal data class EpisodeJson(
     val name: String? = null,
     val overview: String? = null,
     @SerialName("still_path") val stillPath: String? = null,
+    @SerialName("air_date") val airDate: String? = null
+)
+
+@Serializable
+internal data class SeasonSummaryJson(
+    @SerialName("season_number") val number: Int = 0,
+    val name: String? = null,
+    @SerialName("episode_count") val episodeCount: Int = 0,
     @SerialName("air_date") val airDate: String? = null
 )
 
@@ -167,7 +180,15 @@ internal fun SeriesJson.toTitle() = TmdbTitle(
     originalTitle = originalName?.ifBlank { null },
     released = dateOf(firstAirDate),
     studios = networks.names(),
-    countries = countries.names()
+    countries = countries.names(),
+    status = SeriesStatus.of(status),
+    seasonCount = seasonCount?.takeIf { it > 0 },
+    episodeCount = episodeCount?.takeIf { it > 0 },
+    nextEpisode = nextEpisode?.takeIf {
+        it.number > 0
+    }?.let { TmdbAiring(it.season, it.number, it.name?.ifBlank { null }, dateOf(it.airDate)) },
+    seasons = seasons.filter { it.number > 0 }.sortedBy { it.number }
+        .map { TmdbSeason(it.number, it.name?.ifBlank { null }, it.episodeCount, dateOf(it.airDate)) },
 )
 
 internal fun SeasonJson.toEpisodes() = episodes.map {

@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.26.0
+- Series pages now say if a series goes on, its seasons and episodes, and when the next episode airs.
+- A series' TMDB page lists its seasons, and each season's episodes with the date they were first shown.
+- Under the QR code for your TMDB key, the TV now shows what it receives from your phone.
+
 ## 1.25.1
 - More like this now shows all of TMDB's suggestions in one row, and finds more of the series in your playlist.
 - A suggestion that is not in your playlist opens its TMDB page, where Find in your playlist searches for it.

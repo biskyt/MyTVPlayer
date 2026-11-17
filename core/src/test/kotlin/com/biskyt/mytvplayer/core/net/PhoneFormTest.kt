@@ -73,6 +73,24 @@ class PhoneFormTest {
     }
 
     @Test
+    fun `the server counts connections, pages, HTTPS tries and connections with no answer`() {
+        get(form.url).use { assertEquals(200, it.code) }
+        val port = java.net.URI(form.url).port
+        java.net.Socket(InetAddress.getLoopbackAddress(), port).use { s ->
+            s.getOutputStream().apply {
+                write(byteArrayOf(0x16, 0x03, 0x01))
+                flush()
+            }
+            s.getInputStream().read()
+        }
+        // A connection the browser closes before it asks anything.
+        java.net.Socket(InetAddress.getLoopbackAddress(), port).close()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (form.seen.value.unanswered < 1 && System.currentTimeMillis() < deadline) Thread.sleep(10)
+        assertEquals(PhoneFormSeen(connections = 3, pages = 1, secure = 1, unanswered = 1), form.seen.value)
+    }
+
+    @Test
     fun `after close, nothing is served`() {
         form.close()
         assertTrue(runCatching { get(form.url).close() }.isFailure)
@@ -109,7 +127,7 @@ class PhoneFormTest {
     @Test
     fun `silent connections that fill every place make room for a request`() {
         val port = java.net.URI(form.url).port
-        val silent = List(8) { java.net.Socket(InetAddress.getLoopbackAddress(), port) }
+        val silent = List(PhoneForm.MAX_CLIENTS) { java.net.Socket(InetAddress.getLoopbackAddress(), port) }
         try {
             Thread.sleep(200) // all accepted
             get(form.url).use { r -> assertEquals(200, r.code) }
