@@ -72,24 +72,6 @@ class PhoneFormTest {
         get(form.url).use { assertEquals(200, it.code) }
     }
 
-    @Test
-    fun `the server counts connections, pages, HTTPS tries and connections with no answer`() {
-        get(form.url).use { assertEquals(200, it.code) }
-        val port = java.net.URI(form.url).port
-        java.net.Socket(InetAddress.getLoopbackAddress(), port).use { s ->
-            s.getOutputStream().apply {
-                write(byteArrayOf(0x16, 0x03, 0x01))
-                flush()
-            }
-            s.getInputStream().read()
-        }
-        // A connection the browser closes before it asks anything.
-        java.net.Socket(InetAddress.getLoopbackAddress(), port).close()
-        val deadline = System.currentTimeMillis() + 5_000
-        while (form.seen.value.unanswered < 1 && System.currentTimeMillis() < deadline) Thread.sleep(10)
-        assertEquals(PhoneFormSeen(connections = 3, pages = 1, secure = 1, unanswered = 1), form.seen.value)
-    }
-
     /** The status line and headers of the next answer on [input], and its body (by Content-Length). */
     private fun answer(input: java.io.BufferedInputStream): Pair<List<String>, String> {
         fun line(): String {
@@ -129,7 +111,6 @@ class PhoneFormTest {
             s.getOutputStream().write("GET /favicon.ico HTTP/1.1\r\nHost: tv\r\n\r\n".toByteArray())
             assertEquals("HTTP/1.1 404 Not Found", answer(input).first.first())
         }
-        assertEquals(0, form.seen.value.unanswered)
     }
 
     @Test
@@ -150,7 +131,6 @@ class PhoneFormTest {
         val client = OkHttpClient.Builder().connectionPool(pool).build()
         repeat(3) { client.newCall(Request.Builder().url(form.url).build()).execute().use { r -> assertEquals(200, r.code) } }
         assertEquals(1, pool.connectionCount())
-        assertEquals(1, form.seen.value.connections)
     }
 
     @Test

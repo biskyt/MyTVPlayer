@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.27.0
+- The connection counts under the TMDB key's QR code are gone: they were there only to find the Edge and Brave fault.
+
 ## 1.26.2
 - If the TMDB key's phone page does not open, the TV now says to allow Nearby devices for your phone's browser.
 - A title's TMDB page can also search your playlist for its original title, such as "Intouchables".

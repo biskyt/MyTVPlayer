@@ -14,17 +14,6 @@ import java.net.SocketTimeoutException
 import java.net.URLDecoder
 import java.security.SecureRandom
 import kotlin.concurrent.thread
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-
-/**
- * What a [PhoneForm] has seen so far, shown on its panel: when a phone's browser shows no page, it tells whether the
- * phone reached the TV at all. [secure]: connections that asked for HTTPS (the page is HTTP only). [unanswered]:
- * connections that ended with no answer (closed by the browser before a request, too slow, or broken).
- */
-data class PhoneFormSeen(val connections: Int = 0, val pages: Int = 0, val secure: Int = 0, val unanswered: Int = 0)
 
 /** The words of a [PhoneForm] page, in the app's language. */
 data class PhoneFormText(
@@ -59,11 +48,6 @@ class PhoneForm(
     private val clients = LinkedHashMap<Socket, Boolean>()
     private val lock = Any()
 
-    private val _seen = MutableStateFlow(PhoneFormSeen())
-
-    /** What this server has seen since it started. */
-    val seen: StateFlow<PhoneFormSeen> = _seen.asStateFlow()
-
     init {
         thread(name = "PhoneForm", isDaemon = true) {
             // Until closed: the panel is gone.
@@ -96,7 +80,6 @@ class PhoneForm(
             }
             (clients.size < MAX_CLIENTS).also { if (it) clients[c] = false }
         }
-        _seen.update { it.copy(connections = it.connections + 1) }
         if (admitted) thread(name = "PhoneForm request", isDaemon = true) { handle(c) } else runCatching { c.close() }
     }
 
@@ -107,15 +90,13 @@ class PhoneForm(
     private fun idle(c: Socket) = synchronized(lock) { if (c in clients) clients[c] = false }
 
     private fun handle(c: Socket) {
-        var answered = false
         try {
-            answered = c.use(::serve)
+            c.use(::serve)
         } catch (_: IOException) {
             // A bad or slow request, or the phone went away: only this connection ends.
         } catch (@Suppress("TooGenericExceptionCaught") _: RuntimeException) {
             // Anything else a stranger on the network sends: never a crash of the app.
         } finally {
-            if (!answered) _seen.update { it.copy(unanswered = it.unanswered + 1) }
             synchronized(lock) { clients.remove(c) }
         }
     }
@@ -129,10 +110,9 @@ class PhoneForm(
     /**
      * Answers [client]'s requests one after another, as HTTP/1.1 expects: the connection stays open after an answer,
      * for up to [IDLE_MS], unless the browser asks for it to close. Browsers use an open connection again, and send a
-     * request on it again when it was closed under them, then give up ("too many retries"). False when the connection
-     * ended with no answer.
+     * request on it again when it was closed under them.
      */
-    private fun serve(client: Socket): Boolean {
+    private fun serve(client: Socket) {
         val buffered = BufferedInputStream(client.getInputStream())
         var answered = false
         var open = true
@@ -146,7 +126,6 @@ class PhoneForm(
                 // once tells them that this server has only HTTP, so they open the http address.
                 first !in 'A'.code..'Z'.code -> {
                     if (!answered) {
-                        _seen.update { it.copy(secure = it.secure + 1) }
                         reply(client, Reply(BAD_REQUEST, ""), keepOpen = false)
                         answered = true
                     }
@@ -158,7 +137,6 @@ class PhoneForm(
                 } ?: false
             }
         }
-        return answered
     }
 
     /**
@@ -189,7 +167,7 @@ class PhoneForm(
         val length = header("Content-Length")?.toIntOrNull() ?: 0
         val reply = when {
             path != "/$token" -> Reply(NOT_FOUND, "")
-            method == "GET" -> Reply(OK, page(sent = false)).also { _seen.update { it.copy(pages = it.pages + 1) } }
+            method == "GET" -> Reply(OK, page(sent = false))
             method == "POST" && length in 1..MAX_BODY -> {
                 value(input.text(length))?.let(received)
                 Reply(OK, page(sent = true))
