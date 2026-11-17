@@ -19,4 +19,7 @@
     <string name="sync_stop_help">Supprime la copie de ce téléviseur dans votre Google Drive. Ce que vous avez regardé sur ce téléviseur reste ici.</string>
     <string name="sync_google_error">Google a refusé la connexion (%1$s).</string>
     <string name="sync_failed_code">Synchronisation impossible : Google a répondu %1$s. Réessayez plus tard.</string>
+    <string name="sync_turn_on">Activer la synchronisation</string>
+    <string name="sync_sign_out">Se déconnecter de Google</string>
+    <string name="sync_sign_out_help">Désactive la synchronisation et les sauvegardes dans Google Drive sur ce téléviseur. Votre sauvegarde dans Google Drive y reste.</string>
 </resources>

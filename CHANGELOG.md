@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.25.0
+- Settings › Backup & restore can now back up to your Google Drive and restore from it, as well as to and from a file.
+- The backup in Google Drive uses the same Google sign-in as Sync between TVs, so you sign in once for both, and the TV remembers it.
+- Stop syncing now keeps the Google sign-in, so you can turn the sync on again without signing in, and the new Sign out of Google forgets it.
+
 ## 1.24.0
 - Film and series pages can show the cast with photos, who directed and wrote it, the TMDB score, links to IMDb and TMDB, and a Trailer button, when you add your own free TMDB key in Settings › TMDB.
 - Episodes that your provider gives no description or picture for get them from TMDB, when you add a TMDB key.

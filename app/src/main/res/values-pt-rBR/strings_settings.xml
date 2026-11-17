@@ -11,7 +11,7 @@
     <string name="settings_appearance_title">Aparência</string>
     <string name="settings_appearance_help">Cor de destaque e tamanho do texto</string>
     <string name="settings_backup_title">Backup e restauração</string>
-    <string name="settings_backup_help">Salve suas playlists e escolhas em um arquivo ou restaure-as</string>
+    <string name="settings_backup_help">Salve suas playlists e escolhas em um arquivo ou no Google Drive, ou restaure-as</string>
     <string name="settings_about_title">Sobre</string>
     <string name="settings_about_help">Versão %1$s, licenças, armazenamento</string>
 
@@ -94,7 +94,7 @@
     <string name="settings_backup_saving">Salvando…</string>
     <string name="settings_backup_saved_to">Salvo em %1$s</string>
     <string name="settings_backup_find_failed">Não foi possível procurar um backup: %1$s</string>
-    <string name="settings_backup_already_there">Já existe um backup aqui. Restaure-o ou aperte Fazer backup agora de novo para substituí-lo.</string>
+    <string name="settings_backup_already_there">Já existe um backup aqui. Restaure-o ou aperte Backup em um arquivo de novo para substituí-lo.</string>
     <string name="settings_backup_restoring">Restaurando…</string>
     <string name="settings_backup_failed">Algo deu errado: %1$s</string>
     <string name="settings_backup_choose_file">Escolha o arquivo de backup</string>
@@ -105,7 +105,7 @@
     <string name="settings_backup_confirm">Isto substitui suas playlists e configurações pelas do backup. Restaurar?</string>
     <string name="settings_backup_restore">Restaurar</string>
     <string name="settings_backup_cancel">Cancelar</string>
-    <string name="settings_backup_now">Fazer backup agora</string>
+    <string name="settings_backup_now">Backup em um arquivo</string>
     <string name="settings_backup_restore_file">Restaurar de um arquivo…</string>
     <string name="settings_backup_restore_other_file">Restaurar de outro arquivo…</string>
     <string name="settings_backup_not_a_backup">Este não é um arquivo de backup do MyTVPlayer.</string>
@@ -223,4 +223,13 @@
     <string name="settings_tmdb_phone_hint">Cole sua chave de API ou seu token de acesso de leitura do TMDB e selecione Enviar.</string>
     <string name="settings_tmdb_phone_send">Enviar</string>
     <string name="settings_tmdb_phone_done">Enviada. A TV está verificando a chave. Você pode fechar esta página.</string>
+    <string name="settings_backup_drive">Backup no Google Drive</string>
+    <string name="settings_backup_restore_drive">Restaurar do Google Drive</string>
+    <string name="settings_backup_drive_intro">Um backup no Google Drive usa o mesmo login do Google que Sincronizar entre TVs. Todas as suas TVs compartilham um único backup lá.</string>
+    <string name="settings_backup_drive_last">Último backup no Google Drive: %1$s</string>
+    <string name="settings_backup_drive_none">Nenhum backup no Google Drive ainda.</string>
+    <string name="settings_backup_drive_saved">Salvo no seu Google Drive</string>
+    <string name="settings_backup_drive_looking">Procurando no Google Drive…</string>
+    <string name="settings_backup_drive_error">O Google Drive recusou (%1$s). Tente de novo mais tarde.</string>
+    <string name="settings_backup_drive_signed_out">O Google não aceita mais o login. Entre de novo.</string>
 </resources>

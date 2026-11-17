@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -31,8 +32,10 @@ import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
+import com.biskyt.mytvplayer.core.sync.SyncException
 import com.biskyt.mytvplayer.data.BackupException
 import com.biskyt.mytvplayer.data.BackupFile
+import com.biskyt.mytvplayer.data.DriveBackup
 import com.biskyt.mytvplayer.data.describe
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
@@ -41,13 +44,37 @@ import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.formatDayTime
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
+import java.io.ByteArrayInputStream
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class BackupViewModel(private val c: AppContainer) : ViewModel() {
+    /** Where a restore comes from. */
+    sealed interface Source {
+        data class File(val uri: Uri) : Source
+
+        data class Drive(val saved: DriveBackup.Saved) : Source
+    }
+
     private val file = c.backupFile
+    private val drive = c.driveBackup
+
+    /** Whether the app was built with a Google client: without one, there is no backup in Drive. */
+    val driveAvailable: Boolean get() = c.progressSync.available
+
+    val google = GoogleSignIn(c.progressSync, viewModelScope)
+
+    /** The Google sign-in; null until it is read from storage. */
+    val account = c.progressSync.account.state.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** The backup in Drive, when one was found (or saved) while signed in. */
+    var driveSaved by mutableStateOf<DriveBackup.Saved?>(null)
+        private set
 
     val needsPermission: Boolean get() = file.needsPermission
 
@@ -61,13 +88,17 @@ class BackupViewModel(private val c: AppContainer) : ViewModel() {
     var busy by mutableStateOf(false)
         private set
 
-    /** A file waiting for the user to confirm restoring from it. */
-    var confirming by mutableStateOf<Uri?>(null)
+    /** A backup waiting for the user to confirm restoring from it. */
+    var confirming by mutableStateOf<Source?>(null)
         private set
 
     init {
         viewModelScope.launch { saved = runCatching { file.find() }.getOrNull() }
+        // Quietly: a page that opens without a connection shows no error.
+        if (driveAvailable) viewModelScope.launch { if (signedIn()) driveSaved = runCatching { drive.find() }.getOrNull() }
     }
+
+    private suspend fun signedIn() = account.filterNotNull().first().signedIn
 
     fun backUp() = run(appString(R.string.settings_backup_saving)) {
         val s = file.write(c.backup.export())
@@ -75,9 +106,35 @@ class BackupViewModel(private val c: AppContainer) : ViewModel() {
         appString(R.string.settings_backup_saved_to, s.path)
     }
 
-    fun ask(uri: Uri) {
-        confirming = uri
+    fun ask(uri: Uri) = ask(Source.File(uri))
+
+    private fun ask(source: Source) {
+        confirming = source
         status = null
+    }
+
+    /** Signs in to Google first, when not signed in (the sync stays as it is). */
+    private fun withGoogle(then: () -> Unit) {
+        if (busy) return
+        viewModelScope.launch { if (signedIn()) then() else google.start(turnOnSync = false, then) }
+    }
+
+    fun backUpToDrive() = withGoogle {
+        run(appString(R.string.settings_backup_saving)) {
+            driveSaved = drive.save(c.backup.export())
+            appString(R.string.settings_backup_drive_saved)
+        }
+    }
+
+    /** Finds the backup in Drive, then asks the user to confirm restoring from it. */
+    fun askDrive() = withGoogle {
+        run(appString(R.string.settings_backup_drive_looking)) {
+            val found = drive.find()
+            driveSaved = found
+            if (found == null) return@run appString(R.string.settings_backup_drive_none)
+            ask(Source.Drive(found))
+            null
+        }
     }
 
     /**
@@ -97,7 +154,7 @@ class BackupViewModel(private val c: AppContainer) : ViewModel() {
         status = message
     }
 
-    /** Android 9: whether the storage permission is being asked for by "Back up now" (else on opening the page). */
+    /** Android 9: whether the storage permission is being asked for by "Back up to a file" (else on opening the page). */
     private var backUpAfterPermission = false
 
     /** Android 9: asked already on opening the page (not again if the screen is rebuilt, e.g. the TV changes mode). */
@@ -111,12 +168,12 @@ class BackupViewModel(private val c: AppContainer) : ViewModel() {
 
     /**
      * Android 9: the answer to the storage permission. Granted, the backup file can be seen: one already there (e.g.
-     * from before a reinstall) is offered to restore, never silently replaced; otherwise "Back up now" carries on.
+     * from before a reinstall) is offered to restore, never silently replaced; otherwise "Back up to a file" carries on.
      */
     fun permissionResult(granted: Boolean) {
         val backUpNext = backUpAfterPermission
         backUpAfterPermission = false
-        // Declined on opening the page: fine for restoring from a file, so nothing to report until "Back up now".
+        // Declined on opening the page: fine for restoring from a file, so nothing to report until "Back up to a file".
         if (!granted) return if (backUpNext) failed(appString(R.string.settings_backup_permission_denied)) else Unit
         viewModelScope.launch {
             // Not knowing whether one is there, nothing is saved over it.
@@ -136,14 +193,20 @@ class BackupViewModel(private val c: AppContainer) : ViewModel() {
         }
     }
 
-    /** Replaces everything from the file, then downloads the playlists and guides again. [done]: has playlists. */
+    /** Replaces everything from the backup, then downloads the playlists and guides again. [done]: has playlists. */
     fun restore(done: (Boolean) -> Unit) {
-        val uri = confirming ?: return
+        val source = confirming ?: return
         if (busy) return
         confirming = null
         run(appString(R.string.settings_backup_restoring)) {
             // In the app's scope: leaving the page mustn't stop a restore halfway.
-            done(c.appScope.async { file.read(uri) { c.backup.restore(it) } }.await())
+            val restored = c.appScope.async {
+                when (source) {
+                    is Source.File -> file.read(source.uri) { c.backup.restore(it) }
+                    is Source.Drive -> c.backup.restore(ByteArrayInputStream(drive.read(source.saved)))
+                }
+            }
+            done(restored.await())
             null
         }
     }
@@ -161,11 +224,22 @@ class BackupViewModel(private val c: AppContainer) : ViewModel() {
                 throw e
             } catch (e: BackupException) {
                 e.message
+            } catch (e: SyncException) {
+                driveProblem(e)
             } catch (e: Exception) {
                 appString(R.string.settings_backup_failed, describe(e))
             }
             busy = false
         }
+    }
+}
+
+private fun driveProblem(e: SyncException): String {
+    val code = e.code
+    return when {
+        e.reason == SyncException.Reason.SIGNED_OUT -> appString(R.string.settings_backup_drive_signed_out)
+        code != null -> appString(R.string.settings_backup_drive_error, code)
+        else -> appString(R.string.sync_failed)
     }
 }
 
@@ -193,7 +267,7 @@ fun BackupScreen() {
     val vm = appViewModel { BackupViewModel(it) }
     val nav = LocalNavigator.current
     // Android 9 only: the Download folder needs the storage permission, asked for on opening the page (and again by
-    // "Back up now" if it was declined).
+    // "Back up to a file" if it was declined).
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission(), vm::permissionResult)
     fun askPermission(forBackUp: Boolean) {
         vm.askingPermission(forBackUp)
@@ -256,25 +330,64 @@ fun BackupScreen() {
         }
         item {
             if (vm.confirming != null) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(stringResource(R.string.settings_backup_confirm), style = MaterialTheme.typography.titleMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        PillButton(stringResource(R.string.settings_backup_restore), {
-                            vm.restore { hasPlaylists -> nav.reset(if (hasPlaylists) Screen.Home else Screen.Welcome) }
-                        }, rememberFirstFocus(), primary = true)
-                        PillButton(stringResource(R.string.settings_backup_cancel), vm::cancel)
-                    }
-                }
+                ConfirmRestore(vm) { hasPlaylists -> nav.reset(if (hasPlaylists) Screen.Home else Screen.Welcome) }
             } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PillButton(stringResource(R.string.settings_backup_now), backUp, rememberFirstFocus(), primary = true)
-                    val s = vm.saved
-                    if (s != null) PillButton(stringResource(R.string.settings_backup_restore), { vm.ask(s.uri) })
-                    val restoreFile = if (s == null) R.string.settings_backup_restore_file else R.string.settings_backup_restore_other_file
-                    PillButton(stringResource(restoreFile), ::pick)
-                }
+                FileButtons(vm, backUp, ::pick)
             }
         }
+        if (vm.driveAvailable && vm.confirming == null) item { DriveBackupPart(vm) }
         vm.status?.let { item { Text(it, style = MaterialTheme.typography.bodyLarge) } }
+    }
+}
+
+/** Back up to a file, and restore from this TV's backup file or from another. */
+@Composable
+private fun FileButtons(vm: BackupViewModel, backUp: () -> Unit, pick: () -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        PillButton(stringResource(R.string.settings_backup_now), backUp, rememberFirstFocus(), primary = true)
+        val s = vm.saved
+        if (s != null) PillButton(stringResource(R.string.settings_backup_restore), { vm.ask(s.uri) })
+        val restoreFile = if (s == null) R.string.settings_backup_restore_file else R.string.settings_backup_restore_other_file
+        PillButton(stringResource(restoreFile), pick)
+    }
+}
+
+/** Asks before a restore replaces everything. [done]: has playlists. */
+@Composable
+private fun ConfirmRestore(vm: BackupViewModel, done: (Boolean) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(stringResource(R.string.settings_backup_confirm), style = MaterialTheme.typography.titleMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            PillButton(stringResource(R.string.settings_backup_restore), { vm.restore(done) }, rememberFirstFocus(), primary = true)
+            PillButton(stringResource(R.string.settings_backup_cancel), vm::cancel)
+        }
+    }
+}
+
+/** Back up to Google Drive and restore from it, with a sign-in first when needed. */
+@Composable
+private fun DriveBackupPart(vm: BackupViewModel) {
+    val account by vm.account.collectAsState()
+    Column(Modifier.width(760.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Muted(stringResource(R.string.settings_backup_drive_intro), maxLines = 3)
+        when (val s = vm.google.state) {
+            is GoogleSignIn.State.Code -> SignInCode(s.code, vm.google::cancel)
+            else -> {
+                if (account?.signedIn == true) {
+                    val last = vm.driveSaved?.modifiedAt?.takeIf { it > 0 }?.let(::formatDayTime)
+                    Muted(
+                        last?.let { stringResource(R.string.settings_backup_drive_last, it) }
+                            ?: stringResource(R.string.settings_backup_drive_none)
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // After a sign-in panel, the remote comes back here.
+                    val focus = if (vm.google.closed > 0) rememberFirstFocus(vm.google.closed) else Modifier
+                    PillButton(stringResource(R.string.settings_backup_drive), vm::backUpToDrive, focus)
+                    PillButton(stringResource(R.string.settings_backup_restore_drive), vm::askDrive)
+                }
+                (s as? GoogleSignIn.State.Failed)?.let { Text(signInProblem(it), style = MaterialTheme.typography.bodyLarge) }
+            }
+        }
     }
 }

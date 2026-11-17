@@ -11,7 +11,7 @@
     <string name="settings_appearance_title">Apariencia</string>
     <string name="settings_appearance_help">Color de acento y tamaño del texto</string>
     <string name="settings_backup_title">Copia de seguridad</string>
-    <string name="settings_backup_help">Guarda tus listas y preferencias en un archivo o restáuralas</string>
+    <string name="settings_backup_help">Guarda tus listas y preferencias en un archivo o en Google Drive, o restáuralas</string>
     <string name="settings_about_title">Acerca de</string>
     <string name="settings_about_help">Versión %1$s, licencias, almacenamiento</string>
 
@@ -94,7 +94,7 @@
     <string name="settings_backup_saving">Guardando…</string>
     <string name="settings_backup_saved_to">Guardado en %1$s</string>
     <string name="settings_backup_find_failed">No se pudo buscar una copia de seguridad: %1$s</string>
-    <string name="settings_backup_already_there">Ya hay una copia de seguridad aquí. Restáurala o vuelve a presionar Hacer copia ahora para reemplazarla.</string>
+    <string name="settings_backup_already_there">Ya hay una copia de seguridad aquí. Restáurala o vuelve a presionar Copia en un archivo para reemplazarla.</string>
     <string name="settings_backup_restoring">Restaurando…</string>
     <string name="settings_backup_failed">Algo salió mal: %1$s</string>
     <string name="settings_backup_choose_file">Elige el archivo de copia de seguridad</string>
@@ -105,7 +105,7 @@
     <string name="settings_backup_confirm">Esto reemplaza tus listas y configuración por las de la copia de seguridad. ¿Restaurar?</string>
     <string name="settings_backup_restore">Restaurar</string>
     <string name="settings_backup_cancel">Cancelar</string>
-    <string name="settings_backup_now">Hacer copia ahora</string>
+    <string name="settings_backup_now">Copia en un archivo</string>
     <string name="settings_backup_restore_file">Restaurar desde un archivo…</string>
     <string name="settings_backup_restore_other_file">Restaurar desde otro archivo…</string>
     <string name="settings_backup_not_a_backup">Este no es un archivo de copia de seguridad de MyTVPlayer.</string>
@@ -223,4 +223,13 @@
     <string name="settings_tmdb_phone_hint">Pega tu clave de API o tu token de acceso de lectura de TMDB y selecciona Enviar.</string>
     <string name="settings_tmdb_phone_send">Enviar</string>
     <string name="settings_tmdb_phone_done">Enviada. La TV comprueba ahora la clave. Puedes cerrar esta página.</string>
+    <string name="settings_backup_drive">Copia en Google Drive</string>
+    <string name="settings_backup_restore_drive">Restaurar desde Google Drive</string>
+    <string name="settings_backup_drive_intro">Una copia en Google Drive usa el mismo inicio de sesión de Google que Sincronizar entre televisores. Todos tus televisores comparten una sola copia allí.</string>
+    <string name="settings_backup_drive_last">Última copia en Google Drive: %1$s</string>
+    <string name="settings_backup_drive_none">Aún no hay copias en Google Drive.</string>
+    <string name="settings_backup_drive_saved">Guardada en tu Google Drive</string>
+    <string name="settings_backup_drive_looking">Buscando en Google Drive…</string>
+    <string name="settings_backup_drive_error">Google Drive lo rechazó (%1$s). Inténtalo más tarde.</string>
+    <string name="settings_backup_drive_signed_out">Google ya no acepta el inicio de sesión. Vuelve a iniciar sesión.</string>
 </resources>

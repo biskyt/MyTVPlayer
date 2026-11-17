@@ -391,7 +391,7 @@ class AppUiTest {
     fun `backup saves to Downloads and restores after confirming`() {
         show(Screen.Backup)
         waitFor("No backup on this TV yet.")
-        compose.onNode(hasText("Back up now")).performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNode(hasText("Back up to a file")).performSemanticsAction(SemanticsActions.OnClick)
         waitFor("Saved to Download/MyTVPlayer/mytvplayer-backup.json")
         compose.onRoot().captureRoboImage("screenshots/settings-backup.png")
 
