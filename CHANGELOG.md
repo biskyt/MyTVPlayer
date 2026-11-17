@@ -8,6 +8,7 @@ English, one bullet of one sentence per change.
 - Backups and Sync between TVs share one Google sign-in, so you sign in only once.
 - The TV remembers the sign-in.
 - Stop syncing now keeps you signed in, and the new Sign out of Google button signs you out.
+- The phone page for your TMDB key now opens in browsers that try HTTPS first, such as Microsoft Edge.
 
 ## 1.24.0
 - With your own free TMDB key (Settings › TMDB), film and series pages show much more.

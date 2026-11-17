@@ -106,7 +106,16 @@ class PhoneForm(
     private fun serve(client: Socket) {
         // A browser can open a connection well before it sends its request on it: the first byte may take a while.
         client.soTimeout = FIRST_BYTE_MS
-        val input = LimitedInput(BufferedInputStream(client.getInputStream()), client) { started(client) }
+        val buffered = BufferedInputStream(client.getInputStream())
+        buffered.mark(1)
+        val first = buffered.read()
+        if (first < 0) return
+        buffered.reset()
+        // An HTTP request starts with its method's capital letters. Some browsers (Microsoft Edge, for example) try
+        // HTTPS first: an answer at once tells them that this server has only HTTP, so they open the http address.
+        // Without an answer, they try again and again, and then show an error.
+        if (first !in 'A'.code..'Z'.code) return reply(client, Reply(BAD_REQUEST, ""))
+        val input = LimitedInput(buffered, client) { started(client) }
         val request = input.line()?.split(' ') ?: return
         val (method, path) = request.getOrNull(0) to request.getOrNull(1)
         // All the headers are read first: the body starts after the blank line that ends them.
@@ -123,6 +132,10 @@ class PhoneForm(
             }
             else -> Reply(BAD_REQUEST, "")
         }
+        reply(client, reply)
+    }
+
+    private fun reply(client: Socket, reply: Reply) {
         val bytes = reply.body.toByteArray(Charsets.UTF_8)
         client.getOutputStream().apply {
             write(
