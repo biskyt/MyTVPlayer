@@ -70,6 +70,18 @@ class TmdbClient(
     suspend fun person(id: Long): TmdbPerson? = get("person/$id", listOf("append_to_response" to "combined_credits"))
         ?.let { decode(PersonJson.serializer(), it).toPerson() }
 
+    /**
+     * The films (or, when [series], the series) that TMDB suggests for title [id]: the first page of its
+     * recommendations, else of its similar titles. TMDB has no recommendations for some titles. Empty when TMDB has
+     * neither.
+     */
+    suspend fun recommendations(series: Boolean, id: Int): List<TmdbSuggestion> {
+        val kind = if (series) "tv" else "movie"
+        suspend fun list(name: String) = get("$kind/$id/$name", emptyList())
+            ?.let { decode(SuggestionsJson.serializer(), it).toSuggestions(series, id) }.orEmpty()
+        return list("recommendations").ifEmpty { list("similar") }
+    }
+
     /** The episodes of [season] of series [seriesId]; empty when TMDB has none. */
     suspend fun season(seriesId: Int, season: Int): List<TmdbEpisode> =
         get("tv/$seriesId/season/$season", emptyList())?.let { decode(SeasonJson.serializer(), it).toEpisodes() }.orEmpty()

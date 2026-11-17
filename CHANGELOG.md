@@ -9,6 +9,7 @@ English, one bullet of one sentence per change.
 - A film's page now has a More… button (also the remote's Menu button) with Favourite, Cast and crew, About this film and the links.
 - OK on someone in the cast opens their page from TMDB, with their biography and the films and series that they are in, and those in your playlist open from there.
 - A series' options, and a film's More…, now have Play trailer, when TMDB or your provider has a trailer.
+- A series' options, and a film's More…, now have More like this: titles that TMDB suggests, those in your playlist first.
 - In Settings › TMDB, you can scan a QR code with your phone and paste your key there, instead of typing it with the remote.
 - With no TMDB key, MyTVPlayer makes no requests to TMDB.
 

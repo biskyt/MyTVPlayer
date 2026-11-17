@@ -32,5 +32,7 @@ class TmdbLiveTest {
         assertEquals("Keanu Reeves", keanu.name)
         assertEquals(PersonCredit.ACTOR, keanu.kinds.first())
         assertTrue(keanu.credits.any { it.ratingKey == "movie/603" && it.kind == PersonCredit.ACTOR })
+        val more = tmdb.recommendations(series = false, 603)
+        assertTrue(more.isNotEmpty() && more.none { it.id == 603 || it.series })
     }
 }

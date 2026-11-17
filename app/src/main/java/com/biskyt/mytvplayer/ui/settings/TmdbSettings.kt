@@ -149,7 +149,7 @@ private fun PhoneKeyEntry(received: (String) -> Unit) {
     )
     val onKey by rememberUpdatedState(received)
     var url by remember { mutableStateOf<String?>(null) }
-    // The key arrives on the server's thread: it is handed to the panel on the main thread.
+    // The key arrives on the thread of the phone's connection: it is handed to the panel on the main thread.
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         // Kept outside the IO block, so that it is closed even when the panel goes while the server starts.

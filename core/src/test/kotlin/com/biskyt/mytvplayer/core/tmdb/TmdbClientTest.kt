@@ -196,4 +196,44 @@ class TmdbClientTest {
         client().keyWorks()
         assertEquals("no-cache", server.takeRequest().getHeader("Cache-Control"))
     }
+
+    @Test
+    fun `a series' recommendations, in TMDB's order, without the series itself`() = runBlocking {
+        reply(
+            """{"page":1,"results":[{"id":2316,"name":"The Office","original_name":"The Office","first_air_date":"2005-03-24",
+            "poster_path":"/o.jpg","vote_average":8.6,"vote_count":4000},{"id":1399,"name":"Itself"},
+            {"id":4614,"name":"Engrenages","original_name":"Engrenages","first_air_date":"","vote_average":7.5,"vote_count":3},
+            {"id":5,"name":""},{"id":71446,"name":"La casa de papel","original_name":"La casa de papel","first_air_date":"2017-05-02"},
+            {"id":2316,"name":"The Office"}]}"""
+        )
+        val s = client().recommendations(series = true, 1399)
+        assertEquals(
+            listOf(
+                TmdbSuggestion(2316, true, "The Office", null, 2005, "https://image.tmdb.org/t/p/w342/o.jpg", 8.6),
+                TmdbSuggestion(4614, true, "Engrenages", null, null, null, null), // too few votes for a score
+                TmdbSuggestion(71446, true, "La casa de papel", null, 2017, null, null),
+            ),
+            s
+        )
+        assertEquals("/3/tv/1399/recommendations", server.takeRequest().requestUrl!!.encodedPath)
+        assertEquals(1, server.requestCount) // recommendations were found: no need for similar titles
+    }
+
+    @Test
+    fun `a film with no recommendations gets its similar films`() = runBlocking {
+        reply("""{"page":1,"results":[]}""")
+        reply("""{"results":[{"id":9,"title":"Le Fabuleux Destin","original_title":"Amélie","release_date":"2001-04-25"}]}""")
+        val s = client().recommendations(series = false, 194)
+        assertEquals(listOf(TmdbSuggestion(9, false, "Le Fabuleux Destin", "Amélie", 2001, null, null)), s)
+        assertEquals("/3/movie/194/recommendations", server.takeRequest().requestUrl!!.encodedPath)
+        assertEquals("/3/movie/194/similar", server.takeRequest().requestUrl!!.encodedPath)
+    }
+
+    @Test
+    fun `a title TMDB does not have has no suggestions`() = runBlocking {
+        reply("{}", 404)
+        reply("{}", 404)
+        assertEquals(emptyList<TmdbSuggestion>(), client().recommendations(series = true, 1))
+        assertEquals(2, server.requestCount)
+    }
 }

@@ -10,7 +10,8 @@ import okhttp3.mockwebserver.RecordedRequest
 
 /**
  * TMDB as the app reads it, for the films and series of [FakeProvider]: Dune (2021) is film 438631, Line of Duty is
- * series 31917. [use] points [AppContainer.tmdb] at it, with a test key (never a real one).
+ * series 31917. Only those two have suggestions for "More like this". [use] points [AppContainer.tmdb] at it, with a
+ * test key (never a real one).
  */
 class FakeTmdb : Dispatcher() {
     private val server = MockWebServer().also {
@@ -39,6 +40,8 @@ class FakeTmdb : Dispatcher() {
             "tv/31917" -> LINE_OF_DUTY
             "tv/31917/season/1" -> SEASON_1
             "person/$PERSON" -> CHALAMET
+            "movie/438631/recommendations" -> DUNE_LIKE
+            "tv/31917/recommendations" -> LINE_OF_DUTY_LIKE
             else -> return MockResponse().setResponseCode(404).setBody("""{"status_code":34}""")
         }
         return MockResponse().setBody(body)
@@ -52,6 +55,9 @@ class FakeTmdb : Dispatcher() {
 
         /** Line of Duty's trailer. */
         const val SERIES_TRAILER = "lodtrailer1"
+
+        /** The provider's id for Bodyguard, a series that a test can add to the playlist ("More like this"). */
+        const val BODYGUARD = 79L
 
         /** Timothée Chalamet's TMDB id: in Dune's cast, with a page. Rebecca Ferguson has no id there. */
         const val PERSON = 1190668L
@@ -81,6 +87,19 @@ class FakeTmdb : Dispatcher() {
                 """{"id":331482,"media_type":"movie","title":"Little Women","character":"Laurie","release_date":"2019-12-25"},""" +
                 """{"id":31917,"media_type":"tv","name":"Line of Duty","character":"Guest","first_air_date":"2013-06-26"}],""" +
                 """"crew":[]}}"""
+
+        /** More like Dune: Paddington 2 is in the playlist, Arrival is not. */
+        private const val DUNE_LIKE =
+            """{"page":1,"results":[{"id":346648,"title":"Paddington 2","release_date":"2017-11-09"},""" +
+                """{"id":329865,"title":"Arrival","release_date":"2016-11-10","vote_average":7.6,"vote_count":19000}]}"""
+
+        /**
+         * More like Line of Duty: Bodyguard (with no date) is in the playlist when a test adds it as series
+         * [BODYGUARD]. Happy Valley is not in the playlist.
+         */
+        private const val LINE_OF_DUTY_LIKE =
+            """{"page":1,"results":[{"id":76773,"name":"Bodyguard","vote_average":7.9,"vote_count":1500},""" +
+                """{"id":63351,"name":"Happy Valley","first_air_date":"2014-04-29","vote_average":8.3,"vote_count":500}]}"""
 
         private const val SEASON_1 =
             """{"episodes":[{"season_number":1,"episode_number":1,"overview":"TMDB's first."},""" +

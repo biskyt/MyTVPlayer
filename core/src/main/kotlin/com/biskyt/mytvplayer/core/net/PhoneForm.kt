@@ -10,7 +10,6 @@ import java.net.InetAddress
 import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
-import java.net.SocketException
 import java.net.URLDecoder
 import java.security.SecureRandom
 import kotlin.concurrent.thread
@@ -27,8 +26,9 @@ data class PhoneFormText(
 /**
  * A one-field web page that this device serves on the home network, so that a phone can send it a value (such as a
  * TMDB key) instead of typing it with a remote. The TV shows [url] as a QR code. The address has a random part, so
- * only someone who sees the QR code can open it. [received] gets each value sent (trimmed, never blank), on the
- * server's thread. It serves until [close]: only while its panel is open.
+ * only someone who sees the QR code can open it. [received] gets each value sent (trimmed, never blank), on the thread
+ * of the connection that sent it: two connections can call it at the same time. It serves until [close]: only while
+ * its panel is open.
  */
 class PhoneForm(
     address: InetAddress,
@@ -40,39 +40,73 @@ class PhoneForm(
 
     val url = "http://${address.hostAddress}:${socket.localPort}/$token"
 
-    /** The request being served, closed with the server so that its thread is not held. */
-    @Volatile
-    private var client: Socket? = null
+    /**
+     * The connections being served, each on its own thread, in the order they came, with whether their request has
+     * started. All of them close with the server, so that no thread stays. Guarded by [lock], as is closing.
+     */
+    private val clients = LinkedHashMap<Socket, Boolean>()
+    private val lock = Any()
 
     init {
         thread(name = "PhoneForm", isDaemon = true) {
-            while (!socket.isClosed) {
-                try {
-                    socket.accept().use { c ->
-                        client = c
-                        serve(c)
-                    }
-                } catch (_: SocketException) {
-                    // Closed: the panel is gone (or the phone went away).
-                } catch (_: IOException) {
-                    // One bad or slow request: the next one is served.
-                } catch (@Suppress("TooGenericExceptionCaught") _: RuntimeException) {
-                    // Anything else a stranger on the network sends: never a crash of the app.
-                } finally {
-                    client = null
-                }
-            }
+            // Until closed: the panel is gone.
+            while (!socket.isClosed) acceptOrNull()?.let(::admit)
         }
     }
 
-    override fun close() {
+    /** The next connection; null when the server is closed, or when one connection failed before it was accepted. */
+    private fun acceptOrNull(): Socket? = try {
+        socket.accept()
+    } catch (_: IOException) {
+        // A connection that the phone dropped, or no file handles for a moment: the server goes on, after a short wait.
+        if (!socket.isClosed) Thread.sleep(ACCEPT_RETRY_MS)
+        null
+    }
+
+    /**
+     * A phone's browser opens connections before it uses them, and asks for an icon too. So each connection has its own
+     * thread, and a connection that waits does not stop the others. At most [MAX_CLIENTS] at a time: when all are in
+     * use, the oldest connection with no request yet makes room. A connection that comes as the server closes is closed.
+     */
+    private fun admit(c: Socket) {
+        val admitted = synchronized(lock) {
+            if (socket.isClosed) return@synchronized false
+            if (clients.size >= MAX_CLIENTS) {
+                clients.entries.firstOrNull { !it.value }?.key?.let { idle ->
+                    clients.remove(idle)
+                    runCatching { idle.close() }
+                }
+            }
+            (clients.size < MAX_CLIENTS).also { if (it) clients[c] = false }
+        }
+        if (admitted) thread(name = "PhoneForm request", isDaemon = true) { handle(c) } else runCatching { c.close() }
+    }
+
+    /** [c]'s request has started: it is no longer the first to make room. */
+    private fun started(c: Socket) = synchronized(lock) { if (c in clients) clients[c] = true }
+
+    private fun handle(c: Socket) {
+        try {
+            c.use(::serve)
+        } catch (_: IOException) {
+            // A bad or slow request, or the phone went away: only this connection ends.
+        } catch (@Suppress("TooGenericExceptionCaught") _: RuntimeException) {
+            // Anything else a stranger on the network sends: never a crash of the app.
+        } finally {
+            synchronized(lock) { clients.remove(c) }
+        }
+    }
+
+    override fun close() = synchronized(lock) {
         socket.close()
-        client?.close()
+        clients.keys.forEach { runCatching { it.close() } }
+        clients.clear()
     }
 
     private fun serve(client: Socket) {
-        client.soTimeout = READ_TIMEOUT_MS
-        val input = LimitedInput(BufferedInputStream(client.getInputStream()), System.currentTimeMillis() + REQUEST_MS)
+        // A browser can open a connection well before it sends its request on it: the first byte may take a while.
+        client.soTimeout = FIRST_BYTE_MS
+        val input = LimitedInput(BufferedInputStream(client.getInputStream()), client) { started(client) }
         val request = input.line()?.split(' ') ?: return
         val (method, path) = request.getOrNull(0) to request.getOrNull(1)
         // All the headers are read first: the body starts after the blank line that ends them.
@@ -105,11 +139,12 @@ class PhoneForm(
     private data class Reply(val status: String, val body: String)
 
     /**
-     * A request's bytes, with limits: [MAX_HEAD] bytes of request line and headers, and all of it before [deadline].
-     * So no one on the network can hold the server or fill its memory, with or without the address.
+     * A request's bytes, with limits: [MAX_HEAD] bytes of request line and headers, and all of it within [REQUEST_MS] of
+     * its first byte. So no one on the network can hold a connection or fill memory, with or without the address.
      */
-    private class LimitedInput(private val input: InputStream, private val deadline: Long) {
+    private class LimitedInput(private val input: InputStream, private val socket: Socket, private val onStart: () -> Unit) {
         private var read = 0
+        private var deadline = Long.MAX_VALUE
 
         /** The next line (without its line end), as ASCII; null at the end. */
         fun line(): String? {
@@ -136,7 +171,14 @@ class PhoneForm(
 
         private fun next(): Int {
             if (System.currentTimeMillis() > deadline) throw IOException("Request too slow")
-            return input.read()
+            val b = input.read()
+            if (deadline == Long.MAX_VALUE) {
+                // The request has started: the rest must follow soon.
+                deadline = System.currentTimeMillis() + REQUEST_MS
+                socket.soTimeout = READ_TIMEOUT_MS
+                onStart()
+            }
+            return b
         }
     }
 
@@ -171,7 +213,10 @@ class PhoneForm(
 
         private const val BACKLOG = 4
         private const val TOKEN_BYTES = 12
+        private const val FIRST_BYTE_MS = 30_000
         private const val READ_TIMEOUT_MS = 2_000
+        private const val MAX_CLIENTS = 8
+        private const val ACCEPT_RETRY_MS = 100L
         private const val REQUEST_MS = 10_000L
         private const val MAX_HEAD = 16 * 1024
         private const val MAX_BODY = 4096

@@ -139,12 +139,14 @@ fun MovieDetailsScreen(screen: Screen.MovieDetails) {
         if (panel == FilmPanel.CAST) castFocus = 0
         open = panel
     }
-    FilmPanels(vm, movie, open, castFocus, openCrew, playTrailer, show)
+    val moreLike = { tmdbId: Int -> nav.push(Screen.MoreLike(screen.playlistId, tmdbId, series = false, movie.title, Tab.MOVIES)) }
+    FilmPanels(vm, movie, open, castFocus, openCrew, playTrailer, moreLike, show)
 }
 
 /**
  * The panel [open] over the film page ([show] changes it): its own composable, so the page does not recompose with it.
- * Cast and crew has the remote on person [castFocus]; OK on one opens their page ([openPerson]).
+ * Cast and crew has the remote on person [castFocus]; OK on one opens their page ([openPerson]). More like this opens
+ * [moreLike] for the film's TMDB id.
  */
 @Composable
 @Suppress("LongParameterList") // the page's state, passed down rather than read again
@@ -155,6 +157,7 @@ private fun FilmPanels(
     castFocus: Int,
     openPerson: (Int, CastMember) -> Unit,
     playTrailer: (() -> Unit)?,
+    moreLike: (Int) -> Unit,
     show: (FilmPanel) -> Unit
 ) {
     val info = vm.info
@@ -164,8 +167,14 @@ private fun FilmPanels(
         FilmPanel.NONE -> Unit
         FilmPanel.MORE -> {
             val favourite by vm.favourite.collectAsState()
-            val actions = listOf(favouriteAction(favourite) { vm.toggleFavourite() }) +
-                titleActions(tmdb, film = true, playTrailer, showCast = { show(FilmPanel.CAST) }, showAbout = { show(FilmPanel.ABOUT) })
+            val actions = listOf(favouriteAction(favourite) { vm.toggleFavourite() }) + titleActions(
+                tmdb,
+                film = true,
+                playTrailer,
+                showCast = { show(FilmPanel.CAST) },
+                showSimilar = moreLike,
+                showAbout = { show(FilmPanel.ABOUT) }
+            )
             ItemActionsPanel(movie.title, actions, close, panelLine(movie.year ?: info.year, info.genre))
         }
         FilmPanel.CAST -> {

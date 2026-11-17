@@ -49,6 +49,7 @@ import com.biskyt.mytvplayer.data.ProgressSync
 import com.biskyt.mytvplayer.data.ProxyMonitor
 import com.biskyt.mytvplayer.data.SearchRepository
 import com.biskyt.mytvplayer.data.SettingsRepository
+import com.biskyt.mytvplayer.data.SimilarRepository
 import com.biskyt.mytvplayer.data.SyncAccount
 import com.biskyt.mytvplayer.data.SyncManager
 import com.biskyt.mytvplayer.data.SyncedChoices
@@ -150,6 +151,7 @@ class AppContainer(context: Context, launcherWriter: LauncherWriter = TvLauncher
     val favourites = Favourites(appScope, settings, channels, vod)
     val search = SearchRepository(db)
     val people = PersonRepository(vod, tmdb)
+    val similar = SimilarRepository(vod, tmdb)
     val catchup = CatchupRepository(playlists)
     val sync: SyncManager = SyncManager(appScope, playlists, vod, epg, settings)
     val vpn = VpnMonitor(context, appScope)

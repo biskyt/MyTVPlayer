@@ -101,4 +101,16 @@
     <!-- %1$s: the part the person plays; %2$s: the title of the film or show, e.g. "Mara in The Harbour". -->
     <string name="vod_person_role_in">%1$s in %2$s</string>
     <string name="vod_person_failed">Couldn\'t load this person\'s page</string>
+    <!-- More…: opens "More like this", the films or series that TMDB suggests for the title; its help (a film's only) under it. -->
+    <string name="vod_similar">More like this</string>
+    <string name="vod_similar_help">Similar films from TMDB</string>
+    <!-- The "More like this" page's title. %1$s: the film's or series' title, e.g. "More like Dune". -->
+    <string name="vod_similar_title">More like %1$s</string>
+    <!-- Its rows: the suggestions that are in the user's playlist, then the others. -->
+    <string name="vod_similar_in_playlist">In your playlist</string>
+    <string name="vod_similar_elsewhere">Not in your playlist</string>
+    <string name="vod_similar_none">TMDB has no suggestions for this</string>
+    <string name="vod_similar_failed">Couldn\'t load the suggestions</string>
+    <!-- TMDB's score under a suggestion's poster. %1$s: the score as a percentage, e.g. "TMDB 78%". "TMDB" is a brand name. -->
+    <string name="vod_score_tmdb_value">TMDB %1$s</string>
 </resources>

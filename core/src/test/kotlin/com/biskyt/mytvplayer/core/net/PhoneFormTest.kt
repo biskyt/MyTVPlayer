@@ -73,4 +73,33 @@ class PhoneFormTest {
         // Still serving.
         get(form.url).use { assertEquals(200, it.code) }
     }
+
+    @Test
+    fun `a connection opened early gets its answer, and does not hold up another request`() {
+        // As a phone's browser does: it opens a connection, and sends its request on it a few seconds later.
+        val early = java.net.Socket(InetAddress.getLoopbackAddress(), java.net.URI(form.url).port)
+        early.use {
+            // Not held up by the silent one: well under the old server's 2 s wait for it.
+            val start = System.currentTimeMillis()
+            get(form.url).use { r -> assertEquals(200, r.code) }
+            assertTrue(System.currentTimeMillis() - start < 1_000)
+            Thread.sleep(3_000)
+            val path = java.net.URI(form.url).path
+            it.getOutputStream().write("GET $path HTTP/1.1\r\nHost: tv\r\n\r\n".toByteArray())
+            val reply = it.getInputStream().bufferedReader().readLine()
+            assertEquals("HTTP/1.1 200 OK", reply)
+        }
+    }
+
+    @Test
+    fun `silent connections that fill every place make room for a request`() {
+        val port = java.net.URI(form.url).port
+        val silent = List(8) { java.net.Socket(InetAddress.getLoopbackAddress(), port) }
+        try {
+            Thread.sleep(200) // all accepted
+            get(form.url).use { r -> assertEquals(200, r.code) }
+        } finally {
+            silent.forEach { it.close() }
+        }
+    }
 }

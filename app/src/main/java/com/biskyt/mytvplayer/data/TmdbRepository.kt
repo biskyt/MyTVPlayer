@@ -7,6 +7,7 @@ import com.biskyt.mytvplayer.core.tmdb.TmdbClient
 import com.biskyt.mytvplayer.core.tmdb.TmdbEpisode
 import com.biskyt.mytvplayer.core.tmdb.TmdbException
 import com.biskyt.mytvplayer.core.tmdb.TmdbPerson
+import com.biskyt.mytvplayer.core.tmdb.TmdbSuggestion
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.xtream.VodDetails
 import java.io.File
@@ -60,6 +61,9 @@ class TmdbRepository(
 
     /** The episodes of [season] of the TMDB series [seriesId]. */
     suspend fun season(seriesId: Int, season: Int): List<TmdbEpisode> = quietly { it.season(seriesId, season) }.orEmpty()
+
+    /** The films (or, when [series], the series) that TMDB suggests for its title [id]; null when TMDB cannot give them. */
+    suspend fun recommendations(series: Boolean, id: Int): List<TmdbSuggestion>? = quietly { it.recommendations(series, id) }
 
     /** The person [id] on TMDB, with their credits. */
     suspend fun person(id: Long): TmdbPerson? = quietly { it.person(id) }

@@ -128,7 +128,7 @@ internal fun VideosJson.trailer(): String? {
         )?.key
 }
 
-private fun score(average: Double, votes: Int) = average.takeIf { votes >= MIN_VOTES && it > 0 }
+internal fun score(average: Double, votes: Int) = average.takeIf { votes >= MIN_VOTES && it > 0 }
 
 private fun List<Named>.names() = map { it.name }.filter { it.isNotBlank() }
 

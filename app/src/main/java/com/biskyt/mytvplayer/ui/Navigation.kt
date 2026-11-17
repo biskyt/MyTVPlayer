@@ -83,6 +83,12 @@ sealed interface Screen {
         val title: String,
         val tab: Tab,
     ) : Screen
+
+    /**
+     * "More like this": the films (or, when [series], the series) that TMDB suggests for its title [tmdbId], called
+     * [title] in playlist [playlistId]. It shows which of them are in the playlist, under top bar [tab].
+     */
+    data class MoreLike(val playlistId: Long, val tmdbId: Int, val series: Boolean, val title: String, val tab: Tab) : Screen
     data object Settings : Screen
     data object Playlists : Screen
     data class PlaylistEdit(val playlistId: Long?, val firstRun: Boolean = false) : Screen

@@ -35,6 +35,9 @@ import kotlin.math.roundToInt
 /** How tall the sources' logos are drawn: about a line of the details text, the largest place they show. */
 private val LOGO_HEIGHT = 20.dp
 
+/** A score's logo: 12 high, 40% smaller than the boards' 20 (the owner, 2026-11-14 and 2026-11-17), as MyPlexPlayer. */
+internal val SCORE_LOGO = 12.bd
+
 /**
  * Side by side, [spacing] apart, centred on each line, carried on to the next line when the width runs out: what a
  * FlowRow does, without what that brings into the app.
@@ -82,8 +85,7 @@ fun TmdbScore(score: Double) = BoardScore(R.drawable.logo_tmdb, stringResource(R
 @Composable
 fun BoardScore(@DrawableRes logo: Int, name: String, value: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.bd), verticalAlignment = Alignment.CenterVertically) {
-        // At the board's 20, as MyPlexPlayer draws it (not SourceLogo's default, which is in plain dp).
-        SourceLogo(logo, name, height = 20.bd)
+        SourceLogo(logo, name, height = SCORE_LOGO)
         Text(value, style = ScoreText.current, color = Palette.textMuted, maxLines = 1)
     }
 }
@@ -108,7 +110,7 @@ fun SourceLogo(@DrawableRes logo: Int, name: String, modifier: Modifier = Modifi
 }
 
 /** A score out of 10 as a percentage, in the app's language: "76%". */
-private fun percentOf(score: Double): String = NumberFormat.getPercentInstance(AppText.locale).format(score * 10 / PERCENT)
+internal fun percentOf(score: Double): String = NumberFormat.getPercentInstance(AppText.locale).format(score * 10 / PERCENT)
 
 /** A link's site's logo, by its name ("IMDb", "TMDB"); null for one without. */
 @DrawableRes

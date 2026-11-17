@@ -341,7 +341,8 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
         val acting = i < vm.info.cast.size
         personScreen(screen.playlistId, person, show.title, Tab.SERIES, acting)?.let(nav::push)
     }
-    SeriesPanels(vm, show.title, progress, vm.info.trailer?.let { id -> { trailer(id) } }, openCrew)
+    val moreLike = { tmdbId: Int -> nav.push(Screen.MoreLike(screen.playlistId, tmdbId, series = true, show.title, Tab.SERIES)) }
+    SeriesPanels(vm, show.title, progress, vm.info.trailer?.let { id -> { trailer(id) } }, openCrew, moreLike)
 }
 
 /** What is open over the series page ([SeriesDetailsViewModel.open]): its own composable, so the page does not recompose with it. */
@@ -353,7 +354,9 @@ private fun SeriesPanels(
     /** Plays the show's trailer; null when it has none. */
     playTrailer: (() -> Unit)?,
     /** Opens the page of the person at a place in Cast and crew. */
-    openPerson: (Int, CastMember) -> Unit
+    openPerson: (Int, CastMember) -> Unit,
+    /** Opens More like this for the show's TMDB id. */
+    moreLike: (Int) -> Unit
 ) {
     val tmdb = vm.tmdb
     val close = { vm.open = null }
@@ -361,7 +364,7 @@ private fun SeriesPanels(
     val now = { e: EpisodeInfo -> vm.shown?.episodes?.firstOrNull { it.id == e.id } ?: e }
     when (val p = vm.open) {
         null -> Unit
-        is SeriesPanel.Options -> EpisodeOptions(vm, now(p.e), progress[p.e.id], playTrailer)
+        is SeriesPanel.Options -> EpisodeOptions(vm, now(p.e), progress[p.e.id], playTrailer, moreLike)
         SeriesPanel.Cast -> {
             val crew = remember(tmdb) { castAndCrew(tmdb) }
             CastPanel(title, crew, stringResource(R.string.vod_cast_crew), vm.castFocus, { openPerson(it, crew[it]) }, close)
@@ -445,10 +448,17 @@ private fun ContinueButton(
 
 /**
  * An episode's options (its More… button, or holding OK on it): its description, and marking it watched or unwatched.
- * Then the show's options (shared with the film page's More…): its trailer, and with TMDB its people, About and links.
+ * Then the show's options (shared with the film page's More…): its trailer, and with TMDB its people, More like this
+ * ([moreLike]), About and links.
  */
 @Composable
-private fun EpisodeOptions(vm: SeriesDetailsViewModel, e: EpisodeInfo, saved: WatchProgressEntity?, playTrailer: (() -> Unit)?) {
+private fun EpisodeOptions(
+    vm: SeriesDetailsViewModel,
+    e: EpisodeInfo,
+    saved: WatchProgressEntity?,
+    playTrailer: (() -> Unit)?,
+    moreLike: (Int) -> Unit
+) {
     val close = { vm.open = null }
     val set = { watched: Boolean ->
         vm.setWatched(e, watched)
@@ -460,7 +470,7 @@ private fun EpisodeOptions(vm: SeriesDetailsViewModel, e: EpisodeInfo, saved: Wa
         if (saved?.finished != true) markWatched(false, set) else null,
         if (saved?.started == true) markWatched(true, set) else null
     )
-    val show = titleActions(vm.tmdb, film = false, playTrailer, showCast = vm::showCast, showAbout = { vm.open = SeriesPanel.About })
+    val show = titleActions(vm.tmdb, film = false, playTrailer, vm::showCast, moreLike, showAbout = { vm.open = SeriesPanel.About })
     val actions = if (show.isEmpty()) {
         episode
     } else {

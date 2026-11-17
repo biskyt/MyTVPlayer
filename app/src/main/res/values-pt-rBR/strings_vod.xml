@@ -67,4 +67,12 @@
     <string name="vod_person_died">Morreu em %1$s</string>
     <string name="vod_person_role_in">%1$s em %2$s</string>
     <string name="vod_person_failed">Não foi possível carregar a página desta pessoa</string>
+    <string name="vod_similar">Títulos semelhantes</string>
+    <string name="vod_similar_help">Filmes parecidos, segundo o TMDB</string>
+    <string name="vod_similar_title">Semelhantes a %1$s</string>
+    <string name="vod_similar_in_playlist">Na sua playlist</string>
+    <string name="vod_similar_elsewhere">Fora da sua playlist</string>
+    <string name="vod_similar_none">O TMDB não tem sugestões para este título</string>
+    <string name="vod_similar_failed">Não foi possível carregar as sugestões</string>
+    <string name="vod_score_tmdb_value">TMDB %1$s</string>
 </resources>

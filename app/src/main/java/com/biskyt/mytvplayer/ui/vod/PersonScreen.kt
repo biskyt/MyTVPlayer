@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
@@ -34,9 +33,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -59,15 +56,9 @@ import com.biskyt.mytvplayer.ui.common.BoardPanelText
 import com.biskyt.mytvplayer.ui.common.BoardPanelTitle
 import com.biskyt.mytvplayer.ui.common.ErrorRetry
 import com.biskyt.mytvplayer.ui.common.Muted
-import com.biskyt.mytvplayer.ui.common.OneLine
-import com.biskyt.mytvplayer.ui.common.Poster
-import com.biskyt.mytvplayer.ui.common.PosterTile
 import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.formatDate
-import com.biskyt.mytvplayer.ui.common.glowRoom
-import com.biskyt.mytvplayer.ui.common.glowRoomPadding
 import com.biskyt.mytvplayer.ui.common.initials
-import com.biskyt.mytvplayer.ui.common.raiseOnFocus
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.theme.BoardStyle
 import com.biskyt.mytvplayer.ui.theme.MEDIUM
@@ -217,42 +208,6 @@ private fun PersonPhoto(url: String?, name: String) {
     }
 }
 
-/** A heading and a row of [items]' cards ([card], 18 apart). The first card has the remote when [focus]. */
-@Composable
-private fun <T> PosterRow(heading: String, items: List<T>, focus: Boolean, top: Dp, card: @Composable (T, Modifier) -> Unit) {
-    Column(Modifier.padding(top = top), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Heading(heading, Modifier.padding(start = SIDE))
-        // As on Home, the poster with the remote grows and glows (see focusGlow), drawn past the row's edges and over
-        // the cards beside it.
-        LazyRow(
-            Modifier.glowRoom(),
-            contentPadding = glowRoomPadding(PaddingValues(horizontal = SIDE)),
-            horizontalArrangement = Arrangement.spacedBy(18.dp)
-        ) {
-            itemsIndexed(items) { i, item ->
-                Box(Modifier.raiseOnFocus()) { card(item, if (focus && i == 0) rememberFirstFocus() else Modifier) }
-            }
-        }
-    }
-}
-
-/** A poster 140 by 210, the title and a dim line under it. */
-@Composable
-private fun TitleCard(title: String, imageUrl: String?, line: String?, modifier: Modifier, onClick: () -> Unit) {
-    PosterTile(
-        onClick,
-        null,
-        modifier,
-        listOfNotNull(title, line),
-        width = POSTER,
-        // (Its initials, shown until the picture loads, are not read: the card's texts are.)
-        poster = { Poster(imageUrl, title, POSTER, Modifier.clearAndSetSemantics {}) }
-    ) { focused ->
-        OneLine(title, CardTitle.current, focused = focused)
-        OneLine(line.orEmpty(), CardLine.current, color = Palette.textDim, focused = focused)
-    }
-}
-
 /**
  * A credit: its year, its title (a show's with " (TV show)") and the part or job. It takes the remote, so that Up and
  * Down scroll the list, and shows it quietly (a dark fill behind it).
@@ -287,9 +242,6 @@ private fun CreditRow(c: PersonCredit, modifier: Modifier) {
         Box(Modifier.height(10.dp))
     }
 }
-
-@Composable
-private fun Heading(text: String, modifier: Modifier = Modifier) = Text(text, style = HeadingText.current, modifier = modifier)
 
 /**
  * The whole biography, in a side panel. Each paragraph (a long one in parts) takes the remote in turn, so that Up and
@@ -359,19 +311,13 @@ fun bioParts(text: String, max: Int = BIO_PART): List<String> = text.split('\n')
 
 private val SENTENCE_END = Regex("(?<=[.!?])\\s+")
 
-/** The page's left and right margin, as the board's. */
-private val SIDE = 56.dp
-
 /**
  * Above the first part under the header: where the board has it (352) under a header with three lines of biography
  * (the board's 60 under the photo, less what the text adds below it).
  */
 private val FIRST_GAP = 44.dp
 private val PHOTO = 200.dp
-private val POSTER = 140.dp
 
-/** Between the parts: the board's 40. */
-private val GAP = 40.dp
 private const val BIO_LINES = 3
 private const val BIO_PART = 500
 
@@ -383,7 +329,4 @@ private val LineText = BoardStyle(15, MEDIUM)
 private val BioText = BoardStyle(16, MEDIUM, 1.5f)
 private val ButtonText = BoardStyle(15, SEMI_BOLD)
 private val InitialsText = BoardStyle(48, MEDIUM)
-private val HeadingText = BoardStyle(20, SEMI_BOLD)
-private val CardTitle = BoardStyle(14, MEDIUM)
-private val CardLine = BoardStyle(12, MEDIUM)
 private val RowText = BoardStyle(15, MEDIUM)
