@@ -17,7 +17,6 @@
     <string name="vod_choose_categories">Choose categories</string>
 
     <!-- Movie page. %1$s: names of people. -->
-    <string name="vod_director">Director: %1$s</string>
     <string name="vod_cast">Cast: %1$s</string>
 
     <!-- Series page. -->
@@ -46,6 +45,72 @@
         <item quantity="one">%1$d season</item>
         <item quantity="other">%1$d seasons</item>
     </plurals>
-    <!-- Series page: the button that opens an episode's options. -->
+    <!-- Film page: the button that opens its options; series page: the one that opens an episode's options. -->
     <string name="vod_more">More…</string>
+    <!-- Film and series pages: under a plot cut short, opens the whole of it. -->
+    <string name="vod_read_more">Read more</string>
+
+    <!-- TMDB data on the film and series pages (MyPlexPlayer's wording). -->
+    <!-- Film page: the button that plays the trailer; also the title of its QR code panel. -->
+    <string name="vod_trailer">Trailer</string>
+    <!-- Film page: the heading over the cast along the bottom. -->
+    <string name="vod_cast_title">Cast</string>
+    <!-- Film page. %1$s: names of people. -->
+    <string name="vod_directed_by">Directed by %1$s</string>
+    <string name="vod_written_by">Written by %1$s</string>
+    <!-- An episode's options: the headings over its own options and the show's. -->
+    <string name="vod_this_episode">This episode</string>
+    <string name="vod_the_show">The show</string>
+    <!-- More…: the row of links to the title's pages on IMDb and TMDB. -->
+    <string name="vod_links">Links</string>
+    <!-- About this film / show: the labels of its facts (from TMDB). -->
+    <string name="vod_original_title">Original title</string>
+    <string name="vod_released">Released</string>
+    <string name="vod_studio">Studio</string>
+    <string name="vod_countries">Countries</string>
+    <string name="vod_genres">Genres</string>
+    <!-- More…: the options with TMDB data, and the help under them. -->
+    <string name="vod_cast_crew">Cast and crew</string>
+    <string name="vod_cast_crew_help">Everyone, with their photos</string>
+    <string name="vod_about_this_film">About this film</string>
+    <string name="vod_about_film_help">Original title, release, studio, genres</string>
+    <string name="vod_about_this_show">About this show</string>
+    <!-- Cast and crew: the part of who directed and wrote it. -->
+    <string name="vod_role_director">Director</string>
+    <string name="vod_role_writer">Writer</string>
+    <!-- The score's source, read out for its logo (a brand name: it stays as it is). -->
+    <string name="vod_score_tmdb" translatable="false">TMDB</string>
+    <!-- More…: plays the title's trailer; its help (a film's only) under it. -->
+    <string name="vod_play_trailer">Play trailer</string>
+    <string name="vod_play_trailer_help">A short preview of the film</string>
+    <string name="vod_role_actor">Actor</string>
+    <string name="vod_role_producer">Producer</string>
+    <!-- A cast or crew member's page (OK on a cast photo). "In your library": their titles in the playlist. -->
+    <string name="vod_person_library">In your library</string>
+    <string name="vod_person_elsewhere">Also appears in</string>
+    <string name="vod_person_credits">All credits</string>
+    <string name="vod_person_full_biography">Full biography</string>
+    <string name="vod_person_tv_show">TV show</string>
+    <!-- A TV show in the person's list of credits. %1$s: its title. -->
+    <string name="vod_person_show_title">%1$s (TV show)</string>
+    <!-- %1$s: a date, e.g. "3 May 1984". -->
+    <string name="vod_person_born">Born %1$s</string>
+    <!-- %1$s: a date; %2$s: a place, e.g. "Leeds, England". -->
+    <string name="vod_person_born_in">Born %1$s in %2$s</string>
+    <string name="vod_person_died">Died %1$s</string>
+    <!-- %1$s: the part the person plays; %2$s: the title of the film or show, e.g. "Mara in The Harbour". -->
+    <string name="vod_person_role_in">%1$s in %2$s</string>
+    <string name="vod_person_failed">Couldn\'t load this person\'s page</string>
+    <!-- More…: opens "More like this", the films or series that TMDB suggests for the title; its help (a film's only) under it. -->
+    <string name="vod_similar">More like this</string>
+    <string name="vod_similar_help">Similar films from TMDB</string>
+    <!-- The "More like this" page's title. %1$s: the film's or series' title, e.g. "More like Dune". -->
+    <string name="vod_similar_title">More like %1$s</string>
+    <!-- Its rows: the suggestions that are in the user's playlist, then the others. -->
+    <string name="vod_similar_in_playlist">In your playlist</string>
+    <string name="vod_similar_elsewhere">Not in your playlist</string>
+    <string name="vod_similar_none">TMDB has no suggestions for this</string>
+    <string name="vod_similar_failed">Couldn\'t load the suggestions</string>
+    <!-- TMDB's score under a suggestion's poster. %1$s: the score as a percentage, e.g. "TMDB 78%". "TMDB" is a brand name. -->
+    <string name="vod_score_tmdb_value">TMDB %1$s</string>
 </resources>

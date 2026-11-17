@@ -20,7 +20,8 @@ enum class Licence(val title: String, val url: String) {
     APACHE("Apache 2.0", "https://www.apache.org/licenses/LICENSE-2.0"),
     GPL3("GPL 3.0", "https://www.gnu.org/licenses/gpl-3.0.html"),
     LGPL21("LGPL 2.1 or later", "https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html"),
-    OFL("SIL Open Font License 1.1", "https://openfontlicense.org")
+    OFL("SIL Open Font License 1.1", "https://openfontlicense.org"),
+    TMDB("TMDB API terms of use", "https://www.themoviedb.org/api-terms-of-use")
 }
 
 /**
@@ -64,6 +65,8 @@ val openSourceNotices = listOf(
         "https://github.com/jellyfin/jellyfin-androidx-media",
         listOf("org.jellyfin.media3:media3-ffmpeg-decoder")
     ),
+    // A web service, used only with the user's own key (Settings › TMDB): no code of it is in the app.
+    OpenSourceNotice("TMDB", null, R.string.settings_lib_tmdb, Licence.TMDB, "https://www.themoviedb.org"),
     // Built from source once and committed (native/ac3enc/README.md), so it has no Maven module.
     OpenSourceNotice("FFmpeg", "7.1", R.string.settings_lib_ac3, Licence.LGPL21, "https://ffmpeg.org"),
     OpenSourceNotice(

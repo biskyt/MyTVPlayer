@@ -206,4 +206,21 @@
     <string name="settings_proxy_works_only">O proxy funciona: o tráfego desta playlist sai de %1$s.</string>
     <string name="settings_proxy_same">O proxy respondeu, mas seu endereço não mudou (%1$s).</string>
     <string name="settings_proxy_failed">O proxy não respondeu: %1$s</string>
+    <string name="settings_tmdb">TMDB</string>
+    <string name="settings_tmdb_help">Desativado. Adicione sua própria chave gratuita do TMDB para ver o elenco, os trailers e os links nas páginas de filmes e séries.</string>
+    <string name="settings_tmdb_on">Ativado. As páginas de filmes e séries mostram mais dados do TMDB.</string>
+    <string name="settings_tmdb_explain">Com sua própria chave do TMDB, as páginas de filmes e séries mostram o elenco e a equipe, os trailers, links para o IMDb e o TMDB, e as descrições de episódios que faltam. Para obter uma chave gratuita, entre em themoviedb.org e vá a Configurações › API. O MyTVPlayer envia ao TMDB os nomes dos filmes e séries que você abre.</string>
+    <string name="settings_tmdb_key_hint">Chave de API ou token de acesso de leitura</string>
+    <string name="settings_tmdb_save">Salvar</string>
+    <string name="settings_tmdb_remove">Remover a chave</string>
+    <string name="settings_tmdb_checking">Verificando a chave…</string>
+    <string name="settings_tmdb_saved">O TMDB aceitou a chave. Ela está salva.</string>
+    <string name="settings_tmdb_refused">O TMDB não aceitou esta chave. Verifique-a e tente de novo.</string>
+    <string name="settings_tmdb_unreachable">Não foi possível conectar ao TMDB, então a chave não foi verificada. Ela está salva.</string>
+    <string name="settings_lib_tmdb">Elenco, equipe, trailers e links de filmes e séries. Este produto usa a API do TMDB, mas não é endossado nem certificado pelo TMDB.</string>
+    <string name="settings_tmdb_phone">Ou escaneie isto com o celular e cole sua chave na página que abrir. O celular precisa estar na mesma rede que a TV.</string>
+    <string name="settings_tmdb_phone_title">Chave do TMDB para o MyTVPlayer</string>
+    <string name="settings_tmdb_phone_hint">Cole sua chave de API ou seu token de acesso de leitura do TMDB e selecione Enviar.</string>
+    <string name="settings_tmdb_phone_send">Enviar</string>
+    <string name="settings_tmdb_phone_done">Enviada. A TV está verificando a chave. Você pode fechar esta página.</string>
 </resources>

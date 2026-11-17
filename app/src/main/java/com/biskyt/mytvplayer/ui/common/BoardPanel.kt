@@ -3,6 +3,7 @@ package com.biskyt.mytvplayer.ui.common
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -22,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -32,6 +34,7 @@ import androidx.compose.ui.unit.em
 import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.Text
+import com.biskyt.mytvplayer.core.vod.TitleLink
 import com.biskyt.mytvplayer.ui.theme.BOLD
 import com.biskyt.mytvplayer.ui.theme.BoardStyle
 import com.biskyt.mytvplayer.ui.theme.EXTRA_BOLD
@@ -40,6 +43,8 @@ import com.biskyt.mytvplayer.ui.theme.MEDIUM
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.SEMI_BOLD
 import com.biskyt.mytvplayer.ui.theme.bd
+import com.biskyt.mytvplayer.ui.vod.SourceLogo
+import com.biskyt.mytvplayer.ui.vod.linkLogo
 
 // Every side panel of both apps (the owner, 2026-11-06), as MyPlexPlayer's film page boards draw them ("PlexFilmMore",
 // "PlexFilmTech"). A panel is a BoardPanel of these parts, so that its style is set here only. Sizes are the boards'
@@ -168,6 +173,31 @@ fun BoardSection(text: String) = Text(
     modifier = Modifier.padding(start = 14.bd, end = 14.bd, top = 8.bd)
 )
 
+/**
+ * "Links", then a pill for each of [links] (its site's logo, or its name), as the boards draw them: each opens its page
+ * here, or, where this device can't, shows it as a QR code. [modifier] (first focus) goes on the first.
+ */
+@Composable
+fun BoardLinksRow(label: String, links: List<TitleLink>, modifier: Modifier = Modifier) {
+    val open = rememberLinkOpener()
+    Row(
+        Modifier.padding(horizontal = 14.bd, vertical = 4.bd),
+        horizontalArrangement = Arrangement.spacedBy(8.bd),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, style = BoardOptionText.current, modifier = Modifier.weight(1f))
+        links.forEachIndexed { i, link ->
+            Box(Modifier.clip(PillShape).background(Palette.surfaceHigh)) {
+                AccentFillSurface({ open(link) }, PillShape, if (i == 0) modifier else Modifier) {
+                    val padding = Modifier.padding(horizontal = 14.bd, vertical = 8.bd)
+                    linkLogo(link.name)?.let { SourceLogo(it, link.name, padding, height = LINK_LOGO) }
+                        ?: Text(link.name, style = BoardOptionText.current, color = LocalContentColor.current, modifier = padding)
+                }
+            }
+        }
+    }
+}
+
 // The facts of MyPlexPlayer's Technical info: shared, so that both apps' panels stay one file.
 
 /**
@@ -206,6 +236,10 @@ private val PanelTitle = BoardStyle(20, EXTRA_BOLD)
 private val PanelTitleSmall = BoardStyle(18, EXTRA_BOLD)
 
 private val OptionShape = RoundedCornerShape(10.bd)
+private val PillShape = RoundedCornerShape(50)
+
+/** A link's logo in its pill: as tall as the board's IMDb logo there. */
+private val LINK_LOGO = 18.bd
 private val FactShape = RoundedCornerShape(4.bd)
 
 /** An option's help on the accent fill: the accent's text colour, a little faded. */

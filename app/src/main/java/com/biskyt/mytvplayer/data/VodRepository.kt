@@ -127,6 +127,10 @@ class VodRepository(
         return found.firstOrNull { VodTitles.key(it.title) == key }?.id
     }
 
+    /** Every movie or series ([type]) of the playlist that its lists show now (restricted ones hidden while locked). */
+    suspend fun cards(playlistId: Long, type: String): List<VodCard> =
+        if (type == CAT_MOVIE) vod.movieCards(playlistId) else vod.seriesCards(playlistId)
+
     suspend fun series(playlistId: Long, id: Long) = vod.series(playlistId, id)
 
     // --- favourites and progress ---

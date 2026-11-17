@@ -167,6 +167,20 @@ class ParentalTest {
     }
 
     @Test
+    fun `a person's page sees restricted movies only while unlocked, whatever the search setting`() = runBlocking {
+        val id = c.addHomeTv(provider, vod = true)
+        c.parental.setRestricted(id, CAT_MOVIE, "10", true) // UK | MOVIES: 501 and 502
+        suspend fun movies() = c.vod.cards(id, CAT_MOVIE).map { it.id }.sorted()
+        // Hidden from search, but not locked: shown, as the movie lists show them.
+        stateIs(state())
+        assertTrue(movies().containsAll(listOf(501L, 502L)))
+        c.parental.setPin("1234")
+        c.parental.lock()
+        stateIs(state(locked = true))
+        assertTrue(movies().none { it == 501L || it == 502L })
+    }
+
+    @Test
     fun `a restore with the hide setting off keeps the restricted history from the backup`() = runBlocking {
         val id = c.addHomeTv(provider, vod = true)
         c.parental.setRestricted(id, CAT_MOVIE, "10", true) // UK | MOVIES: 501 and 502

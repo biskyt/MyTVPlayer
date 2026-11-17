@@ -40,7 +40,7 @@ class AacSourceRenderer(
 
     companion object {
         /** Puts [renderer] in place of Media3's own audio renderer in [renderers]. */
-        fun replaceIn(renderers: MutableList<Renderer>, renderer: AacSourceRenderer) {
+        internal fun replaceIn(renderers: MutableList<Renderer>, renderer: AacSourceRenderer) {
             val i = renderers.indexOfFirst { it.javaClass == MediaCodecAudioRenderer::class.java }
             if (i >= 0) renderers[i] = renderer else Log.w("AacSourceRenderer", "No MediaCodecAudioRenderer: AAC is not encoded")
         }

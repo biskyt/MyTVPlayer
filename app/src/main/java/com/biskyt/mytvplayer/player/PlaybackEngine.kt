@@ -324,8 +324,8 @@ class PlaybackEngine(
         val encoded = encodedName(f.sampleMimeType)
         val name = encoded ?: decodedName(f.sampleMimeType)
         // Decoded AAC surround sound encoded in the app (DolbyDigitalSink).
-        if (out?.encoding == C.ENCODING_AC3 && name != null && f.sampleMimeType != MimeTypes.AUDIO_AC3) {
-            return appString(R.string.player_audio_as_dolby, name)
+        if (out?.encoding == C.ENCODING_AC3 && f.sampleMimeType == MimeTypes.AUDIO_AAC) {
+            return appString(R.string.player_audio_as_dolby, "AAC")
         }
         // An output sent unchanged belongs to a format that can be sent so: Dolby or DTS. Also see audioInputChanged.
         val sent = out?.takeIf { Util.isEncodingLinearPcm(it.encoding) || encoded != null }

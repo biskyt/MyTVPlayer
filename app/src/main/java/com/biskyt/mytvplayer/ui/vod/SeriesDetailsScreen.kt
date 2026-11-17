@@ -28,7 +28,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -65,6 +68,9 @@ import coil3.request.allowRgb565
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
+import com.biskyt.mytvplayer.core.tmdb.TmdbEpisode
+import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
+import com.biskyt.mytvplayer.core.vod.CastMember
 import com.biskyt.mytvplayer.core.xtream.EpisodeInfo
 import com.biskyt.mytvplayer.core.xtream.SeriesDetails
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
@@ -74,18 +80,23 @@ import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.AppIcons
+import com.biskyt.mytvplayer.ui.common.CastPanel
 import com.biskyt.mytvplayer.ui.common.FocusStroke
+import com.biskyt.mytvplayer.ui.common.ItemAction
 import com.biskyt.mytvplayer.ui.common.ItemActionsPanel
 import com.biskyt.mytvplayer.ui.common.LocalTopBarInset
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.Poster
 import com.biskyt.mytvplayer.ui.common.ProgressLine
+import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.common.formatRuntime
 import com.biskyt.mytvplayer.ui.common.markWatched
+import com.biskyt.mytvplayer.ui.common.onOptionsKeyAfter
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
+import com.biskyt.mytvplayer.ui.common.rememberTrailerOpener
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.common.shortEpisodeLabel
 import com.biskyt.mytvplayer.ui.common.timeLeft
@@ -118,6 +129,27 @@ class SeriesDetailsViewModel(
     var error by mutableStateOf<String?>(null)
         private set
 
+    /** What TMDB knows of the series: null without a TMDB key, until it is read, or when TMDB has nothing. */
+    var tmdb by mutableStateOf<TmdbTitle?>(null)
+        private set
+
+    /** What the column shows of the series: the provider's details first, then TMDB's. */
+    val info by derivedStateOf { merge(details?.info, tmdb) }
+
+    /** TMDB's episodes of each season read so far, by season number. */
+    private val tmdbSeasons = mutableStateMapOf<Int, List<TmdbEpisode>>()
+
+    /** Seasons asked of TMDB, or being asked: each once, unless it gave nothing (then again when shown again). */
+    private val tmdbAsked = mutableSetOf<Int>()
+
+    /**
+     * The details with TMDB's plot, picture and date for each episode that has none from the provider (the provider's
+     * own data wins), in the seasons read from TMDB so far. Ids, titles and the rest stay the provider's.
+     */
+    val shown: SeriesDetails? by derivedStateOf {
+        details?.let { d -> tmdbSeasons.entries.fold(d) { filled, (season, episodes) -> filled.withSeason(season, episodes) } }
+    }
+
     /** The season asked for or picked (until then, the one with the episode to carry on with). */
     var season by mutableStateOf(season)
 
@@ -144,15 +176,35 @@ class SeriesDetailsViewModel(
         } catch (e: java.io.IOException) {
             error = e.message ?: appString(R.string.vod_episodes_failed)
         }
+        // After the details, which may give its TMDB id; without them, its name may still find it.
+        val show = series
+        if (tmdb == null && show != null) tmdb = c.tmdb.series(show.title, details?.info)
+    }
+
+    /** Reads TMDB's episodes of [season] (once), when TMDB knows the series. */
+    fun loadTmdbSeason(season: Int) {
+        val id = tmdb?.id ?: return
+        if (!tmdbAsked.add(season)) return
+        viewModelScope.launch {
+            val episodes = c.tmdb.season(id, season)
+            // Nothing (a failure gives nothing too): asked again the next time the season is shown.
+            if (episodes.isEmpty()) tmdbAsked.remove(season) else tmdbSeasons[season] = episodes
+        }
     }
 
     fun toggleFavourite() = viewModelScope.launch { c.vod.setFavourite(playlistId, CAT_SERIES, seriesId, !favourite.value) }
 
-    /** The episode whose options are open (holding OK on it). */
-    var optionsFor by mutableStateOf<EpisodeInfo?>(null)
+    /** What is open over the page: an episode's options (its More… button, holding OK, or Menu), or a panel from them. */
+    var open by mutableStateOf<SeriesPanel?>(null)
 
-    /** The episode whose description is open (from its options). */
-    var describing by mutableStateOf<EpisodeInfo?>(null)
+    /** Who has the remote in Cast and crew: back from a person's page, the panel shows them again. */
+    var castFocus by mutableIntStateOf(0)
+
+    /** Opens Cast and crew on its first person. */
+    fun showCast() {
+        castFocus = 0
+        open = SeriesPanel.Cast
+    }
 
     /**
      * Marks [e] watched (saved as played to the end, as the player saves it, so "Continue watching" moves on past it)
@@ -164,17 +216,42 @@ class SeriesDetailsViewModel(
         // Taken now, as the page may load again meanwhile.
         val show = series
         val episodes = details?.episodes.orEmpty()
+        val next = episodes.indexOfFirst { it.id == e.id }.takeIf { it >= 0 }?.let { episodes.getOrNull(it + 1) }
         c.appScope.launch {
-            if (watched) {
-                c.vod.markEpisodeWatched(playlistId, seriesId, show, episodes, e)
-            } else {
-                c.vod.forgetEpisode(playlistId, e.id, episodes.indexOf(e).takeIf { it >= 0 }?.let { episodes.getOrNull(it + 1) })
-            }
+            if (watched) c.vod.markEpisodeWatched(playlistId, seriesId, show, episodes, e) else c.vod.forgetEpisode(playlistId, e.id, next)
         }
     }
 
     /** Whether the remote is in the episode list: changes made there (marking one watched) leave it there. */
     var listFocused by mutableStateOf(false)
+}
+
+/** The panels over the series page. */
+sealed interface SeriesPanel {
+    /** An episode's options: this episode's, then the show's. */
+    data class Options(val e: EpisodeInfo) : SeriesPanel
+    data object Cast : SeriesPanel
+    data object About : SeriesPanel
+    data class Describe(val e: EpisodeInfo) : SeriesPanel
+}
+
+/** These details with [tmdb]'s episodes of [season] filled in (see [filledFrom]); the other seasons' as they are. */
+private fun SeriesDetails.withSeason(season: Int, tmdb: List<TmdbEpisode>): SeriesDetails = copy(
+    episodes = episodes.map { e -> if (e.season == season) e.filledFrom(tmdb.firstOrNull { it.number == e.number }) else e }
+)
+
+/**
+ * [this] episode with [t]'s (TMDB's) plot, picture and date where the provider gave none. Not its name: what is saved
+ * of an episode (marking it watched) is the provider's words only.
+ */
+private fun EpisodeInfo.filledFrom(t: TmdbEpisode?): EpisodeInfo = if (t == null) {
+    this
+} else {
+    copy(
+        plot = plot?.takeIf { it.isNotBlank() } ?: t.overview,
+        imageUrl = imageUrl ?: t.stillUrl,
+        airDate = airDate ?: t.airDate
+    )
 }
 
 /**
@@ -193,7 +270,8 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
     val vm = appViewModel { SeriesDetailsViewModel(it, screen.playlistId, screen.seriesId, screen.season) }
     val nav = LocalNavigator.current
     val show = vm.series ?: return
-    val d = vm.details
+    val d = vm.shown
+    val tmdb = vm.tmdb
     val progress by vm.progress.collectAsState()
     val play = { e: EpisodeInfo -> nav.push(Screen.VodPlayer(screen.playlistId, e.id, screen.seriesId)) }
     val next = d?.let { continueEpisode(it.episodes, progress) }
@@ -205,19 +283,23 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
         vm.season?.takeIf { s -> it.episodes.any { e -> e.season == s } } ?: next?.season
             ?: it.seasons.firstOrNull()?.number
     }
+    // TMDB's episodes of the season shown, for those the provider says little about.
+    LaunchedEffect(tmdb, season) { season?.let(vm::loadTmdbSeason) }
 
     // Right from the left column goes into the episode list (at its first unplayed episode), not up to the top bar
     // when the list is too short to be beside the buttons. Only while the list is shown.
     val episodes = remember { FocusRequester() }
     val toEpisodes = if (vm.error == null && d?.episodes?.isNotEmpty() == true) Modifier.focusProperties { right = episodes } else Modifier
-    Box(Modifier.fillMaxSize()) {
-        Backdrop(d?.info?.backdropUrl)
+    // The remote's Menu button opens the options of the episode it is on (its row's own handler), or else, from
+    // anywhere else on the page, of the one asked for or to carry on with.
+    Box(Modifier.fillMaxSize().onOptionsKeyAfter { (target ?: next)?.let { vm.open = SeriesPanel.Options(it) } }) {
+        Backdrop(vm.info.backdropUrl)
         Row(
             Modifier.padding(start = 48.bd, end = 40.bd, top = LocalTopBarInset.current, bottom = 16.bd),
             horizontalArrangement = Arrangement.spacedBy(30.bd)
         ) {
             val favourite by vm.favourite.collectAsState()
-            SeriesColumn(show, d, season, moreModifier = toEpisodes) {
+            SeriesColumn(show, d, vm.info, season, moreModifier = toEpisodes) {
                 // Continue, and the favourite's heart beside it at the same height, so the column fits the screen.
                 Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.bd)) {
                     if (next != null) {
@@ -225,6 +307,7 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
                             next,
                             progress,
                             play,
+                            { vm.open = SeriesPanel.Options(next) },
                             if (target == null || !vm.focusEpisodePending) playFocus(vm, next.id) else Modifier
                         )
                     }
@@ -252,28 +335,64 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
             }
         }
     }
-    vm.optionsFor?.let { e -> EpisodeOptions(vm, e, progress[e.id]) }
-    vm.describing?.let { e -> EpisodeDescriptionPanel(DescribedEpisode(show.title, e)) { vm.describing = null } }
+    val trailer = rememberTrailerOpener()
+    val openCrew: (Int, CastMember) -> Unit = { i, person ->
+        vm.castFocus = i
+        val acting = i < vm.info.cast.size
+        personScreen(screen.playlistId, person, show.title, Tab.SERIES, acting)?.let(nav::push)
+    }
+    val moreLike = { tmdbId: Int -> nav.push(Screen.MoreLike(screen.playlistId, tmdbId, series = true, show.title, Tab.SERIES)) }
+    SeriesPanels(vm, show.title, progress, vm.info.trailer?.let { id -> { trailer(id) } }, openCrew, moreLike)
+}
+
+/** What is open over the series page ([SeriesDetailsViewModel.open]): its own composable, so the page does not recompose with it. */
+@Composable
+private fun SeriesPanels(
+    vm: SeriesDetailsViewModel,
+    title: String,
+    progress: Map<Long, WatchProgressEntity>,
+    /** Plays the show's trailer; null when it has none. */
+    playTrailer: (() -> Unit)?,
+    /** Opens the page of the person at a place in Cast and crew. */
+    openPerson: (Int, CastMember) -> Unit,
+    /** Opens More like this for the show's TMDB id. */
+    moreLike: (Int) -> Unit
+) {
+    val tmdb = vm.tmdb
+    val close = { vm.open = null }
+    // The episode as it is now: TMDB's data for it may come in after its panel opened.
+    val now = { e: EpisodeInfo -> vm.shown?.episodes?.firstOrNull { it.id == e.id } ?: e }
+    when (val p = vm.open) {
+        null -> Unit
+        is SeriesPanel.Options -> EpisodeOptions(vm, now(p.e), progress[p.e.id], playTrailer, moreLike)
+        SeriesPanel.Cast -> {
+            val crew = remember(tmdb) { castAndCrew(tmdb) }
+            CastPanel(title, crew, stringResource(R.string.vod_cast_crew), vm.castFocus, { openPerson(it, crew[it]) }, close)
+        }
+        SeriesPanel.About -> tmdb?.let { AboutPanel(film = false, it, close) }
+        is SeriesPanel.Describe -> EpisodeDescriptionPanel(DescribedEpisode(title, now(p.e)), close)
+    }
 }
 
 /**
  * The series page's left column (board "TvSeries"), 300 wide: the poster, the title, the facts ([season]'s name, its
- * year if known, else the show's, the number of seasons...), the plot (4 lines at most), and [buttons] (Continue and
- * the favourite's heart). [extraFacts] is where MyPlexPlayer adds its own.
+ * year if known, else the show's, the number of seasons..., then TMDB's score), the plot (4 lines at most), and
+ * [buttons] (Continue and the favourite's heart). [info] has the provider's data and TMDB's (see [merge]); [d] gives
+ * the seasons and episodes.
  */
 @Composable
 fun SeriesColumn(
     show: SeriesEntity,
     d: SeriesDetails?,
+    info: TitleInfo,
     season: Int? = null,
-    /** For the More… under the plot: where Right goes from it. */
+    /** For Read more under the plot: where Right goes from it. */
     moreModifier: Modifier = Modifier,
-    extraFacts: @Composable ColumnScope.() -> Unit = {},
     buttons: @Composable ColumnScope.() -> Unit
 ) {
     // It scrolls when it is taller than the screen (large text): the button with focus is then brought into view.
     Column(Modifier.width(300.bd).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.bd)) {
-        Poster(show.coverUrl ?: d?.info?.posterUrl, show.title, 120.bd, radius = 10.bd)
+        Poster(show.coverUrl ?: info.posterUrl, show.title, 120.bd, radius = 10.bd)
         Text(show.title, style = SeriesTitle.current, maxLines = 2, overflow = TextOverflow.Ellipsis)
         // One season: its name says it, so not "1 season" too.
         val seasons = d?.seasons?.size?.takeIf { it > 1 }?.let { pluralStringResource(R.plurals.vod_seasons, it, it) }
@@ -282,20 +401,17 @@ fun SeriesColumn(
         val year = d?.episodes?.filter { it.season == season }?.mapNotNull { it.airDate?.year }?.minOrNull()
         val facts = listOfNotNull(
             current,
-            metaLine(year ?: show.year ?: d?.info?.year, null, d?.info?.genre, show.rating ?: d?.info?.rating, seasons).ifEmpty { null }
+            metaLine(year ?: show.year ?: info.year, null, info.genre, show.rating ?: info.rating, seasons).ifEmpty { null }
         ).joinToString(" · ")
-        if (facts.isNotEmpty()) {
-            Text(
-                facts,
-                style = SeriesFacts.current,
-                color = Palette.textMuted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+        if (facts.isNotEmpty() || info.score != null) {
+            // TMDB's score after the facts, on the next line when they fill this one (as MyPlexPlayer's scores).
+            WrapRow(8.bd) {
+                if (facts.isNotEmpty()) Text(facts, style = SeriesFacts.current, color = Palette.textMuted, maxLines = 2)
+                info.score?.let { TmdbScore(it) }
+            }
         }
-        extraFacts()
-        // 4 lines at most, so the buttons stay in reach; More… shows the rest.
-        d?.info?.plot?.let { PlotWithMore(show.title, it, SeriesPlot.current, maxLines = 4, moreModifier) }
+        // 4 lines at most, so the buttons stay in reach; Read more shows the rest.
+        info.plot?.let { PlotWithMore(show.title, it, SeriesPlot.current, maxLines = 4, moreModifier) }
         // A little room under the last button: the scrolled column clips what is outside it.
         Column(
             Modifier.padding(top = 4.bd, bottom = FocusStroke.width),
@@ -312,7 +428,13 @@ private fun seasonName(number: Int, name: String?) = name ?: stringResource(R.st
 
 /** "Continue S2 E4 · 21 min left", "Continue S2 E5" (the next one), or "Play S1 E1" when nothing is watched yet. */
 @Composable
-private fun ContinueButton(e: EpisodeInfo, progress: Map<Long, WatchProgressEntity>, play: (EpisodeInfo) -> Unit, modifier: Modifier) {
+private fun ContinueButton(
+    e: EpisodeInfo,
+    progress: Map<Long, WatchProgressEntity>,
+    play: (EpisodeInfo) -> Unit,
+    options: () -> Unit,
+    modifier: Modifier
+) {
     val label = shortEpisodeLabel(e.season, e.number)
     val started = progress[e.id].partWatched()
     val text = when {
@@ -320,26 +442,41 @@ private fun ContinueButton(e: EpisodeInfo, progress: Map<Long, WatchProgressEnti
         progress.isNotEmpty() -> stringResource(R.string.vod_continue_episode, label)
         else -> stringResource(R.string.vod_play_episode, label)
     }
-    DetailButton(text, { play(e) }, modifier, strong = true, horizontal = 18.bd)
+    // Holding OK opens the options of the episode it plays, as on the film page's buttons.
+    DetailButton(text, { play(e) }, modifier, strong = true, horizontal = 18.bd, onLongClick = options)
 }
 
-/** An episode's options (its More… button, or holding OK on it): its description, and marking it watched or unwatched. */
+/**
+ * An episode's options (its More… button, or holding OK on it): its description, and marking it watched or unwatched.
+ * Then the show's options (shared with the film page's More…): its trailer, and with TMDB its people, More like this
+ * ([moreLike]), About and links.
+ */
 @Composable
-private fun EpisodeOptions(vm: SeriesDetailsViewModel, e: EpisodeInfo, saved: WatchProgressEntity?) {
-    val close = { vm.optionsFor = null }
+private fun EpisodeOptions(
+    vm: SeriesDetailsViewModel,
+    e: EpisodeInfo,
+    saved: WatchProgressEntity?,
+    playTrailer: (() -> Unit)?,
+    moreLike: (Int) -> Unit
+) {
+    val close = { vm.open = null }
     val set = { watched: Boolean ->
         vm.setWatched(e, watched)
         close()
     }
     // One partly watched can be counted as watched, or started again (its progress forgotten).
-    val actions = listOfNotNull(
-        episodeDescriptionAction(e) {
-            close()
-            vm.describing = e
-        },
+    val episode = listOfNotNull(
+        episodeDescriptionAction(e) { vm.open = SeriesPanel.Describe(e) },
         if (saved?.finished != true) markWatched(false, set) else null,
         if (saved?.started == true) markWatched(true, set) else null
     )
+    val show = titleActions(vm.tmdb, film = false, playTrailer, vm::showCast, moreLike, showAbout = { vm.open = SeriesPanel.About })
+    val actions = if (show.isEmpty()) {
+        episode
+    } else {
+        listOf(ItemAction.Heading(appString(R.string.vod_this_episode))) + episode +
+            ItemAction.Heading(appString(R.string.vod_the_show)) + show
+    }
     ItemActionsPanel(episodeName(e, vm.series?.title), actions, close)
 }
 
@@ -402,7 +539,7 @@ private fun Episodes(
         items(shown, key = { it.id }) { e ->
             val focus = Modifier.restoreFocusIf(vm.focusEpisodePending && e == target) { vm.focusEpisodePending = false }
                 .then(if (e == firstUnplayed) Modifier.focusRequester(firstUnplayedRow) else Modifier)
-            EpisodeRow(e, vm.series?.title, progress[e.id], focus, options = { vm.optionsFor = e }) { play(e) }
+            EpisodeRow(e, vm.series?.title, progress[e.id], focus, options = { vm.open = SeriesPanel.Options(e) }) { play(e) }
         }
     }
 }

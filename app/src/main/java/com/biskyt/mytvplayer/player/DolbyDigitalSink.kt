@@ -88,12 +88,10 @@ class DolbyDigitalSink(
             }
             if (padGathered) {
                 padGathered = false
-                if (filled > 0) {
-                    enc.block.fill(0, filled * CHANNELS)
-                    filled = 0
-                    pending = encode(enc)?.let { ByteBuffer.wrap(it).order(ByteOrder.LITTLE_ENDIAN) }
-                    continue
-                }
+                enc.block.fill(0, filled * CHANNELS)
+                filled = 0
+                pending = encode(enc)?.let { ByteBuffer.wrap(it).order(ByteOrder.LITTLE_ENDIAN) }
+                continue
             }
             if (buffer.remaining() < enc.frameBytes) {
                 buffer.position(buffer.limit())
@@ -127,7 +125,7 @@ class DolbyDigitalSink(
      * with silence and sent with their own time, before the new stream's samples.
      */
     override fun handleDiscontinuity() {
-        padGathered = true
+        padGathered = filled > 0
         super.handleDiscontinuity()
     }
 

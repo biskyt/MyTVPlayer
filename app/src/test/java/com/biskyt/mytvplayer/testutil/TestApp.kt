@@ -21,6 +21,9 @@ class TestApp : MyTvApp() {
 
     override fun scheduleDailyRefresh() = Unit
 
+    // Tests set their settings themselves; nothing reads them at start (the library is not there on the JVM).
+    override fun loadDolbyEncoder() = Unit
+
     /**
      * The JVM has no TV provider: the app's own launcher sync writes nowhere, so that a test that turns the setting on
      * (see LauncherSyncTest, with a writer of its own) leaves nothing running into the next test.

@@ -40,7 +40,11 @@ data class VodDetails(
     val durationSec: Int?,
     val backdropUrl: String?,
     val posterUrl: String?,
-    val rating: Double?
+    val rating: Double?,
+    /** The title's TMDB id, when the provider sends it (most Xtream panels do). */
+    val tmdbId: Int? = null,
+    /** The YouTube id of the provider's trailer. */
+    val trailer: String? = null
 )
 
 /** A season; [name] is the provider's, null when it gives none (the app then names it by [number]). */
@@ -87,6 +91,17 @@ private fun dateOf(text: String?): LocalDate? = text?.trim()?.let(isoDate::find)
 
 private val isoDate = Regex("""\d{4}-\d{2}-\d{2}""")
 
+/** A YouTube video id: 11 letters, digits, '-' or '_'. */
+private val youTube = Regex("""[A-Za-z0-9_-]{11}""")
+
+/** The YouTube id in [text]: a bare id (as most panels send), or a watch, share or embed address. */
+internal fun youTubeId(text: String?): String? {
+    val t = text?.trim()?.ifEmpty { null } ?: return null
+    if (youTube.matches(t)) return t
+    val after = listOf("v=", "youtu.be/", "/embed/", "/shorts/").firstNotNullOfOrNull { m -> t.substringAfter(m, "").ifEmpty { null } }
+    return after?.let { youTube.find(it) }?.value?.takeIf { after.startsWith(it) }
+}
+
 internal fun JsonElement.toMovie(): XtreamMovie? {
     val o = this as? JsonObject ?: return null
     val id = o.long("stream_id") ?: return null
@@ -129,7 +144,9 @@ private fun JsonObject?.toDetails(): VodDetails {
         durationSec = o.int("duration_secs") ?: o.int("episode_run_time")?.times(60),
         backdropUrl = o.firstUrl("backdrop_path"),
         posterUrl = o.str("movie_image") ?: o.str("cover"),
-        rating = o.double("rating")
+        rating = o.double("rating"),
+        tmdbId = (o.int("tmdb_id") ?: o.int("tmdb"))?.takeIf { it > 0 },
+        trailer = youTubeId(o.str("youtube_trailer"))
     )
 }
 

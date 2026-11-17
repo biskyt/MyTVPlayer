@@ -73,9 +73,11 @@ fun DetailButton(
     horizontal: Dp = 20.bd,
     vertical: Dp = 10.bd,
     style: TextStyle = if (strong) ButtonStrong.current else ButtonText.current,
-    background: Color = Palette.surfaceHigh
+    background: Color = Palette.surfaceHigh,
+    /** Holding OK, the remote's Menu button or a long press: the page's options. */
+    onLongClick: (() -> Unit)? = null
 ) {
-    TvCard(onClick, modifier, shape = Pill, color = background, fill = true) {
+    TvCard(onClick, modifier, onLongClick = onLongClick, shape = Pill, color = background, fill = true) {
         // Centred: an icon-only button stretched to its neighbour's height keeps its icon in the middle.
         Box(contentAlignment = Alignment.Center) {
             Row(
@@ -168,15 +170,15 @@ private val PillText = BoardStyle(14, BOLD)
 private val PillStrong = BoardStyle(14, EXTRA_BOLD)
 
 /**
- * A film's or series' plot, [maxLines] at most. When it is cut short, a More… button under it opens the whole of it in a
- * side panel, with [title] (the owner, 2026-11-06).
+ * A film's or series' plot, [maxLines] at most. When it is cut short, a Read more button under it opens the whole of it
+ * in a side panel, with [title] (the owner, 2026-11-06; named as MyPlexPlayer names it, apart from the film page's More…).
  */
 @Composable
 fun PlotWithMore(title: String, plot: String, style: TextStyle, maxLines: Int, moreModifier: Modifier = Modifier) {
     var cut by remember(plot) { mutableStateOf(false) }
     var open by remember(plot) { mutableStateOf(false) }
     Text(plot, style = style, maxLines = maxLines, overflow = TextOverflow.Ellipsis, onTextLayout = { cut = it.hasVisualOverflow })
-    if (cut) DetailButton(stringResource(R.string.vod_more), { open = true }, moreModifier, horizontal = 14.bd, vertical = 6.bd)
+    if (cut) DetailButton(stringResource(R.string.vod_read_more), { open = true }, moreModifier, horizontal = 14.bd, vertical = 6.bd)
     if (open) {
         // Its text does not scroll (the remote has nothing in it to move to): it is cut at what fits.
         BoardPanel({ open = false }, dim = false, scroll = false) {

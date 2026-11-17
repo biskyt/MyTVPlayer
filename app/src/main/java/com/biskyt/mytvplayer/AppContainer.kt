@@ -43,14 +43,17 @@ import com.biskyt.mytvplayer.data.ImageCalls
 import com.biskyt.mytvplayer.data.LauncherSync
 import com.biskyt.mytvplayer.data.LauncherTarget
 import com.biskyt.mytvplayer.data.ParentalRepository
+import com.biskyt.mytvplayer.data.PersonRepository
 import com.biskyt.mytvplayer.data.PlaylistRepository
 import com.biskyt.mytvplayer.data.ProgressSync
 import com.biskyt.mytvplayer.data.ProxyMonitor
 import com.biskyt.mytvplayer.data.SearchRepository
 import com.biskyt.mytvplayer.data.SettingsRepository
+import com.biskyt.mytvplayer.data.SimilarRepository
 import com.biskyt.mytvplayer.data.SyncAccount
 import com.biskyt.mytvplayer.data.SyncManager
 import com.biskyt.mytvplayer.data.SyncedChoices
+import com.biskyt.mytvplayer.data.TmdbRepository
 import com.biskyt.mytvplayer.data.VodRepository
 import com.biskyt.mytvplayer.data.VpnMonitor
 import com.biskyt.mytvplayer.data.dataStore
@@ -60,6 +63,7 @@ import com.biskyt.mytvplayer.launcher.LauncherHost
 import com.biskyt.mytvplayer.launcher.LauncherImages
 import com.biskyt.mytvplayer.launcher.LauncherWriter
 import com.biskyt.mytvplayer.launcher.TvLauncher
+import com.biskyt.mytvplayer.player.Ac3Encoder
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -70,6 +74,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.launch
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -103,6 +108,7 @@ class AppContainer(context: Context, launcherWriter: LauncherWriter = TvLauncher
         }
         .build()
     val settings = SettingsRepository(context)
+    val tmdb = TmdbRepository(context.cacheDir, http, settings)
     private val syncAccount = SyncAccount(context.dataStore)
     val progressSync: ProgressSync = ProgressSync(
         db,
@@ -144,6 +150,8 @@ class AppContainer(context: Context, launcherWriter: LauncherWriter = TvLauncher
     private val syncedChoices by lazy { SyncedChoices(db, channels, vod, categoryStore, parental, epg) }
     val favourites = Favourites(appScope, settings, channels, vod)
     val search = SearchRepository(db)
+    val people = PersonRepository(vod, tmdb)
+    val similar = SimilarRepository(vod, tmdb)
     val catchup = CatchupRepository(playlists)
     val sync: SyncManager = SyncManager(appScope, playlists, vod, epg, settings)
     val vpn = VpnMonitor(context, appScope)
@@ -199,6 +207,15 @@ open class MyTvApp : Application(), SingletonImageLoader.Factory, LauncherHost {
         deviceLocales = resources.configuration.locales
         container = AppContainer(this, launcherWriter())
         scheduleDailyRefresh()
+        loadDolbyEncoder()
+    }
+
+    /**
+     * With Send surround sound as Dolby Digital on, its library loads now, off the main thread, so the first player
+     * does not wait for it. With the setting off, nothing is loaded.
+     */
+    protected open fun loadDolbyEncoder() {
+        container.appScope.launch(Dispatchers.IO) { if (container.settings.current().surroundAsDolby) Ac3Encoder.available }
     }
 
     // The device's language changed: words from AppText follow it (unless a language is chosen in Settings).

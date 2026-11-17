@@ -11,7 +11,6 @@
     <string name="vod_load_now">Cargar ahora</string>
     <string name="vod_choose_categories">Elegir categorías</string>
 
-    <string name="vod_director">Dirección: %1$s</string>
     <string name="vod_cast">Reparto: %1$s</string>
 
     <string name="vod_episodes_failed">No se pudieron cargar los episodios</string>
@@ -32,4 +31,48 @@
         <item quantity="other">%1$d temporadas</item>
     </plurals>
     <string name="vod_more">Más…</string>
+    <string name="vod_read_more">Leer más</string>
+
+    <string name="vod_trailer">Tráiler</string>
+    <string name="vod_cast_title">Reparto</string>
+    <string name="vod_directed_by">Dirigida por %1$s</string>
+    <string name="vod_written_by">Escrita por %1$s</string>
+    <string name="vod_this_episode">Este episodio</string>
+    <string name="vod_the_show">La serie</string>
+    <string name="vod_links">Enlaces</string>
+    <string name="vod_original_title">Título original</string>
+    <string name="vod_released">Estreno</string>
+    <string name="vod_studio">Estudio</string>
+    <string name="vod_countries">Países</string>
+    <string name="vod_genres">Géneros</string>
+    <string name="vod_cast_crew">Reparto y equipo</string>
+    <string name="vod_cast_crew_help">Todos, con sus fotos</string>
+    <string name="vod_about_this_film">Acerca de esta película</string>
+    <string name="vod_about_film_help">Título original, estreno, estudio, géneros</string>
+    <string name="vod_about_this_show">Acerca de esta serie</string>
+    <string name="vod_role_director">Dirección</string>
+    <string name="vod_role_writer">Guion</string>
+    <string name="vod_play_trailer">Ver tráiler</string>
+    <string name="vod_play_trailer_help">Un breve avance de la película</string>
+    <string name="vod_role_actor">Interpretación</string>
+    <string name="vod_role_producer">Producción</string>
+    <string name="vod_person_library">En tu biblioteca</string>
+    <string name="vod_person_elsewhere">También aparece en</string>
+    <string name="vod_person_credits">Todos los créditos</string>
+    <string name="vod_person_full_biography">Biografía completa</string>
+    <string name="vod_person_tv_show">Serie de TV</string>
+    <string name="vod_person_show_title">%1$s (serie de TV)</string>
+    <string name="vod_person_born">Nació el %1$s</string>
+    <string name="vod_person_born_in">Nació el %1$s en %2$s</string>
+    <string name="vod_person_died">Murió el %1$s</string>
+    <string name="vod_person_role_in">%1$s en %2$s</string>
+    <string name="vod_person_failed">No se pudo cargar la página de esta persona</string>
+    <string name="vod_similar">Títulos similares</string>
+    <string name="vod_similar_help">Películas parecidas, según TMDB</string>
+    <string name="vod_similar_title">Similares a %1$s</string>
+    <string name="vod_similar_in_playlist">En tu lista</string>
+    <string name="vod_similar_elsewhere">No están en tu lista</string>
+    <string name="vod_similar_none">TMDB no tiene sugerencias para este título</string>
+    <string name="vod_similar_failed">No se pudieron cargar las sugerencias</string>
+    <string name="vod_score_tmdb_value">TMDB %1$s</string>
 </resources>

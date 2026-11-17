@@ -272,4 +272,21 @@
     <string name="settings_proxy_works_only">The proxy works: this playlist\'s traffic comes from %1$s.</string>
     <string name="settings_proxy_same">The proxy answered, but your address did not change (%1$s).</string>
     <string name="settings_proxy_failed">The proxy did not answer: %1$s</string>
+    <string name="settings_tmdb">TMDB</string>
+    <string name="settings_tmdb_help">Off. Add your own free TMDB key to show the cast, trailers and links on film and series pages.</string>
+    <string name="settings_tmdb_on">On. Film and series pages show more from TMDB.</string>
+    <string name="settings_tmdb_explain">With your own TMDB key, film and series pages show the cast and crew, trailers, links to IMDb and TMDB, and missing episode descriptions. To get a free key, sign in at themoviedb.org, then go to Settings › API. MyTVPlayer sends the names of the films and series that you open to TMDB.</string>
+    <string name="settings_tmdb_key_hint">API key or read access token</string>
+    <string name="settings_tmdb_save">Save</string>
+    <string name="settings_tmdb_remove">Remove key</string>
+    <string name="settings_tmdb_checking">Checking the key…</string>
+    <string name="settings_tmdb_saved">TMDB accepted the key. It is saved.</string>
+    <string name="settings_tmdb_refused">TMDB did not accept this key. Check it and try again.</string>
+    <string name="settings_tmdb_unreachable">TMDB could not be reached, so the key was not checked. It is saved.</string>
+    <string name="settings_lib_tmdb">Cast, crew, trailers and links for films and series. This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
+    <string name="settings_tmdb_phone">Or scan this with your phone, and paste your key on the page that opens. Your phone must be on the same network as the TV.</string>
+    <string name="settings_tmdb_phone_title">TMDB key for MyTVPlayer</string>
+    <string name="settings_tmdb_phone_hint">Paste your TMDB API key or read access token, then select Send.</string>
+    <string name="settings_tmdb_phone_send">Send</string>
+    <string name="settings_tmdb_phone_done">Sent. The TV checks the key now. You can close this page.</string>
 </resources>

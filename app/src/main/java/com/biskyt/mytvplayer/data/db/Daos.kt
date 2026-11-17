@@ -881,6 +881,14 @@ interface VodDao {
     )
     suspend fun searchSeries(pid: Long, q: String, limit: Int): List<VodHit>
 
+    /** Every movie of :pid a person's page can show (restricted ones hidden while locked, as the lists hide them). */
+    @Query("$MOVIE_CARD FROM movie WHERE playlistId = :pid AND $MOVIE_OPEN")
+    suspend fun movieCards(pid: Long): List<VodCard>
+
+    /** Every series of :pid a person's page can show (restricted ones hidden while locked, as the lists hide them). */
+    @Query("$SERIES_CARD FROM series WHERE playlistId = :pid AND $SERIES_OPEN")
+    suspend fun seriesCards(pid: Long): List<VodCard>
+
     // Whole lists, used by tests (screens page).
     @Query("SELECT * FROM movie WHERE playlistId = :pid ORDER BY position, title")
     suspend fun moviesSnapshot(pid: Long): List<MovieEntity>
