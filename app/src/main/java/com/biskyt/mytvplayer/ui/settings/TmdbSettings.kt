@@ -65,6 +65,11 @@ class TmdbSettingsViewModel(private val c: AppContainer) : ViewModel() {
         }
     }
 
+    /** The panel opened again: the last check's answer is no longer about what it shows. */
+    fun forgetCheck() {
+        if (check != TmdbCheck.CHECKING) check = null
+    }
+
     fun remove() = viewModelScope.launch {
         c.settings.update { it.copy(tmdbKey = "") }
         check = null
@@ -90,9 +95,10 @@ fun TmdbRow() {
 }
 
 @Composable
-private fun TmdbKeyPanel(saved: String, onDismiss: () -> Unit) {
+internal fun TmdbKeyPanel(saved: String, onDismiss: () -> Unit) {
     val vm = appViewModel { TmdbSettingsViewModel(it) }
     var key by remember { mutableStateOf(saved) }
+    LaunchedEffect(Unit) { vm.forgetCheck() }
     val save = { if (key.isNotBlank()) vm.save(key) }
     SidePanel(onDismiss, width = 520.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -173,6 +179,8 @@ private fun PhoneKeyEntry(received: (String) -> Unit) {
             QrCode(it, Modifier.size(150.dp))
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Muted(stringResource(R.string.settings_tmdb_phone), maxLines = 6)
+                // Android lets a browser reach the home network only with this permission (Edge and Brave lacked it).
+                Muted(stringResource(R.string.settings_tmdb_phone_nearby), maxLines = 4)
                 // When a phone's browser shows no page: whether the phone reached the TV, and how.
                 if (seen.connections > 0) {
                     Muted(

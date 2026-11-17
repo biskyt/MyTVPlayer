@@ -89,4 +89,5 @@
         <item quantity="other">%1$d épisodes</item>
     </plurals>
     <string name="vod_next_episode">Prochain épisode : %1$s</string>
+    <string name="vod_find_original">Chercher « %1$s »</string>
 </resources>

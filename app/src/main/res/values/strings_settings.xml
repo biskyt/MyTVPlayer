@@ -300,4 +300,6 @@
     <string name="settings_backup_drive_signed_out">Google no longer accepts the sign-in. Sign in again.</string>
     <!-- Under the phone QR code, once something connects: what the TV saw. -->
     <string name="settings_tmdb_phone_seen">Seen from your network: %1$d connections, %2$d pages, %3$d HTTPS tries, %4$d with no answer</string>
+    <!-- Under the phone QR code: Android lets a browser reach a device at home only with the Nearby devices permission. -->
+    <string name="settings_tmdb_phone_nearby">Page does not open? On your phone, allow Nearby devices for the browser: Settings › Apps › the browser › Permissions.</string>
 </resources>
