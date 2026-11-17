@@ -42,6 +42,7 @@ class FakeTmdb : Dispatcher() {
             "person/$PERSON" -> CHALAMET
             "movie/438631/recommendations" -> DUNE_LIKE
             "tv/31917/recommendations" -> LINE_OF_DUTY_LIKE
+            "authentication" -> """{"success":true}"""
             "tv/$HAPPY_VALLEY" -> HAPPY_VALLEY_PAGE
             "tv/$HAPPY_VALLEY/season/3" -> HAPPY_VALLEY_3
             "tv/$HAPPY_VALLEY/season/1" -> """{"episodes":[{"season_number":1,"episode_number":1,"name":"Episode One"}]}"""
@@ -113,7 +114,8 @@ class FakeTmdb : Dispatcher() {
                 """{"id":$HAPPY_VALLEY,"name":"Happy Valley","first_air_date":"2014-04-29","vote_average":8.3,"vote_count":500}]}"""
 
         private const val HAPPY_VALLEY_PAGE =
-            """{"id":$HAPPY_VALLEY,"name":"Happy Valley","overview":"A sergeant in West Yorkshire.","first_air_date":"2014-04-29",""" +
+            """{"id":$HAPPY_VALLEY,"name":"Happy Valley","original_name":"Vallée Heureuse",""" +
+                """"overview":"A sergeant in West Yorkshire.","first_air_date":"2014-04-29",""" +
                 """"vote_average":8.3,"vote_count":500,"genres":[{"name":"Crime"}],"created_by":[{"name":"Sally Wainwright"}],""" +
                 """"status":"Ended","number_of_seasons":3,"number_of_episodes":18,""" +
                 """"seasons":[{"season_number":0,"name":"Specials","episode_count":1},{"season_number":1,"episode_count":6},""" +

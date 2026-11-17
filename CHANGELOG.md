@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.26.2
+- If the TMDB key's phone page does not open, the TV now says to allow Nearby devices for your phone's browser.
+- A title's TMDB page can also search your playlist for its original title, such as "Intouchables".
+- The TMDB key panel no longer shows the last check's answer when you open it again.
+
 ## 1.26.1
 - The phone page for your TMDB key now keeps its connection open, as browsers such as Edge and Brave expect.
 

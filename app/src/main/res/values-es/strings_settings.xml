@@ -233,4 +233,5 @@
     <string name="settings_backup_drive_error">Google Drive lo rechazó (%1$s). Inténtalo más tarde.</string>
     <string name="settings_backup_drive_signed_out">Google ya no acepta el inicio de sesión. Vuelve a iniciar sesión.</string>
     <string name="settings_tmdb_phone_seen">Visto desde tu red: %1$d conexiones, %2$d páginas, %3$d intentos HTTPS, %4$d sin respuesta</string>
+    <string name="settings_tmdb_phone_nearby">¿No se abre la página? En tu teléfono, permite Dispositivos cercanos al navegador: Ajustes › Aplicaciones › el navegador › Permisos.</string>
 </resources>

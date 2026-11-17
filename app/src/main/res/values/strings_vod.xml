@@ -130,4 +130,6 @@
     </plurals>
     <!-- A continuing series' next episode. %1$s: its date and code, e.g. "4 Dec 2026 · S2E9". -->
     <string name="vod_next_episode">Next episode: %1$s</string>
+    <!-- A title's TMDB page: searches the playlist for its original title. %1$s: that title, e.g. "Intouchables". -->
+    <string name="vod_find_original">Find “%1$s”</string>
 </resources>

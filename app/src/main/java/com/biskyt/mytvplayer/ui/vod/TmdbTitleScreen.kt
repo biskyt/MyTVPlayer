@@ -39,6 +39,7 @@ import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.tmdb.TmdbEpisode
 import com.biskyt.mytvplayer.core.tmdb.TmdbSeason
+import com.biskyt.mytvplayer.core.vod.VodTitles
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
@@ -131,6 +132,10 @@ fun TmdbTitleScreen(screen: Screen.TmdbTitle) {
                             rememberFirstFocus(),
                             strong = true,
                         )
+                        // TMDB's title is in the app's language; a playlist may use the original ("Intouchables").
+                        originalTitle(info, screen.title)?.let { original ->
+                            DetailButton(stringResource(R.string.vod_find_original, original), { nav.push(Screen.Search(original)) })
+                        }
                         info?.trailer?.let { id -> DetailButton(stringResource(R.string.vod_play_trailer), { playTrailer(id) }) }
                         DetailButton(stringResource(R.string.vod_similar), {
                             nav.push(Screen.MoreLike(screen.playlistId, screen.tmdbId, screen.series, screen.title, screen.tab))
@@ -191,6 +196,10 @@ private fun EpisodeLine(e: TmdbEpisode) {
         e.airDate?.let { Text(formatDate(it), style = LineText.current, color = Palette.textDim) }
     }
 }
+
+/** TMDB's original title, when a search for it can find more than one for [title]; else null. */
+private fun originalTitle(info: TitleInfo?, title: String): String? =
+    info?.tmdb?.originalTitle?.takeIf { VodTitles.key(it) != VodTitles.key(title) }
 
 /** "2023 · Drama, Crime · TMDB 78%": the parts that are known; null when none is. */
 @Composable

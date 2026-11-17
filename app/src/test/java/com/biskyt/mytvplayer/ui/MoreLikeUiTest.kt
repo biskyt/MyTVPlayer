@@ -132,6 +132,12 @@ class MoreLikeUiTest {
         assertTrue(!shown("Specials"))
         click("Season 1")
         compose.waitForText("Episode One")
+        // The original title, which a playlist may use: searched for with its own button.
+        click("Find “Vallée Heureuse”")
+        compose.waitAdvancingClock { navigator.current.screen is Screen.Search }
+        assertEquals(Screen.Search("Vallée Heureuse"), navigator.current.screen)
+        compose.runOnUiThread { navigator.pop() }
+        compose.waitForText("Find in your playlist")
         click("Find in your playlist")
         compose.waitAdvancingClock { navigator.current.screen is Screen.Search }
         assertEquals(Screen.Search("Happy Valley"), navigator.current.screen)
