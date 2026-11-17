@@ -42,6 +42,7 @@ class FakeTmdb : Dispatcher() {
             "person/$PERSON" -> CHALAMET
             "movie/438631/recommendations" -> DUNE_LIKE
             "tv/31917/recommendations" -> LINE_OF_DUTY_LIKE
+            "tv/$HAPPY_VALLEY" -> HAPPY_VALLEY_PAGE
             else -> return MockResponse().setResponseCode(404).setBody("""{"status_code":34}""")
         }
         return MockResponse().setBody(body)
@@ -58,6 +59,9 @@ class FakeTmdb : Dispatcher() {
 
         /** The provider's id for Bodyguard, a series that a test can add to the playlist ("More like this"). */
         const val BODYGUARD = 79L
+
+        /** Happy Valley's TMDB id: suggested for Line of Duty, not in the playlist, with a TMDB page. */
+        const val HAPPY_VALLEY = 63351
 
         /** Timothée Chalamet's TMDB id: in Dune's cast, with a page. Rebecca Ferguson has no id there. */
         const val PERSON = 1190668L
@@ -99,7 +103,12 @@ class FakeTmdb : Dispatcher() {
          */
         private const val LINE_OF_DUTY_LIKE =
             """{"page":1,"results":[{"id":76773,"name":"Bodyguard","vote_average":7.9,"vote_count":1500},""" +
-                """{"id":63351,"name":"Happy Valley","first_air_date":"2014-04-29","vote_average":8.3,"vote_count":500}]}"""
+                """{"id":$HAPPY_VALLEY,"name":"Happy Valley","first_air_date":"2014-04-29","vote_average":8.3,"vote_count":500}]}"""
+
+        private const val HAPPY_VALLEY_PAGE =
+            """{"id":$HAPPY_VALLEY,"name":"Happy Valley","overview":"A sergeant in West Yorkshire.","first_air_date":"2014-04-29",""" +
+                """"vote_average":8.3,"vote_count":500,"genres":[{"name":"Crime"}],"created_by":[{"name":"Sally Wainwright"}],""" +
+                """"videos":{"results":[{"key":"hvtrailer01","site":"YouTube","type":"Trailer","official":true}]}}"""
 
         private const val SEASON_1 =
             """{"episodes":[{"season_number":1,"episode_number":1,"overview":"TMDB's first."},""" +

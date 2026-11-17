@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,7 +20,7 @@ import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.data.SimilarPage
-import com.biskyt.mytvplayer.data.db.VodCard
+import com.biskyt.mytvplayer.data.SimilarTitle
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
@@ -61,8 +60,8 @@ class MoreLikeViewModel(private val c: AppContainer, private val screen: Screen.
 }
 
 /**
- * "More like Dune", then the suggestions in the playlist ("In your playlist": OK opens the title's page) and the
- * others ("Not in your playlist"). An empty row is left out. With no suggestions at all, a line says so.
+ * "More like Dune", then the suggestions in TMDB's order. OK on one that is in the playlist opens its page there; on
+ * another, it opens its TMDB page (with "Find in your playlist"). With no suggestions at all, a line says so.
  */
 @Composable
 fun MoreLikeScreen(screen: Screen.MoreLike) {
@@ -84,42 +83,42 @@ fun MoreLikeScreen(screen: Screen.MoreLike) {
         when {
             error != null -> item { Box(below) { ErrorRetry(error) { vm.load() } } }
             page == null -> item { Muted(stringResource(R.string.common_loading), below) }
-            page.inPlaylist.isEmpty() && page.elsewhere.isEmpty() -> item { Muted(stringResource(R.string.vod_similar_none), below) }
-            else -> rows(page) { card ->
-                val id = screen.playlistId
-                nav.push(if (screen.series) Screen.SeriesDetails(id, card.id) else Screen.MovieDetails(id, card.id))
-            }
+            page.titles.isEmpty() -> item { Muted(stringResource(R.string.vod_similar_none), below) }
+            else -> item { Suggestions(page.titles) { nav.push(open(screen, it)) } }
         }
     }
 }
 
-/** The two rows: the first that is shown has the remote. */
-private fun LazyListScope.rows(page: SimilarPage, open: (VodCard) -> Unit) {
-    if (page.inPlaylist.isNotEmpty()) {
-        item {
-            val heading = stringResource(R.string.vod_similar_in_playlist)
-            PosterRow(heading, page.inPlaylist, focus = true, top = FIRST_GAP) { (card, s), modifier ->
-                TitleCard(card.title, card.imageUrl ?: s.posterUrl, cardLine(card.year ?: s.year, s.score), modifier) { open(card) }
-            }
-        }
-    }
-    if (page.elsewhere.isNotEmpty()) {
-        item {
-            val first = page.inPlaylist.isEmpty()
-            val heading = stringResource(R.string.vod_similar_elsewhere)
-            PosterRow(heading, page.elsewhere, first, if (first) FIRST_GAP else GAP) { s, modifier ->
-                // Not in the playlist: nothing to open. It takes the remote all the same, so that the row scrolls.
-                TitleCard(s.title, s.posterUrl, cardLine(s.year, s.score), modifier) {}
-            }
-        }
-    }
-}
-
-/** Under a card: "2019 · TMDB 78%". A part not known is left out. */
+/** The suggestions in one row, which has the remote. One in the playlist says so under its card. */
 @Composable
-private fun cardLine(year: Int?, score: Double?): String? = listOfNotNull(
+private fun Suggestions(titles: List<SimilarTitle>, open: (SimilarTitle) -> Unit) {
+    PosterRow(stringResource(R.string.vod_similar_suggested), titles, focus = true, top = FIRST_GAP) { t, modifier ->
+        val s = t.suggestion
+        val card = t.card
+        TitleCard(card?.title ?: s.title, card?.imageUrl ?: s.posterUrl, cardLine(card?.year ?: s.year, s.score, card != null), modifier) {
+            open(t)
+        }
+    }
+}
+
+/** A suggestion's page: the playlist's, where it has the title; else TMDB's. */
+private fun open(screen: Screen.MoreLike, t: SimilarTitle): Screen {
+    val id = screen.playlistId
+    val card = t.card ?: return Screen.TmdbTitle(id, t.suggestion.id, screen.series, t.suggestion.title, t.suggestion.posterUrl, screen.tab)
+    return if (screen.series) Screen.SeriesDetails(id, card.id) else Screen.MovieDetails(id, card.id)
+}
+
+/** Under a card: "2019 · TMDB 78%", or "2019 · In your playlist" ([inPlaylist]). A part not known is left out. */
+@Composable
+private fun cardLine(year: Int?, score: Double?, inPlaylist: Boolean): String? = listOfNotNull(
     year?.toString(),
-    score?.let { stringResource(R.string.vod_score_tmdb_value, percentOf(it)) },
+    if (inPlaylist) {
+        stringResource(R.string.vod_similar_in_playlist)
+    } else {
+        score?.let {
+            stringResource(R.string.vod_score_tmdb_value, percentOf(it))
+        }
+    },
 ).joinToString(" · ").ifEmpty { null }
 
 /** Between the title and the first row. */

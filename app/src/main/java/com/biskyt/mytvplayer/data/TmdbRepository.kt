@@ -62,6 +62,9 @@ class TmdbRepository(
     /** The episodes of [season] of the TMDB series [seriesId]. */
     suspend fun season(seriesId: Int, season: Int): List<TmdbEpisode> = quietly { it.season(seriesId, season) }.orEmpty()
 
+    /** Film (or, when [series], series) [id]'s page on TMDB; null when TMDB cannot give it (no key, or out of reach). */
+    suspend fun title(series: Boolean, id: Int): TmdbTitle? = quietly { if (series) it.series(id) else it.movie(id) }
+
     /** The films (or, when [series], the series) that TMDB suggests for its title [id]; null when TMDB cannot give them. */
     suspend fun recommendations(series: Boolean, id: Int): List<TmdbSuggestion>? = quietly { it.recommendations(series, id) }
 

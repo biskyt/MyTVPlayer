@@ -71,8 +71,10 @@
     <string name="vod_similar_help">Filmes parecidos, segundo o TMDB</string>
     <string name="vod_similar_title">Semelhantes a %1$s</string>
     <string name="vod_similar_in_playlist">Na sua playlist</string>
-    <string name="vod_similar_elsewhere">Fora da sua playlist</string>
     <string name="vod_similar_none">O TMDB não tem sugestões para este título</string>
     <string name="vod_similar_failed">Não foi possível carregar as sugestões</string>
     <string name="vod_score_tmdb_value">TMDB %1$s</string>
+    <string name="vod_similar_suggested">Sugestões do TMDB</string>
+    <string name="vod_find_in_playlist">Procurar na sua playlist</string>
+    <string name="vod_tmdb_title_failed">Não foi possível carregar este título do TMDB</string>
 </resources>

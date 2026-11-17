@@ -91,24 +91,39 @@ class MoreLikeUiTest {
     }
 
     @Test
-    fun `the page shows the suggestions in the playlist and the others, and OK opens one in the playlist`() {
+    fun `the page shows the suggestions in TMDB's order, and OK opens one in the playlist on its page there`() {
         tmdb.use(app.container)
         show(lineOfDuty)
         compose.waitForText("More like Line of Duty")
-        compose.waitForText("In your playlist")
-        compose.waitForText("Not in your playlist")
+        compose.waitForText("Suggested by TMDB")
         compose.waitForText("Happy Valley")
         assertTrue(shown("2014 · TMDB 83%"))
-        // The playlist's year, and TMDB's score.
-        assertTrue(shown("2012 · TMDB 79%"))
+        // The playlist's year, and that the playlist has it.
+        assertTrue(shown("2012 · In your playlist"))
         assertTrue("tv/31917/recommendations" in tmdb.requests)
-        // Happy Valley is not in the playlist: OK on it does nothing.
-        click("Happy Valley")
-        compose.settle()
-        assertEquals(lineOfDuty, navigator.current.screen)
         click("Bodyguard")
         compose.waitAdvancingClock { navigator.current.screen is Screen.SeriesDetails }
         assertEquals(Screen.SeriesDetails(playlistId, FakeTmdb.BODYGUARD), navigator.current.screen)
+    }
+
+    @Test
+    fun `a suggestion not in the playlist opens its TMDB page, where Find in your playlist searches for it`() {
+        tmdb.use(app.container)
+        show(lineOfDuty)
+        compose.waitForText("Happy Valley")
+        click("Happy Valley")
+        compose.waitAdvancingClock { navigator.current.screen is Screen.TmdbTitle }
+        assertEquals(
+            Screen.TmdbTitle(playlistId, FakeTmdb.HAPPY_VALLEY, series = true, "Happy Valley", null, Tab.SERIES),
+            navigator.current.screen
+        )
+        compose.waitForText("A sergeant in West Yorkshire.")
+        compose.waitForText("2014 · Crime · TMDB 83%")
+        compose.waitForText("Written by Sally Wainwright")
+        compose.waitForText("Play trailer")
+        click("Find in your playlist")
+        compose.waitAdvancingClock { navigator.current.screen is Screen.Search }
+        assertEquals(Screen.Search("Happy Valley"), navigator.current.screen)
     }
 
     @Test
