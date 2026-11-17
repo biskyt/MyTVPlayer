@@ -6,4 +6,5 @@
     <string name="vod_about_this_film">About this film</string>
     <string name="vod_play_trailer_help">A short preview of the film</string>
     <string name="vod_similar_help">Similar films from TMDB</string>
+    <string name="vod_status_cancelled">Cancelled</string>
 </resources>

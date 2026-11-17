@@ -79,6 +79,36 @@ class TmdbClientTest {
     }
 
     @Test
+    fun `a series' status, seasons, episodes and next episode`() = runBlocking {
+        reply(
+            """{"id":1416,"status":"Returning Series","number_of_seasons":2,"number_of_episodes":18,""" +
+                """"next_episode_to_air":{"season_number":2,"episode_number":9,"name":"The Return","air_date":"2026-12-04"},""" +
+                """"seasons":[{"season_number":2,"name":"Season 2","episode_count":10,"air_date":"2025-10-01"},""" +
+                """{"season_number":0,"name":"Specials","episode_count":3},{"season_number":1,"episode_count":8,"air_date":"2023-11-10"}]}"""
+        )
+        val t = client().series(1416)!!
+        assertEquals(SeriesStatus.CONTINUING, t.status)
+        assertEquals(2, t.seasonCount)
+        assertEquals(18, t.episodeCount)
+        assertEquals(TmdbAiring(2, 9, "The Return", LocalDate.of(2026, 12, 4)), t.nextEpisode)
+        // In order, without the specials.
+        assertEquals(
+            listOf(TmdbSeason(1, null, 8, LocalDate.of(2023, 11, 10)), TmdbSeason(2, "Season 2", 10, LocalDate.of(2025, 10, 1))),
+            t.seasons
+        )
+    }
+
+    @Test
+    fun `an ended series has no next episode, and a status TMDB adds later is not guessed`() = runBlocking {
+        reply("""{"id":1,"status":"Ended","next_episode_to_air":null}""")
+        val ended = client().series(1)!!
+        assertEquals(SeriesStatus.ENDED, ended.status)
+        assertNull(ended.nextEpisode)
+        assertNull(SeriesStatus.of("Something New"))
+        assertEquals(SeriesStatus.CANCELLED, SeriesStatus.of("Canceled"))
+    }
+
+    @Test
     fun `a season's episodes`() = runBlocking {
         reply(
             """{"episodes":[{"season_number":1,"episode_number":1,"name":"Winter Is Coming","overview":"Lord Stark...","still_path":"/s.jpg",

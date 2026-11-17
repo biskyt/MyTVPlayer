@@ -394,8 +394,9 @@ fun SeriesColumn(
     Column(Modifier.width(300.bd).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.bd)) {
         Poster(show.coverUrl ?: info.posterUrl, show.title, 120.bd, radius = 10.bd)
         Text(show.title, style = SeriesTitle.current, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        // One season: its name says it, so not "1 season" too.
-        val seasons = d?.seasons?.size?.takeIf { it > 1 }?.let { pluralStringResource(R.plurals.vod_seasons, it, it) }
+        // One season: its name says it, so not "1 season" too. TMDB's count (in the status line) says it better.
+        val seasons = d?.seasons?.size?.takeIf { it > 1 && info.tmdb?.seasonCount == null }
+            ?.let { pluralStringResource(R.plurals.vod_seasons, it, it) }
         val current = season?.let { n -> seasonName(n, d?.seasons?.firstOrNull { it.number == n }?.name) }
         // The season's year: when its first episode was first shown.
         val year = d?.episodes?.filter { it.season == season }?.mapNotNull { it.airDate?.year }?.minOrNull()
@@ -410,6 +411,9 @@ fun SeriesColumn(
                 info.score?.let { TmdbScore(it) }
             }
         }
+        // TMDB's word on the whole series: whether it goes on, and when the next episode is shown.
+        seriesStatusLine(info.tmdb)?.let { Text(it, style = SeriesFacts.current, color = Palette.textMuted, maxLines = 2) }
+        nextEpisodeLine(info.tmdb)?.let { Text(it, style = SeriesFacts.current, color = Palette.textMuted, maxLines = 2) }
         // 4 lines at most, so the buttons stay in reach; Read more shows the rest.
         info.plot?.let { PlotWithMore(show.title, it, SeriesPlot.current, maxLines = 4, moreModifier) }
         // A little room under the last button: the scrolled column clips what is outside it.

@@ -188,7 +188,16 @@ data class TmdbTitle(
     val originalTitle: String?,
     val released: LocalDate?,
     val studios: List<String>,
-    val countries: List<String>
+    val countries: List<String>,
+    /** A series': whether new episodes are coming. */
+    val status: SeriesStatus? = null,
+    /** A series': how many seasons (not counting specials) and episodes it has had so far. */
+    val seasonCount: Int? = null,
+    val episodeCount: Int? = null,
+    /** A series': the next episode TMDB knows of, while it is still to be shown. */
+    val nextEpisode: TmdbAiring? = null,
+    /** A series': its seasons in order, without specials (season 0). */
+    val seasons: List<TmdbSeason> = emptyList(),
 ) {
     val tmdbUrl get() = "https://www.themoviedb.org/${if (series) "tv" else "movie"}/$id"
     val imdbUrl get() = imdbId?.let { "https://www.imdb.com/title/$it/" }
@@ -196,6 +205,35 @@ data class TmdbTitle(
     /** Its pages on IMDb (when TMDB knows its IMDb id) and TMDB, in that order. */
     val links get() = listOfNotNull(imdbUrl?.let { TitleLink("IMDb", it) }, TitleLink("TMDB", tmdbUrl))
 }
+
+/** Whether a series goes on, from TMDB's status ("Returning Series", "Ended"…). */
+enum class SeriesStatus {
+    CONTINUING,
+    ENDED,
+    CANCELLED,
+    IN_PRODUCTION,
+    PLANNED,
+    PILOT;
+
+    companion object {
+        /** TMDB's status text as one of these; null when it is missing or new. */
+        fun of(text: String?): SeriesStatus? = when (text?.trim()?.lowercase()) {
+            "returning series" -> CONTINUING
+            "ended" -> ENDED
+            "canceled", "cancelled" -> CANCELLED
+            "in production" -> IN_PRODUCTION
+            "planned" -> PLANNED
+            "pilot" -> PILOT
+            else -> null
+        }
+    }
+}
+
+/** An episode still to be shown: season [season], episode [number], first shown on [airDate] (null: not known). */
+data class TmdbAiring(val season: Int, val number: Int, val name: String?, val airDate: LocalDate?)
+
+/** One of a series' seasons on TMDB: [number] (from 1), its [episodeCount], and when it was first shown. */
+data class TmdbSeason(val number: Int, val name: String?, val episodeCount: Int, val airDate: LocalDate?)
 
 data class TmdbEpisode(
     val season: Int,

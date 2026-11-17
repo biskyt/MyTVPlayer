@@ -13,6 +13,17 @@ import java.net.Socket
 import java.net.URLDecoder
 import java.security.SecureRandom
 import kotlin.concurrent.thread
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+
+/**
+ * What a [PhoneForm] has seen so far, shown on its panel: when a phone's browser shows no page, it tells whether the
+ * phone reached the TV at all. [secure]: connections that asked for HTTPS (the page is HTTP only). [unanswered]:
+ * connections that ended with no answer (closed by the browser before a request, too slow, or broken).
+ */
+data class PhoneFormSeen(val connections: Int = 0, val pages: Int = 0, val secure: Int = 0, val unanswered: Int = 0)
 
 /** The words of a [PhoneForm] page, in the app's language. */
 data class PhoneFormText(
@@ -47,6 +58,11 @@ class PhoneForm(
     private val clients = LinkedHashMap<Socket, Boolean>()
     private val lock = Any()
 
+    private val _seen = MutableStateFlow(PhoneFormSeen())
+
+    /** What this server has seen since it started. */
+    val seen: StateFlow<PhoneFormSeen> = _seen.asStateFlow()
+
     init {
         thread(name = "PhoneForm", isDaemon = true) {
             // Until closed: the panel is gone.
@@ -79,6 +95,7 @@ class PhoneForm(
             }
             (clients.size < MAX_CLIENTS).also { if (it) clients[c] = false }
         }
+        _seen.update { it.copy(connections = it.connections + 1) }
         if (admitted) thread(name = "PhoneForm request", isDaemon = true) { handle(c) } else runCatching { c.close() }
     }
 
@@ -86,13 +103,15 @@ class PhoneForm(
     private fun started(c: Socket) = synchronized(lock) { if (c in clients) clients[c] = true }
 
     private fun handle(c: Socket) {
+        var answered = false
         try {
-            c.use(::serve)
+            answered = c.use(::serve)
         } catch (_: IOException) {
             // A bad or slow request, or the phone went away: only this connection ends.
         } catch (@Suppress("TooGenericExceptionCaught") _: RuntimeException) {
             // Anything else a stranger on the network sends: never a crash of the app.
         } finally {
+            if (!answered) _seen.update { it.copy(unanswered = it.unanswered + 1) }
             synchronized(lock) { clients.remove(c) }
         }
     }
@@ -103,20 +122,25 @@ class PhoneForm(
         clients.clear()
     }
 
-    private fun serve(client: Socket) {
+    /** Answers [client]'s request; false when it ended with no answer. */
+    private fun serve(client: Socket): Boolean {
         // A browser can open a connection well before it sends its request on it: the first byte may take a while.
         client.soTimeout = FIRST_BYTE_MS
         val buffered = BufferedInputStream(client.getInputStream())
         buffered.mark(1)
         val first = buffered.read()
-        if (first < 0) return
+        if (first < 0) return false
         buffered.reset()
         // An HTTP request starts with its method's capital letters. Some browsers (Microsoft Edge, for example) try
         // HTTPS first: an answer at once tells them that this server has only HTTP, so they open the http address.
         // Without an answer, they try again and again, and then show an error.
-        if (first !in 'A'.code..'Z'.code) return reply(client, Reply(BAD_REQUEST, ""))
+        if (first !in 'A'.code..'Z'.code) {
+            _seen.update { it.copy(secure = it.secure + 1) }
+            reply(client, Reply(BAD_REQUEST, ""))
+            return true
+        }
         val input = LimitedInput(buffered, client) { started(client) }
-        val request = input.line()?.split(' ') ?: return
+        val request = input.line()?.split(' ') ?: return false
         val (method, path) = request.getOrNull(0) to request.getOrNull(1)
         // All the headers are read first: the body starts after the blank line that ends them.
         val headers = generateSequence { input.line()?.takeIf { it.isNotEmpty() } }.toList()
@@ -125,7 +149,7 @@ class PhoneForm(
         } ?: 0
         val reply = when {
             path != "/$token" -> Reply(NOT_FOUND, "")
-            method == "GET" -> Reply(OK, page(sent = false))
+            method == "GET" -> Reply(OK, page(sent = false)).also { _seen.update { it.copy(pages = it.pages + 1) } }
             method == "POST" && length in 1..MAX_BODY -> {
                 value(input.text(length))?.let(received)
                 Reply(OK, page(sent = true))
@@ -133,6 +157,7 @@ class PhoneForm(
             else -> Reply(BAD_REQUEST, "")
         }
         reply(client, reply)
+        return true
     }
 
     private fun reply(client: Socket, reply: Reply) {
@@ -228,7 +253,9 @@ class PhoneForm(
         private const val TOKEN_BYTES = 12
         private const val FIRST_BYTE_MS = 30_000
         private const val READ_TIMEOUT_MS = 2_000
-        private const val MAX_CLIENTS = 8
+
+        /** Far more than a browser opens: one that opens many at once must never lose one it is about to use. */
+        internal const val MAX_CLIENTS = 32
         private const val ACCEPT_RETRY_MS = 100L
         private const val REQUEST_MS = 10_000L
         private const val MAX_HEAD = 16 * 1024

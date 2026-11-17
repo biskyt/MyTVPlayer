@@ -15,7 +15,9 @@ import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.settle
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.testutil.waitForText
+import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
+import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -102,6 +104,15 @@ class TmdbSeriesUiTest {
         compose.waitForText("Links")
         click("About this show")
         compose.waitForText("BBC Two")
+    }
+
+    @Test
+    fun `the page says whether the series goes on, its seasons and episodes, and when the next episode is shown`() {
+        tmdb.use(app.container)
+        val navigator = navigators.new(Screen.SeriesDetails(playlistId, 77, season = 1))
+        compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
+        compose.waitForText("Continuing · 6 seasons · 36 episodes")
+        compose.waitForText("Next episode: ${formatDate(LocalDate.parse(FakeTmdb.NEXT_EPISODE))} · S7E1")
     }
 
     @Test
