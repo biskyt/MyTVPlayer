@@ -132,4 +132,7 @@
     <string name="vod_next_episode">Next episode: %1$s</string>
     <!-- A title's TMDB page: searches the playlist for its original title. %1$s: that title, e.g. "Intouchables". -->
     <string name="vod_find_original">Find “%1$s”</string>
+    <!-- More…: all of a title's trailers from TMDB, as a studio's upload is often blocked in other countries; its help (a film's only) under it. -->
+    <string name="vod_other_trailers">Other trailers</string>
+    <string name="vod_other_trailers_help">Other uploads, if a trailer does not play in your country</string>
 </resources>

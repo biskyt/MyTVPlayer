@@ -79,6 +79,26 @@ class TmdbClientTest {
     }
 
     @Test
+    fun `trailers made for the TV's country come first, then the others, and teasers last`() = runBlocking {
+        reply(
+            """{"id":1,"videos":{"results":[""" +
+                """{"key":"teaserGB001","site":"YouTube","type":"Teaser","official":true,"iso_3166_1":"GB","name":"Teaser"},""" +
+                """{"key":"usTrailer01","site":"YouTube","type":"Trailer","official":true,"iso_3166_1":"US","name":"Official Trailer"},""" +
+                """{"key":"clip0000001","site":"YouTube","type":"Clip","iso_3166_1":"GB"},""" +
+                """{"key":"12345678","site":"Vimeo","type":"Trailer","official":false,"iso_3166_1":"US","name":"Trailer"},""" +
+                """{"key":"ukTrailer01","site":"YouTube","type":"Trailer","official":true,"iso_3166_1":"GB","name":"UK Trailer"}]}}"""
+        )
+        val t = TmdbClient(OkHttpClient(), "0123456789abcdef0123456789abcdef", "en-GB", server.url("/3/").toString(), "GB")
+            .movie(1)!!
+        // The UK upload, which plays in the UK where the US studio's may be blocked; no clip.
+        assertEquals(listOf("ukTrailer01", "usTrailer01", "12345678", "teaserGB001"), t.trailers.map { it.key })
+        assertEquals("ukTrailer01", t.trailer)
+        assertEquals("GB", t.trailers.first().country)
+        assertEquals("https://vimeo.com/12345678", t.trailers[2].url)
+        assertEquals("https://www.youtube.com/watch?v=ukTrailer01", t.trailers[0].url)
+    }
+
+    @Test
     fun `a series' status, seasons, episodes and next episode`() = runBlocking {
         reply(
             """{"id":1416,"status":"Returning Series","number_of_seasons":2,"number_of_episodes":18,""" +

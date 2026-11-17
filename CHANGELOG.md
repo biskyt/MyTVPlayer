@@ -4,6 +4,8 @@ Each version's section becomes its GitHub release notes, so it is written for th
 English, one bullet of one sentence per change.
 
 ## 1.27.0
+- Play trailer now picks a trailer made for your country first, as other countries' uploads are often blocked.
+- More… and the TMDB page have Other trailers, so you can try another one when a trailer does not play.
 - The connection counts under the TMDB key's QR code are gone: they were there only to find the Edge and Brave fault.
 
 ## 1.26.2

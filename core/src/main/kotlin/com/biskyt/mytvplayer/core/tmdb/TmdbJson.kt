@@ -28,7 +28,10 @@ internal data class VideoJson(
     val key: String = "",
     val site: String = "",
     val type: String = "",
-    val official: Boolean = false
+    val official: Boolean = false,
+    val name: String? = null,
+    /** The country it was made for ("US", "GB"): a studio's upload can be blocked in other countries. */
+    @SerialName("iso_3166_1") val country: String? = null
 )
 
 @Serializable
@@ -132,20 +135,30 @@ private fun CreditsJson.crewFor(jobs: Set<String>) = crew.filter { it.job in job
     .map { crewMember(it.name, it.id) }
 
 /** The best YouTube trailer: an official trailer, then any trailer, then a teaser. */
-internal fun VideosJson.trailer(): String? {
-    val youTube = results.filter { it.site == "YouTube" && it.key.isNotBlank() }
-    return (
-        youTube.firstOrNull { it.type == "Trailer" && it.official }
-            ?: youTube.firstOrNull { it.type == "Trailer" }
-            ?: youTube.firstOrNull { it.type == "Teaser" }
-        )?.key
-}
+/**
+ * The trailers and teasers that the app can play (on YouTube or Vimeo), best first: trailers before teasers, then those
+ * made for [region] (the TV's country: an upload for another country is often blocked here), then official ones.
+ * Otherwise in TMDB's order.
+ */
+internal fun VideosJson.trailers(region: String?): List<TmdbVideo> = results
+    .filter { it.key.isNotBlank() && it.site in PLAYABLE && it.type in KINDS }
+    .sortedWith(
+        compareBy<VideoJson>(
+            { KINDS.indexOf(it.type) },
+            { if (region != null && it.country.equals(region, ignoreCase = true)) 0 else 1 },
+            { if (it.official) 0 else 1 },
+        )
+    )
+    .map { TmdbVideo(it.name?.ifBlank { null }, it.site, it.key, it.country?.uppercase()) }
+
+private val PLAYABLE = setOf(TmdbVideo.YOUTUBE, TmdbVideo.VIMEO)
+private val KINDS = listOf("Trailer", "Teaser")
 
 internal fun score(average: Double, votes: Int) = average.takeIf { votes >= MIN_VOTES && it > 0 }
 
 private fun List<Named>.names() = map { it.name }.filter { it.isNotBlank() }
 
-internal fun MovieJson.toTitle() = TmdbTitle(
+internal fun MovieJson.toTitle(region: String? = null) = TmdbTitle(
     id = id,
     series = false,
     imdbId = imdbId?.ifBlank { null },
@@ -154,7 +167,7 @@ internal fun MovieJson.toTitle() = TmdbTitle(
     cast = credits.people(),
     directors = credits.crewFor(setOf("Director")),
     writers = credits.crewFor(WRITING),
-    trailer = videos.trailer(),
+    trailers = videos.trailers(region),
     posterUrl = image(posterPath, "w342"),
     backdropUrl = image(backdropPath, "w1280"),
     genres = genres.names(),
@@ -164,7 +177,7 @@ internal fun MovieJson.toTitle() = TmdbTitle(
     countries = countries.names()
 )
 
-internal fun SeriesJson.toTitle() = TmdbTitle(
+internal fun SeriesJson.toTitle(region: String? = null) = TmdbTitle(
     id = id,
     series = true,
     imdbId = externalIds.imdbId?.ifBlank { null },
@@ -173,7 +186,7 @@ internal fun SeriesJson.toTitle() = TmdbTitle(
     cast = credits.people(),
     directors = emptyList(),
     writers = createdBy.filter { it.name.isNotBlank() }.map { crewMember(it.name, it.id) },
-    trailer = videos.trailer(),
+    trailers = videos.trailers(region),
     posterUrl = image(posterPath, "w342"),
     backdropUrl = image(backdropPath, "w1280"),
     genres = genres.names(),

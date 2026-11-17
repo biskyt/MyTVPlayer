@@ -138,6 +138,20 @@ class TmdbFilmUiTest {
     }
 
     @Test
+    fun `More's Other trailers lists every trailer, with its country, and plays the one chosen`() {
+        tmdb.use(app.container)
+        open()
+        compose.waitForText("Trailer")
+        click("More…")
+        compose.waitForText("Other trailers")
+        click("Other trailers")
+        compose.waitForText("Teaser · GB")
+        click("Teaser · GB")
+        compose.waitAdvancingClock { shadowOf(app).peekNextStartedActivity() != null }
+        assertEquals("https://www.youtube.com/watch?v=${FakeTmdb.TEASER}", shadowOf(app).nextStartedActivity.dataString)
+    }
+
+    @Test
     fun `Cast and crew lists the cast, then who directed and wrote it`() {
         tmdb.use(app.container)
         open()

@@ -28,7 +28,9 @@ class TmdbClient(
     private val http: OkHttpClient,
     private val key: String,
     private val language: String,
-    private val base: String = "https://api.themoviedb.org/3/"
+    private val base: String = "https://api.themoviedb.org/3/",
+    /** The TV's country ("GB"): its trailers come first, as another country's upload is often blocked here. */
+    private val region: String? = null,
 ) {
     /** A v4 token is a long JWT; a v3 key is 32 hexadecimal characters. */
     private val bearer = key.length > V3_KEY_LENGTH
@@ -60,11 +62,11 @@ class TmdbClient(
 
     /** A film by its TMDB id, or null when TMDB has none with that id. */
     suspend fun movie(id: Int): TmdbTitle? = get("movie/$id", details)
-        ?.let { decode(MovieJson.serializer(), it).toTitle() }
+        ?.let { decode(MovieJson.serializer(), it).toTitle(region) }
 
     /** A series by its TMDB id, or null when TMDB has none with that id. */
     suspend fun series(id: Int): TmdbTitle? = get("tv/$id", details)
-        ?.let { decode(SeriesJson.serializer(), it).toTitle() }
+        ?.let { decode(SeriesJson.serializer(), it).toTitle(region) }
 
     /** A person by their TMDB id, with their films' and series' credits; null when TMDB has none with that id. */
     suspend fun person(id: Long): TmdbPerson? = get("person/$id", listOf("append_to_response" to "combined_credits"))
@@ -180,8 +182,8 @@ data class TmdbTitle(
     val directors: List<CastMember>,
     /** Who wrote it (a series: who created it), with no part. */
     val writers: List<CastMember>,
-    /** The YouTube id of the best trailer. */
-    val trailer: String?,
+    /** The trailers and teasers that the app can play, best first (see trailers in TmdbJson.kt). */
+    val trailers: List<TmdbVideo>,
     val posterUrl: String?,
     val backdropUrl: String?,
     val genres: List<String>,
@@ -199,11 +201,25 @@ data class TmdbTitle(
     /** A series': its seasons in order, without specials (season 0). */
     val seasons: List<TmdbSeason> = emptyList(),
 ) {
+    /** The YouTube id of the best trailer on YouTube. */
+    val trailer: String? get() = trailers.firstOrNull { it.site == TmdbVideo.YOUTUBE }?.key
+
     val tmdbUrl get() = "https://www.themoviedb.org/${if (series) "tv" else "movie"}/$id"
     val imdbUrl get() = imdbId?.let { "https://www.imdb.com/title/$it/" }
 
     /** Its pages on IMDb (when TMDB knows its IMDb id) and TMDB, in that order. */
     val links get() = listOfNotNull(imdbUrl?.let { TitleLink("IMDb", it) }, TitleLink("TMDB", tmdbUrl))
+}
+
+/** A trailer or teaser: its [name] on its [site] (YouTube or Vimeo), and the [country] it was made for, if TMDB knows. */
+data class TmdbVideo(val name: String?, val site: String, val key: String, val country: String?) {
+    /** Its page, which the YouTube or Vimeo app (or a browser) plays. */
+    val url: String get() = if (site == VIMEO) "https://vimeo.com/$key" else "https://www.youtube.com/watch?v=$key"
+
+    companion object {
+        const val YOUTUBE = "YouTube"
+        const val VIMEO = "Vimeo"
+    }
 }
 
 /** Whether a series goes on, from TMDB's status ("Returning Series", "Ended"…). */

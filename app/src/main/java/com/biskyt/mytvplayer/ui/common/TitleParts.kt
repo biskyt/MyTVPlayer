@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.R
+import com.biskyt.mytvplayer.core.tmdb.TmdbVideo
 import com.biskyt.mytvplayer.core.vod.CastMember
 import com.biskyt.mytvplayer.core.vod.TitleLink
 import com.biskyt.mytvplayer.ui.theme.Palette
@@ -48,13 +49,35 @@ fun rememberLinkOpener(): (TitleLink) -> Unit {
  */
 @Composable
 fun rememberTrailerOpener(): (String) -> Unit {
+    val open = rememberVideoOpener()
+    return remember(open) { { id -> open(youTubePage(id)) } }
+}
+
+/** Opens a video's page ([url], on YouTube or Vimeo) as [rememberTrailerOpener] does a trailer. */
+@Composable
+fun rememberVideoOpener(): (String) -> Unit {
     val context = LocalContext.current
     var shown by remember { mutableStateOf<String?>(null) }
-    shown?.let { LinkPanel(stringResource(R.string.vod_trailer), youTubePage(it)) { shown = null } }
-    return remember(context) { { id -> if (openLink(context, youTubePage(id)) != null) shown = id } }
+    shown?.let { LinkPanel(stringResource(R.string.vod_trailer), it) { shown = null } }
+    return remember(context) { { url -> if (openLink(context, url) != null) shown = url } }
 }
 
 private fun youTubePage(id: String) = "https://www.youtube.com/watch?v=$id"
+
+/**
+ * "Other trailers": all of a title's trailers and teasers from TMDB, best first, each with the country it was made for.
+ * A studio's upload is often blocked outside its own country: one of the others may play. OK plays one; the panel stays.
+ */
+@Composable
+fun TrailersPanel(title: String, trailers: List<TmdbVideo>, onDismiss: () -> Unit) {
+    val open = rememberVideoOpener()
+    val trailer = stringResource(R.string.vod_trailer)
+    val actions = trailers.map { v ->
+        val label = listOfNotNull(v.name ?: trailer, v.country, v.site.takeIf { it != TmdbVideo.YOUTUBE }).joinToString(" · ")
+        ItemAction.Run(label) { open(v.url) }
+    }
+    ItemActionsPanel(title, actions, onDismiss, stringResource(R.string.vod_other_trailers))
+}
 
 /** One of the cast: photo (loaded only when shown), name and part. */
 @Composable

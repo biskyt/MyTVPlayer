@@ -1,6 +1,7 @@
 package com.biskyt.mytvplayer.ui.vod
 
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
+import com.biskyt.mytvplayer.core.tmdb.TmdbVideo
 import com.biskyt.mytvplayer.core.vod.CastMember
 import com.biskyt.mytvplayer.core.xtream.VodDetails
 import java.time.LocalDate
@@ -32,7 +33,7 @@ class TitleInfoTest {
         cast = listOf(CastMember("Tom Hale", "Rose", null)),
         directors = listOf(CastMember("A. Ruiz", null, null)),
         writers = listOf(CastMember("Paul Okafor", null, null)),
-        trailer = "tmdb000001",
+        trailers = listOf(TmdbVideo(null, TmdbVideo.YOUTUBE, "tmdb000001", null)),
         posterUrl = "http://tmdb/poster.jpg",
         backdropUrl = "http://tmdb/back.jpg",
         genres = listOf("Mystery", "Drama", "Thriller"),

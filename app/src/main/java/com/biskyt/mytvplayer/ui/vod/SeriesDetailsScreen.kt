@@ -90,6 +90,7 @@ import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.Poster
 import com.biskyt.mytvplayer.ui.common.ProgressLine
 import com.biskyt.mytvplayer.ui.common.Tab
+import com.biskyt.mytvplayer.ui.common.TrailersPanel
 import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.common.formatRuntime
@@ -232,6 +233,7 @@ sealed interface SeriesPanel {
     data class Options(val e: EpisodeInfo) : SeriesPanel
     data object Cast : SeriesPanel
     data object About : SeriesPanel
+    data object Trailers : SeriesPanel
     data class Describe(val e: EpisodeInfo) : SeriesPanel
 }
 
@@ -370,6 +372,7 @@ private fun SeriesPanels(
             CastPanel(title, crew, stringResource(R.string.vod_cast_crew), vm.castFocus, { openPerson(it, crew[it]) }, close)
         }
         SeriesPanel.About -> tmdb?.let { AboutPanel(film = false, it, close) }
+        SeriesPanel.Trailers -> TrailersPanel(title, vm.info.trailers, close)
         is SeriesPanel.Describe -> EpisodeDescriptionPanel(DescribedEpisode(title, now(p.e)), close)
     }
 }
@@ -474,7 +477,15 @@ private fun EpisodeOptions(
         if (saved?.finished != true) markWatched(false, set) else null,
         if (saved?.started == true) markWatched(true, set) else null
     )
-    val show = titleActions(vm.tmdb, film = false, playTrailer, vm::showCast, moreLike, showAbout = { vm.open = SeriesPanel.About })
+    val show = titleActions(
+        vm.tmdb,
+        film = false,
+        playTrailer,
+        otherTrailers = { vm.open = SeriesPanel.Trailers },
+        vm::showCast,
+        moreLike,
+        showAbout = { vm.open = SeriesPanel.About }
+    )
     val actions = if (show.isEmpty()) {
         episode
     } else {
