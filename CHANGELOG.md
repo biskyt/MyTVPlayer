@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.27.1
+- If a season's episodes do not load on a TMDB page, a Try again button now shows.
+- Pages with TMDB data no longer pause for a moment while TMDB's answer is read.
+- The seasons on a TMDB page now look the same as on a series page.
+
 ## 1.27.0
 - Play trailer now picks a trailer made for your country first, as other countries' uploads are often blocked.
 - More… and the TMDB page have Other trailers, so you can try another one when a trailer does not play.

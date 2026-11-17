@@ -1,7 +1,6 @@
 package com.biskyt.mytvplayer.ui.vod
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,7 +26,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -59,6 +57,7 @@ import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.common.initials
+import com.biskyt.mytvplayer.ui.common.quietFocus
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.theme.BoardStyle
 import com.biskyt.mytvplayer.ui.theme.MEDIUM
@@ -221,11 +220,7 @@ private fun PersonPhoto(url: String?, name: String) {
  */
 @Composable
 private fun CreditRow(c: PersonCredit, modifier: Modifier) {
-    var focused by remember { mutableStateOf(false) }
-    Column(
-        modifier.padding(horizontal = SIDE).onFocusChanged { focused = it.isFocused }.focusable()
-            .background(if (focused) Palette.surfaceHigh else Color.Transparent)
-    ) {
+    Column(modifier.padding(horizontal = SIDE).quietFocus()) {
         Row(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             Text(c.year?.toString().orEmpty(), style = RowText.current, color = Palette.textDim, modifier = Modifier.width(60.dp))
             Text(
@@ -259,12 +254,7 @@ private fun BiographyPanel(name: String, biography: String, onDismiss: () -> Uni
     BoardPanel(onDismiss, gap = 10.bd) {
         BoardPanelTitle(name)
         remember(biography) { bioParts(biography) }.forEachIndexed { i, part ->
-            var focused by remember { mutableStateOf(false) }
-            BoardPanelText(
-                part,
-                (if (i == 0) rememberFirstFocus() else Modifier).onFocusChanged { focused = it.isFocused }.focusable()
-                    .background(if (focused) Palette.surfaceHigh else Color.Transparent)
-            )
+            BoardPanelText(part, (if (i == 0) rememberFirstFocus() else Modifier).quietFocus())
         }
     }
 }

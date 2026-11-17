@@ -1,6 +1,8 @@
 package com.biskyt.mytvplayer.ui.common
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -18,11 +20,16 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalFocusManager
+import com.biskyt.mytvplayer.ui.theme.Palette
 import kotlin.random.Random
 import kotlinx.coroutines.flow.first
 
@@ -229,4 +236,13 @@ suspend fun settleFor(done: () -> Boolean): Boolean {
         if (done()) return true
     }
     return false
+}
+
+/**
+ * Takes the remote only so that Up and Down move through a list of plain rows (credits, facts, episodes), and shows it
+ * quietly: a dark fill ([shape]) behind the row that has it.
+ */
+fun Modifier.quietFocus(shape: Shape = RectangleShape): Modifier = composed {
+    var focused by remember { mutableStateOf(false) }
+    onFocusChanged { focused = it.isFocused }.focusable().background(if (focused) Palette.surfaceHigh else Color.Transparent, shape)
 }

@@ -197,22 +197,12 @@ internal fun SeriesJson.toTitle(region: String? = null) = TmdbTitle(
     status = SeriesStatus.of(status),
     seasonCount = seasonCount?.takeIf { it > 0 },
     episodeCount = episodeCount?.takeIf { it > 0 },
-    nextEpisode = nextEpisode?.takeIf {
-        it.number > 0
-    }?.let { TmdbAiring(it.season, it.number, it.name?.ifBlank { null }, dateOf(it.airDate)) },
+    nextEpisode = nextEpisode?.takeIf { it.number > 0 }?.toEpisode(),
     seasons = seasons.filter { it.number > 0 }.sortedBy { it.number }
         .map { TmdbSeason(it.number, it.name?.ifBlank { null }, it.episodeCount, dateOf(it.airDate)) },
 )
 
-internal fun SeasonJson.toEpisodes() = episodes.map {
-    TmdbEpisode(
-        it.season,
-        it.number,
-        it.name?.ifBlank {
-            null
-        },
-        it.overview?.ifBlank { null },
-        image(it.stillPath, "w300"),
-        dateOf(it.airDate)
-    )
-}
+internal fun SeasonJson.toEpisodes() = episodes.map { it.toEpisode() }
+
+internal fun EpisodeJson.toEpisode() =
+    TmdbEpisode(season, number, name?.ifBlank { null }, overview?.ifBlank { null }, image(stillPath, "w300"), dateOf(airDate))

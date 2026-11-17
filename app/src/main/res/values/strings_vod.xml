@@ -135,4 +135,5 @@
     <!-- More…: all of a title's trailers from TMDB, as a studio's upload is often blocked in other countries; its help (a film's only) under it. -->
     <string name="vod_other_trailers">Other trailers</string>
     <string name="vod_other_trailers_help">Other uploads, if a trailer does not play in your country</string>
+    <string name="vod_tmdb_season_failed">Couldn\'t load this season from TMDB</string>
 </resources>
