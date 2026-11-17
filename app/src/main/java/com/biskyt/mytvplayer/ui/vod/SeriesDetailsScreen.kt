@@ -187,7 +187,7 @@ class SeriesDetailsViewModel(
         val id = tmdb?.id ?: return
         if (!tmdbAsked.add(season)) return
         viewModelScope.launch {
-            val episodes = c.tmdb.season(id, season)
+            val episodes = c.tmdb.season(id, season).orEmpty()
             // Nothing (a failure gives nothing too): asked again the next time the season is shown.
             if (episodes.isEmpty()) tmdbAsked.remove(season) else tmdbSeasons[season] = episodes
         }
@@ -431,7 +431,7 @@ fun SeriesColumn(
 
 /** A season's name: the provider's, else the app's ("Season 2"). */
 @Composable
-private fun seasonName(number: Int, name: String?) = name ?: stringResource(R.string.vod_season, number)
+internal fun seasonName(number: Int, name: String?) = name ?: stringResource(R.string.vod_season, number)
 
 /** "Continue S2 E4 · 21 min left", "Continue S2 E5" (the next one), or "Play S1 E1" when nothing is watched yet. */
 @Composable

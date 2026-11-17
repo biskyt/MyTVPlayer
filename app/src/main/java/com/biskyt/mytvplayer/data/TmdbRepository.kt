@@ -63,8 +63,8 @@ class TmdbRepository(
     /** The series named [name] on TMDB, by [details]' TMDB id where the provider gave one. */
     suspend fun series(name: String, details: VodDetails?): TmdbTitle? = quietly { it.match(series = true, name, details) }
 
-    /** The episodes of [season] of the TMDB series [seriesId]. */
-    suspend fun season(seriesId: Int, season: Int): List<TmdbEpisode> = quietly { it.season(seriesId, season) }.orEmpty()
+    /** The episodes of [season] of the TMDB series [seriesId]; null when TMDB cannot give them (no key, or out of reach). */
+    suspend fun season(seriesId: Int, season: Int): List<TmdbEpisode>? = quietly { it.season(seriesId, season) }
 
     /** Film (or, when [series], series) [id]'s page on TMDB; null when TMDB cannot give it (no key, or out of reach). */
     suspend fun title(series: Boolean, id: Int): TmdbTitle? = quietly { if (series) it.series(id) else it.movie(id) }

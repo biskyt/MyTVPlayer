@@ -144,6 +144,18 @@ class MoreLikeUiTest {
     }
 
     @Test
+    fun `a season that TMDB could not give offers Try again, which shows its episodes`() {
+        tmdb.use(app.container)
+        tmdb.seasonsFail = true
+        show(Screen.TmdbTitle(playlistId, FakeTmdb.HAPPY_VALLEY, series = true, "Happy Valley", null, Tab.SERIES))
+        compose.waitForText("Couldn't load this season from TMDB")
+        tmdb.seasonsFail = false
+        click("Try again")
+        compose.waitForText("The Last One")
+        assertTrue(!shown("Couldn't load this season from TMDB"))
+    }
+
+    @Test
     fun `a film's More… opens More like this, with its film in the playlist`() {
         tmdb.use(app.container)
         show(Screen.MovieDetails(playlistId, 501))

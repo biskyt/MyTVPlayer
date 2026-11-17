@@ -110,7 +110,7 @@ class TmdbClientTest {
         assertEquals(SeriesStatus.CONTINUING, t.status)
         assertEquals(2, t.seasonCount)
         assertEquals(18, t.episodeCount)
-        assertEquals(TmdbAiring(2, 9, "The Return", LocalDate.of(2026, 12, 4)), t.nextEpisode)
+        assertEquals(TmdbEpisode(2, 9, "The Return", null, null, LocalDate.of(2026, 12, 4)), t.nextEpisode)
         // In order, without the specials.
         assertEquals(
             listOf(TmdbSeason(1, null, 8, LocalDate.of(2023, 11, 10)), TmdbSeason(2, "Season 2", 10, LocalDate.of(2025, 10, 1))),

@@ -61,16 +61,14 @@ class TmdbClient(
     private suspend fun title(series: Boolean, id: Int) = if (series) series(id) else movie(id)
 
     /** A film by its TMDB id, or null when TMDB has none with that id. */
-    suspend fun movie(id: Int): TmdbTitle? = get("movie/$id", details)
-        ?.let { decode(MovieJson.serializer(), it).toTitle(region) }
+    suspend fun movie(id: Int): TmdbTitle? = get(MovieJson.serializer(), "movie/$id", details)?.toTitle(region)
 
     /** A series by its TMDB id, or null when TMDB has none with that id. */
-    suspend fun series(id: Int): TmdbTitle? = get("tv/$id", details)
-        ?.let { decode(SeriesJson.serializer(), it).toTitle(region) }
+    suspend fun series(id: Int): TmdbTitle? = get(SeriesJson.serializer(), "tv/$id", details)?.toTitle(region)
 
     /** A person by their TMDB id, with their films' and series' credits; null when TMDB has none with that id. */
-    suspend fun person(id: Long): TmdbPerson? = get("person/$id", listOf("append_to_response" to "combined_credits"))
-        ?.let { decode(PersonJson.serializer(), it).toPerson() }
+    suspend fun person(id: Long): TmdbPerson? =
+        get(PersonJson.serializer(), "person/$id", listOf("append_to_response" to "combined_credits"))?.toPerson()
 
     /**
      * The films (or, when [series], the series) that TMDB suggests for title [id]: the first page of its
@@ -79,14 +77,14 @@ class TmdbClient(
      */
     suspend fun recommendations(series: Boolean, id: Int): List<TmdbSuggestion> {
         val kind = if (series) "tv" else "movie"
-        suspend fun list(name: String) = get("$kind/$id/$name", emptyList())
-            ?.let { decode(SuggestionsJson.serializer(), it).toSuggestions(series, id) }.orEmpty()
+        suspend fun list(name: String) =
+            get(SuggestionsJson.serializer(), "$kind/$id/$name", emptyList())?.toSuggestions(series, id).orEmpty()
         return list("recommendations").ifEmpty { list("similar") }
     }
 
     /** The episodes of [season] of series [seriesId]; empty when TMDB has none. */
     suspend fun season(seriesId: Int, season: Int): List<TmdbEpisode> =
-        get("tv/$seriesId/season/$season", emptyList())?.let { decode(SeasonJson.serializer(), it).toEpisodes() }.orEmpty()
+        get(SeasonJson.serializer(), "tv/$seriesId/season/$season", emptyList())?.toEpisodes().orEmpty()
 
     /** The TMDB id of the film best matching [name] (and [year], when known); null when there is none. */
     suspend fun findMovie(name: String, year: Int?): Int? =
@@ -101,20 +99,20 @@ class TmdbClient(
      * finds nothing is made again without it.
      */
     private suspend fun search(path: String, name: String, year: Pair<String, String>?, date: (SearchHit) -> String?): Int? {
-        suspend fun hits(withYear: Boolean) = get(
-            path,
-            listOfNotNull(
-                "query" to name,
-                year?.takeIf {
-                    withYear
-                }
-            )
-        )?.let { decode(SearchJson.serializer(), it).results }.orEmpty()
+        suspend fun hits(withYear: Boolean) =
+            get(SearchJson.serializer(), path, listOfNotNull("query" to name, year?.takeIf { withYear }))?.results.orEmpty()
         val hits = hits(withYear = true).ifEmpty { if (year != null) hits(withYear = false) else emptyList() }
         // TMDB orders by relevance; with a year, a hit from that year first.
         val y = year?.second
         return (hits.firstOrNull { y != null && date(it)?.startsWith(y) == true } ?: hits.firstOrNull())?.id
     }
+
+    /**
+     * [path]'s answer as [serializer] reads it; null when TMDB has no such thing. Read and decoded away from the caller's
+     * thread: a title's answer, with its cast, can be hundreds of KB.
+     */
+    private suspend fun <T> get(serializer: KSerializer<T>, path: String, query: List<Pair<String, String>>): T? =
+        withContext(Dispatchers.IO) { get(path, query)?.let { decode(serializer, it) } }
 
     private fun <T> decode(serializer: KSerializer<T>, body: String): T = try {
         json.decodeFromString(serializer, body)
@@ -197,7 +195,7 @@ data class TmdbTitle(
     val seasonCount: Int? = null,
     val episodeCount: Int? = null,
     /** A series': the next episode TMDB knows of, while it is still to be shown. */
-    val nextEpisode: TmdbAiring? = null,
+    val nextEpisode: TmdbEpisode? = null,
     /** A series': its seasons in order, without specials (season 0). */
     val seasons: List<TmdbSeason> = emptyList(),
 ) {
@@ -244,9 +242,6 @@ enum class SeriesStatus {
         }
     }
 }
-
-/** An episode still to be shown: season [season], episode [number], first shown on [airDate] (null: not known). */
-data class TmdbAiring(val season: Int, val number: Int, val name: String?, val airDate: LocalDate?)
 
 /** One of a series' seasons on TMDB: [number] (from 1), its [episodeCount], and when it was first shown. */
 data class TmdbSeason(val number: Int, val name: String?, val episodeCount: Int, val airDate: LocalDate?)
