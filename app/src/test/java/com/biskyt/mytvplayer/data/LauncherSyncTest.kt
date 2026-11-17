@@ -98,6 +98,15 @@ class LauncherSyncTest {
         c.parental.setRestricted(pid, CAT_LIVE, "1", true)
     }
 
+    /**
+     * A sync made with the rows on already. Not the other way round: DataStore's data flow can miss an update made while
+     * a new collector reads its first value. The sync then saw only "off", and wrote nothing (seen on busy runners).
+     */
+    private suspend fun turnedOn(): LauncherSync {
+        c.settings.update { it.copy(launcherRows = true) }
+        return LauncherSync(app, scope, c.settings, c.db, writer)
+    }
+
     @After
     fun tearDown() {
         scope.cancel()
@@ -114,8 +123,7 @@ class LauncherSyncTest {
 
     @Test
     fun `on, the active playlist's cards go to the launcher, never a restricted one, and off they come off`() = runBlocking {
-        val sync = LauncherSync(app, scope, c.settings, c.db, writer)
-        c.settings.update { it.copy(launcherRows = true) }
+        val sync = turnedOn()
         eventually("cards written") { writer.published.isNotEmpty() }
         val rows = writer.published.last()
         assertEquals(listOf("$pid:$VOD_MOVIE:601", "$pid:$VOD_EPISODE:9002"), rows.playNext.map { it.key })
@@ -144,8 +152,7 @@ class LauncherSyncTest {
     @Test
     fun `with no favourite channels there is no row, not an empty one`() = runBlocking {
         c.channels.setFavourite(pid, 102, false) // 101 is restricted: none left to show
-        LauncherSync(app, scope, c.settings, c.db, writer)
-        c.settings.update { it.copy(launcherRows = true) }
+        turnedOn()
         eventually("cards written") { writer.published.isNotEmpty() }
         assertEquals(emptyList<Any>(), writer.published.last().channels)
         assertEquals(2, writer.published.last().playNext.size)
@@ -153,8 +160,7 @@ class LauncherSyncTest {
 
     @Test
     fun `a row made and then taken away is not asked to show`() = runBlocking {
-        val sync = LauncherSync(app, scope, c.settings, c.db, writer)
-        c.settings.update { it.copy(launcherRows = true) }
+        val sync = turnedOn()
         eventually("the row to show") { sync.madeChannels.value == setOf(CHANNELS) }
         // Written again with the row still there (none made now): it is still to be shown.
         sync.republish()
@@ -172,8 +178,7 @@ class LauncherSyncTest {
         // Dune (501) is restricted; Heat (701) is not.
         listOf(501L, 701L).forEach { c.vod.setFavourite(pid, CAT_MOVIE, it, true) }
         c.vod.setFavourite(pid, CAT_SERIES, 77, true)
-        val sync = LauncherSync(app, scope, c.settings, c.db, writer)
-        c.settings.update { it.copy(launcherRows = true) }
+        val sync = turnedOn()
         eventually("all three rows") { writer.published.lastOrNull()?.channels?.size == 3 }
         val rows = writer.published.last().channels
         assertEquals(listOf("favourites", "favourite-movies", "favourite-series"), rows.map { it.key })
