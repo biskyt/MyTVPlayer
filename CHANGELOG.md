@@ -4,9 +4,10 @@ Each version's section becomes its GitHub release notes, so it is written for th
 English, one bullet of one sentence per change.
 
 ## 1.25.0
-- Settings › Backup & restore can now back up to your Google Drive and restore from it, as well as to and from a file.
-- The backup in Google Drive uses the same Google sign-in as Sync between TVs, so you sign in once for both, and the TV remembers it.
-- Stop syncing now keeps the Google sign-in, so you can turn the sync on again without signing in, and the new Sign out of Google forgets it.
+- You can now back up to Google Drive and restore from it, as well as use a file.
+- Backups and Sync between TVs share one Google sign-in, so you sign in only once.
+- The TV remembers the sign-in.
+- Stop syncing now keeps you signed in, and the new Sign out of Google button signs you out.
 
 ## 1.24.0
 - With your own free TMDB key (Settings › TMDB), film and series pages show much more.
