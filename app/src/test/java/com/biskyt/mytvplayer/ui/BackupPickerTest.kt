@@ -61,8 +61,9 @@ class BackupPickerTest {
 
     private fun openPicker(): Intent {
         showBackup()
-        compose.waitForText("Restore from")
-        compose.onNode(hasText("Restore from", substring = true) and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForText("Restore from a file…")
+        // Not "Restore from Google Drive", which builds with a Google client also show.
+        compose.onNode(hasText("Restore from a file…") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
         return shadowOf(compose.activity).nextStartedActivityForResult.intent
     }
