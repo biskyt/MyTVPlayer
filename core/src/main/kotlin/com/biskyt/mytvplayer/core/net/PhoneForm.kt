@@ -10,6 +10,7 @@ import java.net.InetAddress
 import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.SocketTimeoutException
 import java.net.URLDecoder
 import java.security.SecureRandom
 import kotlin.concurrent.thread
@@ -82,7 +83,7 @@ class PhoneForm(
     /**
      * A phone's browser opens connections before it uses them, and asks for an icon too. So each connection has its own
      * thread, and a connection that waits does not stop the others. At most [MAX_CLIENTS] at a time: when all are in
-     * use, the oldest connection with no request yet makes room. A connection that comes as the server closes is closed.
+     * use, the oldest connection that waits for a request (none yet, or its next one) makes room. A connection that comes as the server closes is closed.
      */
     private fun admit(c: Socket) {
         val admitted = synchronized(lock) {
@@ -101,6 +102,9 @@ class PhoneForm(
 
     /** [c]'s request has started: it is no longer the first to make room. */
     private fun started(c: Socket) = synchronized(lock) { if (c in clients) clients[c] = true }
+
+    /** [c] was answered and waits for its next request: it may make room again. */
+    private fun idle(c: Socket) = synchronized(lock) { if (c in clients) clients[c] = false }
 
     private fun handle(c: Socket) {
         var answered = false
@@ -122,31 +126,67 @@ class PhoneForm(
         clients.clear()
     }
 
-    /** Answers [client]'s request; false when it ended with no answer. */
+    /**
+     * Answers [client]'s requests one after another, as HTTP/1.1 expects: the connection stays open after an answer,
+     * for up to [IDLE_MS], unless the browser asks for it to close. Browsers use an open connection again, and send a
+     * request on it again when it was closed under them, then give up ("too many retries"). False when the connection
+     * ended with no answer.
+     */
     private fun serve(client: Socket): Boolean {
-        // A browser can open a connection well before it sends its request on it: the first byte may take a while.
-        client.soTimeout = FIRST_BYTE_MS
         val buffered = BufferedInputStream(client.getInputStream())
-        buffered.mark(1)
-        val first = buffered.read()
-        if (first < 0) return false
-        buffered.reset()
-        // An HTTP request starts with its method's capital letters. Some browsers (Microsoft Edge, for example) try
-        // HTTPS first: an answer at once tells them that this server has only HTTP, so they open the http address.
-        // Without an answer, they try again and again, and then show an error.
-        if (first !in 'A'.code..'Z'.code) {
-            _seen.update { it.copy(secure = it.secure + 1) }
-            reply(client, Reply(BAD_REQUEST, ""))
-            return true
+        var answered = false
+        var open = true
+        while (open) {
+            // A browser can open a connection well before it sends its request on it: the first byte may take a while.
+            client.soTimeout = if (answered) IDLE_MS else FIRST_BYTE_MS
+            val first = peek(buffered, answered)
+            open = when {
+                first < 0 -> false
+                // An HTTP request starts with its method's capital letters. Some browsers try HTTPS first: an answer at
+                // once tells them that this server has only HTTP, so they open the http address.
+                first !in 'A'.code..'Z'.code -> {
+                    if (!answered) {
+                        _seen.update { it.copy(secure = it.secure + 1) }
+                        reply(client, Reply(BAD_REQUEST, ""), keepOpen = false)
+                        answered = true
+                    }
+                    false
+                }
+                else -> serveOne(client, buffered)?.also {
+                    answered = true
+                    idle(client)
+                } ?: false
+            }
         }
+        return answered
+    }
+
+    /**
+     * The next request's first byte, left to be read again; -1 at the end, or when an open connection is not used again
+     * in time (it ends, as its Keep-Alive header said).
+     */
+    private fun peek(buffered: BufferedInputStream, answered: Boolean): Int {
+        buffered.mark(1)
+        val first = try {
+            buffered.read()
+        } catch (e: SocketTimeoutException) {
+            if (answered) return -1 else throw e
+        }
+        buffered.reset()
+        return first
+    }
+
+    /** Reads one request and answers it. Whether the connection stays open; null when the request ended early. */
+    private fun serveOne(client: Socket, buffered: BufferedInputStream): Boolean? {
         val input = LimitedInput(buffered, client) { started(client) }
-        val request = input.line()?.split(' ') ?: return false
+        val request = input.line()?.split(' ') ?: return null
         val (method, path) = request.getOrNull(0) to request.getOrNull(1)
         // All the headers are read first: the body starts after the blank line that ends them.
         val headers = generateSequence { input.line()?.takeIf { it.isNotEmpty() } }.toList()
-        val length = headers.firstNotNullOfOrNull { h ->
-            h.takeIf { it.startsWith("Content-Length:", ignoreCase = true) }?.substringAfter(':')?.trim()?.toIntOrNull()
-        } ?: 0
+        fun header(name: String) = headers.firstNotNullOfOrNull { h ->
+            h.takeIf { it.startsWith("$name:", ignoreCase = true) }?.substringAfter(':')?.trim()
+        }
+        val length = header("Content-Length")?.toIntOrNull() ?: 0
         val reply = when {
             path != "/$token" -> Reply(NOT_FOUND, "")
             method == "GET" -> Reply(OK, page(sent = false)).also { _seen.update { it.copy(pages = it.pages + 1) } }
@@ -156,17 +196,24 @@ class PhoneForm(
             }
             else -> Reply(BAD_REQUEST, "")
         }
-        reply(client, reply)
-        return true
+        // Closed after a bad request or another body not read (the next request would start inside it), on the
+        // browser's asking, or for an HTTP/1.0 browser.
+        val keepOpen = reply.status != BAD_REQUEST &&
+            (method == "POST" || length == 0) &&
+            request.getOrNull(2) == "HTTP/1.1" &&
+            !header("Connection").equals("close", ignoreCase = true)
+        reply(client, reply, keepOpen)
+        return keepOpen
     }
 
-    private fun reply(client: Socket, reply: Reply) {
+    private fun reply(client: Socket, reply: Reply, keepOpen: Boolean) {
         val bytes = reply.body.toByteArray(Charsets.UTF_8)
+        val connection = if (keepOpen) "Connection: keep-alive\r\nKeep-Alive: timeout=${IDLE_MS / MS_PER_S}" else "Connection: close"
         client.getOutputStream().apply {
             write(
                 (
                     "HTTP/1.1 ${reply.status}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ${bytes.size}\r\n" +
-                        "Cache-Control: no-store\r\nConnection: close\r\n\r\n"
+                        "Cache-Control: no-store\r\n$connection\r\n\r\n"
                     ).toByteArray(Charsets.US_ASCII)
             )
             write(bytes)
@@ -252,6 +299,10 @@ class PhoneForm(
         private const val BACKLOG = 4
         private const val TOKEN_BYTES = 12
         private const val FIRST_BYTE_MS = 30_000
+
+        /** How long a connection stays open after an answer, for the browser's next request. */
+        private const val IDLE_MS = 30_000
+        private const val MS_PER_S = 1_000
         private const val READ_TIMEOUT_MS = 2_000
 
         /** Far more than a browser opens: one that opens many at once must never lose one it is about to use. */
