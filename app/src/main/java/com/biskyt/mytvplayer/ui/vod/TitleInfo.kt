@@ -3,6 +3,7 @@ package com.biskyt.mytvplayer.ui.vod
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
+import com.biskyt.mytvplayer.core.tmdb.TmdbVideo
 import com.biskyt.mytvplayer.core.vod.CastMember
 import com.biskyt.mytvplayer.core.xtream.VodDetails
 
@@ -30,6 +31,8 @@ data class TitleInfo(
     val castNames: String? = null,
     /** A YouTube id. */
     val trailer: String? = null,
+    /** TMDB's trailers and teasers, best first, for Other trailers. */
+    val trailers: List<TmdbVideo> = emptyList(),
     val tmdb: TmdbTitle? = null
 )
 
@@ -53,6 +56,7 @@ fun merge(provider: VodDetails?, tmdb: TmdbTitle?): TitleInfo = TitleInfo(
     cast = tmdb?.cast.orEmpty(),
     castNames = provider?.cast?.takeIf { tmdb?.cast.isNullOrEmpty() },
     trailer = tmdb?.trailer ?: provider?.trailer,
+    trailers = tmdb?.trailers.orEmpty(),
     tmdb = tmdb
 )
 

@@ -11,7 +11,8 @@ import com.biskyt.mytvplayer.ui.common.favouriteLabel
 // and links. Without a TMDB key, only the provider's trailer.
 
 /**
- * What a film's or show's More… shares: its trailer ([trailer] plays it, when it has one), its cast and crew ([showCast],
+ * What a film's or show's More… shares: its trailer ([trailer] plays it, when it has one), Other trailers ([otherTrailers]
+ * opens them, when TMDB has more than one), its cast and crew ([showCast],
  * where known), More like this ([showSimilar] opens it with the title's TMDB id), About ([showAbout]) and its links in
  * one row. A film's items have a help line under them, as its board draws them. Only the trailer without [tmdb].
  */
@@ -20,6 +21,7 @@ fun titleActions(
     tmdb: TmdbTitle?,
     film: Boolean,
     trailer: (() -> Unit)?,
+    otherTrailers: (() -> Unit)?,
     showCast: () -> Unit,
     showSimilar: (Int) -> Unit,
     showAbout: () -> Unit
@@ -28,8 +30,11 @@ fun titleActions(
     val play = trailer?.let { ItemAction.Run(appString(R.string.vod_play_trailer), help(R.string.vod_play_trailer_help), it) }
     tmdb ?: return listOfNotNull(play)
     val crew = tmdb.cast.isNotEmpty() || tmdb.directors.isNotEmpty() || tmdb.writers.isNotEmpty()
+    val others = otherTrailers?.takeIf { tmdb.trailers.size > 1 }
+        ?.let { ItemAction.Run(appString(R.string.vod_other_trailers), help(R.string.vod_other_trailers_help), it) }
     return listOfNotNull(
         play,
+        others,
         if (crew) ItemAction.Run(appString(R.string.vod_cast_crew), help(R.string.vod_cast_crew_help), showCast) else null,
         ItemAction.Run(appString(R.string.vod_similar), help(R.string.vod_similar_help)) { showSimilar(tmdb.id) },
         ItemAction.Run(

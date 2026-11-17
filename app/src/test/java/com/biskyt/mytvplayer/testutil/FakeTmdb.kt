@@ -57,6 +57,9 @@ class FakeTmdb : Dispatcher() {
 
         const val TRAILER = "trailer0001"
 
+        /** Dune's teaser, for the UK: second in Other trailers. */
+        const val TEASER = "teaser00001"
+
         /** Line of Duty's trailer. */
         const val SERIES_TRAILER = "lodtrailer1"
 
@@ -80,7 +83,8 @@ class FakeTmdb : Dispatcher() {
                 """"credits":{"cast":[{"id":$PERSON,"name":"Timothée Chalamet","character":"Paul Atreides"},""" +
                 """{"name":"Rebecca Ferguson","character":"Lady Jessica"}],""" +
                 """"crew":[{"name":"Denis Villeneuve","job":"Director"},{"name":"Jon Spaihts","job":"Screenplay"}]},""" +
-                """"videos":{"results":[{"key":"$TRAILER","site":"YouTube","type":"Trailer","official":true}]}}"""
+                """"videos":{"results":[{"key":"$TRAILER","site":"YouTube","type":"Trailer","official":true},""" +
+                """{"key":"$TEASER","site":"YouTube","type":"Teaser","name":"Teaser","iso_3166_1":"GB"}]}}"""
 
         private const val LINE_OF_DUTY =
             """{"id":31917,"overview":"From TMDB.","vote_average":8.2,"vote_count":900,"created_by":[{"name":"Jed Mercurio"}],""" +

@@ -51,6 +51,7 @@ import com.biskyt.mytvplayer.ui.common.ItemActionsPanel
 import com.biskyt.mytvplayer.ui.common.LocalTopBarInset
 import com.biskyt.mytvplayer.ui.common.Poster
 import com.biskyt.mytvplayer.ui.common.Tab
+import com.biskyt.mytvplayer.ui.common.TrailersPanel
 import com.biskyt.mytvplayer.ui.common.cardColor
 import com.biskyt.mytvplayer.ui.common.formatRuntime
 import com.biskyt.mytvplayer.ui.common.onOptionsKey
@@ -104,7 +105,7 @@ class MovieDetailsViewModel(private val c: AppContainer, private val playlistId:
 }
 
 /** The panels over the film page. */
-private enum class FilmPanel { NONE, MORE, CAST, ABOUT }
+private enum class FilmPanel { NONE, MORE, CAST, ABOUT, TRAILERS }
 
 @Composable
 fun MovieDetailsScreen(screen: Screen.MovieDetails) {
@@ -171,6 +172,7 @@ private fun FilmPanels(
                 tmdb,
                 film = true,
                 playTrailer,
+                otherTrailers = { show(FilmPanel.TRAILERS) },
                 showCast = { show(FilmPanel.CAST) },
                 showSimilar = moreLike,
                 showAbout = { show(FilmPanel.ABOUT) }
@@ -182,6 +184,7 @@ private fun FilmPanels(
             CastPanel(movie.title, crew, stringResource(R.string.vod_cast_crew), castFocus, { openPerson(it, crew[it]) }, close)
         }
         FilmPanel.ABOUT -> tmdb?.let { AboutPanel(film = true, it, close) }
+        FilmPanel.TRAILERS -> TrailersPanel(movie.title, info.trailers, close)
     }
 }
 

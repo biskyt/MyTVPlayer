@@ -11,6 +11,7 @@ import com.biskyt.mytvplayer.core.tmdb.TmdbSuggestion
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.xtream.VodDetails
 import java.io.File
+import java.util.Locale
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 
@@ -45,12 +46,15 @@ class TmdbRepository(
     /** The client last made, and what it was made for (key, language and address). */
     private var last: Pair<List<String>, TmdbClient>? = null
 
-    /** A client for [key] in the app's language: the last one, unless the key, the language or the address changed. */
+    /**
+     * A client for [key] in the app's language, putting the TV's country's trailers first: the last one, unless the key,
+     * the language, the country or the address changed.
+     */
     @Synchronized
     private fun client(key: String): TmdbClient {
-        val made = listOf(key, AppText.locale.toLanguageTag(), base)
+        val made = listOf(key, AppText.locale.toLanguageTag(), base, Locale.getDefault().country)
         last?.let { (forWhat, client) -> if (forWhat == made) return client }
-        return TmdbClient(cached, made[0], made[1], made[2]).also { last = made to it }
+        return TmdbClient(cached, made[0], made[1], made[2], made[3].ifEmpty { null }).also { last = made to it }
     }
 
     /** The film named [name] on TMDB, by [details]' TMDB id where the provider gave one. */

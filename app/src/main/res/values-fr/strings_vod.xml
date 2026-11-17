@@ -90,4 +90,6 @@
     </plurals>
     <string name="vod_next_episode">Prochain épisode : %1$s</string>
     <string name="vod_find_original">Chercher « %1$s »</string>
+    <string name="vod_other_trailers">Autres bandes-annonces</string>
+    <string name="vod_other_trailers_help">D\'autres mises en ligne, si une bande-annonce n\'est pas visible dans votre pays</string>
 </resources>

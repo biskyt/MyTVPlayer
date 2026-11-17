@@ -26,7 +26,6 @@ import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.core.net.PhoneForm
-import com.biskyt.mytvplayer.core.net.PhoneFormSeen
 import com.biskyt.mytvplayer.core.net.PhoneFormText
 import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.Muted
@@ -37,6 +36,7 @@ import com.biskyt.mytvplayer.ui.common.SidePanel
 import com.biskyt.mytvplayer.ui.common.TvTextField
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -155,7 +155,6 @@ private fun PhoneKeyEntry(received: (String) -> Unit) {
     )
     val onKey by rememberUpdatedState(received)
     var url by remember { mutableStateOf<String?>(null) }
-    var seen by remember { mutableStateOf(PhoneFormSeen()) }
     // The key arrives on the thread of the phone's connection: it is handed to the panel on the main thread.
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
@@ -167,9 +166,8 @@ private fun PhoneKeyEntry(received: (String) -> Unit) {
                     runCatching { PhoneForm(address, text) { key -> scope.launch { onKey(key) } } }.getOrNull()
                 }
             }
-            val f = form ?: return@LaunchedEffect
-            url = f.url
-            f.seen.collect { seen = it }
+            url = form?.url ?: return@LaunchedEffect
+            awaitCancellation()
         } finally {
             form?.close()
         }
@@ -181,13 +179,6 @@ private fun PhoneKeyEntry(received: (String) -> Unit) {
                 Muted(stringResource(R.string.settings_tmdb_phone), maxLines = 6)
                 // Android lets a browser reach the home network only with this permission (Edge and Brave lacked it).
                 Muted(stringResource(R.string.settings_tmdb_phone_nearby), maxLines = 4)
-                // When a phone's browser shows no page: whether the phone reached the TV, and how.
-                if (seen.connections > 0) {
-                    Muted(
-                        stringResource(R.string.settings_tmdb_phone_seen, seen.connections, seen.pages, seen.secure, seen.unanswered),
-                        maxLines = 3
-                    )
-                }
             }
         }
     }

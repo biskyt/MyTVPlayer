@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +47,7 @@ import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.ErrorRetry
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.PillButton
+import com.biskyt.mytvplayer.ui.common.TrailersPanel
 import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberTrailerOpener
@@ -105,6 +107,7 @@ fun TmdbTitleScreen(screen: Screen.TmdbTitle) {
     val nav = LocalNavigator.current
     val info = vm.info
     val playTrailer = rememberTrailerOpener()
+    var trailers by rememberSaveable { mutableStateOf(false) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 40.dp)) {
         item {
             Row(Modifier.padding(horizontal = SIDE), horizontalArrangement = Arrangement.spacedBy(40.dp)) {
@@ -137,6 +140,7 @@ fun TmdbTitleScreen(screen: Screen.TmdbTitle) {
                             DetailButton(stringResource(R.string.vod_find_original, original), { nav.push(Screen.Search(original)) })
                         }
                         info?.trailer?.let { id -> DetailButton(stringResource(R.string.vod_play_trailer), { playTrailer(id) }) }
+                        if ((info?.trailers?.size ?: 0) > 1) DetailButton(stringResource(R.string.vod_other_trailers), { trailers = true })
                         DetailButton(stringResource(R.string.vod_similar), {
                             nav.push(Screen.MoreLike(screen.playlistId, screen.tmdbId, screen.series, screen.title, screen.tab))
                         })
@@ -150,6 +154,7 @@ fun TmdbTitleScreen(screen: Screen.TmdbTitle) {
             item { Muted(stringResource(R.string.common_loading), Modifier.padding(start = SIDE, top = 32.dp)) }
         }
     }
+    if (trailers) info?.let { TrailersPanel(screen.title, it.trailers) { trailers = false } }
 }
 
 /**
