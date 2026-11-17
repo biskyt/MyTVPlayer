@@ -118,16 +118,24 @@ fun PersonScreen(screen: Screen.Person) {
         when {
             error != null -> item { Box(Modifier.padding(start = SIDE, top = 40.dp)) { ErrorRetry(error) { vm.load() } } }
             page == null -> item { Muted(stringResource(R.string.common_loading), Modifier.padding(start = SIDE, top = 40.dp)) }
-            else -> sections(page, first = page.biography == null) { t ->
-                nav.push(if (t.show) Screen.SeriesDetails(screen.playlistId, t.id) else Screen.MovieDetails(screen.playlistId, t.id))
-            }
+            else -> sections(
+                page,
+                first = page.biography == null,
+                open = { t ->
+                    nav.push(if (t.show) Screen.SeriesDetails(screen.playlistId, t.id) else Screen.MovieDetails(screen.playlistId, t.id))
+                },
+                openTmdb = { c -> tmdbScreen(screen, c)?.let(nav::push) },
+            )
         }
     }
     if (biography) page?.let { p -> p.biography?.let { BiographyPanel(p.name, it) { biography = false } } }
 }
 
-/** The page's parts under the header. The first card or row has the remote when [first] (no biography button). */
-private fun LazyListScope.sections(page: PersonPage, first: Boolean, open: (LibraryTitle) -> Unit) {
+/**
+ * The page's parts under the header. The first card or row has the remote when [first] (no biography button). [open]
+ * opens a title in the playlist, [openTmdb] one that is not, on its TMDB page.
+ */
+private fun LazyListScope.sections(page: PersonPage, first: Boolean, open: (LibraryTitle) -> Unit, openTmdb: (PersonCredit) -> Unit) {
     var focus = first
     fun takesFocus(): Boolean = focus.also { focus = false }
     if (page.library.isNotEmpty()) {
@@ -143,8 +151,7 @@ private fun LazyListScope.sections(page: PersonPage, first: Boolean, open: (Libr
         item {
             val top = if (page.library.isEmpty()) FIRST_GAP else GAP
             PosterRow(stringResource(R.string.vod_person_elsewhere), page.elsewhere, f, top) { c, modifier ->
-                // Not in the playlist: nothing to open. It takes the remote all the same, so that the row scrolls.
-                TitleCard(c.title, c.thumb, cardLine(c.show, c.year, c.role, c.kind), modifier) {}
+                TitleCard(c.title, c.thumb, cardLine(c.show, c.year, c.role, c.kind), modifier) { openTmdb(c) }
             }
         }
     }
@@ -276,6 +283,10 @@ fun aboutLine(page: PersonPage?, role: String?, title: String): String? = listOf
     page?.died?.let { appString(R.string.vod_person_died, formatDate(it)) },
     role?.let { appString(R.string.vod_person_role_in, it, title) },
 ).joinToString(" · ").ifEmpty { null }
+
+/** Credit [c]'s TMDB page, from the person's page [screen]; null when its key has no TMDB id ("movie/603", "tv/1399"). */
+private fun tmdbScreen(screen: Screen.Person, c: PersonCredit): Screen.TmdbTitle? =
+    c.ratingKey.substringAfter('/').toIntOrNull()?.let { Screen.TmdbTitle(screen.playlistId, it, c.show, c.title, c.thumb, screen.tab) }
 
 /** Under a card: "TV show · Mara" or "2019 · Director". */
 private fun cardLine(show: Boolean, year: Int?, role: String?, kind: String?): String? = listOfNotNull(

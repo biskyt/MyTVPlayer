@@ -83,8 +83,8 @@ class PersonRepository(private val vod: VodRepository, private val tmdb: TmdbRep
  */
 fun libraryOf(credits: List<PersonCredit>, movies: List<VodCard>, series: List<VodCard>): List<Pair<String, LibraryTitle>> {
     if (credits.isEmpty()) return emptyList()
-    val films = PlaylistMatcher(movies)
-    val shows = PlaylistMatcher(series)
+    val films = PlaylistMatcher(movies, series = false)
+    val shows = PlaylistMatcher(series, series = true)
     return credits.distinctBy { it.ratingKey }.mapNotNull { c ->
         val card = (if (c.show) shows else films).find(c.title, c.originalTitle, c.year) ?: return@mapNotNull null
         c.ratingKey to LibraryTitle(card.id, c.show, card.title, card.year ?: c.year, card.imageUrl ?: c.thumb, c.role, c.kind)
@@ -94,16 +94,17 @@ fun libraryOf(credits: List<PersonCredit>, movies: List<VodCard>, series: List<V
 /**
  * Finds TMDB's titles in the playlist's films or series ([cards]). The playlist stores no TMDB ids, so a title matches a
  * title there with the same key (see VodTitles.key) as its title, or its original title (TMDB's title is in the app's
- * language, the provider's often the original). Its year must be the same, a year either way (providers' years are
- * often one out, and a series' year can be its first season's or its first episode's).
+ * language, the provider's often the original). A film's year must be the same, a year either way (providers' years are
+ * often one out). A [series]' year is not compared: providers give the first season's year, the newest season's, or the
+ * year it was added.
  */
-class PlaylistMatcher(cards: List<VodCard>) {
+class PlaylistMatcher(cards: List<VodCard>, private val series: Boolean) {
     private val byKey = cards.groupBy { VodTitles.key(it.title) }
 
     /** The playlist's card for TMDB's [title] or [originalTitle] from [year]; null when it has none. */
     fun find(title: String, originalTitle: String?, year: Int?): VodCard? = listOfNotNull(title, originalTitle).asSequence()
         .flatMap { byKey[VodTitles.key(it)].orEmpty() }
-        .firstOrNull { card -> card.year?.let { y -> year?.let { abs(y - it) <= YEAR_SLACK } } ?: true }
+        .firstOrNull { card -> series || card.year?.let { y -> year?.let { abs(y - it) <= YEAR_SLACK } } ?: true }
 }
 
 /** How many years a playlist's title may be from TMDB's. */

@@ -89,6 +89,19 @@ sealed interface Screen {
      * [title] in playlist [playlistId]. It shows which of them are in the playlist, under top bar [tab].
      */
     data class MoreLike(val playlistId: Long, val tmdbId: Int, val series: Boolean, val title: String, val tab: Tab) : Screen
+
+    /**
+     * A film's (or, when [series], a series') page on TMDB, for a title that playlist [playlistId] may not have: its
+     * overview, and "Find in your playlist", which searches the playlist for [title]. [posterUrl] shows until it loads.
+     */
+    data class TmdbTitle(
+        val playlistId: Long,
+        val tmdbId: Int,
+        val series: Boolean,
+        val title: String,
+        val posterUrl: String?,
+        val tab: Tab,
+    ) : Screen
     data object Settings : Screen
     data object Playlists : Screen
     data class PlaylistEdit(val playlistId: Long?, val firstRun: Boolean = false) : Screen

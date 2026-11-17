@@ -70,6 +70,7 @@ import com.biskyt.mytvplayer.ui.vod.MoreLikeScreen
 import com.biskyt.mytvplayer.ui.vod.MovieDetailsScreen
 import com.biskyt.mytvplayer.ui.vod.PersonScreen
 import com.biskyt.mytvplayer.ui.vod.SeriesDetailsScreen
+import com.biskyt.mytvplayer.ui.vod.TmdbTitleScreen
 import com.biskyt.mytvplayer.ui.vod.VodBrowseScreen
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
@@ -289,7 +290,8 @@ private val Screen.drawsOwnTopBar: Boolean
     get() = when (this) {
         Screen.Home, is Screen.Live, is Screen.Movies, is Screen.Series, is Screen.Search, is Screen.Catchup -> true
         Screen.Welcome, is Screen.Player, is Screen.VodPlayer, is Screen.CatchupPlayer, is Screen.MovieDetails,
-        is Screen.SeriesDetails, is Screen.Person, is Screen.MoreLike, Screen.Settings, Screen.Playlists, is Screen.PlaylistEdit,
+        is Screen.SeriesDetails, is Screen.Person, is Screen.MoreLike, is Screen.TmdbTitle, Screen.Settings, Screen.Playlists,
+        is Screen.PlaylistEdit,
         is Screen.Categories, Screen.PlaybackSettings, Screen.Appearance, Screen.Parental, Screen.Sync, Screen.GuideSources,
         is Screen.GuideMatching, Screen.Backup, Screen.About, Screen.Licences -> false
     }
@@ -301,6 +303,7 @@ private val Screen.tab: Tab?
         is Screen.SeriesDetails -> Tab.SERIES
         is Screen.Person -> tab
         is Screen.MoreLike -> tab
+        is Screen.TmdbTitle -> tab
         else -> null
     }
 
@@ -316,6 +319,7 @@ private fun ScreenBody(screen: Screen) {
         is Screen.SeriesDetails -> SeriesDetailsScreen(screen)
         is Screen.Person -> PersonScreen(screen)
         is Screen.MoreLike -> MoreLikeScreen(screen)
+        is Screen.TmdbTitle -> TmdbTitleScreen(screen)
         is Screen.VodPlayer -> VodPlayerScreen(screen)
         is Screen.Search -> SearchScreen(screen.query)
         is Screen.Player -> PlayerScreen(screen)

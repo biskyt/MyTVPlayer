@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.25.1
+- More like this now shows all of TMDB's suggestions in one row, and finds more of the series in your playlist.
+- A suggestion that is not in your playlist opens its TMDB page, where Find in your playlist searches for it.
+- On a person's page, the titles under Also appears in now open their TMDB page too.
+
 ## 1.25.0
 - You can now back up to Google Drive and restore from it, as well as use a file.
 - Backups and Sync between TVs share one Google sign-in, so you sign in only once.
