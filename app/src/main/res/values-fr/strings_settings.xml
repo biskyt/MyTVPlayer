@@ -11,7 +11,7 @@
     <string name="settings_appearance_title">Apparence</string>
     <string name="settings_appearance_help">Couleur d\'accent et taille du texte</string>
     <string name="settings_backup_title">Sauvegarde et restauration</string>
-    <string name="settings_backup_help">Enregistrer vos playlists et vos choix dans un fichier, ou les restaurer</string>
+    <string name="settings_backup_help">Enregistrer vos playlists et vos choix dans un fichier ou dans Google Drive, ou les restaurer</string>
     <string name="settings_about_title">À propos</string>
     <string name="settings_about_help">Version %1$s, licences, stockage</string>
 
@@ -94,7 +94,7 @@
     <string name="settings_backup_saving">Enregistrement…</string>
     <string name="settings_backup_saved_to">Enregistrée dans %1$s</string>
     <string name="settings_backup_find_failed">Impossible de rechercher une sauvegarde : %1$s</string>
-    <string name="settings_backup_already_there">Une sauvegarde existe déjà ici. Restaurez-la, ou appuyez à nouveau sur Sauvegarder pour la remplacer.</string>
+    <string name="settings_backup_already_there">Une sauvegarde existe déjà ici. Restaurez-la, ou appuyez à nouveau sur Sauvegarder dans un fichier pour la remplacer.</string>
     <string name="settings_backup_restoring">Restauration…</string>
     <string name="settings_backup_failed">Un problème est survenu : %1$s</string>
     <string name="settings_backup_choose_file">Choisir le fichier de sauvegarde</string>
@@ -105,7 +105,7 @@
     <string name="settings_backup_confirm">Vos playlists et paramètres seront remplacés par ceux de la sauvegarde. Restaurer ?</string>
     <string name="settings_backup_restore">Restaurer</string>
     <string name="settings_backup_cancel">Annuler</string>
-    <string name="settings_backup_now">Sauvegarder</string>
+    <string name="settings_backup_now">Sauvegarder dans un fichier</string>
     <string name="settings_backup_restore_file">Restaurer depuis un fichier…</string>
     <string name="settings_backup_restore_other_file">Restaurer depuis un autre fichier…</string>
     <string name="settings_backup_not_a_backup">Ce fichier n\'est pas une sauvegarde MyTVPlayer.</string>
@@ -223,4 +223,13 @@
     <string name="settings_tmdb_phone_hint">Collez votre clé d\'API ou votre jeton d\'accès en lecture TMDB, puis sélectionnez Envoyer.</string>
     <string name="settings_tmdb_phone_send">Envoyer</string>
     <string name="settings_tmdb_phone_done">Envoyée. Le téléviseur vérifie la clé. Vous pouvez fermer cette page.</string>
+    <string name="settings_backup_drive">Sauvegarder dans Google Drive</string>
+    <string name="settings_backup_restore_drive">Restaurer depuis Google Drive</string>
+    <string name="settings_backup_drive_intro">Une sauvegarde dans Google Drive utilise la même connexion Google que Synchroniser entre téléviseurs. Tous vos téléviseurs y partagent une seule sauvegarde.</string>
+    <string name="settings_backup_drive_last">Dernière sauvegarde dans Google Drive : %1$s</string>
+    <string name="settings_backup_drive_none">Aucune sauvegarde dans Google Drive pour l\'instant.</string>
+    <string name="settings_backup_drive_saved">Enregistrée dans votre Google Drive</string>
+    <string name="settings_backup_drive_looking">Recherche dans Google Drive…</string>
+    <string name="settings_backup_drive_error">Google Drive a refusé (%1$s). Réessayez plus tard.</string>
+    <string name="settings_backup_drive_signed_out">Google n\'accepte plus la connexion. Reconnectez-vous.</string>
 </resources>

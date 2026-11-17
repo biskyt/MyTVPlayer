@@ -58,6 +58,21 @@ class PhoneFormTest {
     }
 
     @Test
+    fun `a request for HTTPS gets an answer at once, so that the browser opens the http address`() {
+        java.net.Socket(InetAddress.getLoopbackAddress(), java.net.URI(form.url).port).use { s ->
+            s.soTimeout = 1_000
+            // The start of a TLS ClientHello, with no line end in it.
+            s.getOutputStream().apply {
+                write(byteArrayOf(0x16, 0x03, 0x01, 0x02, 0x00, 0x01, 0x00, 0x01, 0xfc.toByte(), 0x03, 0x03))
+                flush()
+            }
+            val answer = s.getInputStream().bufferedReader(Charsets.US_ASCII).readLine()
+            assertEquals("HTTP/1.1 400 Bad Request", answer)
+        }
+        get(form.url).use { assertEquals(200, it.code) }
+    }
+
+    @Test
     fun `after close, nothing is served`() {
         form.close()
         assertTrue(runCatching { get(form.url).close() }.isFailure)

@@ -13,7 +13,7 @@
     <string name="settings_appearance_title">Appearance</string>
     <string name="settings_appearance_help">Accent colour and text size</string>
     <string name="settings_backup_title">Backup &amp; restore</string>
-    <string name="settings_backup_help">Save your playlists and choices to a file, or restore them</string>
+    <string name="settings_backup_help">Save your playlists and choices to a file or Google Drive, or restore them</string>
     <string name="settings_about_title">About</string>
     <!-- %1$s is the app's version, such as 1.2.0 -->
     <string name="settings_about_help">Version %1$s, licences, storage</string>
@@ -123,8 +123,8 @@
     <string name="settings_backup_saved_to">Saved to %1$s</string>
     <!-- %1$s: the error's details (may be in English). -->
     <string name="settings_backup_find_failed">Couldn\'t look for a backup: %1$s</string>
-    <!-- "Back up now" is the button settings_backup_now. -->
-    <string name="settings_backup_already_there">There\'s a backup here already. Restore it, or press Back up now again to replace it.</string>
+    <!-- "Back up to a file" is the button settings_backup_now. -->
+    <string name="settings_backup_already_there">There\'s a backup here already. Restore it, or press Back up to a file again to replace it.</string>
     <string name="settings_backup_restoring">Restoring…</string>
     <!-- %1$s: the error's details (may be in English). -->
     <string name="settings_backup_failed">Something went wrong: %1$s</string>
@@ -140,7 +140,7 @@
     <!-- Buttons. -->
     <string name="settings_backup_restore">Restore</string>
     <string name="settings_backup_cancel">Cancel</string>
-    <string name="settings_backup_now">Back up now</string>
+    <string name="settings_backup_now">Back up to a file</string>
     <string name="settings_backup_restore_file">Restore from a file…</string>
     <string name="settings_backup_restore_other_file">Restore from another file…</string>
     <!-- Errors reading or writing the backup file. -->
@@ -289,4 +289,13 @@
     <string name="settings_tmdb_phone_hint">Paste your TMDB API key or read access token, then select Send.</string>
     <string name="settings_tmdb_phone_send">Send</string>
     <string name="settings_tmdb_phone_done">Sent. The TV checks the key now. You can close this page.</string>
+    <string name="settings_backup_drive">Back up to Google Drive</string>
+    <string name="settings_backup_restore_drive">Restore from Google Drive</string>
+    <string name="settings_backup_drive_intro">A backup in Google Drive uses the same Google sign-in as Sync between TVs. All your TVs share one backup there.</string>
+    <string name="settings_backup_drive_last">Last backup in Google Drive: %1$s</string>
+    <string name="settings_backup_drive_none">No backup in Google Drive yet.</string>
+    <string name="settings_backup_drive_saved">Saved to your Google Drive</string>
+    <string name="settings_backup_drive_looking">Looking in Google Drive…</string>
+    <string name="settings_backup_drive_error">Google Drive refused (%1$s). Try again later.</string>
+    <string name="settings_backup_drive_signed_out">Google no longer accepts the sign-in. Sign in again.</string>
 </resources>

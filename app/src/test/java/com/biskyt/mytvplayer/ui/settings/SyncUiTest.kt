@@ -40,7 +40,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Settings › Sync between TVs: the code to type and its QR code, signing in, and stopping. */
+/** Settings › Sync between TVs: the code to type and its QR code, signing in, stopping, turning on again and signing out. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "+w960dp-h540dp-tvdpi")
 class SyncUiTest {
@@ -115,7 +115,7 @@ class SyncUiTest {
     private fun click(text: String) = compose.onNode(hasText(text) and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
 
     @Test
-    fun `the code and its QR code show, signing in turns the sync on, and stopping deletes this TV's file`() {
+    fun `the code and its QR code show, signing in turns the sync on, stopping keeps the sign-in, and signing out forgets it`() {
         val vm = SyncViewModel(sync)
         compose.setContent { MyTvTheme { SyncScreen(vm) } }
         click("Sign in with Google")
@@ -133,8 +133,17 @@ class SyncUiTest {
         compose.waitAdvancingClock { folder.isNotEmpty() }
 
         click("Stop syncing")
-        compose.waitForText("Sign in with Google")
+        // The sign-in is kept, for a backup in Drive.
+        compose.waitForText("Turn on sync")
         assertTrue(folder.isEmpty())
+
+        click("Turn on sync")
+        compose.waitForText("Sync now")
+        compose.waitAdvancingClock { folder.isNotEmpty() }
+
+        click("Sign out of Google")
+        compose.waitForText("Sign in with Google")
+        compose.waitAdvancingClock { folder.isEmpty() }
     }
 
     @Test

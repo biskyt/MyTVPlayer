@@ -35,6 +35,7 @@ import com.biskyt.mytvplayer.data.CategoryStore
 import com.biskyt.mytvplayer.data.ChannelRepository
 import com.biskyt.mytvplayer.data.ChoiceLog
 import com.biskyt.mytvplayer.data.CrashLog
+import com.biskyt.mytvplayer.data.DriveBackup
 import com.biskyt.mytvplayer.data.EpgRepository
 import com.biskyt.mytvplayer.data.ExternalIp
 import com.biskyt.mytvplayer.data.Favourites
@@ -174,6 +175,7 @@ class AppContainer(context: Context, launcherWriter: LauncherWriter = TvLauncher
         )
     val backup = BackupRepository(db, settings, epg, sync)
     val backupFile = BackupFile(context)
+    val driveBackup = DriveBackup(progressSync::drive)
     val crashLog = CrashLog(context.filesDir, BuildConfig.VERSION_NAME)
 
     /** A backup file another app (e.g. a file manager's "Open with") handed to MyTVPlayer, until it's offered to restore. */

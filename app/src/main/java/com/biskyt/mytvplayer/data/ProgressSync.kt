@@ -47,21 +47,24 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * The sign-in for the sync between TVs. It is kept with the settings, but it is not part of [Settings], so a backup
- * never holds it.
+ * The Google sign-in, for the sync between TVs and for backups in Google Drive, and whether the sync is on. It is kept
+ * with the settings, but it is not part of [Settings], so a backup never holds it.
  */
 class SyncAccount(private val prefs: DataStore<Preferences>) {
     /**
-     * [refreshToken] is null when the sync is off. [pending]: this TV has changes not sent yet (kept, so that they are
+     * [refreshToken] is null when signed out. [syncOn]: the user turned the sync on (signed in, a backup in Drive can
+     * work without it). [pending]: this TV has changes not sent yet (kept, so that they are
      * sent after a restart too), or its file has playlist keys of an older [ProgressFile.KEY_FORMAT].
      */
     data class State(
         val refreshToken: String? = null,
         val email: String? = null,
         val lastSyncedAt: Long = 0,
-        val pending: Boolean = false
+        val pending: Boolean = false,
+        val syncOn: Boolean = true
     ) {
-        val on: Boolean get() = refreshToken != null
+        val signedIn: Boolean get() = refreshToken != null
+        val on: Boolean get() = signedIn && syncOn
     }
 
     private object K {
@@ -71,20 +74,33 @@ class SyncAccount(private val prefs: DataStore<Preferences>) {
         val device = stringPreferencesKey("sync_device")
         val pending = booleanPreferencesKey("sync_pending")
 
+        /** Not there: on, as before 1.25.0 a sign-in always turned the sync on. */
+        val on = booleanPreferencesKey("sync_on")
+
         /** The [ProgressFile.KEY_FORMAT] of this TV's last file (none: 1). */
         val keys = intPreferencesKey("sync_key_format")
     }
 
     val state: Flow<State> = prefs.data.map {
         val oldKeys = it[K.token] != null && (it[K.keys] ?: 1) < ProgressFile.KEY_FORMAT
-        State(it[K.token], it[K.email], it[K.last] ?: 0, it[K.pending] == true || oldKeys)
+        State(it[K.token], it[K.email], it[K.last] ?: 0, it[K.pending] == true || oldKeys, it[K.on] != false)
     }.distinctUntilChanged()
 
-    suspend fun signIn(refreshToken: String, email: String?) {
+    suspend fun signIn(refreshToken: String, email: String?, syncOn: Boolean = true) {
         prefs.edit {
             it[K.token] = refreshToken
             if (email == null) it.remove(K.email) else it[K.email] = email
+            it[K.on] = syncOn
             it.remove(K.last)
+        }
+    }
+
+    /** Turns the sync on or off, and keeps the sign-in. */
+    suspend fun setSyncOn(on: Boolean) {
+        prefs.edit {
+            it[K.on] = on
+            it.remove(K.last)
+            it.remove(K.pending)
         }
     }
 
@@ -94,6 +110,7 @@ class SyncAccount(private val prefs: DataStore<Preferences>) {
             it.remove(K.email)
             it.remove(K.last)
             it.remove(K.pending)
+            it.remove(K.on)
         }
     }
 
@@ -104,7 +121,7 @@ class SyncAccount(private val prefs: DataStore<Preferences>) {
     /** A sync ended at [at]; [pending]: changes came while it ran. */
     suspend fun synced(at: Long, pending: Boolean) {
         prefs.edit {
-            if (it[K.token] == null) return@edit
+            if (it[K.token] == null || it[K.on] == false) return@edit
             it[K.last] = at
             it[K.keys] = ProgressFile.KEY_FORMAT
             if (pending) it[K.pending] = true else it.remove(K.pending)
@@ -202,12 +219,25 @@ class ProgressSync(
     /** The code for the user to type at Google's address. */
     suspend fun startSignIn(): DeviceCode = checkNotNull(auth).start()
 
-    /** Waits for the user to sign in with [code], then starts the first sync. */
-    suspend fun finishSignIn(code: DeviceCode) {
+    /**
+     * Waits for the user to sign in with [code]. With [turnOnSync], it then starts the first sync; otherwise (a sign-in
+     * for a backup in Drive) the sync stays off.
+     */
+    suspend fun finishSignIn(code: DeviceCode, turnOnSync: Boolean = true) {
         val tokens = checkNotNull(auth).await(code)
         val refresh = tokens.refreshToken ?: throw SyncException("Google sent no refresh token")
         access = tokens
-        account.signIn(refresh, tokens.email)
+        account.signIn(refresh, tokens.email, turnOnSync)
+        if (turnOnSync) started() else state.first { it?.signedIn == true }
+    }
+
+    /** Turns the sync on with the sign-in that is kept (made for a backup in Drive, or kept when the sync stopped). */
+    suspend fun turnOn() {
+        account.setSyncOn(true)
+        started()
+    }
+
+    private suspend fun started() {
         state.first { it?.on == true }
         forgetSeen()
         // Sends all of this TV's progress the first time.
@@ -217,22 +247,42 @@ class ProgressSync(
 
     /**
      * Turns the sync off, in the background (leaving the page does not stop it): deletes this TV's file (if Drive can be
-     * reached) and forgets the sign-in. No sync starts meanwhile.
+     * reached). The sign-in is kept, for backups in Drive. No sync starts meanwhile.
      */
-    fun stop() = scope.launch {
+    fun stop() = turnOff(signOut = false)
+
+    /** Like [stop], and forgets the sign-in too. */
+    fun signOut() = turnOff(signOut = true)
+
+    private fun turnOff(signOut: Boolean) = scope.launch {
         stopping = true
         try {
             synchronized(this@ProgressSync) { running }?.cancelAndJoin()
-            quietly {
-                val s = store(::token)
-                val own = ownName()
-                s.list().firstOrNull { it.name == own }?.let { s.delete(it.id) }
+            if (state.value?.on == true) {
+                quietly {
+                    val s = store(::token)
+                    val own = ownName()
+                    s.list().firstOrNull { it.name == own }?.let { s.delete(it.id) }
+                }
             }
-            signedOut()
+            if (signOut) {
+                signedOut()
+            } else {
+                forgetSeen()
+                dirty.set(false)
+                account.setSyncOn(false)
+                state.first { it?.on == false }
+            }
         } finally {
             stopping = false
         }
     }
+
+    /**
+     * The app's folder in the user's Google Drive, with this sign-in (for a backup there). Its calls throw a
+     * [SyncException] with [SyncException.Reason.SIGNED_OUT] when the user is not signed in.
+     */
+    fun drive(): SyncStore = store(::token)
 
     private suspend fun signedOut() {
         access = null

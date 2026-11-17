@@ -446,18 +446,58 @@ class ProgressSyncTest {
     }
 
     @Test
-    fun `stop syncing deletes this TV's file and sends nothing more`() = runBlocking {
+    fun `stop syncing deletes this TV's file, keeps the sign-in and sends nothing more`() = runBlocking {
         a.signIn()
         a.vod.saveProgress(film(a.pid, 600_000, 1_000), trim = true)
         waitForUploads(1)
         a.sync.stop().join()
         assertTrue(folder.files.isEmpty())
-        assertNull(a.sync.account.state.first().refreshToken)
+        val state = a.sync.account.state.first()
+        assertTrue(state.signedIn)
+        assertFalse(state.on)
         val calls = folder.calls.get()
         a.vod.saveProgress(film(a.pid, 700_000, 2_000), trim = true)
         a.sync.finish(always = true)
         delay(100)
         assertEquals(calls, folder.calls.get())
+    }
+
+    @Test
+    fun `signing out deletes this TV's file and forgets the sign-in`() = runBlocking {
+        a.signIn()
+        a.vod.saveProgress(film(a.pid, 600_000, 1_000), trim = true)
+        waitForUploads(1)
+        a.sync.signOut().join()
+        assertTrue(folder.files.isEmpty())
+        assertNull(a.sync.account.state.first().refreshToken)
+    }
+
+    @Test
+    fun `a sign-in for a backup in Drive leaves the sync off, and turning it on later sends this TV's file`() = runBlocking {
+        a.sync.account.signIn("refresh", "me@example.com", syncOn = false)
+        a.vod.saveProgress(film(a.pid, 600_000, 1_000), trim = true)
+        a.sync.finish(always = true)
+        delay(100)
+        assertEquals(0, folder.calls.get())
+        assertFalse(a.sync.on)
+
+        withTimeout(WAIT_MS) { a.sync.turnOn() }
+        waitForUploads(1)
+        assertTrue(a.sync.on)
+    }
+
+    @Test
+    fun `the sync leaves the backup file in the folder alone`() = runBlocking {
+        val backup = folder.create(DriveBackup.NAME, "{}".toByteArray())
+        a.signIn()
+        b.signIn()
+        a.vod.saveProgress(film(a.pid, 600_000, 1_000), trim = true)
+        // The backup, then this TV's file.
+        waitForUploads(2)
+
+        b.sync.finish(always = true)
+        assertEquals(film(b.pid, 600_000, 1_000), b.progress(VOD_MOVIE, 501))
+        assertEquals("{}", folder.files.getValue(backup).content.decodeToString())
     }
 
     @Test

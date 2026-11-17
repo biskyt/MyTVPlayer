@@ -3,15 +3,26 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.25.0
+- You can now back up to Google Drive and restore from it, as well as use a file.
+- Backups and Sync between TVs share one Google sign-in, so you sign in only once.
+- The TV remembers the sign-in.
+- Stop syncing now keeps you signed in, and the new Sign out of Google button signs you out.
+- The phone page for your TMDB key now opens in browsers that try HTTPS first, such as Microsoft Edge.
+
 ## 1.24.0
-- Film and series pages can show the cast with photos, who directed and wrote it, the TMDB score, links to IMDb and TMDB, and a Trailer button, when you add your own free TMDB key in Settings › TMDB.
-- Episodes that your provider gives no description or picture for get them from TMDB, when you add a TMDB key.
-- A film's page now has a More… button (also the remote's Menu button) with Favourite, Cast and crew, About this film and the links.
-- OK on someone in the cast opens their page from TMDB, with their biography and the films and series that they are in, and those in your playlist open from there.
-- A series' options, and a film's More…, now have Play trailer, when TMDB or your provider has a trailer.
-- A series' options, and a film's More…, now have More like this: titles that TMDB suggests, those in your playlist first.
-- In Settings › TMDB, you can scan a QR code with your phone and paste your key there, instead of typing it with the remote.
-- With no TMDB key, MyTVPlayer makes no requests to TMDB.
+- With your own free TMDB key (Settings › TMDB), film and series pages show much more.
+- You see the cast with photos, the director and writers, the TMDB score and a Trailer button.
+- Each page also links to the film or series on IMDb and TMDB.
+- If your provider has no description or picture for an episode, MyTVPlayer gets them from TMDB.
+- Films have a new More… button with Favourite, Cast and crew, About this film and the links.
+- The remote's Menu button opens More… too.
+- Choose someone in the cast to see their biography and the other films and series they are in.
+- From there, you can open the ones that are in your playlist.
+- When a trailer is available, Play trailer is in a series' options and in a film's More… menu.
+- More like this, in the same menus, shows titles that TMDB suggests, with the ones in your playlist first.
+- To add your TMDB key, you can scan a QR code and type the key on your phone.
+- Without a TMDB key, MyTVPlayer sends nothing to TMDB.
 
 ## 1.23.2
 - Send surround sound as Dolby Digital now changes only AAC surround sound, which is the sound that soundbars and receivers cannot decode.
