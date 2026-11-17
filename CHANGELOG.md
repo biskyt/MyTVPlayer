@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.24.0
+- Film and series pages can show the cast with photos, who directed and wrote it, the TMDB score, links to IMDb and TMDB, and a Trailer button, when you add your own free TMDB key in Settings › TMDB.
+- Episodes that your provider gives no description or picture for get them from TMDB, when you add a TMDB key.
+- A film's page now has a More… button (also the remote's Menu button) with Favourite, Cast and crew, About this film and the links.
+- With no TMDB key, MyTVPlayer makes no requests to TMDB.
+
 ## 1.23.2
 - Send surround sound as Dolby Digital now changes only AAC surround sound, which is the sound that soundbars and receivers cannot decode.
 - With this setting on, the sound and the picture are now more exactly in sync.

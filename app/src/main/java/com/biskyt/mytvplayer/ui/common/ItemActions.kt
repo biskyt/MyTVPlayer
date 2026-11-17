@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appPlural
 import com.biskyt.mytvplayer.appString
+import com.biskyt.mytvplayer.core.vod.TitleLink
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.ui.LocalNavigator
@@ -27,6 +28,16 @@ sealed interface ItemAction {
     ) : ItemAction
 
     class Run(override val label: String, override val help: String? = null, val run: () -> Unit) : ItemAction
+
+    /** A heading over the options after it ("This episode", "The show"); not an option itself. */
+    class Heading(override val label: String) : ItemAction {
+        override val help: String? = null
+    }
+
+    /** Pages about the title elsewhere, side by side in one row: left and right move between them, OK opens one. */
+    class Links(override val label: String, val links: List<TitleLink>) : ItemAction {
+        override val help: String? = null
+    }
 }
 
 /** Does [this] from a menu: an Open closes the menu ([close]) first, and calls [beforeReplace] before replacing. */
@@ -42,6 +53,7 @@ fun ItemAction.perform(nav: Navigator, close: () -> Unit, beforeReplace: () -> U
             }
         }
         is ItemAction.Run -> run()
+        is ItemAction.Heading, is ItemAction.Links -> error("Only ItemActionsPanel offers $label")
     }
 }
 
@@ -86,14 +98,24 @@ fun vodActions(playlistId: Long, type: String, id: Long, favourite: Boolean?, se
 fun vodDetails(playlistId: Long, type: String, id: Long): Screen =
     if (type == CAT_MOVIE) Screen.MovieDetails(playlistId, id) else Screen.SeriesDetails(playlistId, id)
 
-/** A side panel of what can be done with something: [actions] in order, the first with focus. */
+/**
+ * A side panel of what can be done with something: [title], [subtitle] under it if given ("2021 · Drama, Mystery"), then
+ * [actions] in order, the first that is not a heading with focus.
+ */
 @Composable
-fun ItemActionsPanel(title: String, actions: List<ItemAction>, onDismiss: () -> Unit) {
+fun ItemActionsPanel(title: String, actions: List<ItemAction>, onDismiss: () -> Unit, subtitle: String? = null) {
     val nav = LocalNavigator.current
     BoardPanel(onDismiss) {
-        BoardPanelTitle(title, Modifier.padding(bottom = 6.bd))
+        BoardPanelTitle(title, Modifier.padding(bottom = if (subtitle == null) 6.bd else 2.bd))
+        subtitle?.let { BoardPanelSubtitle(it, Modifier.padding(bottom = 8.bd)) }
+        val first = actions.indexOfFirst { it !is ItemAction.Heading }
         actions.forEachIndexed { i, a ->
-            BoardOption(a.label, a.help, if (i == 0) rememberFirstFocus() else Modifier) { a.perform(nav, onDismiss) }
+            val focus = if (i == first) rememberFirstFocus() else Modifier
+            when (a) {
+                is ItemAction.Heading -> BoardSection(a.label)
+                is ItemAction.Links -> BoardLinksRow(a.label, a.links, focus)
+                else -> BoardOption(a.label, a.help, focus) { a.perform(nav, onDismiss) }
+            }
         }
     }
 }

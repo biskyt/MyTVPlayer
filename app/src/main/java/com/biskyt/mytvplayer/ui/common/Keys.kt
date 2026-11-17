@@ -50,6 +50,12 @@ fun Key.isGuide(): Boolean = this == Key.Guide
 fun Modifier.onOptionsKey(onOptions: () -> Unit): Modifier = onPreviewKeyEvent { e -> handlePress(e, e.key.isOptions(), onOptions) }
 
 /**
+ * As [onOptionsKey], but after what has focus inside (a page's own fallback): an element that opens its own options
+ * gets the button first.
+ */
+fun Modifier.onOptionsKeyAfter(onOptions: () -> Unit): Modifier = onKeyEvent { e -> handlePress(e, e.key.isOptions(), onOptions) }
+
+/**
  * Runs [onGuide] for the Guide button when [enabled] says so, once per press. After the screen's own handling (a
  * screen that uses the button itself, like the live list, gets it first).
  */

@@ -126,6 +126,7 @@ fun SettingsScreen() {
         }
         item { LauncherRow() }
         item { NetworkWarningRows() }
+        item { TmdbRow() }
         item { ParentalControlsRow() }
         item { SyncRow() }
         item {

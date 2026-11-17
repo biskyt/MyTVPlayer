@@ -3,4 +3,5 @@
      device (a same-language match beats the unqualified values). Same text as values/. -->
 <resources>
     <string name="vod_no_favourites">No favourites yet. Open a title and choose “Add to favourites”.</string>
+    <string name="vod_about_this_film">About this film</string>
 </resources>

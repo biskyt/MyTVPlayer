@@ -19,4 +19,8 @@
     <string name="settings_launcher_help">Continue watching in the home screen\'s Play Next row, and your favorite channels, movies and series as rows of their own. Restricted titles and channels never go there.</string>
     <string name="launcher_favourites">Favorite channels</string>
     <string name="settings_lib_tvprovider">Continue watching and favorites on the TV\'s home screen</string>
+    <string name="settings_tmdb_help">Off. Add your own free TMDB key to show the cast, trailers and links on movie and series pages.</string>
+    <string name="settings_tmdb_on">On. Movie and series pages show more from TMDB.</string>
+    <string name="settings_tmdb_explain">With your own TMDB key, movie and series pages show the cast and crew, trailers, links to IMDb and TMDB, and missing episode descriptions. To get a free key, sign in at themoviedb.org, then go to Settings › API. MyTVPlayer sends the names of the movies and series that you open to TMDB.</string>
+    <string name="settings_lib_tmdb">Cast, crew, trailers and links for movies and series. This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
 </resources>

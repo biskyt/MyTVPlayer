@@ -49,6 +49,10 @@ jobs:
       # compared pixel-for-pixel against the committed copies.
       - name: Unit, Robolectric and UI tests (records screenshots)
         run: ./gradlew :core:test :app:recordRoborazziDebug koverXmlReport
+        # For TmdbLiveTest, a check against the real TMDB. Without the secret (pull requests from forks) it is not run. The
+        # release workflow does not pass the secret: a TMDB outage must not hold up a release.
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
 
       - uses: actions/cache/save@v5
         if: github.ref == 'refs/heads/main' && steps.robolectric-cache.outputs.cache-hit != 'true'

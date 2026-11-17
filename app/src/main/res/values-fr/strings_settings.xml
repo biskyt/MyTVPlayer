@@ -206,4 +206,16 @@
     <string name="settings_proxy_works_only">Le proxy fonctionne : le trafic de cette playlist sort de %1$s.</string>
     <string name="settings_proxy_same">Le proxy a répondu, mais votre adresse n\'a pas changé (%1$s).</string>
     <string name="settings_proxy_failed">Le proxy n\'a pas répondu : %1$s</string>
+    <string name="settings_tmdb">TMDB</string>
+    <string name="settings_tmdb_help">Désactivé. Ajoutez votre propre clé TMDB gratuite pour voir la distribution, les bandes-annonces et les liens sur les pages des films et des séries.</string>
+    <string name="settings_tmdb_on">Activé. Les pages des films et des séries affichent plus de données de TMDB.</string>
+    <string name="settings_tmdb_explain">Avec votre propre clé TMDB, les pages des films et des séries affichent la distribution et l\'équipe, les bandes-annonces, des liens vers IMDb et TMDB, et les descriptions d\'épisodes manquantes. Pour obtenir une clé gratuite, connectez-vous sur themoviedb.org, puis allez dans Paramètres › API. MyTVPlayer envoie à TMDB les noms des films et des séries que vous ouvrez.</string>
+    <string name="settings_tmdb_key_hint">Clé d\'API ou jeton d\'accès en lecture</string>
+    <string name="settings_tmdb_save">Enregistrer</string>
+    <string name="settings_tmdb_remove">Supprimer la clé</string>
+    <string name="settings_tmdb_checking">Vérification de la clé…</string>
+    <string name="settings_tmdb_saved">TMDB a accepté la clé. Elle est enregistrée.</string>
+    <string name="settings_tmdb_refused">TMDB n\'a pas accepté cette clé. Vérifiez-la et réessayez.</string>
+    <string name="settings_tmdb_unreachable">TMDB est injoignable, la clé n\'a donc pas été vérifiée. Elle est enregistrée.</string>
+    <string name="settings_lib_tmdb">Distribution, équipe, bandes-annonces et liens des films et des séries. Ce produit utilise l\'API de TMDB, mais il n\'est ni approuvé ni certifié par TMDB.</string>
 </resources>

@@ -1,8 +1,12 @@
 package com.biskyt.mytvplayer.player
 
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.audio.AudioRendererEventListener
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.MediaCodecAudioRenderer
 import androidx.media3.exoplayer.mediacodec.MediaCodecAdapter
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
@@ -23,10 +27,10 @@ import org.robolectric.annotation.Config
 class AacSourceRendererTest {
     @Test
     fun `Media3's audio renderer is replaced, in its place`() {
-        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val context = ApplicationProvider.getApplicationContext<Context>()
         val renderers = DefaultRenderersFactory(context)
             .createRenderers(
-                android.os.Handler(android.os.Looper.getMainLooper()),
+                Handler(Looper.getMainLooper()),
                 object : VideoRendererEventListener {},
                 object : AudioRendererEventListener {},
                 {},
@@ -35,7 +39,7 @@ class AacSourceRendererTest {
             .toMutableList()
         val index = renderers.indexOfFirst { it is MediaCodecAudioRenderer }
         assertTrue(index >= 0)
-        val sink = DolbyDigitalSink(androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context).build())
+        val sink = DolbyDigitalSink(DefaultAudioSink.Builder(context).build())
         val ours = AacSourceRenderer(
             context,
             MediaCodecAdapter.Factory.getDefault(context),

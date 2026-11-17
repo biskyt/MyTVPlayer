@@ -25,7 +25,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** A plot cut short shows More…, which opens the whole of it in a panel; one that fits shows no More… (2026-11-06). */
+/** A plot cut short shows Read more, which opens the whole of it in a panel; one that fits shows none (2026-11-06). */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "+w960dp-h540dp-tvdpi")
 class PlotWithMoreUiTest {
@@ -40,13 +40,13 @@ class PlotWithMoreUiTest {
         compose.idleFrames()
     }
 
-    private fun more() = compose.onAllNodes(hasText("More…") and hasClickAction()).fetchSemanticsNodes()
+    private fun more() = compose.onAllNodes(hasText("Read more") and hasClickAction()).fetchSemanticsNodes()
 
     @Test
     fun `a plot cut short opens in full from More`() {
         show(LONG)
         assertEquals(1, more().size)
-        compose.onNode(hasText("More…") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNode(hasText("Read more") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
         // The panel is a window of its own, with the title and the whole plot.
         compose.waitAdvancingClock(stepMs = 50) { compose.onAllNodes(isRoot()).fetchSemanticsNodes().size == 2 }
         val panel = compose.onAllNodes(isRoot())[1]

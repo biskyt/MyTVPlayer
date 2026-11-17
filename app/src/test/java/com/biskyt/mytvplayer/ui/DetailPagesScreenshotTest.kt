@@ -111,13 +111,13 @@ class DetailPagesScreenshotTest {
         val id = start({ Screen.MovieDetails(it, 501) })
         save(id, 501, 74 * MIN, 112 * MIN)
         compose.waitForText("Resume · 38 min left")
-        compose.waitForText("Director: Ana Ruiz")
+        compose.waitForText("Directed by Ana Ruiz")
         compose.waitAdvancingClock { compose.focusedText().contains("Resume") }
-        // The progress bar must not size its button: Resume is a pill as high as Favourite, beside it on the screen.
+        // The progress bar must not size its button: Resume is a pill as high as More…, beside it on the screen.
         val resume = compose.onNode(hasText("Resume · 38 min left") and hasClickAction()).getBoundsInRoot()
-        val favourite = compose.onNode(hasText("Favourite") and hasClickAction()).assertIsDisplayed().getBoundsInRoot()
-        assertEquals((favourite.bottom - favourite.top).value, (resume.bottom - resume.top).value, 1f)
-        assertTrue(resume.right < favourite.left)
+        val more = compose.onNode(hasText("More…") and hasClickAction()).assertIsDisplayed().getBoundsInRoot()
+        assertEquals((more.bottom - more.top).value, (resume.bottom - resume.top).value, 1f)
+        assertTrue(resume.right < more.left)
         waitForPoster("The Long Harbour")
         compose.onRoot().captureRoboImage("screenshots/redesign-film.png")
     }

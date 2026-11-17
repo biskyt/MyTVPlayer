@@ -327,6 +327,12 @@ fun Poster(url: String?, title: String, width: Dp, modifier: Modifier = Modifier
     opaque = true
 )
 
+/** A person's photo, [size] square in [shape] (a circle unless given), with their initials until (or unless) it loads. */
+@Composable
+fun CirclePhoto(url: String?, name: String, size: Dp, shape: Shape = CircleShape) = ImageWithInitials(
+    url, name, size, size, shape, ContentScale.Crop, 0.dp, MaterialTheme.typography.labelLarge, opaque = true
+)
+
 /** Poster width in grids and rows of movies and series. */
 val POSTER_WIDTH = 124.dp
 
