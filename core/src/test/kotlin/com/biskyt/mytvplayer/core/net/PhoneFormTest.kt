@@ -90,6 +90,69 @@ class PhoneFormTest {
         assertEquals(PhoneFormSeen(connections = 3, pages = 1, secure = 1, unanswered = 1), form.seen.value)
     }
 
+    /** The status line and headers of the next answer on [input], and its body (by Content-Length). */
+    private fun answer(input: java.io.BufferedInputStream): Pair<List<String>, String> {
+        fun line(): String {
+            val out = java.io.ByteArrayOutputStream()
+            while (true) {
+                val b = input.read()
+                check(b >= 0) { "closed" }
+                if (b == '\n'.code) return out.toString(Charsets.US_ASCII.name()).trimEnd('\r')
+                out.write(b)
+            }
+        }
+        val head = generateSequence { line().takeIf { it.isNotEmpty() } }.toList()
+        val length = head.first { it.startsWith("Content-Length:") }.substringAfter(':').trim().toInt()
+        return head to String(ByteArray(length).also { input.readNBytes(it, 0, length) }, Charsets.UTF_8)
+    }
+
+    @Test
+    fun `a connection stays open for the browser's next request, as HTTP 1·1 expects`() {
+        val path = java.net.URI(form.url).path
+        java.net.Socket(InetAddress.getLoopbackAddress(), java.net.URI(form.url).port).use { s ->
+            s.soTimeout = 5_000
+            val input = java.io.BufferedInputStream(s.getInputStream())
+            s.getOutputStream().write("GET $path HTTP/1.1\r\nHost: tv\r\n\r\n".toByteArray())
+            val (head, page) = answer(input)
+            assertEquals("HTTP/1.1 200 OK", head.first())
+            assertTrue(head.contains("Connection: keep-alive"))
+            assertTrue(page.contains("<form"))
+            // A while later (as a browser after the user types the key), the form is sent on the same connection.
+            Thread.sleep(2_500)
+            val body = "value=abc"
+            s.getOutputStream().write(
+                "POST $path HTTP/1.1\r\nHost: tv\r\nContent-Length: ${body.length}\r\n\r\n$body".toByteArray()
+            )
+            assertEquals("HTTP/1.1 200 OK", answer(input).first.first())
+            assertEquals("abc", received.poll(5, TimeUnit.SECONDS))
+            // The icon, the third request on it.
+            s.getOutputStream().write("GET /favicon.ico HTTP/1.1\r\nHost: tv\r\n\r\n".toByteArray())
+            assertEquals("HTTP/1.1 404 Not Found", answer(input).first.first())
+        }
+        assertEquals(0, form.seen.value.unanswered)
+    }
+
+    @Test
+    fun `a browser that asks for the connection to close gets that`() {
+        val path = java.net.URI(form.url).path
+        java.net.Socket(InetAddress.getLoopbackAddress(), java.net.URI(form.url).port).use { s ->
+            s.soTimeout = 5_000
+            val input = java.io.BufferedInputStream(s.getInputStream())
+            s.getOutputStream().write("GET $path HTTP/1.1\r\nHost: tv\r\nConnection: close\r\n\r\n".toByteArray())
+            assertTrue(answer(input).first.contains("Connection: close"))
+            assertEquals(-1, input.read())
+        }
+    }
+
+    @Test
+    fun `OkHttp sends its requests on one connection`() {
+        val pool = okhttp3.ConnectionPool()
+        val client = OkHttpClient.Builder().connectionPool(pool).build()
+        repeat(3) { client.newCall(Request.Builder().url(form.url).build()).execute().use { r -> assertEquals(200, r.code) } }
+        assertEquals(1, pool.connectionCount())
+        assertEquals(1, form.seen.value.connections)
+    }
+
     @Test
     fun `after close, nothing is served`() {
         form.close()
