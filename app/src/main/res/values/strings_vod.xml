@@ -80,4 +80,25 @@
     <string name="vod_role_writer">Writer</string>
     <!-- The score's source, read out for its logo (a brand name: it stays as it is). -->
     <string name="vod_score_tmdb" translatable="false">TMDB</string>
+    <!-- More…: plays the title's trailer; its help (a film's only) under it. -->
+    <string name="vod_play_trailer">Play trailer</string>
+    <string name="vod_play_trailer_help">A short preview of the film</string>
+    <string name="vod_role_actor">Actor</string>
+    <string name="vod_role_producer">Producer</string>
+    <!-- A cast or crew member's page (OK on a cast photo). "In your library": their titles in the playlist. -->
+    <string name="vod_person_library">In your library</string>
+    <string name="vod_person_elsewhere">Also appears in</string>
+    <string name="vod_person_credits">All credits</string>
+    <string name="vod_person_full_biography">Full biography</string>
+    <string name="vod_person_tv_show">TV show</string>
+    <!-- A TV show in the person's list of credits. %1$s: its title. -->
+    <string name="vod_person_show_title">%1$s (TV show)</string>
+    <!-- %1$s: a date, e.g. "3 May 1984". -->
+    <string name="vod_person_born">Born %1$s</string>
+    <!-- %1$s: a date; %2$s: a place, e.g. "Leeds, England". -->
+    <string name="vod_person_born_in">Born %1$s in %2$s</string>
+    <string name="vod_person_died">Died %1$s</string>
+    <!-- %1$s: the part the person plays; %2$s: the title of the film or show, e.g. "Mara in The Harbour". -->
+    <string name="vod_person_role_in">%1$s in %2$s</string>
+    <string name="vod_person_failed">Couldn\'t load this person\'s page</string>
 </resources>

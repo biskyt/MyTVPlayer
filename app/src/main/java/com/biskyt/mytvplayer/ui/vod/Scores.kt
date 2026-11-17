@@ -82,7 +82,8 @@ fun TmdbScore(score: Double) = BoardScore(R.drawable.logo_tmdb, stringResource(R
 @Composable
 fun BoardScore(@DrawableRes logo: Int, name: String, value: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.bd), verticalAlignment = Alignment.CenterVertically) {
-        SourceLogo(logo, name)
+        // At the board's 20, as MyPlexPlayer draws it (not SourceLogo's default, which is in plain dp).
+        SourceLogo(logo, name, height = 20.bd)
         Text(value, style = ScoreText.current, color = Palette.textMuted, maxLines = 1)
     }
 }

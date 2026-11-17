@@ -218,4 +218,9 @@
     <string name="settings_tmdb_refused">O TMDB não aceitou esta chave. Verifique-a e tente de novo.</string>
     <string name="settings_tmdb_unreachable">Não foi possível conectar ao TMDB, então a chave não foi verificada. Ela está salva.</string>
     <string name="settings_lib_tmdb">Elenco, equipe, trailers e links de filmes e séries. Este produto usa a API do TMDB, mas não é endossado nem certificado pelo TMDB.</string>
+    <string name="settings_tmdb_phone">Ou escaneie isto com o celular e cole sua chave na página que abrir. O celular precisa estar na mesma rede que a TV.</string>
+    <string name="settings_tmdb_phone_title">Chave do TMDB para o MyTVPlayer</string>
+    <string name="settings_tmdb_phone_hint">Cole sua chave de API ou seu token de acesso de leitura do TMDB e selecione Enviar.</string>
+    <string name="settings_tmdb_phone_send">Enviar</string>
+    <string name="settings_tmdb_phone_done">Enviada. A TV está verificando a chave. Você pode fechar esta página.</string>
 </resources>

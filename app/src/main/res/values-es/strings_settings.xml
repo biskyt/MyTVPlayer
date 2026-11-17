@@ -218,4 +218,9 @@
     <string name="settings_tmdb_refused">TMDB no aceptó esta clave. Compruébala e inténtalo de nuevo.</string>
     <string name="settings_tmdb_unreachable">No se pudo conectar con TMDB, así que la clave no se comprobó. Está guardada.</string>
     <string name="settings_lib_tmdb">Reparto, equipo, tráileres y enlaces de películas y series. Este producto usa la API de TMDB, pero TMDB no lo respalda ni lo certifica.</string>
+    <string name="settings_tmdb_phone">O escanea esto con tu teléfono y pega tu clave en la página que se abre. Tu teléfono debe estar en la misma red que la TV.</string>
+    <string name="settings_tmdb_phone_title">Clave de TMDB para MyTVPlayer</string>
+    <string name="settings_tmdb_phone_hint">Pega tu clave de API o tu token de acceso de lectura de TMDB y selecciona Enviar.</string>
+    <string name="settings_tmdb_phone_send">Enviar</string>
+    <string name="settings_tmdb_phone_done">Enviada. La TV comprueba ahora la clave. Puedes cerrar esta página.</string>
 </resources>

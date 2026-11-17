@@ -17,8 +17,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +50,7 @@ import com.biskyt.mytvplayer.ui.common.CirclePhoto
 import com.biskyt.mytvplayer.ui.common.ItemActionsPanel
 import com.biskyt.mytvplayer.ui.common.LocalTopBarInset
 import com.biskyt.mytvplayer.ui.common.Poster
+import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.cardColor
 import com.biskyt.mytvplayer.ui.common.formatRuntime
 import com.biskyt.mytvplayer.ui.common.onOptionsKey
@@ -109,10 +112,13 @@ fun MovieDetailsScreen(screen: Screen.MovieDetails) {
     val nav = LocalNavigator.current
     val movie = vm.movie ?: return
     val progress by vm.progress.collectAsState()
-    // What is open over the page: More… (its button, holding OK, or Menu), or a panel opened from it.
-    var open by remember { mutableStateOf(FilmPanel.NONE) }
+    // What is open over the page: More… (its button, holding OK, or Menu), or a panel opened from it. Kept with the
+    // page, as is who had the remote in Cast and crew: back from a person's page, the panel shows them again.
+    var open by rememberSaveable { mutableStateOf(FilmPanel.NONE) }
+    var castFocus by rememberSaveable { mutableIntStateOf(0) }
     val trailer = rememberTrailerOpener()
     val info = vm.info
+    val playTrailer = info.trailer?.let { id -> { trailer(id) } }
     FilmPage(
         movie,
         info,
@@ -120,15 +126,37 @@ fun MovieDetailsScreen(screen: Screen.MovieDetails) {
         progress?.takeUnless { it.finished },
         play = { fromStart -> nav.push(Screen.VodPlayer(screen.playlistId, movie.streamId, fromStart = fromStart)) },
         more = { open = FilmPanel.MORE },
-        showCast = { open = FilmPanel.CAST },
-        playTrailer = info.trailer?.let { id -> { trailer(id) } }
+        openPerson = { person -> personScreen(screen.playlistId, person, movie.title, Tab.MOVIES, acting = true)?.let(nav::push) },
+        playTrailer = playTrailer
     )
-    FilmPanels(vm, movie, open) { open = it }
+    val openCrew: (Int, CastMember) -> Unit = { i, person ->
+        castFocus = i
+        val acting = i < info.cast.size
+        personScreen(screen.playlistId, person, movie.title, Tab.MOVIES, acting)?.let(nav::push)
+    }
+    // Cast and crew opens on its first person. Back from a person's page, it opens on that person.
+    val show = { panel: FilmPanel ->
+        if (panel == FilmPanel.CAST) castFocus = 0
+        open = panel
+    }
+    FilmPanels(vm, movie, open, castFocus, openCrew, playTrailer, show)
 }
 
-/** The panel [open] over the film page ([show] changes it): its own composable, so the page does not recompose with it. */
+/**
+ * The panel [open] over the film page ([show] changes it): its own composable, so the page does not recompose with it.
+ * Cast and crew has the remote on person [castFocus]; OK on one opens their page ([openPerson]).
+ */
 @Composable
-private fun FilmPanels(vm: MovieDetailsViewModel, movie: MovieEntity, open: FilmPanel, show: (FilmPanel) -> Unit) {
+@Suppress("LongParameterList") // the page's state, passed down rather than read again
+private fun FilmPanels(
+    vm: MovieDetailsViewModel,
+    movie: MovieEntity,
+    open: FilmPanel,
+    castFocus: Int,
+    openPerson: (Int, CastMember) -> Unit,
+    playTrailer: (() -> Unit)?,
+    show: (FilmPanel) -> Unit
+) {
     val info = vm.info
     val tmdb = info.tmdb
     val close = { show(FilmPanel.NONE) }
@@ -137,17 +165,21 @@ private fun FilmPanels(vm: MovieDetailsViewModel, movie: MovieEntity, open: Film
         FilmPanel.MORE -> {
             val favourite by vm.favourite.collectAsState()
             val actions = listOf(favouriteAction(favourite) { vm.toggleFavourite() }) +
-                titleActions(tmdb, film = true, showCast = { show(FilmPanel.CAST) }, showAbout = { show(FilmPanel.ABOUT) })
+                titleActions(tmdb, film = true, playTrailer, showCast = { show(FilmPanel.CAST) }, showAbout = { show(FilmPanel.ABOUT) })
             ItemActionsPanel(movie.title, actions, close, panelLine(movie.year ?: info.year, info.genre))
         }
-        FilmPanel.CAST -> CastPanel(movie.title, remember(tmdb) { castAndCrew(tmdb) }, stringResource(R.string.vod_cast_crew), close)
+        FilmPanel.CAST -> {
+            val crew = remember(tmdb) { castAndCrew(tmdb) }
+            CastPanel(movie.title, crew, stringResource(R.string.vod_cast_crew), castFocus, { openPerson(it, crew[it]) }, close)
+        }
         FilmPanel.ABOUT -> tmdb?.let { AboutPanel(film = true, it, close) }
     }
 }
 
 /**
  * The film page (MyPlexPlayer's board "PlexFilm"): the backdrop, the poster, then the title, the facts, TMDB's score,
- * the plot, who directed and wrote it, and the buttons; the cast along the bottom. A line with no data is left out
+ * the plot, who directed and wrote it, and the buttons; the cast along the bottom (OK on one opens their page,
+ * [openPerson]). A line with no data is left out
  * ("TvFilmMinimal": an M3U film shows its category in place of the facts). [info] has the provider's data and TMDB's
  * (see [merge]). The remote's Menu button opens [more] from anywhere on it. [playTrailer] is null when there is no trailer.
  */
@@ -160,7 +192,7 @@ fun FilmPage(
     resumable: WatchProgressEntity?,
     play: (fromStart: Boolean) -> Unit,
     more: () -> Unit,
-    showCast: () -> Unit,
+    openPerson: (CastMember) -> Unit,
     playTrailer: (() -> Unit)?
 ) {
     val cast = info.cast
@@ -208,7 +240,11 @@ fun FilmPage(
             }
         }
         if (cast.isNotEmpty()) {
-            CastStrip(cast, showCast, Modifier.align(Alignment.BottomStart).padding(start = 56.bd, end = 40.bd, bottom = 14.bd - CARD_PAD))
+            CastStrip(
+                cast,
+                openPerson,
+                Modifier.align(Alignment.BottomStart).padding(start = 56.bd, end = 40.bd, bottom = 14.bd - CARD_PAD)
+            )
         }
     }
 }
@@ -237,10 +273,10 @@ private fun FilmButtons(resumable: WatchProgressEntity?, play: (Boolean) -> Unit
 
 /**
  * The cast along the bottom of the page: "Cast", then each one's photo (92 square), name and part, 20 apart. OK on one
- * opens Cast and crew. Focus fills the card with the accent colour, with no ring.
+ * opens their page ([open]). Focus fills the card with the accent colour, with no ring.
  */
 @Composable
-private fun CastStrip(cast: List<CastMember>, showCast: () -> Unit, modifier: Modifier) {
+private fun CastStrip(cast: List<CastMember>, open: (CastMember) -> Unit, modifier: Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.bd)) {
         Text(stringResource(R.string.vod_cast_title), style = CastHeading.current, color = Palette.textMuted)
         // Each card keeps CARD_PAD round it for its focus, taken back from the gap and the row's start.
@@ -250,7 +286,7 @@ private fun CastStrip(cast: List<CastMember>, showCast: () -> Unit, modifier: Mo
             contentPadding = PaddingValues(end = CARD_PAD)
         ) {
             // Keyed by place and name: a name can be in the cast twice.
-            itemsIndexed(cast, key = { i, person -> "$i ${person.name}" }) { _, person -> CastCard(person, showCast) }
+            itemsIndexed(cast, key = { i, person -> "$i ${person.name}" }) { _, person -> CastCard(person) { open(person) } }
         }
     }
 }

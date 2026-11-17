@@ -88,7 +88,7 @@ class TmdbFilmUiTest {
         assertTrue(!shown("Favourite"))
         click("Trailer")
         val started: Intent = shadowOf(app).nextStartedActivity
-        assertEquals("vnd.youtube:${FakeTmdb.TRAILER}", started.dataString)
+        assertEquals("https://www.youtube.com/watch?v=${FakeTmdb.TRAILER}", started.dataString)
     }
 
     @Test

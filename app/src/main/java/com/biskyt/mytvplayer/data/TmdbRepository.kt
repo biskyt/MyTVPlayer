@@ -6,6 +6,7 @@ import com.biskyt.mytvplayer.AppText
 import com.biskyt.mytvplayer.core.tmdb.TmdbClient
 import com.biskyt.mytvplayer.core.tmdb.TmdbEpisode
 import com.biskyt.mytvplayer.core.tmdb.TmdbException
+import com.biskyt.mytvplayer.core.tmdb.TmdbPerson
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.xtream.VodDetails
 import java.io.File
@@ -59,6 +60,9 @@ class TmdbRepository(
 
     /** The episodes of [season] of the TMDB series [seriesId]. */
     suspend fun season(seriesId: Int, season: Int): List<TmdbEpisode> = quietly { it.season(seriesId, season) }.orEmpty()
+
+    /** The person [id] on TMDB, with their credits. */
+    suspend fun person(id: Long): TmdbPerson? = quietly { it.person(id) }
 
     /** Whether TMDB accepts [key]; null when TMDB cannot be reached. */
     suspend fun keyWorks(key: String): Boolean? = try {

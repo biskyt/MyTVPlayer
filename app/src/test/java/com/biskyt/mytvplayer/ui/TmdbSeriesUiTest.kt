@@ -25,6 +25,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 /**
@@ -101,6 +102,16 @@ class TmdbSeriesUiTest {
         compose.waitForText("Links")
         click("About this show")
         compose.waitForText("BBC Two")
+    }
+
+    @Test
+    fun `a series with a TMDB trailer offers Play trailer, which opens its YouTube page`() {
+        tmdb.use(app.container)
+        options("Episode 1")
+        compose.waitForText("Play trailer")
+        click("Play trailer")
+        val started = shadowOf(app).nextStartedActivity
+        assertEquals("https://www.youtube.com/watch?v=${FakeTmdb.SERIES_TRAILER}", started.dataString)
     }
 
     @Test

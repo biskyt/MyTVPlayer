@@ -21,6 +21,7 @@ import com.biskyt.mytvplayer.data.VodFilter
 import com.biskyt.mytvplayer.ui.common.FocusVisit
 import com.biskyt.mytvplayer.ui.common.KeepsFocus
 import com.biskyt.mytvplayer.ui.common.LocalFocusVisit
+import com.biskyt.mytvplayer.ui.common.Tab
 import kotlin.random.Random
 
 /** Every screen in the app. Tab roots are [Home], [Live], [Movies], [Series]. */
@@ -67,6 +68,21 @@ sealed interface Screen {
 
     /** [season] and [episode] (from 1): open on that episode (found from the TV guide). */
     data class SeriesDetails(val playlistId: Long, val seriesId: Long, val season: Int? = null, val episode: Int? = null) : Screen
+
+    /**
+     * A cast or crew member's page: [personId] is their id on TMDB; [playlistId] the playlist whose titles of theirs it
+     * shows. [name] and [photoUrl] show until the page loads. It was opened from [title] (where they play [role], if an
+     * actor), under top bar [tab].
+     */
+    data class Person(
+        val playlistId: Long,
+        val personId: Long,
+        val name: String,
+        val photoUrl: String?,
+        val role: String?,
+        val title: String,
+        val tab: Tab,
+    ) : Screen
     data object Settings : Screen
     data object Playlists : Screen
     data class PlaylistEdit(val playlistId: Long?, val firstRun: Boolean = false) : Screen

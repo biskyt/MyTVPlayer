@@ -7,6 +7,9 @@ English, one bullet of one sentence per change.
 - Film and series pages can show the cast with photos, who directed and wrote it, the TMDB score, links to IMDb and TMDB, and a Trailer button, when you add your own free TMDB key in Settings › TMDB.
 - Episodes that your provider gives no description or picture for get them from TMDB, when you add a TMDB key.
 - A film's page now has a More… button (also the remote's Menu button) with Favourite, Cast and crew, About this film and the links.
+- OK on someone in the cast opens their page from TMDB, with their biography and the films and series that they are in, and those in your playlist open from there.
+- A series' options, and a film's More…, now have Play trailer, when TMDB or your provider has a trailer.
+- In Settings › TMDB, you can scan a QR code with your phone and paste your key there, instead of typing it with the remote.
 - With no TMDB key, MyTVPlayer makes no requests to TMDB.
 
 ## 1.23.2

@@ -284,4 +284,9 @@
     <string name="settings_tmdb_refused">TMDB did not accept this key. Check it and try again.</string>
     <string name="settings_tmdb_unreachable">TMDB could not be reached, so the key was not checked. It is saved.</string>
     <string name="settings_lib_tmdb">Cast, crew, trailers and links for films and series. This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
+    <string name="settings_tmdb_phone">Or scan this with your phone, and paste your key on the page that opens. Your phone must be on the same network as the TV.</string>
+    <string name="settings_tmdb_phone_title">TMDB key for MyTVPlayer</string>
+    <string name="settings_tmdb_phone_hint">Paste your TMDB API key or read access token, then select Send.</string>
+    <string name="settings_tmdb_phone_send">Send</string>
+    <string name="settings_tmdb_phone_done">Sent. The TV checks the key now. You can close this page.</string>
 </resources>

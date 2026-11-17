@@ -7,17 +7,18 @@ import kotlinx.serialization.Serializable
 // TMDB's answers, as far as the app reads them.
 
 @Serializable
-internal data class Named(val name: String = "")
+internal data class Named(val name: String = "", val id: Long = 0)
 
 @Serializable
 internal data class CastJson(
+    val id: Long = 0,
     val name: String = "",
     val character: String? = null,
     @SerialName("profile_path") val profilePath: String? = null
 )
 
 @Serializable
-internal data class CrewJson(val name: String = "", val job: String? = null, val department: String? = null)
+internal data class CrewJson(val id: Long = 0, val name: String = "", val job: String? = null, val department: String? = null)
 
 @Serializable
 internal data class CreditsJson(val cast: List<CastJson> = emptyList(), val crew: List<CrewJson> = emptyList())
@@ -105,9 +106,17 @@ private const val MIN_VOTES = 10
 private val WRITING = setOf("Screenplay", "Writer", "Story", "Novel", "Author")
 
 private fun CreditsJson.people(): List<CastMember> = cast.take(CAST).filter { it.name.isNotBlank() }
-    .map { CastMember(it.name, it.character?.ifBlank { null }, image(it.profilePath, "w185")) }
+    .map { CastMember(it.name, it.character?.ifBlank { null }, image(it.profilePath, "w185"), personId(it.id)) }
 
-private fun CreditsJson.crewFor(jobs: Set<String>) = crew.filter { it.job in jobs }.map { it.name }.filter { it.isNotBlank() }.distinct()
+/** A TMDB person id, or null for none (TMDB's ids start at 1; a missing one reads as 0). */
+private fun personId(id: Long): Long? = id.takeIf { it > 0 }
+
+/** Someone of the crew: no part (the page names their job) and no photo. */
+private fun crewMember(name: String, id: Long) = CastMember(name, null, null, personId(id))
+
+/** The crew of [jobs], each once. */
+private fun CreditsJson.crewFor(jobs: Set<String>) = crew.filter { it.job in jobs && it.name.isNotBlank() }.distinctBy { it.name }
+    .map { crewMember(it.name, it.id) }
 
 /** The best YouTube trailer: an official trailer, then any trailer, then a teaser. */
 internal fun VideosJson.trailer(): String? {
@@ -150,7 +159,7 @@ internal fun SeriesJson.toTitle() = TmdbTitle(
     score = score(voteAverage, voteCount),
     cast = credits.people(),
     directors = emptyList(),
-    writers = createdBy.names(),
+    writers = createdBy.filter { it.name.isNotBlank() }.map { crewMember(it.name, it.id) },
     trailer = videos.trailer(),
     posterUrl = image(posterPath, "w342"),
     backdropUrl = image(backdropPath, "w1280"),

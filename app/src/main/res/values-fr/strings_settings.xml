@@ -218,4 +218,9 @@
     <string name="settings_tmdb_refused">TMDB n\'a pas accepté cette clé. Vérifiez-la et réessayez.</string>
     <string name="settings_tmdb_unreachable">TMDB est injoignable, la clé n\'a donc pas été vérifiée. Elle est enregistrée.</string>
     <string name="settings_lib_tmdb">Distribution, équipe, bandes-annonces et liens des films et des séries. Ce produit utilise l\'API de TMDB, mais il n\'est ni approuvé ni certifié par TMDB.</string>
+    <string name="settings_tmdb_phone">Ou scannez ceci avec votre téléphone, puis collez votre clé sur la page qui s\'ouvre. Votre téléphone doit être sur le même réseau que le téléviseur.</string>
+    <string name="settings_tmdb_phone_title">Clé TMDB pour MyTVPlayer</string>
+    <string name="settings_tmdb_phone_hint">Collez votre clé d\'API ou votre jeton d\'accès en lecture TMDB, puis sélectionnez Envoyer.</string>
+    <string name="settings_tmdb_phone_send">Envoyer</string>
+    <string name="settings_tmdb_phone_done">Envoyée. Le téléviseur vérifie la clé. Vous pouvez fermer cette page.</string>
 </resources>

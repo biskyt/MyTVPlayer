@@ -4,4 +4,5 @@
     <!-- "Add to favorites" is the button common_favourite_add: keep it the same as there. -->
     <string name="vod_no_favourites">No favorites yet. Open a title and choose “Add to favorites”.</string>
     <string name="vod_about_this_film">About this movie</string>
+    <string name="vod_play_trailer_help">A short preview of the movie</string>
 </resources>

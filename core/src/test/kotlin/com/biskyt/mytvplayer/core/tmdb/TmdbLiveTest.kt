@@ -27,5 +27,10 @@ class TmdbLiveTest {
         val series = tmdb.series(1399)!!
         assertEquals("tt0944947", series.imdbId)
         assertTrue(tmdb.season(1399, 1).isNotEmpty())
+        assertEquals(6384L, film.cast.first { it.name == "Keanu Reeves" }.id)
+        val keanu = tmdb.person(6384)!!
+        assertEquals("Keanu Reeves", keanu.name)
+        assertEquals(PersonCredit.ACTOR, keanu.kinds.first())
+        assertTrue(keanu.credits.any { it.ratingKey == "movie/603" && it.kind == PersonCredit.ACTOR })
     }
 }

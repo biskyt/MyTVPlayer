@@ -66,6 +66,10 @@ class TmdbClient(
     suspend fun series(id: Int): TmdbTitle? = get("tv/$id", details)
         ?.let { decode(SeriesJson.serializer(), it).toTitle() }
 
+    /** A person by their TMDB id, with their films' and series' credits; null when TMDB has none with that id. */
+    suspend fun person(id: Long): TmdbPerson? = get("person/$id", listOf("append_to_response" to "combined_credits"))
+        ?.let { decode(PersonJson.serializer(), it).toPerson() }
+
     /** The episodes of [season] of series [seriesId]; empty when TMDB has none. */
     suspend fun season(seriesId: Int, season: Int): List<TmdbEpisode> =
         get("tv/$seriesId/season/$season", emptyList())?.let { decode(SeasonJson.serializer(), it).toEpisodes() }.orEmpty()
@@ -160,8 +164,10 @@ data class TmdbTitle(
     /** The users' score, 0 to 10; null with too few votes to mean much. */
     val score: Double?,
     val cast: List<CastMember>,
-    val directors: List<String>,
-    val writers: List<String>,
+    /** Who directed it, with no part (the page names their job). */
+    val directors: List<CastMember>,
+    /** Who wrote it (a series: who created it), with no part. */
+    val writers: List<CastMember>,
     /** The YouTube id of the best trailer. */
     val trailer: String?,
     val posterUrl: String?,

@@ -52,4 +52,19 @@
     <string name="vod_about_this_show">Sobre esta série</string>
     <string name="vod_role_director">Direção</string>
     <string name="vod_role_writer">Roteiro</string>
+    <string name="vod_play_trailer">Assistir ao trailer</string>
+    <string name="vod_play_trailer_help">Uma breve prévia do filme</string>
+    <string name="vod_role_actor">Atuação</string>
+    <string name="vod_role_producer">Produção</string>
+    <string name="vod_person_library">Na sua biblioteca</string>
+    <string name="vod_person_elsewhere">Também aparece em</string>
+    <string name="vod_person_credits">Todos os créditos</string>
+    <string name="vod_person_full_biography">Biografia completa</string>
+    <string name="vod_person_tv_show">Série de TV</string>
+    <string name="vod_person_show_title">%1$s (série de TV)</string>
+    <string name="vod_person_born">Nasceu em %1$s</string>
+    <string name="vod_person_born_in">Nasceu em %1$s em %2$s</string>
+    <string name="vod_person_died">Morreu em %1$s</string>
+    <string name="vod_person_role_in">%1$s em %2$s</string>
+    <string name="vod_person_failed">Não foi possível carregar a página desta pessoa</string>
 </resources>

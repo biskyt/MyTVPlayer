@@ -333,6 +333,15 @@ fun CirclePhoto(url: String?, name: String, size: Dp, shape: Shape = CircleShape
     url, name, size, size, shape, ContentScale.Crop, 0.dp, MaterialTheme.typography.labelLarge, opaque = true
 )
 
+/** Why something could not load ([message]), then Retry ([onRetry]), which has the remote. */
+@Composable
+fun ErrorRetry(message: String, onRetry: () -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Muted(message, Modifier.weight(1f, fill = false), maxLines = 3)
+        PillButton(stringResource(R.string.common_retry), onRetry, rememberFirstFocus())
+    }
+}
+
 /** Poster width in grids and rows of movies and series. */
 val POSTER_WIDTH = 124.dp
 

@@ -52,8 +52,8 @@ class TmdbClientTest {
             listOf(CastMember("Keanu Reeves", "Neo", "https://image.tmdb.org/t/p/w185/k.jpg"), CastMember("Carrie-Anne Moss", null, null)),
             t.cast
         )
-        assertEquals(listOf("Lana Wachowski"), t.directors)
-        assertEquals(listOf("Lana Wachowski"), t.writers)
+        assertEquals(listOf("Lana Wachowski"), t.directors.map { it.name })
+        assertEquals(listOf("Lana Wachowski"), t.writers.map { it.name })
         assertEquals("trailer0002", t.trailer) // the official trailer
         assertEquals(LocalDate.of(1999, 3, 31), t.released)
         assertEquals(listOf("Action"), t.genres)
@@ -70,7 +70,7 @@ class TmdbClientTest {
             """{"id":1399,"vote_average":8.4,"vote_count":5,"created_by":[{"name":"David Benioff"}],"external_ids":{"imdb_id":"tt0944947"}}"""
         )
         val t = client().series(1399)!!
-        assertEquals(listOf("David Benioff"), t.writers)
+        assertEquals(listOf("David Benioff"), t.writers.map { it.name })
         assertEquals("tt0944947", t.imdbId)
         assertEquals("https://www.themoviedb.org/tv/1399", t.tmdbUrl)
         assertNull(t.score) // too few votes to mean much

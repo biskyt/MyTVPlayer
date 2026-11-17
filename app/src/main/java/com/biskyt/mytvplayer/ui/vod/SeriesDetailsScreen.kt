@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +70,7 @@ import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.tmdb.TmdbEpisode
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
+import com.biskyt.mytvplayer.core.vod.CastMember
 import com.biskyt.mytvplayer.core.xtream.EpisodeInfo
 import com.biskyt.mytvplayer.core.xtream.SeriesDetails
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
@@ -87,12 +89,14 @@ import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.Poster
 import com.biskyt.mytvplayer.ui.common.ProgressLine
+import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.common.formatRuntime
 import com.biskyt.mytvplayer.ui.common.markWatched
 import com.biskyt.mytvplayer.ui.common.onOptionsKeyAfter
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
+import com.biskyt.mytvplayer.ui.common.rememberTrailerOpener
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.common.shortEpisodeLabel
 import com.biskyt.mytvplayer.ui.common.timeLeft
@@ -192,6 +196,15 @@ class SeriesDetailsViewModel(
 
     /** What is open over the page: an episode's options (its More… button, holding OK, or Menu), or a panel from them. */
     var open by mutableStateOf<SeriesPanel?>(null)
+
+    /** Who has the remote in Cast and crew: back from a person's page, the panel shows them again. */
+    var castFocus by mutableIntStateOf(0)
+
+    /** Opens Cast and crew on its first person. */
+    fun showCast() {
+        castFocus = 0
+        open = SeriesPanel.Cast
+    }
 
     /**
      * Marks [e] watched (saved as played to the end, as the player saves it, so "Continue watching" moves on past it)
@@ -322,20 +335,37 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
             }
         }
     }
-    SeriesPanels(vm, show.title, progress)
+    val trailer = rememberTrailerOpener()
+    val openCrew: (Int, CastMember) -> Unit = { i, person ->
+        vm.castFocus = i
+        val acting = i < vm.info.cast.size
+        personScreen(screen.playlistId, person, show.title, Tab.SERIES, acting)?.let(nav::push)
+    }
+    SeriesPanels(vm, show.title, progress, vm.info.trailer?.let { id -> { trailer(id) } }, openCrew)
 }
 
 /** What is open over the series page ([SeriesDetailsViewModel.open]): its own composable, so the page does not recompose with it. */
 @Composable
-private fun SeriesPanels(vm: SeriesDetailsViewModel, title: String, progress: Map<Long, WatchProgressEntity>) {
+private fun SeriesPanels(
+    vm: SeriesDetailsViewModel,
+    title: String,
+    progress: Map<Long, WatchProgressEntity>,
+    /** Plays the show's trailer; null when it has none. */
+    playTrailer: (() -> Unit)?,
+    /** Opens the page of the person at a place in Cast and crew. */
+    openPerson: (Int, CastMember) -> Unit
+) {
     val tmdb = vm.tmdb
     val close = { vm.open = null }
     // The episode as it is now: TMDB's data for it may come in after its panel opened.
     val now = { e: EpisodeInfo -> vm.shown?.episodes?.firstOrNull { it.id == e.id } ?: e }
     when (val p = vm.open) {
         null -> Unit
-        is SeriesPanel.Options -> EpisodeOptions(vm, now(p.e), progress[p.e.id])
-        SeriesPanel.Cast -> CastPanel(title, remember(tmdb) { castAndCrew(tmdb) }, stringResource(R.string.vod_cast_crew), close)
+        is SeriesPanel.Options -> EpisodeOptions(vm, now(p.e), progress[p.e.id], playTrailer)
+        SeriesPanel.Cast -> {
+            val crew = remember(tmdb) { castAndCrew(tmdb) }
+            CastPanel(title, crew, stringResource(R.string.vod_cast_crew), vm.castFocus, { openPerson(it, crew[it]) }, close)
+        }
         SeriesPanel.About -> tmdb?.let { AboutPanel(film = false, it, close) }
         is SeriesPanel.Describe -> EpisodeDescriptionPanel(DescribedEpisode(title, now(p.e)), close)
     }
@@ -415,10 +445,10 @@ private fun ContinueButton(
 
 /**
  * An episode's options (its More… button, or holding OK on it): its description, and marking it watched or unwatched.
- * With TMDB, the show's options follow (shared with the film page's More…).
+ * Then the show's options (shared with the film page's More…): its trailer, and with TMDB its people, About and links.
  */
 @Composable
-private fun EpisodeOptions(vm: SeriesDetailsViewModel, e: EpisodeInfo, saved: WatchProgressEntity?) {
+private fun EpisodeOptions(vm: SeriesDetailsViewModel, e: EpisodeInfo, saved: WatchProgressEntity?, playTrailer: (() -> Unit)?) {
     val close = { vm.open = null }
     val set = { watched: Boolean ->
         vm.setWatched(e, watched)
@@ -430,7 +460,7 @@ private fun EpisodeOptions(vm: SeriesDetailsViewModel, e: EpisodeInfo, saved: Wa
         if (saved?.finished != true) markWatched(false, set) else null,
         if (saved?.started == true) markWatched(true, set) else null
     )
-    val show = titleActions(vm.tmdb, film = false, showCast = { vm.open = SeriesPanel.Cast }, showAbout = { vm.open = SeriesPanel.About })
+    val show = titleActions(vm.tmdb, film = false, playTrailer, showCast = vm::showCast, showAbout = { vm.open = SeriesPanel.About })
     val actions = if (show.isEmpty()) {
         episode
     } else {

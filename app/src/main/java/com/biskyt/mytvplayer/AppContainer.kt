@@ -43,6 +43,7 @@ import com.biskyt.mytvplayer.data.ImageCalls
 import com.biskyt.mytvplayer.data.LauncherSync
 import com.biskyt.mytvplayer.data.LauncherTarget
 import com.biskyt.mytvplayer.data.ParentalRepository
+import com.biskyt.mytvplayer.data.PersonRepository
 import com.biskyt.mytvplayer.data.PlaylistRepository
 import com.biskyt.mytvplayer.data.ProgressSync
 import com.biskyt.mytvplayer.data.ProxyMonitor
@@ -148,6 +149,7 @@ class AppContainer(context: Context, launcherWriter: LauncherWriter = TvLauncher
     private val syncedChoices by lazy { SyncedChoices(db, channels, vod, categoryStore, parental, epg) }
     val favourites = Favourites(appScope, settings, channels, vod)
     val search = SearchRepository(db)
+    val people = PersonRepository(vod, tmdb)
     val catchup = CatchupRepository(playlists)
     val sync: SyncManager = SyncManager(appScope, playlists, vod, epg, settings)
     val vpn = VpnMonitor(context, appScope)
