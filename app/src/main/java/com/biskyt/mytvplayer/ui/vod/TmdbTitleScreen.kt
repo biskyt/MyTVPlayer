@@ -23,8 +23,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -147,7 +149,7 @@ fun TmdbTitleScreen(screen: Screen.TmdbTitle) {
                         originalTitle(info, screen.title)?.let { original ->
                             DetailButton(stringResource(R.string.vod_find_original, original), { nav.push(Screen.Search(original)) })
                         }
-                        info?.trailer?.let { id -> DetailButton(stringResource(R.string.vod_play_trailer), { playTrailer(id) }) }
+                        info?.trailer?.let { url -> DetailButton(stringResource(R.string.vod_play_trailer), { playTrailer(url) }) }
                         if ((info?.trailers?.size ?: 0) > 1) DetailButton(stringResource(R.string.vod_other_trailers), { trailers = true })
                         DetailButton(stringResource(R.string.vod_similar), {
                             nav.push(Screen.MoreLike(screen.playlistId, screen.tmdbId, screen.series, screen.title, screen.tab))
@@ -187,8 +189,13 @@ private fun LazyListScope.seasons(seasons: List<TmdbSeason>, vm: TmdbTitleViewMo
     when {
         season == null || episodes != null -> Unit
         vm.seasonFailed -> item {
+            val focus = LocalFocusManager.current
             Box(Modifier.padding(start = SIDE, top = 16.dp)) {
-                ErrorRetry(stringResource(R.string.vod_tmdb_season_failed)) { vm.showSeason(season) }
+                ErrorRetry(stringResource(R.string.vod_tmdb_season_failed)) {
+                    // The button goes while the season loads: the remote goes up to the seasons first.
+                    focus.moveFocus(FocusDirection.Up)
+                    vm.showSeason(season)
+                }
             }
         }
         else -> item { Muted(stringResource(R.string.common_loading), Modifier.padding(start = SIDE, top = 16.dp)) }

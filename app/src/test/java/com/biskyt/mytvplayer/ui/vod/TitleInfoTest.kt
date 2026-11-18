@@ -73,7 +73,7 @@ class TitleInfoTest {
         assertEquals(listOf("Paul Okafor"), info.writers)
         assertEquals(tmdb.cast, info.cast)
         assertNull(info.castNames) // TMDB's cast, with photos, in place of the provider's names
-        assertEquals("tmdb000001", info.trailer)
+        assertEquals("https://www.youtube.com/watch?v=tmdb000001", info.trailer)
     }
 
     @Test
@@ -82,7 +82,7 @@ class TitleInfoTest {
         assertEquals(listOf("Ana Ruiz"), info.directors)
         assertEquals(emptyList<String>(), info.writers)
         assertEquals("Tom Hale, Ines Moreau", info.castNames)
-        assertEquals("provider01", info.trailer)
+        assertEquals("https://www.youtube.com/watch?v=provider01", info.trailer)
         assertNull(info.score)
         assertNull(info.tmdb)
         assertEquals(TitleInfo(), merge(null, null))

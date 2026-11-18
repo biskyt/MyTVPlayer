@@ -134,7 +134,6 @@ private fun crewMember(name: String, id: Long) = CastMember(name, null, null, pe
 private fun CreditsJson.crewFor(jobs: Set<String>) = crew.filter { it.job in jobs && it.name.isNotBlank() }.distinctBy { it.name }
     .map { crewMember(it.name, it.id) }
 
-/** The best YouTube trailer: an official trailer, then any trailer, then a teaser. */
 /**
  * The trailers and teasers that the app can play (on YouTube or Vimeo), best first: trailers before teasers, then those
  * made for [region] (the TV's country: an upload for another country is often blocked here), then official ones.
@@ -149,10 +148,11 @@ internal fun VideosJson.trailers(region: String?): List<TmdbVideo> = results
             { if (it.official) 0 else 1 },
         )
     )
-    .map { TmdbVideo(it.name?.ifBlank { null }, it.site, it.key, it.country?.uppercase()) }
+    .map { TmdbVideo(it.name?.ifBlank { null }, it.site, it.key, it.country?.uppercase(), teaser = it.type == TEASER) }
 
 private val PLAYABLE = setOf(TmdbVideo.YOUTUBE, TmdbVideo.VIMEO)
-private val KINDS = listOf("Trailer", "Teaser")
+private const val TEASER = "Teaser"
+private val KINDS = listOf("Trailer", TEASER)
 
 internal fun score(average: Double, votes: Int) = average.takeIf { votes >= MIN_VOTES && it > 0 }
 

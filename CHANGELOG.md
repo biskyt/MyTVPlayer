@@ -3,6 +3,13 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.28.0
+- The TV guide now shows up to a week ahead, where your guide has the programmes.
+- Large guides now download much less often: only when fewer than 3 days of programmes are left.
+- Play trailer now also works for films and series whose only trailer is on Vimeo.
+- Teasers in Other trailers are now called teasers, not trailers.
+- After Try again on a TMDB page, the remote now stays on the seasons.
+
 ## 1.27.1
 - If a season's episodes do not load on a TMDB page, a Try again button now shows.
 - Pages with TMDB data no longer pause for a moment while TMDB's answer is read.

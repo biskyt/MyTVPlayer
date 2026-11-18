@@ -38,7 +38,7 @@ class TmdbClient(
     /** True when TMDB accepts the key; throws a [TmdbException] when TMDB cannot be reached. */
     suspend fun keyWorks(): Boolean = try {
         // Never from a cache: a key may have been revoked since, and a v4 token is not part of the address.
-        get("authentication", emptyList(), fresh = true)
+        withContext(Dispatchers.IO) { fetch("authentication", emptyList(), fresh = true) }
         true
     } catch (e: TmdbException) {
         if (e.invalidKey) false else throw e
@@ -112,7 +112,7 @@ class TmdbClient(
      * thread: a title's answer, with its cast, can be hundreds of KB.
      */
     private suspend fun <T> get(serializer: KSerializer<T>, path: String, query: List<Pair<String, String>>): T? =
-        withContext(Dispatchers.IO) { get(path, query)?.let { decode(serializer, it) } }
+        withContext(Dispatchers.IO) { fetch(path, query)?.let { decode(serializer, it) } }
 
     private fun <T> decode(serializer: KSerializer<T>, body: String): T = try {
         json.decodeFromString(serializer, body)
@@ -127,16 +127,15 @@ class TmdbClient(
             "include_video_language" to "${language.substringBefore('-')},en,null"
         )
 
-    /** The body of a GET of [path]; null for a 404 (not found). */
-    private suspend fun get(path: String, query: List<Pair<String, String>>, fresh: Boolean = false): String? =
-        withContext(Dispatchers.IO) {
-            val url = (base + path).toHttpUrl().newBuilder().apply {
-                addQueryParameter("language", language)
-                query.forEach { (k, v) -> addQueryParameter(k, v) }
-                if (!bearer) addQueryParameter("api_key", key)
-            }.build()
-            call(url, fresh)
-        }
+    /** The body of a GET of [path]; null for a 404 (not found). Blocking: call from an IO dispatcher. */
+    private fun fetch(path: String, query: List<Pair<String, String>>, fresh: Boolean = false): String? {
+        val url = (base + path).toHttpUrl().newBuilder().apply {
+            addQueryParameter("language", language)
+            query.forEach { (k, v) -> addQueryParameter(k, v) }
+            if (!bearer) addQueryParameter("api_key", key)
+        }.build()
+        return call(url, fresh)
+    }
 
     private fun call(url: HttpUrl, fresh: Boolean): String? {
         val request = Request.Builder().url(url).header("Accept", "application/json")
@@ -199,8 +198,8 @@ data class TmdbTitle(
     /** A series': its seasons in order, without specials (season 0). */
     val seasons: List<TmdbSeason> = emptyList(),
 ) {
-    /** The YouTube id of the best trailer on YouTube. */
-    val trailer: String? get() = trailers.firstOrNull { it.site == TmdbVideo.YOUTUBE }?.key
+    /** The best trailer (or teaser) the app can play, on YouTube or Vimeo. */
+    val trailer: TmdbVideo? get() = trailers.firstOrNull()
 
     val tmdbUrl get() = "https://www.themoviedb.org/${if (series) "tv" else "movie"}/$id"
     val imdbUrl get() = imdbId?.let { "https://www.imdb.com/title/$it/" }
@@ -209,14 +208,20 @@ data class TmdbTitle(
     val links get() = listOfNotNull(imdbUrl?.let { TitleLink("IMDb", it) }, TitleLink("TMDB", tmdbUrl))
 }
 
-/** A trailer or teaser: its [name] on its [site] (YouTube or Vimeo), and the [country] it was made for, if TMDB knows. */
-data class TmdbVideo(val name: String?, val site: String, val key: String, val country: String?) {
+/**
+ * A trailer, or a [teaser]: its [name] on its [site] (YouTube or Vimeo), and the [country] it was made for, if TMDB
+ * knows.
+ */
+data class TmdbVideo(val name: String?, val site: String, val key: String, val country: String?, val teaser: Boolean = false) {
     /** Its page, which the YouTube or Vimeo app (or a browser) plays. */
-    val url: String get() = if (site == VIMEO) "https://vimeo.com/$key" else "https://www.youtube.com/watch?v=$key"
+    val url: String get() = if (site == VIMEO) "https://vimeo.com/$key" else youTubePage(key)
 
     companion object {
         const val YOUTUBE = "YouTube"
         const val VIMEO = "Vimeo"
+
+        /** A YouTube video's watch page, which the YouTube app (and others, such as SmartTube) opens and plays. */
+        fun youTubePage(id: String) = "https://www.youtube.com/watch?v=$id"
     }
 }
 

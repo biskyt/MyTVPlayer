@@ -161,7 +161,7 @@ class GuideGridKeysUiTest {
     fun `the time header says which day it is, and when a new one starts`() {
         guide()
         assertTrue(compose.onAllNodes(hasText("Today", substring = true)).fetchSemanticsNodes().isNotEmpty())
-        // Later and later, until the header names the day starting (the guide goes three days ahead).
+        // Later and later, until the header names the day starting (the guide goes seven days ahead).
         compose.waitAdvancingClock(50) {
             compose.onAllNodes(hasText("Tomorrow")).fetchSemanticsNodes().isNotEmpty().also {
                 if (!it) press(Key.DirectionRight)

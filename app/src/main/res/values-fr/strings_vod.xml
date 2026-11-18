@@ -34,6 +34,7 @@
     <string name="vod_read_more">Lire la suite</string>
 
     <string name="vod_trailer">Bande-annonce</string>
+    <string name="vod_teaser">Teaser</string>
     <string name="vod_cast_title">Distribution</string>
     <string name="vod_directed_by">Réalisé par %1$s</string>
     <string name="vod_written_by">Écrit par %1$s</string>
