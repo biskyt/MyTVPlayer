@@ -40,6 +40,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -55,6 +57,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -333,12 +336,20 @@ fun CirclePhoto(url: String?, name: String, size: Dp, shape: Shape = CircleShape
     url, name, size, size, shape, ContentScale.Crop, 0.dp, MaterialTheme.typography.labelLarge, opaque = true
 )
 
-/** Why something could not load ([message]), then Retry ([onRetry]), which has the remote. */
+/**
+ * Why something could not load ([message]), then Retry ([onRetry]), which has the remote. Retry goes while it loads
+ * again, so the remote first goes to [focusAfter], or else up the page: not nowhere.
+ */
 @Composable
-fun ErrorRetry(message: String, onRetry: () -> Unit) {
+fun ErrorRetry(message: String, focusAfter: FocusRequester? = null, onRetry: () -> Unit) {
+    val focus = LocalFocusManager.current
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         Muted(message, Modifier.weight(1f, fill = false), maxLines = 3)
-        PillButton(stringResource(R.string.common_retry), onRetry, rememberFirstFocus())
+        PillButton(stringResource(R.string.common_retry), {
+            val moved = focusAfter?.let { runCatching { it.requestFocus() }.getOrDefault(false) } ?: false
+            if (!moved) focus.moveFocus(FocusDirection.Up)
+            onRetry()
+        }, rememberFirstFocus())
     }
 }
 

@@ -142,6 +142,11 @@
     <string name="live_guide_current_shifted">Currently: %1$s (%2$s) · shifted %3$dh</string>
     <!-- %1$s is a date and time: when the last programme of a guide ends. Shown in the warning colour once past -->
     <string name="live_guide_programmes_until">Programmes up to %1$s</string>
+    <string name="live_guide_times">Last update: %1$s</string>
+    <string name="live_guide_time_download">download %1$s</string>
+    <string name="live_guide_time_channels">channel list %1$s</string>
+    <string name="live_guide_time_matching">matching %1$s</string>
+    <string name="live_guide_time_programmes">programmes %1$s, saving %2$s</string>
     <!-- %1$s is a programme title, %2$s its times, e.g. "21:00 – 22:00" -->
     <string name="live_guide_on_now">On now: %1$s (%2$s)</string>
     <string name="live_guide_on_now_none">Nothing on now in this guide</string>

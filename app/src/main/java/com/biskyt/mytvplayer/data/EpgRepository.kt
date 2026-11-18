@@ -8,6 +8,7 @@ import com.biskyt.mytvplayer.core.epg.ChannelMatcher
 import com.biskyt.mytvplayer.core.epg.ChannelNames
 import com.biskyt.mytvplayer.core.epg.EpgCandidate
 import com.biskyt.mytvplayer.core.epg.EpgMatch
+import com.biskyt.mytvplayer.core.epg.ReadAhead
 import com.biskyt.mytvplayer.core.epg.XmltvChannel
 import com.biskyt.mytvplayer.core.epg.XmltvParser
 import com.biskyt.mytvplayer.core.net.ProxyClients
@@ -28,6 +29,7 @@ import java.net.HttpURLConnection
 import java.util.zip.Deflater
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
+import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -63,6 +65,18 @@ enum class MatchScope(val threshold: Double) {
 /** How many days ahead the guide's programmes are kept, and the TV guide goes. */
 const val GUIDE_DAYS_AHEAD = 7
 
+/**
+ * How long the steps of a guide's last update took, in ms; null for a step that did not run. [matching] is for all of
+ * the update's guides together, and [saving] is the part of [programmes] spent writing to the database.
+ */
+data class GuideTimes(
+    val download: Long? = null,
+    val channels: Long? = null,
+    val matching: Long? = null,
+    val programmes: Long? = null,
+    val saving: Long? = null,
+)
+
 /** How many channels without a guide were checked, and how many got one. */
 data class MatchResult(val checked: Int, val matched: Int)
 
@@ -84,6 +98,8 @@ class EpgRepository(
     private val proxies: ProxyClients = ProxyClients(http),
     /** Keeps the user's changes for the sync between TVs: the guides switched on, and the guide channels chosen. */
     private val log: ChoiceLog = ChoiceLog(db),
+    /** Programmes written to the database in one go (see [PROGRAMME_BATCH]; tests make it small). */
+    private val programmeBatch: Int = PROGRAMME_BATCH,
 ) {
     private val epg = db.epg()
 
@@ -93,6 +109,14 @@ class EpgRepository(
     val changes: StateFlow<Int> = _changes
 
     private fun changed() = _changes.update { it + 1 }
+
+    private val _times = MutableStateFlow<Map<Long, GuideTimes>>(emptyMap())
+
+    /** How long each guide's last update took, by source id (since the app started; not saved). */
+    val times: StateFlow<Map<Long, GuideTimes>> = _times
+
+    private fun time(sourceId: Long, step: (GuideTimes) -> GuideTimes) =
+        _times.update { it + (sourceId to step(it[sourceId] ?: GuideTimes())) }
 
     /**
      * Built from the channels of a playlist's guides and reused while matching it (building it is the slow part), with
@@ -308,6 +332,7 @@ class EpgRepository(
                 }
         }
         if (outOfDate && due.isEmpty()) return@withContext errors
+        _times.update { all -> all - sources.map { it.id }.toSet() }
         db.withTransaction { clearSwitchedOff() }
         val downloads = downloadAll(due, errors, onProgress)
         matchAndLoad(playlistIds, sources, downloads, errors, onProgress)
@@ -332,7 +357,8 @@ class EpgRepository(
         val mappedBefore = sources.filterNot { readInFull(it, it.id in fresh) }
             .associate { it.id to epg.mappedXmlIds(it.id).toHashSet() }
         onProgress(GuideStep.Matching())
-        playlistIds.forEach { autoMatch(it, downloads.scope, onProgress) }
+        val matchingMs = measureTimeMillis { playlistIds.forEach { autoMatch(it, downloads.scope, onProgress) } }
+        sources.forEach { s -> time(s.id) { it.copy(matching = matchingMs) } }
         releaseMatcher()
         val late = HashMap<Long, List<EpgChannelEntity>>()
         for (s in sources) {
@@ -406,6 +432,7 @@ class EpgRepository(
         val full = readInFull(s, fresh)
         val wanted = if (full) mapped else mapped - mappedBefore
         if (wanted.isEmpty() && !full) return emptyList()
+        val started = System.currentTimeMillis()
         return runCatching {
             importProgrammes(
                 s.id,
@@ -413,10 +440,11 @@ class EpgRepository(
                 if (full) ImportMode.ALL else ImportMode.THESE,
                 known = if (full) epg.channelXmlIds(s.id).toHashSet() else null,
                 onProgress = { percent -> onProgress(GuideStep.Loading(s.name, percent / 100f)) }
-            ).also {
+            ).also { read ->
+                if (full) time(s.id) { it.copy(programmes = System.currentTimeMillis() - started, saving = read.savingMs) }
                 // Unchanged but read again in full: counts from now. (Not a guide never read well, nor one that failed.)
                 if (full && !fresh && s.lastImportAt != 0L && s.id !in errors) epg.setLastImport(s.id, clock())
-            }
+            }.late
         }.onFailure { e ->
             // E.g. a file cut off part-way: the channels at its start read fine, so say so here.
             epg.setSourceError(s.id, GuideError.saved(e))
@@ -448,12 +476,17 @@ class EpgRepository(
         onProgress(GuideStep.Downloading(s.name))
         val result = runCatching {
             val client = proxies.forProxy(s.playlistId?.let { db.playlists().get(it) }?.proxy)
-            val tags =
-                download(s, client) { percent -> onProgress(GuideStep.Downloading(s.name, percent / 100f)) }
-                    ?: return@runCatching null
+            val started = System.currentTimeMillis()
+            val tags = download(s, client) { percent -> onProgress(GuideStep.Downloading(s.name, percent / 100f)) }
+            val downloaded = System.currentTimeMillis()
+            time(s.id) { it.copy(download = downloaded - started) }
+            if (tags == null) return@runCatching null
             onProgress(GuideStep.Reading(s.name))
             // The tags only once the file has read well: a bad copy is fetched again next time, not kept as unchanged.
-            importChannels(s).also { metaFile(s.id).writeText(tags) }
+            importChannels(s).also {
+                metaFile(s.id).writeText(tags)
+                time(s.id) { t -> t.copy(channels = System.currentTimeMillis() - downloaded) }
+            }
         }
         if (result.getOrNull() == null && result.isSuccess) {
             if (s.lastError != null) epg.setSourceError(s.id, null)
@@ -756,37 +789,12 @@ class EpgRepository(
         return tags
     }
 
-    /** Counts what is read of a file of [length] bytes and reports the percentage done, for progress messages. */
-    private class CountingInputStream(input: InputStream, private val length: Long, private val onPercent: (Int) -> Unit) :
-        java.io.FilterInputStream(input) {
-        private var read = 0L
-        private var reported = -1
-
-        override fun read(): Int = super.read().also { if (it >= 0) count(1) }
-
-        override fun read(b: ByteArray, off: Int, len: Int): Int = super.read(b, off, len).also { if (it > 0) count(it.toLong()) }
-
-        private var reportedAt = 0L
-
-        private fun count(n: Long) {
-            if (length <= 0) return
-            read += n
-            val percent = (read * 100 / length).toInt().coerceAtMost(100)
-            // Every progress message redraws the progress shown: at most twice a second.
-            val now = System.currentTimeMillis()
-            if (percent != reported && (now - reportedAt >= REPORT_EVERY_MS || percent == 100)) {
-                reported = percent
-                reportedAt = now
-                onPercent(percent)
-            }
-        }
-    }
-
     /** The source's file, unpacked; [onProgress] (if given) gets the percentage of it read so far. */
     private fun open(sourceId: Long, onProgress: ((Int) -> Unit)? = null): InputStream {
         val file = sourceFile(sourceId)
         val raw: InputStream = file.inputStream().let { if (onProgress != null) CountingInputStream(it, file.length(), onProgress) else it }
-        return GZIPInputStream(raw.buffered(64 * 1024), 64 * 1024)
+        // Unpacked on a thread of its own, ahead of what reads it.
+        return ReadAhead(GZIPInputStream(raw.buffered(64 * 1024), 64 * 1024), name = "guide-unpack-$sourceId")
     }
 
     /** The address, then the server's version tags (ETag, Last-Modified), of the downloaded file: to ask next time whether it changed. */
@@ -827,20 +835,19 @@ class EpgRepository(
         mode: ImportMode = ImportMode.ALL,
         known: Set<String>? = null,
         onProgress: ((Int) -> Unit)? = null
-    ): List<EpgChannelEntity> {
+    ): Imported {
         val onlyThese = mode != ImportMode.ALL
         // With [known] (the channels read before), returns any others the file has: see addLateChannels.
         val late = ArrayList<EpgChannelEntity>()
-        if (!sourceFile(sourceId).exists()) return late
+        if (!sourceFile(sourceId).exists()) return Imported(late)
         if (xmlIds.isEmpty() && known == null) {
             if (!onlyThese) {
                 epg.clearProgrammes(sourceId) // nothing uses this guide any more
                 epg.setProgrammesUntil(sourceId, 0)
             }
-            return late
+            return Imported(late)
         }
         val now = clock()
-        val batch = ArrayList<ProgrammeEntity>(BATCH)
         val onChannel: (suspend (XmltvChannel) -> Unit)? = known?.let {
             { c ->
                 if (c.id !in known) {
@@ -853,23 +860,22 @@ class EpgRepository(
         // A choice's channels (see readOnNow): stops as soon as they are no longer shown, not at the end. (Not an update:
         // its callers keep a failure as the guide's error.)
         val job = if (mode == ImportMode.CHOICES) currentCoroutineContext()[Job] else null
-        open(sourceId, onProgress).use { input ->
+        // A choice's few channels are written at the end, all or nothing: stopped part-way, it leaves none, so they
+        // are not taken as stored (see readOnNow, applyMapping).
+        val savingMs = ProgrammeWriter(epg, programmeBatch).write({
+            open(sourceId, onProgress)
+        }, allAtEnd = mode == ImportMode.CHOICES) { input, add ->
             parser.parse(input, wantProgrammes = {
                 job?.ensureActive()
                 it in xmlIds
             }, onChannel = onChannel, onProgramme = { p ->
-                batch += ProgrammeEntity(
-                    sourceId, p.channelId, p.startMs, p.stopMs, p.title, p.subtitle, p.description, now, p.kind, p.season, p.episode
+                add(
+                    ProgrammeEntity(
+                        sourceId, p.channelId, p.startMs, p.stopMs, p.title, p.subtitle, p.description, now, p.kind, p.season, p.episode
+                    )
                 )
-                // A choice's few channels are written at the end, all or nothing: stopped part-way, it leaves none,
-                // so they are not taken as stored (see readOnNow, applyMapping).
-                if (batch.size >= BATCH && mode != ImportMode.CHOICES) {
-                    epg.insertProgrammes(batch.toList())
-                    batch.clear()
-                }
             })
         }
-        if (batch.isNotEmpty()) epg.insertProgrammes(batch)
         // When its matched channels' programmes end ("Programmes up to" on the guide sources screen), with the clean-up.
         val until = parser.latestEndMs ?: 0
         db.withTransaction {
@@ -881,11 +887,20 @@ class EpgRepository(
                 epg.setProgrammesUntil(sourceId, until)
             }
         }
-        return late
+        return Imported(late, savingMs)
     }
+
+    /** What [importProgrammes] found: channels listed after programmes (see addLateChannels), and how long it wrote. */
+    private class Imported(val late: List<EpgChannelEntity>, val savingMs: Long = 0)
 
     private companion object {
         const val BATCH = 1000
+
+        /**
+         * Programmes written to the database in one go: fewer, larger writes are faster, above all on a TV's flash
+         * memory (1000 to 2500: about a sixth less time writing a large guide). A batch takes about 2 MB of memory.
+         */
+        const val PROGRAMME_BATCH = 2500
 
         const val DAY_MS = 24 * 3_600_000L
 
@@ -895,9 +910,6 @@ class EpgRepository(
         /** A guide is read in full again when its stored programmes reach less than this far ahead. */
         const val SHORT_AHEAD_MS = 3 * DAY_MS
         const val PROGRESS_EVERY = 100
-
-        /** How often progress is reported, at most. */
-        const val REPORT_EVERY_MS = 500L
         const val KEEP_PAST_MS = 2 * 3_600_000L
         const val KEEP_FUTURE_MS = GUIDE_DAYS_AHEAD * DAY_MS
         const val REMAP_DEBOUNCE_MS = 1_500L

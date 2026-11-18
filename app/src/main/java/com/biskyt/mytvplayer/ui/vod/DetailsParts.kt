@@ -102,11 +102,12 @@ fun DetailButton(
  * button is (the owner, 2026-11-13), and the one shown has the in-use ring inside the fill.
  */
 @Composable
-fun SeasonPill(name: String, current: Boolean, onClick: () -> Unit) {
+fun SeasonPill(name: String, current: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val accent = LocalAccent.current
     val fg = if (current) accent.onAccent else Palette.text
     TvCard(
         onClick,
+        modifier,
         selected = current,
         shape = Pill,
         color = Palette.surfaceHigh,

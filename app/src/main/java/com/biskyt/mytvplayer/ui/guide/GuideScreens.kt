@@ -49,6 +49,7 @@ import com.biskyt.mytvplayer.core.epg.EpgMatch
 import com.biskyt.mytvplayer.data.FreeGuide
 import com.biskyt.mytvplayer.data.FreeGuides
 import com.biskyt.mytvplayer.data.GuideError
+import com.biskyt.mytvplayer.data.GuideTimes
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.EpgSourceEntity
 import com.biskyt.mytvplayer.data.db.GuideCoverage
@@ -91,6 +92,7 @@ import com.biskyt.mytvplayer.ui.settings.SettingsPage
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.bd
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -142,6 +144,9 @@ private fun guideRows(
 data class GuideRow(val source: EpgSourceEntity, val on: Boolean, val others: List<String>, val provider: PlaylistEntity?)
 
 class GuideSourcesViewModel(private val c: AppContainer) : ViewModel() {
+    /** How long each guide's last update took (see [UpdateTimes]). */
+    val times = c.epg.times
+
     private val playlists = c.playlists.observePlaylists().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** The playlist whose guides are shown: the one in use. */
@@ -302,6 +307,7 @@ fun GuideSourcesScreen() {
     val vm = appViewModel { GuideSourcesViewModel(it) }
     val sources by vm.sources.collectAsState()
     val playlist by vm.playlist.collectAsState()
+    val times by vm.times.collectAsState()
     val name = playlist?.name.orEmpty()
     var adding by rememberSaveable { mutableStateOf(false) }
     val title = stringResource(R.string.common_guide_sources)
@@ -337,6 +343,7 @@ fun GuideSourcesScreen() {
                             Text(s.name, style = MaterialTheme.typography.titleMedium)
                             Muted(sourceDetails(row, playlist))
                             if (s.programmesUntil > 0) ProgrammesUntil(s.programmesUntil)
+                            times[s.id]?.let { UpdateTimes(it) }
                             s.lastError?.let {
                                 Text(
                                     stringResource(R.string.live_guide_last_failed, GuideError.text(it)),
@@ -360,6 +367,30 @@ fun GuideSourcesScreen() {
     }
     if (adding) AddGuidePanel(vm, sources.map { it.source }) { adding = false }
 }
+
+/**
+ * How long the guide's last update took, step by step: "Last update: download 12.0 s · channel list 3.1 s · matching
+ * 20.4 s · programmes 41.2 s, saving 18.0 s". Steps that did not run are left out.
+ */
+@Composable
+private fun UpdateTimes(t: GuideTimes) {
+    val steps = listOfNotNull(
+        t.download?.let { stringResource(R.string.live_guide_time_download, seconds(it)) },
+        t.channels?.let { stringResource(R.string.live_guide_time_channels, seconds(it)) },
+        t.matching?.let { stringResource(R.string.live_guide_time_matching, seconds(it)) },
+        t.programmes?.let { stringResource(R.string.live_guide_time_programmes, seconds(it), seconds(t.saving ?: 0)) },
+    )
+    if (steps.isEmpty()) return
+    Text(
+        stringResource(R.string.live_guide_times, steps.joinToString(" · ")),
+        style = MaterialTheme.typography.bodySmall,
+        color = cardColor(Palette.textMuted),
+        maxLines = 2
+    )
+}
+
+/** "12.3 s", in the language's number format. */
+private fun seconds(ms: Long) = String.format(Locale.getDefault(), "%.1f s", ms / 1000.0)
 
 /** When a guide's programmes end, in the warning colour once that is past: the guide is out of date. */
 @Composable

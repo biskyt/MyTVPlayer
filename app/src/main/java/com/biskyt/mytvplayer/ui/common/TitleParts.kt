@@ -61,15 +61,23 @@ fun rememberTrailerOpener(): (String) -> Unit {
  */
 @Composable
 fun TrailersPanel(title: String, trailers: List<TmdbVideo>, onDismiss: () -> Unit) {
+    ItemActionsPanel(title, trailerActions(trailers), onDismiss, stringResource(R.string.vod_other_trailers))
+}
+
+/**
+ * Each of [trailers] as an entry that plays it: "Official Trailer · GB", or "Teaser · US · Vimeo" (its name, else
+ * whether it is a trailer or a teaser; the country it was made for; the site, if not YouTube).
+ */
+@Composable
+fun trailerActions(trailers: List<TmdbVideo>): List<ItemAction> {
     val open = rememberTrailerOpener()
     val trailer = stringResource(R.string.vod_trailer)
     val teaser = stringResource(R.string.vod_teaser)
-    val actions = trailers.map { v ->
+    return trailers.map { v ->
         val name = v.name ?: if (v.teaser) teaser else trailer
         val label = listOfNotNull(name, v.country, v.site.takeIf { it != TmdbVideo.YOUTUBE }).joinToString(" · ")
         ItemAction.Run(label) { open(v.url) }
     }
-    ItemActionsPanel(title, actions, onDismiss, stringResource(R.string.vod_other_trailers))
 }
 
 /** One of the cast: photo (loaded only when shown), name and part. */
