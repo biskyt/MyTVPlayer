@@ -136,6 +136,10 @@ class CatchupPlayerViewModel(
         }
     }
 
+    override fun onControlsShown() {
+        if (openedAt != 0L) at = position()
+    }
+
     /** Skipping moves between the channel's oldest catch-up (or where it is, if older) and now (where it goes live). */
     override fun scrubBounds(): Pair<LongRange, Long>? {
         val ch = channel ?: return null

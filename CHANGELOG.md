@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.29.0
+- Guides load their programmes faster, as the app now uses more of the TV's processor and saves in larger steps.
+- The progress bar now opens at the right place, with no jump from where it was last shown.
+- Guide sources now show how long each step of a guide's last update took.
+- After Try again on a page that could not load, the remote now stays on the page.
+
 ## 1.28.0
 - The TV guide now shows up to a week ahead, where your guide has the programmes.
 - Large guides now download much less often: only when fewer than 3 days of programmes are left.

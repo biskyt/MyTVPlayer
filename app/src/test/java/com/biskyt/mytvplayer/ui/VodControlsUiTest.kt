@@ -74,6 +74,21 @@ class VodControlsUiTest {
     }
 
     @Test
+    fun `the play bar opens at where playback is now, not where it was last shown`() {
+        val navigator = navigators.new(Screen.VodPlayer(playlistId, 501))
+        compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
+        val vm = ViewModelProvider(navigator.current)[VodPlayerViewModel::class.java]
+        compose.waitAdvancingClock { vm.engine?.player?.currentMediaItem != null && shown("More") > 0 }
+        compose.runOnUiThread {
+            vm.hideOverlay()
+            vm.engine!!.player.seekTo(90_000) // played on while the controls were hidden
+            vm.showControls()
+            // At once, not at the next tick.
+            assertEquals(90L, vm.positionSec)
+        }
+    }
+
+    @Test
     fun `after a skip, back from the subtitles panel leaves focus on subtitles, not the video`() {
         val navigator = navigators.new(Screen.VodPlayer(playlistId, 501))
         compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }

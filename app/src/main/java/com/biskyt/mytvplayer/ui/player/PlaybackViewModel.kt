@@ -477,6 +477,8 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     /** Shows the controls (and keeps them up a while longer); [forSkip] when skipping brings them up. */
     fun showControls(keepOverlay: Boolean = false, forSkip: Boolean = false) {
         if (overlay != OverlayState.CONTROLS && (!keepOverlay || overlay == OverlayState.NONE)) {
+            // The time first, so the play bar opens where playback is, not where it was when last shown.
+            onControlsShown()
             overlay = OverlayState.CONTROLS
             controlsFocus = if (forSkip) ControlsFocus.VIDEO else ControlsFocus.PLAY_PAUSE
         }
@@ -486,6 +488,9 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             if (overlay == OverlayState.CONTROLS && sheet == null && !paused) overlay = OverlayState.NONE
         }
     }
+
+    /** The controls are about to show: brings the time they show up to date (it is updated only while they show). */
+    protected open fun onControlsShown() = Unit
 
     /** Touch: tapping the video shows the controls, or hides them. */
     fun tapVideo() {

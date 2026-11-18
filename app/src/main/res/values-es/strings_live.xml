@@ -104,6 +104,11 @@
     <string name="live_guide_current">Actual: %1$s (%2$s)</string>
     <string name="live_guide_current_shifted">Actual: %1$s (%2$s) · desfase %3$dh</string>
     <string name="live_guide_programmes_until">Programas hasta %1$s</string>
+    <string name="live_guide_times">Última actualización: %1$s</string>
+    <string name="live_guide_time_download">descarga %1$s</string>
+    <string name="live_guide_time_channels">lista de canales %1$s</string>
+    <string name="live_guide_time_matching">asignación %1$s</string>
+    <string name="live_guide_time_programmes">programas %1$s, guardado %2$s</string>
     <string name="live_guide_on_now">Ahora: %1$s (%2$s)</string>
     <string name="live_guide_on_now_none">No hay nada ahora en esta guía</string>
     <string name="live_guide_search_hint">Buscar en todos los canales de guía</string>

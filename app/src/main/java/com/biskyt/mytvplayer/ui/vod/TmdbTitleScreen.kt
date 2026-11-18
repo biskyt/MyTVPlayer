@@ -19,14 +19,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -118,6 +119,7 @@ fun TmdbTitleScreen(screen: Screen.TmdbTitle) {
     val info = vm.info
     val playTrailer = rememberTrailerOpener()
     var trailers by rememberSaveable { mutableStateOf(false) }
+    val shownSeason = remember { FocusRequester() }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 40.dp)) {
         item {
             Row(Modifier.padding(horizontal = SIDE), horizontalArrangement = Arrangement.spacedBy(40.dp)) {
@@ -158,7 +160,7 @@ fun TmdbTitleScreen(screen: Screen.TmdbTitle) {
                 }
             }
         }
-        info?.tmdb?.seasons?.takeIf { it.isNotEmpty() }?.let { seasons -> seasons(seasons, vm) }
+        info?.tmdb?.seasons?.takeIf { it.isNotEmpty() }?.let { seasons -> seasons(seasons, vm, shownSeason) }
         vm.error?.let { error -> item { Box(Modifier.padding(start = SIDE, top = 32.dp)) { ErrorRetry(error) { vm.load() } } } }
         if (info == null && vm.error == null) {
             item { Muted(stringResource(R.string.common_loading), Modifier.padding(start = SIDE, top = 32.dp)) }
@@ -171,7 +173,7 @@ fun TmdbTitleScreen(screen: Screen.TmdbTitle) {
  * A series' seasons as a row of buttons (the one shown is selected), then that season's episodes: number, name and the
  * date each was first shown. Each episode takes the remote, so that Down scrolls the list.
  */
-private fun LazyListScope.seasons(seasons: List<TmdbSeason>, vm: TmdbTitleViewModel) {
+private fun LazyListScope.seasons(seasons: List<TmdbSeason>, vm: TmdbTitleViewModel, shownSeason: FocusRequester) {
     item {
         LazyRow(
             Modifier.padding(top = 32.dp),
@@ -180,7 +182,9 @@ private fun LazyListScope.seasons(seasons: List<TmdbSeason>, vm: TmdbTitleViewMo
         ) {
             // As the series page's seasons.
             items(seasons, key = { it.number }) { s ->
-                SeasonPill(seasonName(s.number, s.name), s.number == vm.season) { vm.showSeason(s.number) }
+                val current = s.number == vm.season
+                val modifier = if (current) Modifier.focusRequester(shownSeason) else Modifier
+                SeasonPill(seasonName(s.number, s.name), current, modifier) { vm.showSeason(s.number) }
             }
         }
     }
@@ -189,13 +193,9 @@ private fun LazyListScope.seasons(seasons: List<TmdbSeason>, vm: TmdbTitleViewMo
     when {
         season == null || episodes != null -> Unit
         vm.seasonFailed -> item {
-            val focus = LocalFocusManager.current
             Box(Modifier.padding(start = SIDE, top = 16.dp)) {
-                ErrorRetry(stringResource(R.string.vod_tmdb_season_failed)) {
-                    // The button goes while the season loads: the remote goes up to the seasons first.
-                    focus.moveFocus(FocusDirection.Up)
-                    vm.showSeason(season)
-                }
+                // The button goes while the season loads: the remote goes to the season's own button.
+                ErrorRetry(stringResource(R.string.vod_tmdb_season_failed), shownSeason) { vm.showSeason(season) }
             }
         }
         else -> item { Muted(stringResource(R.string.common_loading), Modifier.padding(start = SIDE, top = 16.dp)) }

@@ -25,6 +25,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.FocusState
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
@@ -33,6 +35,7 @@ import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.unit.LayoutDirection
 import com.biskyt.mytvplayer.ui.theme.Palette
 import kotlin.random.Random
 import kotlinx.coroutines.flow.first
@@ -254,12 +257,22 @@ private data class QuietFocus(val shape: Shape) : ModifierNodeElement<QuietFocus
 
     override fun update(node: QuietFocusNode) {
         node.shape = shape
-        node.invalidateDraw()
     }
 }
 
-private class QuietFocusNode(var shape: Shape) : Modifier.Node(), FocusEventModifierNode, DrawModifierNode {
+private class QuietFocusNode(shape: Shape) : Modifier.Node(), FocusEventModifierNode, DrawModifierNode {
+    var shape = shape
+        set(value) {
+            if (value == field) return
+            field = value
+            outline = null
+            invalidateDraw()
+        }
     private var focused = false
+
+    /** The fill's outline, made again only when the size, direction or shape changes. */
+    private var outline: Outline? = null
+    private var outlineFor: Pair<Size, LayoutDirection>? = null
 
     override fun onFocusEvent(focusState: FocusState) {
         if (focused != focusState.isFocused) {
@@ -269,7 +282,14 @@ private class QuietFocusNode(var shape: Shape) : Modifier.Node(), FocusEventModi
     }
 
     override fun ContentDrawScope.draw() {
-        if (focused) drawOutline(shape.createOutline(size, layoutDirection, this), Palette.surfaceHigh)
+        if (focused) {
+            val key = size to layoutDirection
+            val o = outline?.takeIf { outlineFor == key } ?: shape.createOutline(size, layoutDirection, this).also {
+                outline = it
+                outlineFor = key
+            }
+            drawOutline(o, Palette.surfaceHigh)
+        }
         drawContent()
     }
 }
