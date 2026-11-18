@@ -53,6 +53,7 @@
     <!-- TMDB data on the film and series pages (MyPlexPlayer's wording). -->
     <!-- Film page: the button that plays the trailer; also the title of its QR code panel. -->
     <string name="vod_trailer">Trailer</string>
+    <string name="vod_teaser">Teaser</string>
     <!-- Film page: the heading over the cast along the bottom. -->
     <string name="vod_cast_title">Cast</string>
     <!-- Film page. %1$s: names of people. -->

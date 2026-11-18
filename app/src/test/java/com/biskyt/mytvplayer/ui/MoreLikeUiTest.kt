@@ -12,6 +12,7 @@ import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.addHomeTv
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
+import com.biskyt.mytvplayer.testutil.focusedText
 import com.biskyt.mytvplayer.testutil.settle
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.testutil.waitForText
@@ -150,9 +151,13 @@ class MoreLikeUiTest {
         show(Screen.TmdbTitle(playlistId, FakeTmdb.HAPPY_VALLEY, series = true, "Happy Valley", null, Tab.SERIES))
         compose.waitForText("Couldn't load this season from TMDB")
         tmdb.seasonsFail = false
+        compose.waitAdvancingClock { compose.focusedText() == "Try again" }
         click("Try again")
         compose.waitForText("The Last One")
         assertTrue(!shown("Couldn't load this season from TMDB"))
+        // The button went: the remote moved up to its season, not back to the top of the page.
+        compose.settle()
+        assertEquals("Series 3", compose.focusedText())
     }
 
     @Test

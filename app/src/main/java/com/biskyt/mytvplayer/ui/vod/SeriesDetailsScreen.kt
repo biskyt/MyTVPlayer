@@ -344,7 +344,7 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
         personScreen(screen.playlistId, person, show.title, Tab.SERIES, acting)?.let(nav::push)
     }
     val moreLike = { tmdbId: Int -> nav.push(Screen.MoreLike(screen.playlistId, tmdbId, series = true, show.title, Tab.SERIES)) }
-    SeriesPanels(vm, show.title, progress, vm.info.trailer?.let { id -> { trailer(id) } }, openCrew, moreLike)
+    SeriesPanels(vm, show.title, progress, vm.info.trailer?.let { url -> { trailer(url) } }, openCrew, moreLike)
 }
 
 /** What is open over the series page ([SeriesDetailsViewModel.open]): its own composable, so the page does not recompose with it. */

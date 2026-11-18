@@ -1,6 +1,5 @@
 package com.biskyt.mytvplayer.ui.common
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
@@ -20,14 +19,19 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusEventModifierNode
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.FocusState
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.platform.LocalFocusManager
 import com.biskyt.mytvplayer.ui.theme.Palette
 import kotlin.random.Random
@@ -242,7 +246,30 @@ suspend fun settleFor(done: () -> Boolean): Boolean {
  * Takes the remote only so that Up and Down move through a list of plain rows (credits, facts, episodes), and shows it
  * quietly: a dark fill ([shape]) behind the row that has it.
  */
-fun Modifier.quietFocus(shape: Shape = RectangleShape): Modifier = composed {
-    var focused by remember { mutableStateOf(false) }
-    onFocusChanged { focused = it.isFocused }.focusable().background(if (focused) Palette.surfaceHigh else Color.Transparent, shape)
+fun Modifier.quietFocus(shape: Shape = RectangleShape): Modifier = this then QuietFocus(shape) then Modifier.focusable()
+
+/** [quietFocus]'s fill, as a node: no composition of its own for each row. */
+private data class QuietFocus(val shape: Shape) : ModifierNodeElement<QuietFocusNode>() {
+    override fun create() = QuietFocusNode(shape)
+
+    override fun update(node: QuietFocusNode) {
+        node.shape = shape
+        node.invalidateDraw()
+    }
+}
+
+private class QuietFocusNode(var shape: Shape) : Modifier.Node(), FocusEventModifierNode, DrawModifierNode {
+    private var focused = false
+
+    override fun onFocusEvent(focusState: FocusState) {
+        if (focused != focusState.isFocused) {
+            focused = focusState.isFocused
+            invalidateDraw()
+        }
+    }
+
+    override fun ContentDrawScope.draw() {
+        if (focused) drawOutline(shape.createOutline(size, layoutDirection, this), Palette.surfaceHigh)
+        drawContent()
+    }
 }

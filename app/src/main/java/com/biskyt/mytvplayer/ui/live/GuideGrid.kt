@@ -62,6 +62,7 @@ import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.container
 import com.biskyt.mytvplayer.data.EpgRepository
+import com.biskyt.mytvplayer.data.GUIDE_DAYS_AHEAD
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
@@ -798,7 +799,7 @@ internal class GuideCatchup(private val c: AppContainer, private val scope: Coro
 
 /**
  * The window after moving past its edge from [p] in direction [dir]: at least an hour, and far enough to show the
- * time just beyond [p]; with the time focus goes to. Null at the limits (now minus [catchupDays], three days ahead).
+ * time just beyond [p]; with the time focus goes to. Null at the limits (now minus [catchupDays], [GUIDE_DAYS_AHEAD] days ahead).
  */
 private fun nextWindow(windowStart: Long, length: Long, dir: Int, p: ChannelProgramme?, catchupDays: Int): Pair<Long, Long>? {
     val target = if (dir > 0) p?.stopMs ?: (windowStart + length) else (p?.startMs ?: windowStart) - 1
@@ -808,6 +809,6 @@ private fun nextWindow(windowStart: Long, length: Long, dir: Int, p: ChannelProg
         minOf(windowStart - HOUR, target / HALF_HOUR * HALF_HOUR)
     }
     val now = System.currentTimeMillis() / HALF_HOUR * HALF_HOUR
-    val next = wanted.coerceIn(now - catchupDays * DAY_MS, now + 3 * DAY_MS)
+    val next = wanted.coerceIn(now - catchupDays * DAY_MS, now + GUIDE_DAYS_AHEAD * DAY_MS)
     return if (next == windowStart) null else next to target.coerceIn(next, next + length - 1)
 }

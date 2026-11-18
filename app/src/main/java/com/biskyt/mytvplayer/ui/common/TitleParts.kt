@@ -43,26 +43,17 @@ fun rememberLinkOpener(): (TitleLink) -> Unit {
 }
 
 /**
- * Plays a trailer (a YouTube id) by its YouTube watch address, which the YouTube app (and others, such as SmartTube)
- * opens and plays; where nothing can open it, shows that address as a QR code (with "Open on this TV"). Not a
+ * Plays a trailer by its page ([url], on YouTube or Vimeo), which the YouTube or Vimeo app (or another, such as
+ * SmartTube) opens and plays; where nothing can open it, shows that address as a QR code (with "Open on this TV"). Not a
  * "vnd.youtube:" link: on Android TV the YouTube app then opens without the video, and SmartTube calls it a bad intent.
  */
 @Composable
 fun rememberTrailerOpener(): (String) -> Unit {
-    val open = rememberVideoOpener()
-    return remember(open) { { id -> open(youTubePage(id)) } }
-}
-
-/** Opens a video's page ([url], on YouTube or Vimeo) as [rememberTrailerOpener] does a trailer. */
-@Composable
-fun rememberVideoOpener(): (String) -> Unit {
     val context = LocalContext.current
     var shown by remember { mutableStateOf<String?>(null) }
     shown?.let { LinkPanel(stringResource(R.string.vod_trailer), it) { shown = null } }
     return remember(context) { { url -> if (openLink(context, url) != null) shown = url } }
 }
-
-private fun youTubePage(id: String) = "https://www.youtube.com/watch?v=$id"
 
 /**
  * "Other trailers": all of a title's trailers and teasers from TMDB, best first, each with the country it was made for.
@@ -70,10 +61,12 @@ private fun youTubePage(id: String) = "https://www.youtube.com/watch?v=$id"
  */
 @Composable
 fun TrailersPanel(title: String, trailers: List<TmdbVideo>, onDismiss: () -> Unit) {
-    val open = rememberVideoOpener()
+    val open = rememberTrailerOpener()
     val trailer = stringResource(R.string.vod_trailer)
+    val teaser = stringResource(R.string.vod_teaser)
     val actions = trailers.map { v ->
-        val label = listOfNotNull(v.name ?: trailer, v.country, v.site.takeIf { it != TmdbVideo.YOUTUBE }).joinToString(" · ")
+        val name = v.name ?: if (v.teaser) teaser else trailer
+        val label = listOfNotNull(name, v.country, v.site.takeIf { it != TmdbVideo.YOUTUBE }).joinToString(" · ")
         ItemAction.Run(label) { open(v.url) }
     }
     ItemActionsPanel(title, actions, onDismiss, stringResource(R.string.vod_other_trailers))

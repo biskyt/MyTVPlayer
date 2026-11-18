@@ -168,7 +168,8 @@ private suspend fun firstScreen(container: AppContainer, s: Settings, safeStart:
     if (playlist.id != s.activePlaylistId) container.settings.update { it.copy(activePlaylistId = playlist.id) }
     if (safeStart) return nav
     when {
-        playlist.isStale() -> container.sync.refresh(playlist.id)
+        // Its guides only if out of date: a large guide is read only every few days (see EpgRepository.isOutOfDate).
+        playlist.isStale() -> container.sync.refreshAll()
         needsVod(container, playlist) -> container.sync.refreshVod(playlist.id)
     }
     // Not when opened with a backup file, from a card on the TV's home screen or for the TV guide: that's what to show

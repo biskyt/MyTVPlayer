@@ -29,7 +29,7 @@ data class TitleInfo(
     val cast: List<CastMember> = emptyList(),
     /** The provider's cast as it writes it ("Tom Hale, Ines Moreau"), only when TMDB has no cast. */
     val castNames: String? = null,
-    /** A YouTube id. */
+    /** The trailer's page, on YouTube or Vimeo. */
     val trailer: String? = null,
     /** TMDB's trailers and teasers, best first, for Other trailers. */
     val trailers: List<TmdbVideo> = emptyList(),
@@ -55,7 +55,7 @@ fun merge(provider: VodDetails?, tmdb: TmdbTitle?): TitleInfo = TitleInfo(
     writers = tmdb?.writers.orEmpty().map { it.name },
     cast = tmdb?.cast.orEmpty(),
     castNames = provider?.cast?.takeIf { tmdb?.cast.isNullOrEmpty() },
-    trailer = tmdb?.trailer ?: provider?.trailer,
+    trailer = tmdb?.trailer?.url ?: provider?.trailer?.let(TmdbVideo::youTubePage),
     trailers = tmdb?.trailers.orEmpty(),
     tmdb = tmdb
 )

@@ -119,7 +119,7 @@ fun MovieDetailsScreen(screen: Screen.MovieDetails) {
     var castFocus by rememberSaveable { mutableIntStateOf(0) }
     val trailer = rememberTrailerOpener()
     val info = vm.info
-    val playTrailer = info.trailer?.let { id -> { trailer(id) } }
+    val playTrailer = info.trailer?.let { url -> { trailer(url) } }
     FilmPage(
         movie,
         info,

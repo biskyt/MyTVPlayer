@@ -54,7 +54,7 @@ class TmdbClientTest {
         )
         assertEquals(listOf("Lana Wachowski"), t.directors.map { it.name })
         assertEquals(listOf("Lana Wachowski"), t.writers.map { it.name })
-        assertEquals("trailer0002", t.trailer) // the official trailer
+        assertEquals("trailer0002", t.trailer?.key) // the official trailer
         assertEquals(LocalDate.of(1999, 3, 31), t.released)
         assertEquals(listOf("Action"), t.genres)
         val request = server.takeRequest()
@@ -92,10 +92,17 @@ class TmdbClientTest {
             .movie(1)!!
         // The UK upload, which plays in the UK where the US studio's may be blocked; no clip.
         assertEquals(listOf("ukTrailer01", "usTrailer01", "12345678", "teaserGB001"), t.trailers.map { it.key })
-        assertEquals("ukTrailer01", t.trailer)
+        assertEquals("ukTrailer01", t.trailer?.key)
         assertEquals("GB", t.trailers.first().country)
+        assertEquals(listOf(false, false, false, true), t.trailers.map { it.teaser })
         assertEquals("https://vimeo.com/12345678", t.trailers[2].url)
         assertEquals("https://www.youtube.com/watch?v=ukTrailer01", t.trailers[0].url)
+    }
+
+    @Test
+    fun `a title whose only trailer is on Vimeo still has one to play`() = runBlocking {
+        reply("""{"id":1,"videos":{"results":[{"key":"12345678","site":"Vimeo","type":"Trailer","name":"Trailer"}]}}""")
+        assertEquals("https://vimeo.com/12345678", client().movie(1)!!.trailer?.url)
     }
 
     @Test

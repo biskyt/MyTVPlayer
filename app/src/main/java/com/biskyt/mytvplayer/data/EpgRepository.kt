@@ -60,6 +60,9 @@ enum class MatchScope(val threshold: Double) {
     MISSING(ChannelMatcher.MISSING_THRESHOLD)
 }
 
+/** How many days ahead the guide's programmes are kept, and the TV guide goes. */
+const val GUIDE_DAYS_AHEAD = 7
+
 /** How many channels without a guide were checked, and how many got one. */
 data class MatchResult(val checked: Int, val matched: Int)
 
@@ -67,7 +70,7 @@ data class MatchResult(val checked: Int, val matched: Int)
  * TV guide data: XMLTV sources, which guide channel each playlist channel uses, and programme lookups.
  *
  * To keep storage small on low-end boxes, every source's channel list is stored (needed for matching) but programmes
- * are only stored for guide channels that some playlist channel actually uses, within a few days of now. The
+ * are only stored for guide channels that some playlist channel actually uses, up to [GUIDE_DAYS_AHEAD] days ahead. The
  * downloaded file is kept (gzipped) so a newly mapped channel can be filled in without downloading again.
  */
 class EpgRepository(
@@ -342,8 +345,16 @@ class EpgRepository(
         changed()
     }
 
-    /** Never loaded, or not since the last daily update was due: what switching to a playlist updates. */
-    fun isOutOfDate(s: EpgSourceEntity) = clock() - s.lastImportAt > REREAD_AFTER_MS
+    /**
+     * Due a full read (what switching to a playlist updates): its stored programmes reach less than [SHORT_AHEAD_MS]
+     * ahead, and it was not read in the last [REREAD_AFTER_MS]. As at most [KEEP_FUTURE_MS] are stored from each read,
+     * a guide with a week of programmes is read every 4 days, and one with only a day or two (or none) daily.
+     */
+    fun isOutOfDate(s: EpgSourceEntity): Boolean {
+        val now = clock()
+        val stored = minOf(s.programmesUntil, s.lastImportAt + KEEP_FUTURE_MS)
+        return now - s.lastImportAt > REREAD_AFTER_MS && stored - now < SHORT_AHEAD_MS
+    }
 
     /** What [downloadAll] found: the sources downloaded anew, and how much matching that calls for. */
     private class Downloads(val fresh: Set<Long>, val scope: MatchScope)
@@ -876,17 +887,19 @@ class EpgRepository(
     private companion object {
         const val BATCH = 1000
 
-        /**
-         * A guide kept from before (not downloaded again, or not changed) is read in full again after this long, so
-         * its stored programmes still reach about two days ahead.
-         */
+        const val DAY_MS = 24 * 3_600_000L
+
+        /** A guide is read in full again at most this often, so a guide with only a day or two is read daily. */
         const val REREAD_AFTER_MS = 20 * 3_600_000L
+
+        /** A guide is read in full again when its stored programmes reach less than this far ahead. */
+        const val SHORT_AHEAD_MS = 3 * DAY_MS
         const val PROGRESS_EVERY = 100
 
         /** How often progress is reported, at most. */
         const val REPORT_EVERY_MS = 500L
         const val KEEP_PAST_MS = 2 * 3_600_000L
-        const val KEEP_FUTURE_MS = 3 * 24 * 3_600_000L
+        const val KEEP_FUTURE_MS = GUIDE_DAYS_AHEAD * DAY_MS
         const val REMAP_DEBOUNCE_MS = 1_500L
     }
 }
