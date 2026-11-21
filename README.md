@@ -1,6 +1,12 @@
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/biskyt) [![GitHub Sponsors](https://img.shields.io/badge/Sponsor-GitHub-ea4aaa?style=for-the-badge&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/biskyt)
+<img width="200" alt="get it on github" src="https://github.com/user-attachments/assets/53812976-a0f8-4e6d-bd46-3bc47a19ebdb" ><a href="https://github.com/biskyt/MyTVPlayer/releases"></a></img>
 
-_This work is free, with no ads and no tracking and no data collection. If you find it useful, you can support its development by buying me a coffee with the links above._
+Download the APK from [Releases](https://github.com/biskyt/MyTVPlayer/releases) and sideload it.
+
+<img width="200" alt="get it on google play" src="https://github.com/user-attachments/assets/5b4c45ca-ab6d-4a9b-8f7e-cee1de27d438" ><a href="https://play.google.com/store/apps/details?id=com.biskyt.mytvplayer" /></img>
+
+MyTVLauncher is currently in closed testing on Google Play. You need to join the google group to get access to it in the play store:
+
+1. [Join the group](https://groups.google.com/g/biskyt-apps-beta) → 2. [Accept the test](https://play.google.com/apps/testing/com.biskyt.mytvplayer) → 3. [Install from Play](https://play.google.com/store/apps/details?id=com.biskyt.mytvplayer)
 
 
 # MyTVPlayer
@@ -183,10 +189,9 @@ tests; `app/` is the Android TV app (Jetpack Compose for TV, Room, Media3 ExoPla
 
 ## Support
 
-MyTVPlayer is free, with no ads and no tracking. If you find it useful, you can support its development:
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/biskyt)   [![GitHub Sponsors](https://img.shields.io/badge/Sponsor-GitHub-ea4aaa?style=for-the-badge&logo=github-sponsors&logoColor=white)](https://github.com/sponsors/biskyt)
 
-- [Ko-fi](https://ko-fi.com/biskyt)
-- [GitHub Sponsors](https://github.com/sponsors/biskyt)
+_This work is free, with no ads, no tracking and no data collection. If you find it useful, you can support its development by buying me a coffee with the links above._
 
 ## Licence
 
