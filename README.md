@@ -1,8 +1,12 @@
-<img width="200" alt="get it on github" src="https://github.com/user-attachments/assets/53812976-a0f8-4e6d-bd46-3bc47a19ebdb" ><a href="https://github.com/biskyt/MyTVPlayer/releases"></a></img>
+<a href="https://github.com/biskyt/MyTVPlayer/releases">
+  <img width="200" alt="get it on github" src="https://github.com/user-attachments/assets/53812976-a0f8-4e6d-bd46-3bc47a19ebdb" />
+</a>
 
 Download the APK from [Releases](https://github.com/biskyt/MyTVPlayer/releases) and sideload it.
 
-<img width="200" alt="get it on google play" src="https://github.com/user-attachments/assets/5b4c45ca-ab6d-4a9b-8f7e-cee1de27d438" ><a href="https://play.google.com/store/apps/details?id=com.biskyt.mytvplayer" /></img>
+<a href="https://play.google.com/store/apps/details?id=com.biskyt.mytvplayer" />
+  <img width="200" alt="get it on google play" src="https://github.com/user-attachments/assets/5b4c45ca-ab6d-4a9b-8f7e-cee1de27d438" />
+</a>
 
 MyTVLauncher is currently in closed testing on Google Play. You need to join the google group to get access to it in the play store:
 
