@@ -53,6 +53,7 @@ import com.biskyt.mytvplayer.ui.common.Poster
 import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TrailersPanel
 import com.biskyt.mytvplayer.ui.common.cardColor
+import com.biskyt.mytvplayer.ui.common.favouriteAction
 import com.biskyt.mytvplayer.ui.common.formatRuntime
 import com.biskyt.mytvplayer.ui.common.onOptionsKey
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus

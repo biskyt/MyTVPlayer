@@ -56,10 +56,7 @@ enum class MatchScope(val threshold: Double) {
     NEW(ChannelMatcher.AUTO_THRESHOLD),
 
     /** As [NEW], plus channels tried before without a match (a guide's channel list changed). */
-    RETRY(ChannelMatcher.AUTO_THRESHOLD),
-
-    /** Channels without a guide, near-certain matches only (the "Match channels without a guide" button). */
-    MISSING(ChannelMatcher.MISSING_THRESHOLD)
+    RETRY(ChannelMatcher.AUTO_THRESHOLD)
 }
 
 /** How many days ahead the guide's programmes are kept, and the TV guide goes. */
@@ -76,9 +73,6 @@ data class GuideTimes(
     val programmes: Long? = null,
     val saving: Long? = null,
 )
-
-/** How many channels without a guide were checked, and how many got one. */
-data class MatchResult(val checked: Int, val matched: Int)
 
 /**
  * TV guide data: XMLTV sources, which guide channel each playlist channel uses, and programme lookups.
@@ -517,7 +511,6 @@ class EpgRepository(
             }
             MatchScope.NEW -> epg.namesToMatch(playlistId, retryFailed = false, visibleOnly = false)
             MatchScope.RETRY -> epg.namesToMatch(playlistId, retryFailed = true, visibleOnly = false)
-            MatchScope.MISSING -> epg.namesToMatch(playlistId, retryFailed = true, visibleOnly = true)
         }
         // Building the matcher is the slow part: skip it when there's nothing to match.
         if (channels.isEmpty() && scope != MatchScope.ALL) return@withContext emptyList()
@@ -545,23 +538,6 @@ class EpgRepository(
             rows.chunked(BATCH).forEach { epg.upsertMappings(it) }
         }
         rows
-    }
-
-    /**
-     * Tries again, with only near-certain matches, for every visible channel without a guide (except those the user set
-     * to "no guide"), then loads the programmes of the guide channels found.
-     */
-    suspend fun matchMissing(playlistIds: List<Long>, onProgress: (GuideStep) -> Unit = {}): MatchResult = withContext(Dispatchers.IO) {
-        val checked = playlistIds.flatMap { autoMatch(it, MatchScope.MISSING, onProgress) }
-        val found = checked.filter { it.sourceId != null }
-        releaseMatcher()
-        val names = epg.sourcesFor(playlistIds).associate { it.id to it.name }
-        found.groupBy({ it.sourceId!! }, { it.xmlId!! }).forEach { (source, xmlIds) ->
-            onProgress(GuideStep.Loading(names[source]))
-            runCatching { importProgrammes(source, xmlIds.toHashSet(), ImportMode.THESE) }
-        }
-        changed()
-        MatchResult(checked.size, found.size)
     }
 
     fun releaseMatcher() {

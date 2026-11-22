@@ -112,6 +112,8 @@ class PlaylistProxyTest {
         assertEquals(ProxyCheck.Working(away, home), ProxyCheck.run({ home }, { away }))
         assertEquals(ProxyCheck.SameAddress(home), ProxyCheck.run({ home }, { home }))
         assertEquals(ProxyCheck.Failed("refused"), ProxyCheck.run({ home }, { throw IOException("refused") }))
+        // The services answered through the proxy, but too busy to say the address: it works, not "not working".
+        assertEquals(ProxyCheck.Unchecked("busy"), ProxyCheck.run({ home }, { throw IpLookupLimited("busy") }))
         // Without a direct answer, the proxy's address still counts.
         assertEquals(ProxyCheck.Working(away, null), ProxyCheck.run({ throw IOException("offline") }, { away }))
     }

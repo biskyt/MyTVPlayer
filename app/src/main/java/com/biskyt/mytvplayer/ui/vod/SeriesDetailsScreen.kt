@@ -39,18 +39,12 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -81,7 +75,6 @@ import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.AppIcons
 import com.biskyt.mytvplayer.ui.common.CastPanel
-import com.biskyt.mytvplayer.ui.common.FocusStroke
 import com.biskyt.mytvplayer.ui.common.ItemAction
 import com.biskyt.mytvplayer.ui.common.ItemActionsPanel
 import com.biskyt.mytvplayer.ui.common.LocalTopBarInset
@@ -92,6 +85,7 @@ import com.biskyt.mytvplayer.ui.common.ProgressLine
 import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TrailersPanel
 import com.biskyt.mytvplayer.ui.common.TvCard
+import com.biskyt.mytvplayer.ui.common.focusGlow
 import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.common.formatRuntime
 import com.biskyt.mytvplayer.ui.common.markWatched
@@ -421,7 +415,7 @@ fun SeriesColumn(
         info.plot?.let { PlotWithMore(show.title, it, SeriesPlot.current, maxLines = 4, moreModifier) }
         // A little room under the last button: the scrolled column clips what is outside it.
         Column(
-            Modifier.padding(top = 4.bd, bottom = FocusStroke.width),
+            Modifier.padding(top = 4.bd, bottom = 3.bd),
             verticalArrangement = Arrangement.spacedBy(10.bd),
             horizontalAlignment = Alignment.Start,
             content = buttons
@@ -515,8 +509,8 @@ private fun Episodes(
     entry: FocusRequester
 ) {
     if (d.seasons.size > 1) {
-        // In by the ring's width, as the episode list is, so the numbers line up with the pills' text.
-        LazyRow(Modifier.padding(start = RING), horizontalArrangement = Arrangement.spacedBy(8.bd)) {
+        // In by the glow's room, as the episode list is, so the numbers line up with the pills' text.
+        LazyRow(Modifier.padding(start = GLOW_EDGE), horizontalArrangement = Arrangement.spacedBy(8.bd)) {
             items(d.seasons, key = { it.number }) { s ->
                 SeasonPill(seasonName(s.number, s.name), s.number == season) { vm.season = s.number }
             }
@@ -548,8 +542,8 @@ private fun Episodes(
             }
             .focusGroup(),
         verticalArrangement = Arrangement.spacedBy(8.bd),
-        // Room for the open row's ring, just outside it.
-        contentPadding = PaddingValues(start = RING, end = RING, top = RING, bottom = 24.bd)
+        // Room for the open row's glow, just outside it.
+        contentPadding = PaddingValues(start = GLOW_EDGE, end = GLOW_EDGE, top = GLOW_EDGE, bottom = 24.bd)
     ) {
         items(shown, key = { it.id }) { e ->
             val focus = Modifier.restoreFocusIf(vm.focusEpisodePending && e == target) { vm.focusEpisodePending = false }
@@ -588,7 +582,7 @@ private fun EpisodeRow(
     val shape = RoundedCornerShape(if (open) 12.bd else 10.bd)
     Row(
         Modifier.fillMaxWidth().bringIntoViewRequester(bring).onFocusChanged { open = it.hasFocus }
-            .then(if (open) Modifier.drawBehind { drawRing() } else Modifier)
+            .focusGlow(shape, LocalAccent.current.color, grow = false)
             .clip(shape).background(if (open) Palette.surfaceHigh else Color.Transparent),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -616,20 +610,6 @@ private fun EpisodeRow(
         }
     }
 }
-
-/** The open row's ring: 3 wide, just outside it (the board's box-shadow 0 0 0 3px). */
-private fun DrawScope.drawRing() {
-    val w = RING.toPx()
-    drawRoundRect(
-        FocusStroke.brush,
-        topLeft = Offset(-w / 2, -w / 2),
-        size = Size(size.width + w, size.height + w),
-        cornerRadius = CornerRadius(12.bd.toPx() + w / 2),
-        style = Stroke(w)
-    )
-}
-
-private val RING = FocusStroke.width
 
 /** What is left of a part-watched episode, or null. */
 private fun WatchProgressEntity?.partWatched() = this?.takeIf { it.started && !it.finished && it.durationMs > 0 }
@@ -739,3 +719,6 @@ private val EpisodeSmall = BoardStyle(13, MEDIUM)
 private val OpenPlot = BoardStyle(13, MEDIUM, 1.35f)
 private val WatchedText = BoardStyle(12, EXTRA_BOLD)
 private val MoreText = BoardStyle(14, BOLD)
+
+/** Room around the episode list for the open row's glow (see focusGlow). */
+private val GLOW_EDGE = 12.bd

@@ -91,8 +91,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** The ring around what has focus. */
-val FocusStroke = BorderStroke(3.dp, Palette.text)
-private val FocusRing = Border(FocusStroke)
 
 /** The ring inside a filled card that is in use (see TvCard's fill). A Border's inset is outwards: in, it is less than 0. */
 private val SelectedRing = 2.dp
@@ -102,7 +100,8 @@ private val SelectedRingInset = (-3).dp
 val CardShape = RoundedCornerShape(14.dp)
 
 /**
- * The app's one clickable surface: neutral background, white ring when focused, optional selected state in accent.
+ * The app's one clickable surface: neutral background, a glow in the accent colour when focused (never a white ring,
+ * the owner 2026-11-22), optional selected state in accent.
  * With [fill] (settings rows and menus, the owner 2026-11-06), it is filled with the accent colour when focused, with
  * no ring, and its text takes the accent's text colour (see [LocalCardFilled]). Only a filled card that is [selected]
  * (the track, playlist or guide in use) has a ring then, inside its fill, so that it still shows which one is in use.
@@ -118,7 +117,7 @@ fun TvCard(
     shape: Shape = CardShape,
     color: Color = Palette.surface,
     focusedColor: Color = Palette.surfaceHigh,
-    /** Without it, what holds the card shows its focus (the series page's episode rows). */
+    /** Without it, what holds the card shows its focus (the series page's episode rows). With it, it glows. */
     ring: Boolean = true,
     fill: Boolean = false,
     /** Its background while [selected] and without focus. */
@@ -146,7 +145,14 @@ fun TvCard(
         onLongClick = onLongClick,
         // Back on its screen, the card used last has focus again.
         modifier = (if (onLongClick != null) modifier.onOptionsKey(onLongClick) else modifier)
-            .then(if (glow) Modifier.focusGlow(shape, accent.color) else Modifier)
+            .then(
+                when {
+                    glow -> Modifier.focusGlow(shape, accent.color)
+                    // At its own size: rows and buttons would grow over what is beside them.
+                    ring && !fill -> Modifier.focusGlow(shape, accent.color, grow = false)
+                    else -> Modifier
+                }
+            )
             .returnsFocus()
             .onFocusChanged { focused = it.hasFocus }
             .onTap(onLongClick, onClick),
@@ -163,7 +169,6 @@ fun TvCard(
             focusedBorder = when {
                 // In use and filled: a ring in the fill's text colour, so it still shows which one is in use.
                 fill && selected -> Border(BorderStroke(SelectedRing, accent.onAccent), SelectedRingInset)
-                ring && !fill && !glow -> FocusRing
                 else -> Border.None
             }
         )
@@ -647,6 +652,8 @@ fun <T> LazyListScope.titledRow(
     key: (T) -> Long,
     topPadding: Dp = 0.dp,
     move: MovableRow? = null,
+    /** Left and Right stop at the row's ends (see sidewaysOnly), as on Home. */
+    stopAtEnds: Boolean = false,
     card: @Composable (T) -> Unit
 ) {
     if (items.isEmpty()) return
@@ -660,7 +667,7 @@ fun <T> LazyListScope.titledRow(
             }
             // Room for the card with focus to grow and glow (see glowRoom), drawn over the cards beside it.
             LazyRow(
-                Modifier.glowRoom(),
+                Modifier.glowRoom().then(if (stopAtEnds) Modifier.sidewaysOnly() else Modifier),
                 state = state,
                 contentPadding = glowRoomPadding(),
                 horizontalArrangement = Arrangement.spacedBy(14.dp)

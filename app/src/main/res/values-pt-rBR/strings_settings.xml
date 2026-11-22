@@ -206,6 +206,7 @@
     <string name="settings_proxy_works_only">O proxy funciona: o tráfego desta playlist sai de %1$s.</string>
     <string name="settings_proxy_same">O proxy respondeu, mas seu endereço não mudou (%1$s).</string>
     <string name="settings_proxy_failed">O proxy não respondeu: %1$s</string>
+    <string name="settings_proxy_unchecked">O proxy respondeu, mas não foi possível descobrir o endereço: %1$s</string>
     <string name="settings_tmdb">TMDB</string>
     <string name="settings_tmdb_help">Desativado. Adicione sua própria chave gratuita do TMDB para ver o elenco, os trailers e os links nas páginas de filmes e séries.</string>
     <string name="settings_tmdb_on">Ativado. As páginas de filmes e séries mostram mais dados do TMDB.</string>

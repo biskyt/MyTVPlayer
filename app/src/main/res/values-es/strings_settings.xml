@@ -206,6 +206,7 @@
     <string name="settings_proxy_works_only">El proxy funciona: el tráfico de esta lista sale desde %1$s.</string>
     <string name="settings_proxy_same">El proxy respondió, pero tu dirección no cambió (%1$s).</string>
     <string name="settings_proxy_failed">El proxy no respondió: %1$s</string>
+    <string name="settings_proxy_unchecked">El proxy respondió, pero no se pudo averiguar su dirección: %1$s</string>
     <string name="settings_tmdb">TMDB</string>
     <string name="settings_tmdb_help">Desactivado. Añade tu propia clave gratuita de TMDB para ver el reparto, los tráileres y los enlaces en las páginas de películas y series.</string>
     <string name="settings_tmdb_on">Activado. Las páginas de películas y series muestran más datos de TMDB.</string>

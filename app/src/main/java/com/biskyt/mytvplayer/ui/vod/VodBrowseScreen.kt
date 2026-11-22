@@ -19,7 +19,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
@@ -63,6 +62,7 @@ import com.biskyt.mytvplayer.ui.common.Poster
 import com.biskyt.mytvplayer.ui.common.PosterCard
 import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TabScaffold
+import com.biskyt.mytvplayer.ui.common.afterRemoval
 import com.biskyt.mytvplayer.ui.common.categoryEntries
 import com.biskyt.mytvplayer.ui.common.collectIds
 import com.biskyt.mytvplayer.ui.common.glowRoom
@@ -272,9 +272,10 @@ private fun PosterGrid(vm: VodBrowseViewModel, pid: Long) {
     val state = rememberLazyGridState()
     vm.removedId?.let { removed ->
         LaunchedEffect(removed) {
-            snapshotFlow { items.itemSnapshotList.none { it?.id == removed } }.first { it }
-            vm.focusId = null
-            vm.restoreFocusPending = true
+            afterRemoval(items, removed, { it.id }) { next ->
+                vm.focusId = next
+                vm.restoreFocusPending = true
+            }
             vm.removedId = null
         }
     }
@@ -302,7 +303,7 @@ private fun PosterGrid(vm: VodBrowseViewModel, pid: Long) {
                     Spacer(Modifier.height(40.dp))
                 }
             } else {
-                // Back from a title, on it; after one is taken off Favourites, on the first.
+                // Back from a title, on it; after one is taken off Favourites, on the one in its place.
                 val wantsFocus = vm.restoreFocusPending && (vm.focusId?.let { it == card.id } ?: (index == 0))
                 // Drawn over the cards beside it while it has focus, as it grows and glows (see focusGlow).
                 Box(Modifier.raiseOnFocus()) {

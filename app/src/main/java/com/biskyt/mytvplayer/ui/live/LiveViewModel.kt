@@ -205,12 +205,25 @@ class LiveViewModel(
     fun toggleFavourite(ch: ChannelEntity) = setFavourite(ch, ch.streamId !in favouriteIds.value.orEmpty())
 
     fun setFavourite(ch: ChannelEntity, favourite: Boolean) = viewModelScope.launch {
+        // Taken off Favourites while they show: it leaves the list, so the options close and focus moves on.
+        if (!favourite && filter.value == ChannelFilter.Favourites) leaving(ch)
         c.channels.setFavourite(ch.playlistId, ch.streamId, favourite)
     }
 
     fun hide(ch: ChannelEntity) = viewModelScope.launch {
+        leaving(ch)
         c.channels.setHidden(ch.playlistId, ch.streamId, true)
+    }
+
+    /**
+     * A channel about to leave the list shown: once it has gone, focus goes to the one in its place (the next one, or
+     * the one before it at the end), not out of the list (the owner, 2026-11-22). See ChannelList.
+     */
+    var removedStreamId by mutableStateOf<Long?>(null)
+
+    private fun leaving(ch: ChannelEntity) {
         closeOptions()
+        removedStreamId = ch.streamId
     }
 
     /**

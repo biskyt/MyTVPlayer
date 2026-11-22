@@ -104,10 +104,6 @@ class SyncManager(
      */
     fun switchTo(playlistId: Long): Job = scope.launch { refreshNow(playlistId, includeGuide = false) }
 
-    /** Looks for guides for channels without one. A failure also shows in [state]. */
-    suspend fun matchMissingGuides(): Result<MatchResult> =
-        attempt(R.string.common_match_failed) { epg.matchMissing(inUse()) { _state.value = SyncState.Guide(it) } }
-
     /** After the order of [playlistId]'s guides changed: matches its channels again (see EpgRepository.rematch). */
     suspend fun rematchGuides(playlistId: Long): Result<Map<Long, String>> = attempt(R.string.common_match_failed) {
         ifInUse(playlistId) { epg.rematch(playlistId) { _state.value = SyncState.Guide(it) } }.orEmpty()

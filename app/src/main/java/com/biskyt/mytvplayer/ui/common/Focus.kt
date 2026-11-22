@@ -23,6 +23,7 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusEventModifierNode
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.FocusState
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Size
@@ -36,6 +37,7 @@ import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.paging.compose.LazyPagingItems
 import com.biskyt.mytvplayer.ui.theme.Palette
 import kotlin.random.Random
 import kotlinx.coroutines.flow.first
@@ -244,6 +246,28 @@ suspend fun settleFor(done: () -> Boolean): Boolean {
     }
     return false
 }
+
+/**
+ * Waits until the item [removed] (by [id]) has left the paged list [items], then calls [focusOn] with the id of the
+ * item now in its place: the next one, or the one before it if it was last; null if the list is empty (the list's
+ * first item then takes focus).
+ */
+suspend fun <T : Any> afterRemoval(items: LazyPagingItems<T>, removed: Long, id: (T) -> Long, focusOn: (Long?) -> Unit) {
+    val at = items.itemSnapshotList.indexOfFirst { it != null && id(it) == removed }
+    snapshotFlow { items.itemSnapshotList.none { it != null && id(it) == removed } }.first { it }
+    val left = items.itemSnapshotList
+    focusOn(left.getOrNull(at.coerceIn(0, (left.size - 1).coerceAtLeast(0)))?.let(id))
+}
+
+/**
+ * A row of cards: Left and Right move only along it, so they stop at its ends; Up and Down leave it (the owner,
+ * 2026-11-22, for Home's rows).
+ */
+fun Modifier.sidewaysOnly(): Modifier = focusProperties {
+    onExit = {
+        if (requestedFocusDirection == FocusDirection.Left || requestedFocusDirection == FocusDirection.Right) cancelFocusChange()
+    }
+}.focusGroup()
 
 /**
  * Takes the remote only so that Up and Down move through a list of plain rows (credits, facts, episodes), and shows it

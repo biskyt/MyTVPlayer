@@ -272,6 +272,7 @@
     <string name="settings_proxy_works_only">The proxy works: this playlist\'s traffic comes from %1$s.</string>
     <string name="settings_proxy_same">The proxy answered, but your address did not change (%1$s).</string>
     <string name="settings_proxy_failed">The proxy did not answer: %1$s</string>
+    <string name="settings_proxy_unchecked">The proxy answered, but its address could not be found: %1$s</string>
     <string name="settings_tmdb">TMDB</string>
     <string name="settings_tmdb_help">Off. Add your own free TMDB key to show the cast, trailers and links on film and series pages.</string>
     <string name="settings_tmdb_on">On. Film and series pages show more from TMDB.</string>

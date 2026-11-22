@@ -1,5 +1,6 @@
 package com.biskyt.mytvplayer.data
 
+import com.biskyt.mytvplayer.core.net.IpLookupLimited
 import com.biskyt.mytvplayer.core.net.PublicIp
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -52,6 +53,8 @@ class ExternalIp(
                 return lookup()
             } catch (e: CancellationException) {
                 throw e
+            } catch (_: IpLookupLimited) {
+                return null // the services are busy: asking again at once would not help
             } catch (@Suppress("TooGenericExceptionCaught") _: Exception) {
                 if (attempt < TRIES - 1) delay(RETRY_MS)
             }

@@ -84,5 +84,8 @@
     <string name="player_info_video">Vídeo: %1$s</string>
     <string name="player_info_audio">Faixa de áudio: %1$s</string>
     <string name="player_info_buffer">No buffer: %1$d s</string>
+    <string name="player_info_download">Velocidade de download: %1$s</string>
+    <string name="player_info_decoder">Decodificador de vídeo: %1$s</string>
+    <string name="player_info_dropped">Quadros perdidos: %1$d</string>
     <string name="player_info_unknown">ainda não conhecido</string>
 </resources>

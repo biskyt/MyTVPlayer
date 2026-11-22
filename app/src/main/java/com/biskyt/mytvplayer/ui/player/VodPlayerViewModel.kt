@@ -21,8 +21,8 @@ import com.biskyt.mytvplayer.data.db.WatchProgressEntity
 import com.biskyt.mytvplayer.data.db.proxy
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.common.ItemAction
+import com.biskyt.mytvplayer.ui.common.favouriteAction
 import com.biskyt.mytvplayer.ui.common.favouriteFlash
-import com.biskyt.mytvplayer.ui.common.favouriteLabel
 import com.biskyt.mytvplayer.ui.common.formatDuration
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -77,8 +77,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
 
     override fun menuActions(): List<ItemAction> = listOfNotNull(
         current?.episode?.let { episodeDescriptionAction(it) { sheet = Sheet.DESCRIPTION } },
-        ItemAction.Run(favouriteLabel(favourite)) {
-            val add = !favourite
+        favouriteAction(favourite) { add ->
             viewModelScope.launch {
                 c.vod.setFavourite(screen.playlistId, favouriteType, favouriteId, add)
                 flash(favouriteFlash(add))

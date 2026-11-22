@@ -125,5 +125,8 @@
     <string name="player_info_video">Video: %1$s</string>
     <string name="player_info_audio">Audio track: %1$s</string>
     <string name="player_info_buffer">Buffered ahead: %1$d s</string>
+    <string name="player_info_download">Download speed: %1$s</string>
+    <string name="player_info_decoder">Video decoder: %1$s</string>
+    <string name="player_info_dropped">Dropped frames: %1$d</string>
     <string name="player_info_unknown">not known yet</string>
 </resources>

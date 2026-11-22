@@ -84,5 +84,8 @@
     <string name="player_info_video">Vidéo : %1$s</string>
     <string name="player_info_audio">Piste audio : %1$s</string>
     <string name="player_info_buffer">En mémoire tampon : %1$d s</string>
+    <string name="player_info_download">Vitesse de téléchargement : %1$s</string>
+    <string name="player_info_decoder">Décodeur vidéo : %1$s</string>
+    <string name="player_info_dropped">Images perdues : %1$d</string>
     <string name="player_info_unknown">pas encore connu</string>
 </resources>

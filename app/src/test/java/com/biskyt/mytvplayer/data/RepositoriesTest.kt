@@ -564,18 +564,6 @@ class RepositoriesTest {
         assertEquals("wnbc.us", db.epg().mapping(id, 104)!!.xmlId)
         assertEquals(0.5, db.epg().mapping(id, 101)!!.score, 0.0)
 
-        // The button: near-certain matches for channels without a guide (here as an older version left it),
-        // with their programmes loaded.
-        db.epg().upsertMappings(listOf(db.epg().mapping(id, 104)!!.copy(sourceId = null, xmlId = null, score = 0.0)))
-        val progress = mutableListOf<GuideStep>()
-        val result = epg.matchMissing(listOf(id)) { progress += it }
-        assertEquals("wnbc.us", db.epg().mapping(id, 104)!!.xmlId)
-        assertEquals(1, result.matched)
-        assertTrue(result.checked >= 1)
-        assertTrue(progress.any { it is GuideStep.Matching && it.total > 0 })
-        val now = System.currentTimeMillis()
-        assertEquals("Now on wnbc.us", epg.programmes(id, listOf(104), now, now + 3_600_000).getValue(104).first().title)
-
         // A new guide source matches everything again.
         epg.addSource("Extra", provider.url + "xmltv.php?username=me&password=secret&extra=1", id)
         epg.importAll(listOf(id))

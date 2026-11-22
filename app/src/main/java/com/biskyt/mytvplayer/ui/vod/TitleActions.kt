@@ -5,7 +5,6 @@ import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.vod.CastMember
 import com.biskyt.mytvplayer.ui.common.ItemAction
-import com.biskyt.mytvplayer.ui.common.favouriteLabel
 
 // What a film's or show's More… offers (MyPlexPlayer's PlexDetailsParts.kt): its trailer, and from TMDB its people, About
 // and links. Without a TMDB key, only the provider's trailer.
@@ -27,27 +26,24 @@ fun titleActions(
     showAbout: () -> Unit
 ): List<ItemAction> {
     fun help(id: Int) = if (film) appString(id) else null
-    val play = trailer?.let { ItemAction.Run(appString(R.string.vod_play_trailer), help(R.string.vod_play_trailer_help), it) }
+    val play = trailer?.let { ItemAction.Run(appString(R.string.vod_play_trailer), help(R.string.vod_play_trailer_help), run = it) }
     tmdb ?: return listOfNotNull(play)
     val crew = tmdb.cast.isNotEmpty() || tmdb.directors.isNotEmpty() || tmdb.writers.isNotEmpty()
     val others = otherTrailers?.takeIf { tmdb.trailers.size > 1 }
-        ?.let { ItemAction.Run(appString(R.string.vod_other_trailers), help(R.string.vod_other_trailers_help), it) }
+        ?.let { ItemAction.Run(appString(R.string.vod_other_trailers), help(R.string.vod_other_trailers_help), run = it) }
     return listOfNotNull(
         play,
         others,
-        if (crew) ItemAction.Run(appString(R.string.vod_cast_crew), help(R.string.vod_cast_crew_help), showCast) else null,
+        if (crew) ItemAction.Run(appString(R.string.vod_cast_crew), help(R.string.vod_cast_crew_help), run = showCast) else null,
         ItemAction.Run(appString(R.string.vod_similar), help(R.string.vod_similar_help)) { showSimilar(tmdb.id) },
         ItemAction.Run(
             appString(if (film) R.string.vod_about_this_film else R.string.vod_about_this_show),
             help(R.string.vod_about_film_help),
-            showAbout
+            run = showAbout
         ),
         tmdb.links.takeIf { it.isNotEmpty() }?.let { ItemAction.Links(appString(R.string.vod_links), it) },
     )
 }
-
-/** "Add to favourites", or for a [favourite], "Remove from favourites". */
-fun favouriteAction(favourite: Boolean, setFavourite: () -> Unit) = ItemAction.Run(favouriteLabel(favourite), run = setFavourite)
 
 /** The cast, then who directed and wrote it: everyone Cast and crew lists. */
 fun castAndCrew(t: TmdbTitle?): List<CastMember> = t?.let {

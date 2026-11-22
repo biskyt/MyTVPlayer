@@ -89,7 +89,7 @@ class ProxyMonitorTest {
 
         // Shown again much later: checked again.
         shown.cancel()
-        advanceTimeBy(15 * 60_000)
+        advanceTimeBy(35 * 60_000)
         show(monitor)
         settle()
         assertEquals(2, checks)
@@ -103,7 +103,7 @@ class ProxyMonitorTest {
         assertEquals(ProxyCheck.Working(away, home), monitor.status.value)
 
         answer = { ProxyCheck.SameAddress(home) }
-        advanceTimeBy(9 * 60_000)
+        advanceTimeBy(29 * 60_000)
         runCurrent()
         assertEquals("not old yet", 1, checks)
         settle()

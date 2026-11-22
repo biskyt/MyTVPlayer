@@ -276,9 +276,10 @@ fun ProxyStatus(check: ProxyCheck, look: StatusLook, modifier: Modifier = Modifi
     val ip = when (check) {
         is ProxyCheck.Working -> check.via
         is ProxyCheck.SameAddress -> check.ip
-        is ProxyCheck.Failed -> null
+        is ProxyCheck.Failed, is ProxyCheck.Unchecked -> null
     }
-    val ok = check is ProxyCheck.Working
+    // Unchecked: it answered, only its address is not known (the address service is busy).
+    val ok = check is ProxyCheck.Working || check is ProxyCheck.Unchecked
     Status(ok, stringResource(if (ok) R.string.common_proxy_on else R.string.common_proxy_off), ip, AppIcons.Relay, look, modifier)
 }
 

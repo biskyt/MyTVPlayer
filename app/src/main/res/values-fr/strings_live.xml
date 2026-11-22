@@ -29,12 +29,10 @@
     <string name="live_guide_earlier">Avant</string>
     <string name="live_guide_later">Après</string>
 
-    <string name="live_guide_sources_intro">Chaque playlist a ses propres guides : activé ici, il est utilisé par %1$s. Un guide utilisé par plusieurs playlists n\'est téléchargé qu\'une fois.</string>
+    <string name="live_guide_sources_intro">Modifiez les sources de guide de la playlist actuelle. Si le guide de votre fournisseur n\'a pas les programmes de toutes les chaînes, choisissez Ajouter un guide et prenez l\'un des guides gratuits par pays.</string>
     <string name="live_guide_add">Ajouter un guide</string>
     <string name="live_guide_update_now">Mettre à jour le guide</string>
-    <string name="live_guide_match_missing">Associer les chaînes sans guide</string>
-    <string name="live_guide_for">Guides de %1$s</string>
-    <string name="live_guide_order_help">Montez un guide pour l\'utiliser en premier quand plusieurs guides ont une chaîne. Jusque-là, la meilleure correspondance est utilisée.</string>
+    <string name="live_guide_order_help">Montez un guide pour l\'utiliser en premier quand plusieurs guides ont une chaîne.</string>
     <string name="live_guide_move_up">Monter</string>
     <string name="live_guide_move_down">Descendre</string>
     <string name="live_guide_order_end">Ce guide est déjà au bout de la liste.</string>
@@ -63,15 +61,6 @@
     <string name="live_guide_updating">Mise à jour du guide TV</string>
     <string name="live_guide_updated">Guide TV mis à jour</string>
     <string name="live_guide_some_failed">Certains guides n\'ont pas pu être chargés</string>
-    <string name="live_guide_matching">Association des chaînes sans guide</string>
-    <plurals name="live_guide_match_found">
-        <item quantity="one">Guide trouvé pour %1$s chaîne de plus</item>
-        <item quantity="many">Guide trouvé pour %1$s chaînes de plus</item>
-        <item quantity="other">Guide trouvé pour %1$s chaînes de plus</item>
-    </plurals>
-    <string name="live_guide_match_all">Toutes les chaînes ont un guide</string>
-    <string name="live_guide_match_none_left">Plus aucune chaîne à associer</string>
-    <string name="live_guide_match_none_new">Aucune nouvelle correspondance trouvée</string>
     <plurals name="live_guide_coverage">
         <item quantity="one">%1$s chaîne a un guide.</item>
         <item quantity="many">%1$s chaînes ont un guide.</item>

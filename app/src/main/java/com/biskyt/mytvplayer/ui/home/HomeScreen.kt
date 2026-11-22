@@ -79,6 +79,7 @@ import com.biskyt.mytvplayer.ui.common.onAnyTouch
 import com.biskyt.mytvplayer.ui.common.raiseOnFocus
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.common.settleFor
+import com.biskyt.mytvplayer.ui.common.sidewaysOnly
 import com.biskyt.mytvplayer.ui.common.titledRow
 import com.biskyt.mytvplayer.ui.common.vodActions
 import com.biskyt.mytvplayer.ui.common.vodDetails
@@ -251,7 +252,7 @@ fun HomeScreen() {
             favouriteVod.forEach { (type, cards) ->
                 titledRow(favouriteRowTitle(type), cards.value, {
                     it.id
-                }, move = MovableRow(vm.mover, type)) { card ->
+                }, move = MovableRow(vm.mover, type), stopAtEnds = true) { card ->
                     MovableTile(vm.mover, type, card.id, MoveLayout.ROW) {
                         PosterCard(card, onLongClick = { options = HomeTile.Vod(type, card) }) { nav.push(vodDetails(pid, type, card.id)) }
                     }
@@ -428,7 +429,7 @@ private fun ChannelCardRow(
     val now by rememberMinuteClock()
     KeepInView(state) { mover?.movingId(CAT_LIVE)?.let { p -> channels.indexOfFirst { it.streamId == p } } }
     LazyRow(
-        Modifier.glowRoom(),
+        Modifier.glowRoom().sidewaysOnly(),
         state = state,
         contentPadding = glowRoomPadding(),
         horizontalArrangement = Arrangement.spacedBy(20.dp)
@@ -458,7 +459,7 @@ private fun CarryOnRow(
     onPlay: (WatchProgressEntity) -> Unit
 ) {
     LazyRow(
-        Modifier.glowRoom(),
+        Modifier.glowRoom().sidewaysOnly(),
         state = state,
         contentPadding = glowRoomPadding(),
         horizontalArrangement = Arrangement.spacedBy(20.dp)

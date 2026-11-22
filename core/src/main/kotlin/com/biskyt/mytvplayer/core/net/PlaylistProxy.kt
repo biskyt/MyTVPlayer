@@ -144,6 +144,12 @@ sealed interface ProxyCheck {
     /** The proxy could not be used: [reason] is the error, in English (for the message, after the app's words). */
     data class Failed(val reason: String) : ProxyCheck
 
+    /**
+     * The proxy answered (the address services replied through it), but none gave the address: [reason] says why, in
+     * English, such as ipinfo.io's 429 for too many requests. The proxy works; only its address is not known.
+     */
+    data class Unchecked(val reason: String) : ProxyCheck
+
     companion object {
         /** Asks for the public address [direct]ly and [via] the proxy, then compares them. */
         suspend fun run(direct: suspend () -> PublicIp, via: suspend () -> PublicIp): ProxyCheck = coroutineScope {
@@ -157,6 +163,9 @@ sealed interface ProxyCheck {
             }
             val through = try {
                 via()
+            } catch (e: IpLookupLimited) {
+                without.cancel()
+                return@coroutineScope Unchecked(e.message ?: "429")
             } catch (e: java.io.IOException) {
                 without.cancel()
                 return@coroutineScope Failed(e.message ?: e.javaClass.simpleName)
