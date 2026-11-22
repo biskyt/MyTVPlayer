@@ -1,18 +1,15 @@
 package com.biskyt.mytvplayer.core.m3u
 
-import com.biskyt.mytvplayer.core.xtream.CatchupListing
-import com.biskyt.mytvplayer.core.xtream.CatchupProgramme
 import com.biskyt.mytvplayer.core.xtream.DEFAULT_ARCHIVE_DAYS
 import com.biskyt.mytvplayer.core.xtream.timeshiftStart
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 
 /**
  * Catch-up for M3U channels, as playlists declare it on each channel: `catchup` (how the archive's address is made),
- * `catchup-days` and `catchup-source` (an address template). There's no listing of past programmes to ask for, so
- * the past is offered in hour-long slots; the archive plays from any time on.
+ * `catchup-days` and `catchup-source` (an address template). There's no listing of past programmes to ask for: the
+ * past is the TV guide's programmes and hour slots (see CatchupFill); the archive plays from any time on.
  *
  * Types: `default` (the template is the archive's whole address), `append` (added to the channel's address),
  * `shift` (`?utc=…&lutc=…` added), `flussonic` (Flussonic's archive addresses) and `xc` (an Xtream panel's
@@ -26,7 +23,6 @@ object M3uCatchup {
     private val types = setOf("default", "append", "shift", "flussonic", "flussonic-ts", "xc")
 
     private const val HOUR_MS = 3_600_000L
-    private const val DAY_MS = 24 * HOUR_MS
 
     /** Days kept when a playlist turns catch-up on without saying for how long (as for Xtream channels). */
     const val DEFAULT_DAYS = DEFAULT_ARCHIVE_DAYS
@@ -70,32 +66,6 @@ object M3uCatchup {
 
     /** [extra] after [url]; a query in [extra] joins one [url] already has. */
     private fun appendTo(url: String, extra: String) = if (extra.startsWith("?") && '?' in url) url + "&" + extra.drop(1) else url + extra
-
-    private val clockFormat = DateTimeFormatter.ofPattern("HH:mm")
-
-    /** Hour-long slots from [days] ago to the end of the current hour, in [zone]'s hours, titled by their times. */
-    fun hourlyListing(nowMs: Long, days: Int, zone: ZoneId = ZoneId.systemDefault()): CatchupListing {
-        val clock = clockFormat.withZone(zone)
-        val first = hourStart(nowMs - days * DAY_MS, zone)
-        val slots = generateSequence(first) { it + HOUR_MS }.takeWhile { it <= nowMs }.map { start ->
-            val stop = start + HOUR_MS
-            CatchupProgramme(
-                start,
-                stop,
-                "${clock.format(Instant.ofEpochMilli(start))} – ${clock.format(Instant.ofEpochMilli(stop))}",
-                null,
-                true
-            )
-        }
-        return CatchupListing(slots.toList())
-    }
-
-    /** [listing] with [programmes] (from a TV guide) in place of the hour slots they overlap. */
-    fun withProgrammes(listing: CatchupListing, programmes: List<CatchupProgramme>): CatchupListing {
-        if (programmes.isEmpty()) return listing
-        val slots = listing.programmes.filter { s -> programmes.none { it.startMs < s.stopMs && it.stopMs > s.startMs } }
-        return CatchupListing((slots + programmes).sortedBy { it.startMs })
-    }
 
     /** The start of the hour [nowMs] falls in, in the device's zone: the listing is the same until it ends. */
     fun currentHour(nowMs: Long): Long = hourStart(nowMs, ZoneId.systemDefault())

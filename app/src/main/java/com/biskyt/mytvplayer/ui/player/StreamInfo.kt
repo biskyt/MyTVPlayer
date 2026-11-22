@@ -3,7 +3,9 @@
 package com.biskyt.mytvplayer.ui.player
 
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.Format
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
@@ -15,29 +17,43 @@ import java.text.DecimalFormatSymbols
 import java.util.Locale
 
 /**
- * The lines of the Stream info panel: the stream's address, its video and audio, the audio output and the buffer. It
- * helps to find why a stream plays badly or not at all. The codec names and units are technical, so they are not
- * translated.
+ * The lines of the Stream info panel: the stream's address, its video and audio, the download speed, the video decoder
+ * and its dropped frames, the audio output and the buffer. It helps to find why a stream plays badly or not at all.
+ * All of it is what the player knows already: nothing more is asked of the stream. The codec names and units are
+ * technical, so they are not translated.
  */
 fun streamInfo(engine: PlaybackEngine, audioOutput: String): List<String> {
     val player = engine.player
     val unknown = appString(R.string.player_info_unknown)
-    return listOf(
+    return listOfNotNull(
         appString(R.string.player_info_address, engine.currentUrl?.let(::displayAddress) ?: unknown),
         appString(R.string.player_info_video, player.videoFormat?.let(::videoDetails) ?: unknown),
         appString(R.string.player_info_audio, player.audioFormat?.let(::audioDetails) ?: unknown),
+        appString(R.string.player_info_download, engine.downloadBps.takeIf { it > 0 }?.let(::rate) ?: unknown),
+        engine.videoDecoder?.let { appString(R.string.player_info_decoder, it) },
+        player.videoDecoderCounters?.let { appString(R.string.player_info_dropped, it.droppedBufferCount) },
         appString(R.string.player_audio_output, audioOutput.ifEmpty { unknown }),
         appString(R.string.player_info_buffer, player.totalBufferedDuration / MS_PER_SECOND)
     )
 }
 
-/** For example "1920×1080 · avc1.4D4029 · 25 fps · 4.3 Mb/s". */
+/** For example "1920×1080 · avc1.4D4029 · 25 fps · HDR10 · 4.3 Mb/s". */
 private fun videoDetails(f: Format) = listOfNotNull(
     if (f.width > 0 && f.height > 0) "${f.width}×${f.height}" else null,
     codec(f),
     f.frameRate.takeIf { it > 0 }?.let { "${number(it.toDouble())} fps" },
+    dynamicRange(f),
     bitrate(f)
 ).joinToString(" · ")
+
+/** "Dolby Vision", "HDR10", "HLG" or "SDR"; null when the stream does not say. */
+private fun dynamicRange(f: Format): String? = when {
+    f.sampleMimeType == MimeTypes.VIDEO_DOLBY_VISION -> "Dolby Vision"
+    f.colorInfo?.colorTransfer == C.COLOR_TRANSFER_ST2084 -> "HDR10"
+    f.colorInfo?.colorTransfer == C.COLOR_TRANSFER_HLG -> "HLG"
+    f.colorInfo?.colorTransfer == C.COLOR_TRANSFER_SDR -> "SDR"
+    else -> null
+}
 
 /** For example "mp4a.40.2 · 6ch · 48 kHz · Dutch", or "Dolby Atmos · 6ch · 48 kHz". */
 private fun audioDetails(f: Format) = listOfNotNull(
@@ -51,10 +67,12 @@ private fun audioDetails(f: Format) = listOfNotNull(
 /** The format's codec: its full codec string (avc1.4D4029) when known, or else its MIME type's subtype (avc). */
 internal fun codec(f: Format) = f.codecs ?: f.sampleMimeType?.substringAfter('/')
 
-private fun bitrate(f: Format): String? {
-    val bps = listOf(f.bitrate, f.averageBitrate, f.peakBitrate).firstOrNull { it > 0 } ?: return null
-    return if (bps >= BPS_PER_MBPS) "${number(bps / BPS_PER_MBPS)} Mb/s" else "${bps / BPS_PER_KBPS} kb/s"
-}
+private fun bitrate(f: Format): String? = listOf(f.bitrate, f.averageBitrate, f.peakBitrate).firstOrNull {
+    it > 0
+}?.let { rate(it.toLong()) }
+
+/** "4.3 Mb/s", or "320 kb/s" below a megabit. */
+private fun rate(bps: Long) = if (bps >= BPS_PER_MBPS) "${number(bps / BPS_PER_MBPS)} Mb/s" else "${bps / BPS_PER_KBPS} kb/s"
 
 /** 25 as "25", 29.97 as "29.97", 3.0004 as "3". */
 private fun number(value: Double) = DecimalFormat("0.##", DecimalFormatSymbols(Locale.ROOT)).format(value)

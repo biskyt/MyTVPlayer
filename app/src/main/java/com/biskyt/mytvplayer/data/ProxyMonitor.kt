@@ -81,7 +81,7 @@ class ProxyMonitor(
 
     private companion object {
         /** How long an answer stands: a proxy that stops working shows within this time of the status showing again. */
-        const val KEEP_MS = 10 * 60_000L
-        const val KEEP_FAILED_MS = 2 * 60_000L
+        const val KEEP_MS = 30 * 60_000L
+        const val KEEP_FAILED_MS = 5 * 60_000L
     }
 }

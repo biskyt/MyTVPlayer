@@ -23,6 +23,7 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusEventModifierNode
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.FocusState
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Size
@@ -36,6 +37,7 @@ import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.paging.compose.LazyPagingItems
 import com.biskyt.mytvplayer.ui.theme.Palette
 import kotlin.random.Random
 import kotlinx.coroutines.flow.first
@@ -176,7 +178,7 @@ fun Modifier.restoreFocusIf(wanted: Boolean, still: () -> Boolean = { true }, on
         // Noted while coming back (see ReturnFocus.note), so that the item given focus is the one used last from now:
         // a screen's own restore (the channel played last) is not undone by the item used before.
         back?.restoring = true
-        val done = runCatching { r.requestFocus(FocusDirection.Enter) }.getOrDefault(false)
+        val done = r.tryFocus()
         back?.restoring = false
         if (!done) return@LaunchedEffect
         back?.restored()
@@ -246,6 +248,33 @@ suspend fun settleFor(done: () -> Boolean): Boolean {
 }
 
 /**
+ * Waits until the item [removed] (by [id]) has left the paged list [items], then calls [focusOn] with the id of the
+ * item now in its place: the next one, or the one before it if it was last; null if the list is empty (the list's
+ * first item then takes focus). [removedAt]: its place, noted as it was removed (the list may have changed already by
+ * the time this runs); else looked up.
+ */
+suspend fun <T : Any> afterRemoval(items: LazyPagingItems<T>, removed: Long, removedAt: Int?, id: (T) -> Long, focusOn: (Long?) -> Unit) {
+    val at = removedAt ?: items.itemSnapshotList.indexOfFirst { it != null && id(it) == removed }
+    snapshotFlow { items.itemSnapshotList.none { it != null && id(it) == removed } }.first { it }
+    val left = items.itemSnapshotList
+    focusOn(left.getOrNull(at.coerceIn(0, (left.size - 1).coerceAtLeast(0)))?.let(id))
+}
+
+/** Asks for focus (coming in, [direction]); a request can fail, the item not there yet or gone: whether it took it. */
+fun FocusRequester.tryFocus(direction: FocusDirection = FocusDirection.Enter): Boolean =
+    runCatching { requestFocus(direction) }.getOrDefault(false)
+
+/**
+ * A row of cards: Left and Right move only along it, so they stop at its ends; Up and Down leave it (the owner,
+ * 2026-11-22, for Home's rows).
+ */
+fun Modifier.sidewaysOnly(): Modifier = focusProperties {
+    onExit = {
+        if (requestedFocusDirection == FocusDirection.Left || requestedFocusDirection == FocusDirection.Right) cancelFocusChange()
+    }
+}.focusGroup()
+
+/**
  * Takes the remote only so that Up and Down move through a list of plain rows (credits, facts, episodes), and shows it
  * quietly: a dark fill ([shape]) behind the row that has it.
  */
@@ -272,7 +301,8 @@ private class QuietFocusNode(shape: Shape) : Modifier.Node(), FocusEventModifier
 
     /** The fill's outline, made again only when the size, direction or shape changes. */
     private var outline: Outline? = null
-    private var outlineFor: Pair<Size, LayoutDirection>? = null
+    private var outlineSize = Size.Unspecified
+    private var outlineDirection: LayoutDirection? = null
 
     override fun onFocusEvent(focusState: FocusState) {
         if (focused != focusState.isFocused) {
@@ -283,11 +313,12 @@ private class QuietFocusNode(shape: Shape) : Modifier.Node(), FocusEventModifier
 
     override fun ContentDrawScope.draw() {
         if (focused) {
-            val key = size to layoutDirection
-            val o = outline?.takeIf { outlineFor == key } ?: shape.createOutline(size, layoutDirection, this).also {
-                outline = it
-                outlineFor = key
-            }
+            val o = outline?.takeIf { outlineSize == size && outlineDirection == layoutDirection }
+                ?: shape.createOutline(size, layoutDirection, this).also {
+                    outline = it
+                    outlineSize = size
+                    outlineDirection = layoutDirection
+                }
             drawOutline(o, Palette.surfaceHigh)
         }
         drawContent()

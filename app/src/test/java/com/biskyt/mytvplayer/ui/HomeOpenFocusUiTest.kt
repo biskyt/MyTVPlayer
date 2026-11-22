@@ -83,6 +83,15 @@ class HomeOpenFocusUiTest {
     }
 
     @Test
+    fun `Left and Right stop at a row's ends, and only Up and Down leave it`() {
+        val first = home()
+        // The first card: Left stays on it, not on the menu's Home (the owner, 2026-11-22).
+        assertEquals(first, compose.pressAndRead(Key.DirectionLeft))
+        // The only favourite channel, so also the row's last card.
+        assertEquals(first, compose.pressAndRead(Key.DirectionRight))
+    }
+
+    @Test
     fun `back from the background, Home is on its first card again`() {
         val first = home()
         onHeat()

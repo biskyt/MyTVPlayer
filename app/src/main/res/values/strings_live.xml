@@ -37,6 +37,7 @@
     <string name="live_catchup_title">Catch-up · %1$s</string>
     <string name="live_catchup_load_failed">Couldn\'t load catch-up</string>
     <string name="live_catchup_empty_day">Nothing to catch up on for this day.</string>
+    <string name="live_catchup_replay_from">Replay from %1$s</string>
 
     <!-- TV guide grid -->
     <!-- Touch buttons moving the guide's time window back or forward. Very short: they sit above the narrow channel column -->
@@ -44,15 +45,13 @@
     <string name="live_guide_later">Later</string>
 
     <!-- TV guide sources (settings page) -->
-    <string name="live_guide_sources_intro">Each playlist has its own guides: switched on here, %1$s uses it. A guide more than one playlist uses is downloaded once.</string>
+    <string name="live_guide_sources_intro">Edit the guide sources for the current playlist. If your provider\'s guide does not have programmes for all channels, select Add a guide and pick one of the free country guides.</string>
     <!-- Button and panel title. Keep short -->
     <string name="live_guide_add">Add a guide</string>
     <!-- Button. Keep short -->
     <string name="live_guide_update_now">Update guide now</string>
     <!-- Button -->
-    <string name="live_guide_match_missing">Match channels without a guide</string>
-    <string name="live_guide_for">Guides for %1$s</string>
-    <string name="live_guide_order_help">Move a guide up to use it first when more than one guide has a channel. Until you do, the best match is used.</string>
+    <string name="live_guide_order_help">Move a guide up to use it first when more than one guide has a channel.</string>
     <string name="live_guide_move_up">Move up</string>
     <string name="live_guide_move_down">Move down</string>
     <string name="live_guide_order_end">This guide is already at the end of the list.</string>
@@ -91,15 +90,7 @@
     <string name="live_guide_updated">TV guide updated</string>
     <string name="live_guide_some_failed">Some guides couldn\'t be loaded</string>
     <!-- %1$s is a list of guide names, %2$s an error message -->
-    <string name="live_guide_matching">Matching channels without a guide</string>
     <!-- %1$s is how many more channels now have a guide -->
-    <plurals name="live_guide_match_found">
-        <item quantity="one">Found a guide for %1$s channel more</item>
-        <item quantity="other">Found a guide for %1$s channels more</item>
-    </plurals>
-    <string name="live_guide_match_all">Every channel has a guide</string>
-    <string name="live_guide_match_none_left">No channels left to match</string>
-    <string name="live_guide_match_none_new">No new matches found</string>
     <!-- %1$s is how many channels have a guide -->
     <plurals name="live_guide_coverage">
         <item quantity="one">%1$s channel has a guide.</item>

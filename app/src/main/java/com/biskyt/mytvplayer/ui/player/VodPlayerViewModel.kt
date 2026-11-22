@@ -10,6 +10,8 @@ import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.player.OverlayState
+import com.biskyt.mytvplayer.core.tmdb.TmdbEpisode
+import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.vod.VodTitles
 import com.biskyt.mytvplayer.core.xtream.EpisodeInfo
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
@@ -21,9 +23,14 @@ import com.biskyt.mytvplayer.data.db.WatchProgressEntity
 import com.biskyt.mytvplayer.data.db.proxy
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.common.ItemAction
+import com.biskyt.mytvplayer.ui.common.Tab
+import com.biskyt.mytvplayer.ui.common.favouriteAction
 import com.biskyt.mytvplayer.ui.common.favouriteFlash
-import com.biskyt.mytvplayer.ui.common.favouriteLabel
 import com.biskyt.mytvplayer.ui.common.formatDuration
+import com.biskyt.mytvplayer.ui.vod.TitlePanel
+import com.biskyt.mytvplayer.ui.vod.filledFrom
+import com.biskyt.mytvplayer.ui.vod.titleActions
+import com.biskyt.mytvplayer.ui.vod.tmdbFor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -73,12 +80,21 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
     private val favouriteId = series ?: screen.itemId
     private var favourite by mutableStateOf(false)
 
-    override val described: DescribedEpisode? get() = current?.let { p -> p.episode?.let { DescribedEpisode(p.show, it) } }
+    /** The film's or series' TMDB title, and the episode's (null without a TMDB key, or until known). */
+    var tmdb by mutableStateOf<TmdbTitle?>(null)
+        private set
+    private var tmdbEpisode by mutableStateOf<TmdbEpisode?>(null)
+
+    /** A TMDB panel open over the player (cast and crew, About), as the title's page opens it. */
+    var panel by mutableStateOf<TitlePanel?>(null)
+
+    /** The episode, with TMDB's plot and date where the provider gave none: as the series page describes it. */
+    override val described: DescribedEpisode?
+        get() = current?.let { p -> p.episode?.let { DescribedEpisode(p.show, it.filledFrom(tmdbEpisode)) } }
 
     override fun menuActions(): List<ItemAction> = listOfNotNull(
-        current?.episode?.let { episodeDescriptionAction(it) { sheet = Sheet.DESCRIPTION } },
-        ItemAction.Run(favouriteLabel(favourite)) {
-            val add = !favourite
+        described?.let { d -> episodeDescriptionAction(d.episode) { sheet = Sheet.DESCRIPTION } },
+        favouriteAction(favourite) { add ->
             viewModelScope.launch {
                 c.vod.setFavourite(screen.playlistId, favouriteType, favouriteId, add)
                 flash(favouriteFlash(add))
@@ -95,7 +111,36 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
                 replace = true
             )
         }
-    )
+    ) + tmdbActions()
+
+    /** As the title's page offers them: Cast and crew, More like this and About (not its links, nor trailers). */
+    private fun tmdbActions(): List<ItemAction> = titleActions(
+        tmdb,
+        film = series == null,
+        trailer = null,
+        otherTrailers = null,
+        showCast = { openPanel(TitlePanel.Cast) },
+        showSimilar = { id ->
+            val tab = if (series == null) Tab.MOVIES else Tab.SERIES
+            pendingScreen = Screen.MoreLike(screen.playlistId, id, series = series != null, title, tab)
+        },
+        showAbout = { openPanel(TitlePanel.About) },
+    ).filterNot { it is ItemAction.Links }
+
+    private fun openPanel(p: TitlePanel) {
+        sheet = null
+        panel = p
+    }
+
+    /** A screen an option opens over the player (More like this): the screen pushes it. */
+    var pendingScreen by mutableStateOf<Screen?>(null)
+
+    /** The film's or series' TMDB data, once playback has started: for the menu's options. */
+    private fun readTmdb(episode: EpisodeInfo?) = viewModelScope.launch {
+        val t = c.tmdbFor(screen.playlistId, favouriteType, favouriteId) ?: return@launch
+        tmdb = t
+        if (episode != null) tmdbEpisode = c.tmdb.season(t.id, episode.season)?.firstOrNull { it.number == episode.number }
+    }
 
     override fun beforeLeaving() = save(trim = true)
 
@@ -146,6 +191,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         // Read before playback starts, so nothing waits between starting it and the controls coming up.
         val known = c.vod.progress(p.id, playing.kind, playing.itemId)
         current = playing
+        if (tmdb == null || playing.episode != null) readTmdb(playing.episode)
         // A resumed title waits too: stopped at once, it keeps its place on Continue watching (the owner, 2026-11-16).
         saving = false
         resetForNewStream()

@@ -16,6 +16,7 @@ import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -65,6 +66,24 @@ class GuideImportTest {
         epg.importAll(listOf(id))
         val again = epg.programmes(id, listOf(101), now - 3_600_000, now + 50 * 3_600_000).getValue(101)
         assertEquals(first.map { it.startMs to it.title }, again.map { it.startMs to it.title })
+    }
+
+    @Test
+    fun `channels with catch-up keep their past programmes, others only the last two hours`() = runBlocking {
+        // A day ago, on Channel One (catch-up, 3 days) and on Kite Kids (none).
+        provider.guideShiftMin = mapOf("one.uk" to -26 * 60, "kite.uk" to -26 * 60)
+        val id = playlists.add("Home", provider.url, "me", "secret")
+        playlists.syncChannels(id)
+        epg.importAll(listOf(id))
+        val now = System.currentTimeMillis()
+        val dayAgo = now - 26 * 3_600_000L
+        val past = epg.programmes(id, listOf(101, 103), dayAgo - 3_600_000, dayAgo + 3_600_000)
+        assertEquals(listOf("Now on one.uk", "Next on one.uk"), past[101].orEmpty().map { it.title }.take(2))
+        assertEquals(emptyList<String>(), past[103].orEmpty().map { it.title })
+
+        // An update keeps them too (the clean-up leaves them).
+        epg.importAll(listOf(id))
+        assertTrue(epg.programmes(id, listOf(101), dayAgo - 3_600_000, dayAgo + 3_600_000)[101].orEmpty().isNotEmpty())
     }
 
     @Test

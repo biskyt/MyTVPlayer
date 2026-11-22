@@ -2,7 +2,6 @@ package com.biskyt.mytvplayer.ui.common
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.offset
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -145,7 +143,8 @@ fun MovableTile(mover: FavouriteMover?, type: String, id: Long, layout: MoveLayo
     // One Box either way, so the card (and its focus) stays as moving starts and ends.
     val moved = if (mover != null && active) {
         // Laid out afresh (moved past the edge of its list, once the list scrolls to it), the card takes focus.
-        rememberFirstFocus().moveKeys(mover, layout, columns).border(3.dp, LocalAccent.current.color, RoundedCornerShape(16.dp))
+        // Its glow shows it has focus, and the arrows at its ends that it is being moved (no border: the owner, 2026-11-22).
+        rememberFirstFocus().moveKeys(mover, layout, columns)
     } else {
         Modifier
     }

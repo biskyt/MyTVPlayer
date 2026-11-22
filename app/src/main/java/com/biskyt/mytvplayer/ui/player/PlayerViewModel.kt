@@ -44,6 +44,22 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
 
     /** The list being zapped through (kept when going to catch-up and back). */
     val filter get() = screen.filter
+
+    /**
+     * Set when ◀ is pressed on a channel with catch-up: the moment to replay from, as it switches to catch-up (the
+     * screen opens it; the owner, 2026-11-22). Live streams can't skip back themselves.
+     */
+    var catchupFrom by mutableStateOf<Long?>(null)
+        private set
+
+    override fun skipUnavailable(ms: Long) {
+        val ch = channel
+        if (ms < 0 && ch != null && ch.archiveDays > 0) {
+            if (catchupFrom == null) catchupFrom = System.currentTimeMillis() + ms
+        } else {
+            super.skipUnavailable(ms)
+        }
+    }
     override val failureMessage = R.string.player_failure_live
 
     val nowNext = guideNowNext(viewModelScope, c) { screen.playlistId }

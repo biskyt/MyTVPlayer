@@ -14,7 +14,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -59,7 +58,7 @@ fun Modifier.pageItem(focus: PageFocus, index: Int): Modifier {
     LaunchedEffect(Unit) {
         withFrameNanos {} // placed, not only composed ahead of the screen
         // Not able to take it: the next press goes on from the item that has focus.
-        if (!runCatching { requester.requestFocus(FocusDirection.Enter) }.getOrDefault(false)) focus.target = null
+        if (!requester.tryFocus()) focus.target = null
     }
     return tracked.focusRequester(requester)
 }

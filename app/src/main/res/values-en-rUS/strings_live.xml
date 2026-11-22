@@ -3,4 +3,5 @@
 <resources>
     <string name="live_option_channel_guide_help">Upcoming programs</string>
     <string name="live_guide_programmes_until">Programs up to %1$s</string>
+    <string name="live_guide_sources_intro">Edit the guide sources for the current playlist. If your provider\'s guide does not have programs for all channels, select Add a guide and pick one of the free country guides.</string>
 </resources>

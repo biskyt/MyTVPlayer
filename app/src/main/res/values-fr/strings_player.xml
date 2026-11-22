@@ -53,6 +53,7 @@
     <string name="player_failure_vod">Impossible de lire ce contenu pour le moment. Réessayez plus tard.</string>
     <string name="player_failure_catchup">Impossible de revoir ce programme pour le moment. Réessayez plus tard.</string>
     <string name="player_catchup_nothing_to_start_over">Rien à revoir depuis le début sur cette chaîne pour le moment.</string>
+    <string name="player_catchup_switching">Passage au replay…</string>
     <string name="player_unsupported_format">Ce flux utilise un format que MyTVPlayer ne peut pas lire.</string>
 
     <string name="player_error_dns">Le serveur du flux est introuvable : son adresse n\'existe peut-être plus.</string>
@@ -84,5 +85,8 @@
     <string name="player_info_video">Vidéo : %1$s</string>
     <string name="player_info_audio">Piste audio : %1$s</string>
     <string name="player_info_buffer">En mémoire tampon : %1$d s</string>
+    <string name="player_info_download">Vitesse de téléchargement : %1$s</string>
+    <string name="player_info_decoder">Décodeur vidéo : %1$s</string>
+    <string name="player_info_dropped">Images perdues : %1$d</string>
     <string name="player_info_unknown">pas encore connu</string>
 </resources>

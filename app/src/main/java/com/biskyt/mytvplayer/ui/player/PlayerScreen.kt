@@ -120,6 +120,12 @@ fun PlayerScreen(screen: Screen.Player) {
     val appContext = LocalContext.current.applicationContext
     val vm = appViewModel { PlayerViewModel(it, appContext, screen) }
     vm.nowNext.PauseWhenHidden()
+    val nav = LocalNavigator.current
+    vm.catchupFrom?.let { from ->
+        LaunchedEffect(from) {
+            vm.channel?.let { ch -> nav.replace(Screen.CatchupPlayer(ch.playlistId, ch.streamId, from, vm.filter, switched = true)) }
+        }
+    }
     PlayerFrame(
         vm,
         controls = { buttons, root -> LiveControls(vm, buttons, root) },

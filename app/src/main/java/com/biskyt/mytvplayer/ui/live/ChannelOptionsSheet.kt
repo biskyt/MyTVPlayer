@@ -25,7 +25,6 @@ import com.biskyt.mytvplayer.data.db.ChannelProgramme
 import com.biskyt.mytvplayer.data.programmeTitle
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
-import com.biskyt.mytvplayer.ui.common.AppIcons
 import com.biskyt.mytvplayer.ui.common.BoardOption
 import com.biskyt.mytvplayer.ui.common.BoardPanel
 import com.biskyt.mytvplayer.ui.common.BoardPanelSubtitle
@@ -36,6 +35,7 @@ import com.biskyt.mytvplayer.ui.common.LocalReturnFocus
 import com.biskyt.mytvplayer.ui.common.ProgrammeAbout
 import com.biskyt.mytvplayer.ui.common.ScheduleList
 import com.biskyt.mytvplayer.ui.common.collectIds
+import com.biskyt.mytvplayer.ui.common.favouriteIcon
 import com.biskyt.mytvplayer.ui.common.favouriteLabel
 import com.biskyt.mytvplayer.ui.common.formatTime
 import com.biskyt.mytvplayer.ui.common.moveAction
@@ -173,7 +173,8 @@ private fun Options(
     val nav = LocalNavigator.current
 
     @Composable
-    fun Action(a: ItemAction) = BoardOption(a.label, a.help, Modifier.returnsFocus()) { a.perform(nav, close) }
+    fun Action(a: ItemAction) =
+        BoardOption(a.label, a.help, Modifier.returnsFocus(), icon = (a as? ItemAction.Run)?.icon) { a.perform(nav, close) }
     BoardOption(stringResource(R.string.common_watch), modifier = rememberFirstFocus().returnsFocus()) {
         close()
         play()
@@ -196,7 +197,7 @@ private fun Options(
     BoardOption(
         favouriteLabel(favourite),
         modifier = Modifier.returnsFocus(),
-        icon = if (favourite) AppIcons.Heart else AppIcons.HeartOutline
+        icon = favouriteIcon(favourite)
     ) { setFavourite(!favourite) }
     BoardOption(
         stringResource(R.string.live_option_channel_guide),

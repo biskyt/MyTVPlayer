@@ -94,4 +94,7 @@
     <string name="vod_other_trailers">Autres bandes-annonces</string>
     <string name="vod_other_trailers_help">D\'autres mises en ligne, si une bande-annonce n\'est pas visible dans votre pays</string>
     <string name="vod_tmdb_season_failed">Impossible de charger cette saison depuis TMDB</string>
+    <string name="vod_download">Télécharger</string>
+    <string name="vod_downloading">Téléchargement de %1$s</string>
+    <string name="vod_download_started">Téléchargement dans Download/%1$s</string>
 </resources>

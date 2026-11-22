@@ -185,9 +185,9 @@
     <string name="settings_warn_vpn">Avisar si la VPN no está conectada</string>
     <string name="settings_warn_vpn_help">Muestra en la barra superior si Android indica una VPN en este dispositivo. No se puede detectar una VPN configurada en el router o en otro dispositivo.</string>
     <string name="settings_external_ip">Mostrar tu dirección IP externa</string>
-    <string name="settings_external_ip_help">Muestra junto al indicador de VPN la dirección que ven los sitios web y su país. Para obtenerla, MyTVPlayer consulta ipinfo.io cuando cambia la red o la VPN.</string>
+    <string name="settings_external_ip_help">Muestra junto al indicador de VPN la dirección que ven los sitios web y su país. Para obtenerla, MyTVPlayer consulta ipinfo.io (o, si está ocupado, ipwho.is o ipify.org) cuando cambia la red o la VPN.</string>
     <string name="settings_warn_proxy">Avisar si el proxy no funciona</string>
-    <string name="settings_warn_proxy_help">Muestra en la barra superior y junto al reloj del reproductor si el proxy de la lista activa funciona, y la dirección que ve su proveedor a través de él. Para comprobarlo, MyTVPlayer consulta a ipinfo.io tu dirección con y sin el proxy cuando cambia la red o el proxy.</string>
+    <string name="settings_warn_proxy_help">Muestra en la barra superior y junto al reloj del reproductor si el proxy de la lista activa funciona, y la dirección que ve su proveedor a través de él. Para comprobarlo, MyTVPlayer consulta a ipinfo.io (o, si está ocupado, ipwho.is o ipify.org) tu dirección con y sin el proxy cuando cambia la red o el proxy.</string>
     <string name="settings_launcher">Mostrar en la pantalla de inicio de la TV</string>
     <string name="settings_launcher_help">Seguir viendo en la fila «Siguiente» de la pantalla de inicio, y tus canales, películas y series favoritos en filas propias. Los títulos y canales restringidos nunca aparecen allí.</string>
     <string name="launcher_favourites">Canales favoritos</string>
@@ -206,6 +206,7 @@
     <string name="settings_proxy_works_only">El proxy funciona: el tráfico de esta lista sale desde %1$s.</string>
     <string name="settings_proxy_same">El proxy respondió, pero tu dirección no cambió (%1$s).</string>
     <string name="settings_proxy_failed">El proxy no respondió: %1$s</string>
+    <string name="settings_proxy_unchecked">El proxy respondió, pero no se pudo averiguar su dirección: %1$s</string>
     <string name="settings_tmdb">TMDB</string>
     <string name="settings_tmdb_help">Desactivado. Añade tu propia clave gratuita de TMDB para ver el reparto, los tráileres y los enlaces en las páginas de películas y series.</string>
     <string name="settings_tmdb_on">Activado. Las páginas de películas y series muestran más datos de TMDB.</string>
@@ -233,4 +234,6 @@
     <string name="settings_backup_drive_error">Google Drive lo rechazó (%1$s). Inténtalo más tarde.</string>
     <string name="settings_backup_drive_signed_out">Google ya no acepta el inicio de sesión. Vuelve a iniciar sesión.</string>
     <string name="settings_tmdb_phone_nearby">¿No se abre la página? En tu teléfono, permite Dispositivos cercanos al navegador: Ajustes › Aplicaciones › el navegador › Permisos.</string>
+    <string name="settings_downloads">Descargas</string>
+    <string name="settings_downloads_help">Añade Descargar a las opciones de películas y episodios. Se guardan en la carpeta Download, en Movies y TV Shows, con una carpeta para cada título.</string>
 </resources>

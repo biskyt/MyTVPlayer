@@ -4,20 +4,30 @@ import android.util.LruCache
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.m3u.M3uCatchup
+import com.biskyt.mytvplayer.core.xtream.CatchupFill
 import com.biskyt.mytvplayer.core.xtream.CatchupListing
 import com.biskyt.mytvplayer.core.xtream.CatchupProgramme
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import java.io.IOException
+import java.text.DateFormat
+import java.time.ZoneId
+import java.util.Date
 
 /**
  * Catch-up (replaying what a channel showed in the last few days), for channels with [ChannelEntity.archiveDays].
  * Xtream: the listing comes from the provider only when catch-up is used (the catch-up page, "Start over", the TV
  * guide scrolled into the past) and is kept briefly for the few channels used most recently. M3U: there's no listing
- * to ask for, so the past is offered in hour-long slots, and the archive's address is made from the playlist's (see
- * M3uCatchup).
+ * to ask for, and the archive's address is made from the playlist's (see M3uCatchup). Either way, the times the
+ * provider does not list are filled with the TV guide's programmes ([guide]), and the rest with slots of an hour at
+ * most ("Replay from 14:00"): the archive plays them, as other apps show (see CatchupFill; the owner, 2026-11-22).
  */
-class CatchupRepository(private val playlists: PlaylistRepository, private val clock: () -> Long = System::currentTimeMillis) {
+class CatchupRepository(
+    private val playlists: PlaylistRepository,
+    /** The TV guide's programmes on the channel between two times (none: only the provider's and slots). */
+    private val guide: suspend (PlaylistEntity, ChannelEntity, Long, Long) -> List<CatchupProgramme> = { _, _, _, _ -> emptyList() },
+    private val clock: () -> Long = System::currentTimeMillis,
+) {
     private class Cached(val listing: CatchupListing, val at: Long)
 
     private val cache = LruCache<String, Cached>(CACHE_CHANNELS)
@@ -26,20 +36,36 @@ class CatchupRepository(private val playlists: PlaylistRepository, private val c
     suspend fun listing(p: PlaylistEntity, ch: ChannelEntity): CatchupListing {
         val key = "${p.id}:${ch.streamId}"
         if (p.isM3u) {
-            // Made, not fetched: kept until the hour changes, as the TV guide asks for it row by row as it scrolls.
+            // Kept until the hour changes, as the TV guide asks for it row by row as it scrolls.
             val hour = M3uCatchup.currentHour(clock())
             cache[key]?.takeIf { it.at == hour }?.let { return it.listing }
-            return M3uCatchup.hourlyListing(clock(), ch.archiveDays).also { cache.put(key, Cached(it, hour)) }
+            return filled(p, ch, emptyList()).also { cache.put(key, Cached(it, hour)) }
         }
         cache[key]?.takeIf { clock() - it.at < MAX_AGE_MS }?.let { return it.listing }
-        return withUserXtreamErrors { playlists.client(p).catchupListing(ch.streamId) }.also { cache.put(key, Cached(it, clock())) }
+        val provider = withUserXtreamErrors { playlists.client(p).catchupListing(ch.streamId) }
+        return filled(p, ch, provider.programmes).also { cache.put(key, Cached(it, clock())) }
     }
 
-    /** Programmes that can be replayed: started, kept by the provider, and within the channel's catch-up days. */
+    /** [provider]'s programmes, with the times it leaves out filled from the guide and with slots. */
+    private suspend fun filled(p: PlaylistEntity, ch: ChannelEntity, provider: List<CatchupProgramme>): CatchupListing {
+        val now = clock()
+        val from = now - ch.archiveDays * DAY_MS
+        val known = guide(p, ch, from, now).filter { it.startMs >= from }
+        val time = DateFormat.getTimeInstance(DateFormat.SHORT)
+        val slots = CatchupFill.fill(provider, known, from..now, ZoneId.systemDefault()) { start ->
+            appString(R.string.live_catchup_replay_from, time.format(Date(start)))
+        }
+        return CatchupListing(slots)
+    }
+
+    /**
+     * Programmes that can be replayed: started, and within the channel's catch-up days. Also those the provider lists
+     * without its archive: other apps replay them, and the channel's archive covers those days.
+     */
     fun playable(listing: CatchupListing, ch: ChannelEntity): List<CatchupProgramme> {
         val now = clock()
         val from = now - ch.archiveDays * DAY_MS
-        return listing.programmes.filter { it.hasArchive && it.startMs < now && it.startMs >= from }
+        return listing.programmes.filter { it.startMs < now && it.startMs >= from }
     }
 
     /** The programme on now, for "Start over". */

@@ -3,6 +3,7 @@ package com.biskyt.mytvplayer.ui.common
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appPlural
 import com.biskyt.mytvplayer.appString
@@ -27,7 +28,13 @@ sealed interface ItemAction {
         val replace: Boolean = false
     ) : ItemAction
 
-    class Run(override val label: String, override val help: String? = null, val run: () -> Unit) : ItemAction
+    /** Does [run]; [icon] shows after the label (the favourite's heart). */
+    class Run(
+        override val label: String,
+        override val help: String? = null,
+        val icon: ImageVector? = null,
+        val run: () -> Unit
+    ) : ItemAction
 
     /** A heading over the options after it ("This episode", "The show"); not an option itself. */
     class Heading(override val label: String) : ItemAction {
@@ -59,6 +66,15 @@ fun ItemAction.perform(nav: Navigator, close: () -> Unit, beforeReplace: () -> U
 
 fun favouriteLabel(favourite: Boolean) = appString(if (favourite) R.string.common_favourite_remove else R.string.common_favourite_add)
 
+/**
+ * "Add to favourites", or for a [favourite] "Remove from favourites", with the heart (filled for a favourite) as every
+ * menu shows it (the owner, 2026-11-22). [setFavourite] gets what it is to be.
+ */
+fun favouriteAction(favourite: Boolean, setFavourite: (Boolean) -> Unit) =
+    ItemAction.Run(favouriteLabel(favourite), icon = favouriteIcon(favourite)) { setFavourite(!favourite) }
+
+fun favouriteIcon(favourite: Boolean) = if (favourite) AppIcons.Heart else AppIcons.HeartOutline
+
 /** Marks something [watched] as unwatched, or the other way round. */
 fun markWatched(watched: Boolean, set: (Boolean) -> Unit): ItemAction =
     ItemAction.Run(appString(if (watched) R.string.common_mark_unwatched else R.string.common_mark_watched)) { set(!watched) }
@@ -67,7 +83,7 @@ fun favouriteFlash(added: Boolean) = appString(if (added) R.string.common_favour
 
 /** What every channel menu offers (search, the player): favourites, catch-up where the provider has it, its guide. */
 fun channelActions(ch: ChannelEntity, favourite: Boolean, setFavourite: (Boolean) -> Unit): List<ItemAction> = buildList {
-    add(ItemAction.Run(favouriteLabel(favourite)) { setFavourite(!favourite) })
+    add(favouriteAction(favourite, setFavourite))
     if (ch.archiveDays > 0) {
         val help = appPlural(R.plurals.common_catchup_days, ch.archiveDays, ch.archiveDays)
         add(ItemAction.Open(appString(R.string.common_catchup), Screen.Catchup(ch.playlistId, ch.streamId), help))
@@ -91,7 +107,7 @@ fun vodActions(playlistId: Long, type: String, id: Long, favourite: Boolean?, se
             appString(if (type == CAT_MOVIE) R.string.search_open_movie else R.string.search_open_series),
             vodDetails(playlistId, type, id)
         ),
-        favourite?.let { f -> ItemAction.Run(favouriteLabel(f)) { setFavourite(!f) } }
+        favourite?.let { f -> favouriteAction(f, setFavourite) }
     )
 
 /** A movie's or series' page ([type] is CAT_MOVIE or CAT_SERIES). */
@@ -114,7 +130,7 @@ fun ItemActionsPanel(title: String, actions: List<ItemAction>, onDismiss: () -> 
             when (a) {
                 is ItemAction.Heading -> BoardSection(a.label)
                 is ItemAction.Links -> BoardLinksRow(a.label, a.links, focus)
-                else -> BoardOption(a.label, a.help, focus) { a.perform(nav, onDismiss) }
+                else -> BoardOption(a.label, a.help, focus, icon = (a as? ItemAction.Run)?.icon) { a.perform(nav, onDismiss) }
             }
         }
     }

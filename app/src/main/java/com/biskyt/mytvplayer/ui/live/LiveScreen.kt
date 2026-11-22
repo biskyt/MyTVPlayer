@@ -73,16 +73,20 @@ import com.biskyt.mytvplayer.ui.common.ProgressLine
 import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TabScaffold
 import com.biskyt.mytvplayer.ui.common.TvCard
+import com.biskyt.mytvplayer.ui.common.afterRemoval
 import com.biskyt.mytvplayer.ui.common.categoryEntries
 import com.biskyt.mytvplayer.ui.common.collectIds
 import com.biskyt.mytvplayer.ui.common.digit
 import com.biskyt.mytvplayer.ui.common.distinctLabels
 import com.biskyt.mytvplayer.ui.common.formatTime
+import com.biskyt.mytvplayer.ui.common.glowRoom
+import com.biskyt.mytvplayer.ui.common.glowRoomPadding
 import com.biskyt.mytvplayer.ui.common.isGuide
 import com.biskyt.mytvplayer.ui.common.isLockedCategory
 import com.biskyt.mytvplayer.ui.common.numberLabel
 import com.biskyt.mytvplayer.ui.common.pageItem
 import com.biskyt.mytvplayer.ui.common.pageKeys
+import com.biskyt.mytvplayer.ui.common.raiseOnFocus
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.common.reveal
@@ -248,11 +252,21 @@ private fun ChannelList(vm: LiveViewModel, items: LazyPagingItems<ChannelEntity>
     MoveBackHandler(vm.mover, filter, query)
     KeepInView(listState) { vm.mover.movingId(CAT_LIVE)?.let { p -> items.itemSnapshotList.indexOfFirst { it?.streamId == p } } }
     LaunchedEffect(Unit) { if (vm.restoreFocusPending) vm.revealFocused() }
+    vm.removedStreamId?.let { removed ->
+        LaunchedEffect(removed) {
+            afterRemoval(items, removed, vm.removedAt, { it.streamId }) { next ->
+                vm.focusStreamId = next
+                vm.restoreFocusPending = true
+            }
+            vm.removedStreamId = null
+        }
+    }
     val now by rememberMinuteClock()
     val page = remember(filter, query) { PageFocus() } // a page not reached in another list is not taken in this one
 
     LazyColumn(
-        Modifier.pageKeys(
+        // Room at the sides for the row with focus to glow (see focusGlow), and above the first row.
+        Modifier.glowRoom(vertical = false).pageKeys(
             page,
             { items.itemCount },
             enabled = { vm.mover.movingId(CAT_LIVE) == null },
@@ -260,7 +274,7 @@ private fun ChannelList(vm: LiveViewModel, items: LazyPagingItems<ChannelEntity>
         ) { listState.reveal(it) },
         state = listState,
         verticalArrangement = Arrangement.spacedBy(6.dp),
-        contentPadding = PaddingValues(bottom = 40.dp)
+        contentPadding = glowRoomPadding(PaddingValues(top = ROW_GLOW, bottom = 40.dp), vertical = false)
     ) {
         items(count = items.itemCount, key = items.itemKey { it.streamId }) { index ->
             val ch = items[index]
@@ -270,18 +284,21 @@ private fun ChannelList(vm: LiveViewModel, items: LazyPagingItems<ChannelEntity>
                 // Once per visit, focus goes back to the channel last played (or the first row the first time).
                 val wantsFocus = vm.restoreFocusPending && (vm.focusStreamId?.let { it == ch.streamId } ?: (index == 0))
                 LaunchedEffect(ch.streamId) { vm.nowNext.request(ch.streamId) }
-                MovableTile(vm.mover, CAT_LIVE, ch.streamId, MoveLayout.COLUMN) {
-                    ChannelRow(
-                        ch = ch,
-                        nn = vm.nowNext.entries[ch.streamId],
-                        favourite = ch.streamId in favs,
-                        nowMs = now,
-                        onClick = { play(ch) },
-                        onLongClick = { vm.openOptions(ch) },
-                        modifier = Modifier.restoreFocusIf(wantsFocus) { vm.restoreFocusPending = false }
-                            .onFocusChanged { if (it.isFocused) vm.focusMoved(ch.streamId, index) }
-                            .pageItem(page, index)
-                    )
+                // Drawn over the rows beside it while it has focus, so that its glow shows.
+                Box(Modifier.raiseOnFocus()) {
+                    MovableTile(vm.mover, CAT_LIVE, ch.streamId, MoveLayout.COLUMN) {
+                        ChannelRow(
+                            ch = ch,
+                            nn = vm.nowNext.entries[ch.streamId],
+                            favourite = ch.streamId in favs,
+                            nowMs = now,
+                            onClick = { play(ch) },
+                            onLongClick = { vm.openOptions(ch) },
+                            modifier = Modifier.restoreFocusIf(wantsFocus) { vm.restoreFocusPending = false }
+                                .onFocusChanged { if (it.isFocused) vm.focusMoved(ch.streamId, index) }
+                                .pageItem(page, index)
+                        )
+                    }
                 }
             }
         }
@@ -365,3 +382,6 @@ private fun SkeletonLines() {
 private fun PlaceholderRow() {
     Box(Modifier.fillMaxWidth().height(64.dp).clip(RoundedCornerShape(14.dp)).background(Palette.surfaceLow))
 }
+
+/** Room above the first row for its glow (see focusGlow), which reaches this far out. */
+private val ROW_GLOW = 12.dp

@@ -230,7 +230,8 @@ class AppUiTest {
         compose.waitForIdle()
         assertEquals(Screen.Catchup(playlistId, 101), navigator.current.screen)
         waitFor("Earlier Today")
-        assertTrue(compose.onAllNodes(hasText("Not Kept")).fetchSemanticsNodes().isEmpty())
+        // One the provider lists without its archive is offered too, as other apps do (the owner, 2026-11-22).
+        waitFor("Not Kept")
         compose.onNode(hasText("Earlier Today")).performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
         assertTrue(navigator.current.screen.toString(), navigator.current.screen is Screen.CatchupPlayer)
@@ -580,23 +581,9 @@ class AppUiTest {
     /** Lets delayed work (e.g. a category switch after focus rests) happen. */
 
     @Test
-    fun `guide sources can match channels without a guide, showing the result`() {
-        show(Screen.GuideSources)
-        waitFor("Match channels without a guide")
-        compose.onNode(hasText("Match channels without a guide")).performSemanticsAction(SemanticsActions.OnClick)
-        compose.waitUntil(10_000) {
-            org.robolectric.shadows.ShadowLooper.idleMainLooper()
-            compose.onAllNodes(hasText("No new matches found") or hasText("Found a guide for", substring = true))
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-        // The outcome says how many channels have a guide, not only what this run found.
-        waitFor("channel has a guide")
-    }
-
-    @Test
     fun `guides are added from a panel offering free country guides`() {
         show(Screen.GuideSources)
-        waitFor("Guides for ") // the playlist in use's
+        waitFor("Add a guide")
         compose.onNode(hasText("Add a guide")).performSemanticsAction(SemanticsActions.OnClick)
         // Section headings, in upper case as the boards draw them (see BoardSection).
         waitFor("FREE GUIDES BY COUNTRY")

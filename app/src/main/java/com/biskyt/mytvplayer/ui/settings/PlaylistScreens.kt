@@ -334,6 +334,7 @@ class PlaylistEditViewModel(private val c: AppContainer, private val id: Long?) 
             )
             is ProxyCheck.SameAddress -> FormMessage(appString(R.string.settings_proxy_same, address(result.ip)))
             is ProxyCheck.Failed -> FormMessage(appString(R.string.settings_proxy_failed, result.reason))
+            is ProxyCheck.Unchecked -> FormMessage(appString(R.string.settings_proxy_unchecked, result.reason))
         }
     }
 

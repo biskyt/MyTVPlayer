@@ -28,6 +28,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
@@ -37,9 +38,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.MaterialTheme
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
+import com.biskyt.mytvplayer.container
+import com.biskyt.mytvplayer.core.xtream.EpisodeInfo
 import com.biskyt.mytvplayer.data.ChannelFilter
 import com.biskyt.mytvplayer.data.db.CAT_LIVE
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
+import com.biskyt.mytvplayer.data.db.CAT_SERIES
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.VOD_TYPES
 import com.biskyt.mytvplayer.data.db.VodCard
@@ -79,10 +83,18 @@ import com.biskyt.mytvplayer.ui.common.onAnyTouch
 import com.biskyt.mytvplayer.ui.common.raiseOnFocus
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.common.settleFor
+import com.biskyt.mytvplayer.ui.common.sidewaysOnly
 import com.biskyt.mytvplayer.ui.common.titledRow
 import com.biskyt.mytvplayer.ui.common.vodActions
 import com.biskyt.mytvplayer.ui.common.vodDetails
 import com.biskyt.mytvplayer.ui.live.ChannelOptionsPanel
+import com.biskyt.mytvplayer.ui.player.DescribedEpisode
+import com.biskyt.mytvplayer.ui.vod.TitlePanel
+import com.biskyt.mytvplayer.ui.vod.TitlePanels
+import com.biskyt.mytvplayer.ui.vod.filledFrom
+import com.biskyt.mytvplayer.ui.vod.rememberTmdb
+import com.biskyt.mytvplayer.ui.vod.rememberTmdbEpisode
+import com.biskyt.mytvplayer.ui.vod.titleExtraActions
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -251,7 +263,7 @@ fun HomeScreen() {
             favouriteVod.forEach { (type, cards) ->
                 titledRow(favouriteRowTitle(type), cards.value, {
                     it.id
-                }, move = MovableRow(vm.mover, type)) { card ->
+                }, move = MovableRow(vm.mover, type), stopAtEnds = true) { card ->
                     MovableTile(vm.mover, type, card.id, MoveLayout.ROW) {
                         PosterCard(card, onLongClick = { options = HomeTile.Vod(type, card) }) { nav.push(vodDetails(pid, type, card.id)) }
                     }
@@ -368,43 +380,68 @@ private fun TileOptions(tile: HomeTile, vm: HomeViewModel, pid: Long, onDismiss:
                 ),
             )
         }
-        is HomeTile.CarryOn -> {
-            val p = tile.p
-            val series = p.seriesId
-            // An episode watched, or the next one up after it.
-            val next = p.finished || series != null && !p.started
-            val actions = listOf(
-                ItemAction.Open(
-                    stringResource(if (next) R.string.home_play_next_episode else R.string.home_resume),
-                    Screen.VodPlayer(p.playlistId, p.itemId, series, continueSeries = true)
-                ),
-                if (series == null) {
-                    ItemAction.Open(stringResource(R.string.common_about_movie), Screen.MovieDetails(p.playlistId, p.itemId))
-                } else {
-                    ItemAction.Open(
-                        stringResource(R.string.common_all_episodes),
-                        Screen.SeriesDetails(p.playlistId, series, p.season, p.episode)
-                    )
-                },
-                ItemAction.Run(
-                    stringResource(R.string.home_remove_carry_on),
-                    stringResource(if (series == null) R.string.home_forget_movie else R.string.home_forget_series)
-                ) {
-                    vm.forget(p)
-                    onDismiss(true)
-                }
-            )
-            ItemActionsPanel(p.title, actions, close)
-        }
-        is HomeTile.Vod -> {
-            // A card on these rows is a favourite.
-            val actions = vodActions(pid, tile.type, tile.card.id, favourite = true) { favourite ->
-                vm.setVodFavourite(tile.type, tile.card.id, favourite)
-                if (!favourite) onDismiss(true)
-            } + moveAction(vm.mover, tile.type, tile.card.id, close, VOD_ROW_LIMIT)
-            ItemActionsPanel(tile.card.title, actions, close)
-        }
+        is HomeTile.CarryOn -> CarryOnOptions(tile.p, vm, onDismiss)
+        is HomeTile.Vod -> FavouriteOptions(tile, vm, pid, onDismiss)
     }
+}
+
+/**
+ * A Continue watching card's options: play it, its page, take it off the row, then what its page's More… offers from
+ * TMDB (the episode's description, cast and crew, More like this…), which come in once TMDB answers.
+ */
+@Composable
+private fun CarryOnOptions(p: WatchProgressEntity, vm: HomeViewModel, onDismiss: (removed: Boolean) -> Unit) {
+    val close = { onDismiss(false) }
+    val series = p.seriesId
+    // An episode watched, or the next one up after it.
+    val next = p.finished || series != null && !p.started
+    val c = LocalContext.current.container
+    val tmdb = rememberTmdb(c, p.playlistId, if (series == null) CAT_MOVIE else CAT_SERIES, series ?: p.itemId)
+    val tmdbEpisode = rememberTmdbEpisode(c, tmdb, p.season, p.episode)
+    val described = tmdbEpisode?.takeIf { series != null }?.let { t ->
+        val e = EpisodeInfo(p.itemId, p.season ?: 0, p.episode ?: 0, p.episodeTitle.orEmpty(), "", null, null, null)
+        DescribedEpisode(p.title, e.filledFrom(t))
+    }
+    var panel by remember { mutableStateOf<TitlePanel?>(null) }
+    val actions = listOf(
+        ItemAction.Open(
+            stringResource(if (next) R.string.home_play_next_episode else R.string.home_resume),
+            Screen.VodPlayer(p.playlistId, p.itemId, series, continueSeries = true)
+        ),
+        if (series == null) {
+            ItemAction.Open(stringResource(R.string.common_about_movie), Screen.MovieDetails(p.playlistId, p.itemId))
+        } else {
+            ItemAction.Open(stringResource(R.string.common_all_episodes), Screen.SeriesDetails(p.playlistId, series, p.season, p.episode))
+        },
+        ItemAction.Run(
+            stringResource(R.string.home_remove_carry_on),
+            stringResource(if (series == null) R.string.home_forget_movie else R.string.home_forget_series)
+        ) {
+            vm.forget(p)
+            onDismiss(true)
+        }
+    ) + titleExtraActions(p.playlistId, tmdb, film = series == null, p.title, described) { panel = it }
+    // One of TMDB's panels in place of the options; closing it closes both.
+    if (panel == null) ItemActionsPanel(p.title, actions, close)
+    TitlePanels(panel, p.playlistId, p.title, tmdb, film = series == null, close)
+}
+
+/** A favourite film's or series' options: open it, favourites and Move, then what its page's More… offers from TMDB. */
+@Composable
+private fun FavouriteOptions(tile: HomeTile.Vod, vm: HomeViewModel, pid: Long, onDismiss: (removed: Boolean) -> Unit) {
+    val close = { onDismiss(false) }
+    val c = LocalContext.current.container
+    val film = tile.type == CAT_MOVIE
+    val tmdb = rememberTmdb(c, pid, tile.type, tile.card.id)
+    var panel by remember { mutableStateOf<TitlePanel?>(null) }
+    // A card on these rows is a favourite.
+    val actions = vodActions(pid, tile.type, tile.card.id, favourite = true) { favourite ->
+        vm.setVodFavourite(tile.type, tile.card.id, favourite)
+        if (!favourite) onDismiss(true)
+    } + moveAction(vm.mover, tile.type, tile.card.id, close, VOD_ROW_LIMIT) +
+        titleExtraActions(pid, tmdb, film, tile.card.title, described = null) { panel = it }
+    if (panel == null) ItemActionsPanel(tile.card.title, actions, close)
+    TitlePanels(panel, pid, tile.card.title, tmdb, film, close)
 }
 
 @Composable
@@ -428,7 +465,7 @@ private fun ChannelCardRow(
     val now by rememberMinuteClock()
     KeepInView(state) { mover?.movingId(CAT_LIVE)?.let { p -> channels.indexOfFirst { it.streamId == p } } }
     LazyRow(
-        Modifier.glowRoom(),
+        Modifier.glowRoom().sidewaysOnly(),
         state = state,
         contentPadding = glowRoomPadding(),
         horizontalArrangement = Arrangement.spacedBy(20.dp)
@@ -458,7 +495,7 @@ private fun CarryOnRow(
     onPlay: (WatchProgressEntity) -> Unit
 ) {
     LazyRow(
-        Modifier.glowRoom(),
+        Modifier.glowRoom().sidewaysOnly(),
         state = state,
         contentPadding = glowRoomPadding(),
         horizontalArrangement = Arrangement.spacedBy(20.dp)

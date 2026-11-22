@@ -85,6 +85,19 @@ class PlaybackEngine(
         override fun onLoadCompleted(eventTime: AnalyticsListener.EventTime, info: LoadEventInfo, data: MediaLoadData) =
             note(info, empty = info.bytesLoaded == 0L)
 
+        override fun onBandwidthEstimate(eventTime: AnalyticsListener.EventTime, loadMs: Int, bytes: Long, bitrateEstimate: Long) {
+            downloadBps = bitrateEstimate
+        }
+
+        override fun onVideoDecoderInitialized(
+            eventTime: AnalyticsListener.EventTime,
+            name: String,
+            initializedMs: Long,
+            durationMs: Long
+        ) {
+            videoDecoder = name
+        }
+
         override fun onLoadError(
             eventTime: AnalyticsListener.EventTime,
             info: LoadEventInfo,
@@ -103,6 +116,14 @@ class PlaybackEngine(
             }
         }
     }
+
+    /** The player's estimate of the download speed, in bits a second (0 until its first estimate): for Stream info. */
+    @Volatile var downloadBps = 0L
+        private set
+
+    /** The name of the video decoder in use ("c2.amlogic.avc.decoder"), once one has started: for Stream info. */
+    @Volatile var videoDecoder: String? = null
+        private set
 
     /** Whether the last reply for [url], read from the start, had no data at all. */
     fun sentNothing(url: String?) = url != null && url == emptyReply

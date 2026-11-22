@@ -119,9 +119,10 @@ class M3uUiTest {
         }
         assertEquals(2, one.archiveDays)
         show(Screen.Catchup(m3u, one.streamId))
-        // Hour-long slots ("18:00 – 19:00"); OK plays from the chosen hour.
-        waitFor(":00 – ")
-        compose.onAllNodes(hasText(":00 – ", substring = true) and hasClickAction())[0].performSemanticsAction(SemanticsActions.OnClick)
+        // Slots of an hour at most ("Replay from 18:00"), as there is no guide here; OK plays from the chosen one.
+        waitFor("Replay from")
+        val slot = hasText("Replay from", substring = true) and hasClickAction()
+        compose.onAllNodes(slot)[0].performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
         assertTrue(navigator.current.screen.toString(), navigator.current.screen is Screen.CatchupPlayer)
     }

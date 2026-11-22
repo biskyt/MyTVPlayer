@@ -19,7 +19,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
@@ -63,6 +62,7 @@ import com.biskyt.mytvplayer.ui.common.Poster
 import com.biskyt.mytvplayer.ui.common.PosterCard
 import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TabScaffold
+import com.biskyt.mytvplayer.ui.common.afterRemoval
 import com.biskyt.mytvplayer.ui.common.categoryEntries
 import com.biskyt.mytvplayer.ui.common.collectIds
 import com.biskyt.mytvplayer.ui.common.glowRoom
@@ -146,6 +146,10 @@ class VodBrowseViewModel(
 
     /** A poster taken off Favourites while they're shown: focus moves on once it has gone. */
     var removedId by mutableStateOf<Long?>(null)
+
+    /** The place of the poster with focus (the one whose options open), and of [removedId] as it was taken off. */
+    var focusedAt: Int? = null
+    var removedAt: Int? = null
 
     /** Moving a favourite within Favourites. */
     val mover = FavouriteMover(viewModelScope, c.favourites) { playlist.value?.id ?: 0 }
@@ -233,6 +237,7 @@ private fun PosterOptions(vm: VodBrowseViewModel, card: VodCard, filter: VodFilt
         vm.setFavourite(card, it)
         if (!it && inFavourites) {
             close()
+            vm.removedAt = vm.focusedAt
             vm.removedId = card.id
         }
     } + listOfNotNull(if (inFavourites && favourite == true && query.isEmpty()) moveAction(vm.mover, vm.type, card.id, close) else null)
@@ -272,9 +277,10 @@ private fun PosterGrid(vm: VodBrowseViewModel, pid: Long) {
     val state = rememberLazyGridState()
     vm.removedId?.let { removed ->
         LaunchedEffect(removed) {
-            snapshotFlow { items.itemSnapshotList.none { it?.id == removed } }.first { it }
-            vm.focusId = null
-            vm.restoreFocusPending = true
+            afterRemoval(items, removed, vm.removedAt, { it.id }) { next ->
+                vm.focusId = next
+                vm.restoreFocusPending = true
+            }
             vm.removedId = null
         }
     }
@@ -302,14 +308,15 @@ private fun PosterGrid(vm: VodBrowseViewModel, pid: Long) {
                     Spacer(Modifier.height(40.dp))
                 }
             } else {
-                // Back from a title, on it; after one is taken off Favourites, on the first.
+                // Back from a title, on it; after one is taken off Favourites, on the one in its place.
                 val wantsFocus = vm.restoreFocusPending && (vm.focusId?.let { it == card.id } ?: (index == 0))
                 // Drawn over the cards beside it while it has focus, as it grows and glows (see focusGlow).
                 Box(Modifier.raiseOnFocus()) {
                     MovableTile(vm.mover, vm.type, card.id, MoveLayout.GRID, COLUMNS) {
                         PosterCard(
                             card,
-                            Modifier.restoreFocusIf(wantsFocus) { vm.restoreFocusPending = false }.pageItem(page, index),
+                            Modifier.restoreFocusIf(wantsFocus) { vm.restoreFocusPending = false }.pageItem(page, index)
+                                .onFocusChanged { if (it.isFocused) vm.focusedAt = index },
                             favourite = card.id in favourites,
                             onLongClick = { vm.optionsFor = card }
                         ) { nav.push(vm.open(card, pid)) }

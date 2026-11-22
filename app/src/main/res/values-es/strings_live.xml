@@ -25,16 +25,15 @@
     <string name="live_catchup_title">Diferido · %1$s</string>
     <string name="live_catchup_load_failed">No se pudo cargar el diferido</string>
     <string name="live_catchup_empty_day">No hay nada en diferido para este día.</string>
+    <string name="live_catchup_replay_from">Repetir desde las %1$s</string>
 
     <string name="live_guide_earlier">Antes</string>
     <string name="live_guide_later">Después</string>
 
-    <string name="live_guide_sources_intro">Cada lista tiene sus propias guías: activada aquí, %1$s la usa. Una guía que usan varias listas se descarga una sola vez.</string>
+    <string name="live_guide_sources_intro">Edita las fuentes de guía de la lista actual. Si la guía de tu proveedor no tiene programas para todos los canales, elige Agregar guía y escoge una de las guías gratuitas por país.</string>
     <string name="live_guide_add">Agregar guía</string>
     <string name="live_guide_update_now">Actualizar guía</string>
-    <string name="live_guide_match_missing">Asignar canales sin guía</string>
-    <string name="live_guide_for">Guías de %1$s</string>
-    <string name="live_guide_order_help">Sube una guía para usarla primero cuando más de una guía tenga un canal. Hasta entonces, se usa la mejor coincidencia.</string>
+    <string name="live_guide_order_help">Sube una guía para usarla primero cuando más de una guía tenga un canal.</string>
     <string name="live_guide_move_up">Subir</string>
     <string name="live_guide_move_down">Bajar</string>
     <string name="live_guide_order_end">Esta guía ya está en el extremo de la lista.</string>
@@ -63,15 +62,6 @@
     <string name="live_guide_updating">Actualizando la guía de TV</string>
     <string name="live_guide_updated">Guía de TV actualizada</string>
     <string name="live_guide_some_failed">No se pudieron cargar algunas guías</string>
-    <string name="live_guide_matching">Asignando canales sin guía</string>
-    <plurals name="live_guide_match_found">
-        <item quantity="one">Se encontró guía para %1$s canal más</item>
-        <item quantity="many">Se encontró guía para %1$s canales más</item>
-        <item quantity="other">Se encontró guía para %1$s canales más</item>
-    </plurals>
-    <string name="live_guide_match_all">Todos los canales tienen guía</string>
-    <string name="live_guide_match_none_left">No quedan canales por asignar</string>
-    <string name="live_guide_match_none_new">No se encontraron nuevas coincidencias</string>
     <plurals name="live_guide_coverage">
         <item quantity="one">%1$s canal tiene guía.</item>
         <item quantity="many">%1$s canales tienen guía.</item>

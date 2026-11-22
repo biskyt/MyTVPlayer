@@ -64,7 +64,6 @@ class GuideSourcesUiTest {
         val navigator = navigators.new(Screen.GuideSources)
         compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
         compose.waitForText("TV guide sources · Other TV", stepMs = 50)
-        compose.waitForText("Guides for Other TV", stepMs = 50)
         compose.waitForText("From your provider", stepMs = 50) // its own guide
         compose.waitForText("Home TV's provider", stepMs = 50)
         compose.waitForText("off here", stepMs = 50)

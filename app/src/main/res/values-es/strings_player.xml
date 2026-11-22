@@ -53,6 +53,7 @@
     <string name="player_failure_vod">No se puede reproducir en este momento. Vuelve a intentarlo más tarde.</string>
     <string name="player_failure_catchup">No se puede volver a reproducir en este momento. Vuelve a intentarlo más tarde.</string>
     <string name="player_catchup_nothing_to_start_over">En este momento no hay nada que ver desde el inicio en este canal.</string>
+    <string name="player_catchup_switching">Cambiando a diferido…</string>
     <string name="player_unsupported_format">Usa un formato de transmisión que MyTVPlayer no puede reproducir.</string>
 
     <string name="player_error_dns">No se encuentra el servidor de la transmisión: puede que su dirección ya no exista.</string>
@@ -84,5 +85,8 @@
     <string name="player_info_video">Vídeo: %1$s</string>
     <string name="player_info_audio">Pista de audio: %1$s</string>
     <string name="player_info_buffer">En el búfer: %1$d s</string>
+    <string name="player_info_download">Velocidad de descarga: %1$s</string>
+    <string name="player_info_decoder">Decodificador de vídeo: %1$s</string>
+    <string name="player_info_dropped">Fotogramas perdidos: %1$d</string>
     <string name="player_info_unknown">aún no se sabe</string>
 </resources>

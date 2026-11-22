@@ -60,6 +60,8 @@ class CatchupPlayerViewModel(
     private var tickJob: Job? = null
 
     init {
+        // From the live channel by ◀: why the picture pauses, for as long as catch-up loads.
+        if (screen.switched) showWhileLoading(appString(R.string.player_catchup_switching))
         viewModelScope.launch {
             startEngine()
             val p = c.playlists.get(screen.playlistId) ?: return@launch stop()
@@ -67,7 +69,7 @@ class CatchupPlayerViewModel(
             playlist = p
             channel = ch
             try {
-                val l = c.catchup.listing(p, ch).let { if (p.isM3u) withGuide(p, ch, it) else it }
+                val l = c.catchup.listing(p, ch)
                 listing = l
                 val start = screen.startMs ?: c.catchup.onNow(l)?.startMs
                 if (start == null) fail(appString(R.string.player_catchup_nothing_to_start_over)) else open(start)
@@ -76,19 +78,6 @@ class CatchupPlayerViewModel(
                 fail(e.message)
             }
         }
-    }
-
-    /**
-     * M3U catch-up has only hour-long slots; the TV guide's programmes, where it has them, take their place, so the
-     * title, "Start over" and "from the start" follow the real programmes.
-     */
-    private suspend fun withGuide(p: PlaylistEntity, ch: ChannelEntity, l: CatchupListing): CatchupListing {
-        val now = clock()
-        val oldest = now - ch.archiveDays * CatchupRepository.DAY_MS
-        val guide = c.epg.programmes(p.id, listOf(ch.streamId), oldest, now, details = false)[ch.streamId].orEmpty()
-            .filter { it.startMs >= oldest }
-            .map { CatchupProgramme(it.startMs, it.stopMs, it.title, it.description, hasArchive = true) }
-        return M3uCatchup.withProgrammes(l, guide)
     }
 
     /** Where playback is now. */

@@ -35,7 +35,7 @@
     <!-- Subtitles switched off: a choice in the player's Subtitles panel and a value of the Default subtitles setting -->
     <string name="common_subtitles_off">Off</string>
     <string name="common_about_movie">About this movie</string>
-    <string name="common_all_episodes">All episodes</string>
+    <string name="common_all_episodes">Go to series</string>
 
     <!-- Lists of channels, films and series: a Home row, entries of the category columns, headings -->
     <string name="common_favourites">Favourites</string>

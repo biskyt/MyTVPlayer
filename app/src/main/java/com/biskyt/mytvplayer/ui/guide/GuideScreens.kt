@@ -201,18 +201,6 @@ class GuideSourcesViewModel(private val c: AppContainer) : ViewModel() {
         }
     }
 
-    fun matchMissing() = work.run(appString(R.string.live_guide_matching)) {
-        val r = c.sync.matchMissingGuides().getOrElse { return@run WorkRunner.failed(appString(R.string.common_match_failed), it) }
-        val now = coverage()
-        val title = when {
-            r.matched > 0 -> appPlural(R.plurals.live_guide_match_found, r.matched, formatCount(r.matched))
-            now.noGuide == 0 -> appString(R.string.live_guide_match_all)
-            r.checked == 0 -> appString(R.string.live_guide_match_none_left)
-            else -> appString(R.string.live_guide_match_none_new)
-        }
-        WorkStatus(title, coverageText(now, now))
-    }
-
     /**
      * Updates the guide (downloading just [only], if given): [done], with how many channels have a guide now, unless
      * [check] finds a problem.
@@ -313,24 +301,16 @@ fun GuideSourcesScreen() {
     val title = stringResource(R.string.common_guide_sources)
     SettingsPage(if (playlist == null) title else "$title · $name") {
         item {
-            Muted(stringResource(R.string.live_guide_sources_intro, name), maxLines = 2)
+            Muted(stringResource(R.string.live_guide_sources_intro), maxLines = 2)
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 PillButton(stringResource(R.string.live_guide_add), { adding = true }, rememberFirstFocus(once = true), primary = true)
                 PillButton(stringResource(R.string.live_guide_update_now), vm::refresh)
-                PillButton(stringResource(R.string.live_guide_match_missing), vm::matchMissing)
             }
         }
         // Directly under the buttons, so whatever was pressed, its progress and outcome show in the same place.
         item(key = "status") { StatusPanel(vm.status) }
-        item {
-            Text(
-                stringResource(R.string.live_guide_for, name),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 12.dp)
-            )
-        }
         val ordered = sources.count { it.on } > 1
         if (ordered) item { Muted(stringResource(R.string.live_guide_order_help), maxLines = 2) }
         if (sources.isEmpty()) item { Muted(stringResource(R.string.live_guide_none_yet)) }

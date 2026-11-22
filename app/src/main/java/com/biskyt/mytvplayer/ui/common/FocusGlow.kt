@@ -39,25 +39,27 @@ import kotlinx.coroutines.launch
  * the card's drawing, with the glow's blurred shapes under it, on the GPU: a focus change animates them only, with no
  * composition and no new layout, so rows scroll without stutter. Put it on the card
  * ([shape] is the card's), outside its focus target, so that it sees the card's focus. Put [raiseOnFocus] on the row's
- * item, so that the card draws over the cards next to it.
+ * item, so that the card draws over the cards next to it. Without [grow], it glows at its own size: for wide rows and
+ * buttons, which would grow over what is beside them (it took the place of the white ring there, the owner, 2026-11-22).
  */
-fun Modifier.focusGlow(shape: Shape, color: Color): Modifier = this then FocusGlowElement(shape, color)
+fun Modifier.focusGlow(shape: Shape, color: Color, grow: Boolean = true): Modifier = this then FocusGlowElement(shape, color, grow)
 
 /** Draws the row's item with focus over the others, so that its card grows and glows over theirs (see [focusGlow]). */
 fun Modifier.raiseOnFocus(): Modifier = this then RaiseElement
 
-private data class FocusGlowElement(val shape: Shape, val color: Color) : ModifierNodeElement<FocusGlowNode>() {
-    override fun create() = FocusGlowNode(shape, color)
+private data class FocusGlowElement(val shape: Shape, val color: Color, val grow: Boolean) : ModifierNodeElement<FocusGlowNode>() {
+    override fun create() = FocusGlowNode(shape, color, grow)
 
     override fun update(node: FocusGlowNode) {
         node.shape = shape
         node.color = color
+        node.grow = grow
         // The glow reads them while it draws: draw it again, with the new ones.
         node.invalidateDraw()
     }
 }
 
-private class FocusGlowNode(var shape: Shape, var color: Color) :
+private class FocusGlowNode(var shape: Shape, var color: Color, var grow: Boolean) :
     Modifier.Node(),
     DrawModifierNode,
     FocusEventModifierNode {
@@ -81,7 +83,7 @@ private class FocusGlowNode(var shape: Shape, var color: Color) :
     override fun ContentDrawScope.draw() {
         val amount = lift.value
         if (amount <= 0f) return drawContent()
-        scale(1f + LIFT_SCALE * amount) {
+        scale(if (grow) 1f + LIFT_SCALE * amount else 1f) {
             // The blurs depend on the screen's density only: made again only if it changes.
             if (blurDensity != density) {
                 blurDensity = density
