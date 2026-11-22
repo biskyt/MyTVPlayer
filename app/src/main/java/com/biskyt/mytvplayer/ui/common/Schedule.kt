@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -33,10 +35,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.container
+import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
 import com.biskyt.mytvplayer.data.programmeTitle
 import com.biskyt.mytvplayer.hideSystemBars
@@ -56,8 +60,30 @@ fun rememberSchedule(playlistId: Long, streamId: Long): List<ChannelProgramme>? 
 }
 
 /**
- * Vertical list of upcoming programmes; the current one is marked and gets focus, again when the list changes channel.
- * With none, the message takes focus (so keys still reach the panel around it).
+ * [rememberSchedule] with, before it, what channel [ch] showed that its catch-up replays (the catch-up page's list:
+ * the provider's, the guide's and hour slots; see CatchupRepository), when it has catch-up (the owner, 2026-11-22).
+ * Without catch-up, or when the provider can't be reached, only the schedule.
+ */
+@Composable
+fun rememberScheduleWithPast(ch: ChannelEntity): List<ChannelProgramme>? {
+    val c = LocalContext.current.container
+    val upcoming = rememberSchedule(ch.playlistId, ch.streamId)
+    val past by produceState(emptyList<ChannelProgramme>(), ch.playlistId, ch.streamId, ch.archiveDays) {
+        if (ch.archiveDays <= 0) return@produceState
+        val p = c.playlists.get(ch.playlistId) ?: return@produceState
+        value = runCatching { c.catchup.playable(c.catchup.listing(p, ch), ch) }.getOrDefault(emptyList())
+            .map { ChannelProgramme(ch.streamId, it.startMs, it.stopMs, it.title, null, it.description) }
+    }
+    return upcoming?.let { list ->
+        val from = list.firstOrNull()?.startMs ?: System.currentTimeMillis()
+        past.filter { it.startMs < from } + list
+    }
+}
+
+/**
+ * Vertical list of programmes; the current one is marked and gets focus (the first, without one), again when the list
+ * changes channel, so that programmes before it (catch-up, see [rememberScheduleWithPast]) are above it, Up from it.
+ * Those that ended show the catch-up mark. With none, the message takes focus (so keys still reach the panel around it).
  */
 @Composable
 fun ScheduleList(programmes: List<ChannelProgramme>?, modifier: Modifier = Modifier, onSelect: (ChannelProgramme) -> Unit = {}) {
@@ -66,38 +92,48 @@ fun ScheduleList(programmes: List<ChannelProgramme>?, modifier: Modifier = Modif
     when {
         programmes == null -> Unit
         programmes.isEmpty() -> BoardPanelSubtitle(stringResource(R.string.common_no_guide_for_channel), modifier.then(first).focusable())
-        else -> LazyColumn(modifier, verticalArrangement = Arrangement.spacedBy(BoardPanelGap)) {
-            itemsIndexed(programmes, key = { _, p -> p.startMs }) { i, p ->
-                val live = p.isLive(now)
-                // A panel's row (see BoardPanel): filled with the accent colour while it has focus.
-                BoardRow(onClick = { onSelect(p) }, modifier = if (i == 0) first else Modifier) {
-                    Row(Modifier.padding(horizontal = 14.bd, vertical = 8.bd), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(
-                            formatTime(p.startMs),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = cardColor(Palette.textMuted),
-                            modifier = Modifier.width(52.dp)
-                        )
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                programmeTitle(p.title),
-                                style = MaterialTheme.typography.titleSmall,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            if (live) OnNowLabel()
-                            val detail = p.subtitle ?: p.description
-                            if (detail != null) {
-                                Text(
-                                    detail,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = cardColor(Palette.textMuted),
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
+        else -> {
+            val onNow = programmes.indexOfFirst { it.stopMs > now }.coerceAtLeast(0)
+            val state = rememberLazyListState(initialFirstVisibleItemIndex = onNow)
+            LazyColumn(modifier, state = state, verticalArrangement = Arrangement.spacedBy(BoardPanelGap)) {
+                itemsIndexed(programmes, key = { _, p -> p.startMs }) { i, p ->
+                    ScheduleRow(p, now, if (i == onNow) first else Modifier) { onSelect(p) }
+                }
+            }
+        }
+    }
+}
+
+/** One programme of [ScheduleList]: its time (with the catch-up mark once it ended), title, On now, and a line about it. */
+@Composable
+private fun ScheduleRow(p: ChannelProgramme, now: Long, modifier: Modifier, onClick: () -> Unit) {
+    val live = p.isLive(now)
+    // A panel's row (see BoardPanel): filled with the accent colour while it has focus.
+    BoardRow(onClick = onClick, modifier = modifier) {
+        Row(Modifier.padding(horizontal = 14.bd, vertical = 8.bd), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.width(52.dp)) {
+                Text(formatTime(p.startMs), style = MaterialTheme.typography.bodyMedium, color = cardColor(Palette.textMuted))
+                if (p.stopMs <= now) {
+                    Icon(
+                        AppIcons.Catchup,
+                        stringResource(R.string.common_catchup),
+                        tint = cardColor(Palette.textDim),
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+            Column(Modifier.weight(1f)) {
+                Text(programmeTitle(p.title), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (live) OnNowLabel()
+                val detail = p.subtitle ?: p.description
+                if (detail != null) {
+                    Text(
+                        detail,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = cardColor(Palette.textMuted),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }

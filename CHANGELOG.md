@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.31.0
+- On a channel with catch-up, the player's channel guide now shows earlier programmes above what is on now.
+- Choosing an earlier programme there replays it from its start.
+
 ## 1.30.0
 - Catch-up now fills the gaps in a channel's past with guide programmes, or with "Replay from" slots.
 - Skipping back on a live channel with catch-up now switches to catch-up from that moment.

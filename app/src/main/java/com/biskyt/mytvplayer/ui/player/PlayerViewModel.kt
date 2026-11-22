@@ -46,19 +46,29 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
     val filter get() = screen.filter
 
     /**
-     * Set when ◀ is pressed on a channel with catch-up: the moment to replay from, as it switches to catch-up (the
-     * screen opens it; the owner, 2026-11-22). Live streams can't skip back themselves.
+     * Catch-up to switch to, as a channel and the moment to replay from (the screen opens it; the owner, 2026-11-22):
+     * set by ◀ on a channel with catch-up (live streams can't skip back themselves), or by a past programme in the
+     * channel guide panel.
      */
-    var catchupFrom by mutableStateOf<Long?>(null)
+    var catchupFrom by mutableStateOf<CatchupStart?>(null)
         private set
+
+    data class CatchupStart(val channel: ChannelEntity, val startMs: Long)
 
     override fun skipUnavailable(ms: Long) {
         val ch = channel
         if (ms < 0 && ch != null && ch.archiveDays > 0) {
-            if (catchupFrom == null) catchupFrom = System.currentTimeMillis() + ms
+            if (catchupFrom == null) catchupFrom = CatchupStart(ch, System.currentTimeMillis() + ms)
         } else {
             super.skipUnavailable(ms)
         }
+    }
+
+    /** A past programme chosen in the channel guide panel: the channel shown there, replayed from its start. */
+    fun watchFromGuide(startMs: Long) {
+        val ch = guideChannel ?: return
+        closeGuide()
+        catchupFrom = CatchupStart(ch, startMs)
     }
     override val failureMessage = R.string.player_failure_live
 
