@@ -1,7 +1,11 @@
 package com.biskyt.mytvplayer.ui.settings
 
+import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -291,7 +295,26 @@ fun PlaybackSettingsScreen() {
                 Toggle(s.zapWithUpDown)
             }
         }
+        item { DownloadsRow(s.downloads) { on -> vm.update { it.copy(downloads = on) } } }
     }
+}
+
+/**
+ * "Downloads" (see Downloads): turned on, it asks for what downloads need, the first time: to show their progress
+ * (Android 13 and later), or to write to the Download folder (Android 9). They work without the first.
+ */
+@Composable
+private fun DownloadsRow(on: Boolean, set: (Boolean) -> Unit) {
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    SettingRow(stringResource(R.string.settings_downloads), stringResource(R.string.settings_downloads_help), {
+        if (!on) {
+            when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> ask.launch(Manifest.permission.POST_NOTIFICATIONS)
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> ask.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }
+        set(!on)
+    }) { Toggle(on) }
 }
 
 /** The app's language: each press moves to the next, and the screens switch to it straight away. */

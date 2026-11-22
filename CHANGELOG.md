@@ -3,6 +3,19 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.30.0
+- Catch-up now fills the gaps in a channel's past with guide programmes, or with "Replay from" slots.
+- Skipping back on a live channel with catch-up now switches to catch-up from that moment.
+- You can now download films and episodes, once you turn on Downloads in the playback settings.
+- Continue watching, favourites and the player's menu now offer TMDB's cast, More like this and About.
+- Left and right on Home now stay in their row, and removing a favourite moves to the next one.
+- Selected items now glow in your accent colour everywhere, with no white border.
+- The guide sources page is clearer, and channels are matched on each update, so its match button has gone.
+- When ipinfo.io is busy, the proxy check now uses another service and no longer says the proxy failed.
+- Stream info now shows the download speed, the video decoder, dropped frames and HDR.
+- Films and series now update faster, as both lists load at the same time.
+- "All episodes" is now "Go to series", and every favourite option shows the heart.
+
 ## 1.29.0
 - Guides load their programmes faster, as the app now uses more of the TV's processor and saves in larger steps.
 - The progress bar now opens at the right place, with no jump from where it was last shown.

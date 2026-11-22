@@ -147,6 +147,10 @@ class VodBrowseViewModel(
     /** A poster taken off Favourites while they're shown: focus moves on once it has gone. */
     var removedId by mutableStateOf<Long?>(null)
 
+    /** The place of the poster with focus (the one whose options open), and of [removedId] as it was taken off. */
+    var focusedAt: Int? = null
+    var removedAt: Int? = null
+
     /** Moving a favourite within Favourites. */
     val mover = FavouriteMover(viewModelScope, c.favourites) { playlist.value?.id ?: 0 }
 
@@ -233,6 +237,7 @@ private fun PosterOptions(vm: VodBrowseViewModel, card: VodCard, filter: VodFilt
         vm.setFavourite(card, it)
         if (!it && inFavourites) {
             close()
+            vm.removedAt = vm.focusedAt
             vm.removedId = card.id
         }
     } + listOfNotNull(if (inFavourites && favourite == true && query.isEmpty()) moveAction(vm.mover, vm.type, card.id, close) else null)
@@ -272,7 +277,7 @@ private fun PosterGrid(vm: VodBrowseViewModel, pid: Long) {
     val state = rememberLazyGridState()
     vm.removedId?.let { removed ->
         LaunchedEffect(removed) {
-            afterRemoval(items, removed, { it.id }) { next ->
+            afterRemoval(items, removed, vm.removedAt, { it.id }) { next ->
                 vm.focusId = next
                 vm.restoreFocusPending = true
             }
@@ -310,7 +315,8 @@ private fun PosterGrid(vm: VodBrowseViewModel, pid: Long) {
                     MovableTile(vm.mover, vm.type, card.id, MoveLayout.GRID, COLUMNS) {
                         PosterCard(
                             card,
-                            Modifier.restoreFocusIf(wantsFocus) { vm.restoreFocusPending = false }.pageItem(page, index),
+                            Modifier.restoreFocusIf(wantsFocus) { vm.restoreFocusPending = false }.pageItem(page, index)
+                                .onFocusChanged { if (it.isFocused) vm.focusedAt = index },
                             favourite = card.id in favourites,
                             onLongClick = { vm.optionsFor = card }
                         ) { nav.push(vm.open(card, pid)) }

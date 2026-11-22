@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -15,10 +16,12 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.R
+import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.formatDuration
+import com.biskyt.mytvplayer.ui.vod.TitlePanels
 
 /** Movies and episodes. */
 @Composable
@@ -26,6 +29,15 @@ fun VodPlayerScreen(screen: Screen.VodPlayer) {
     val appContext = LocalContext.current.applicationContext
     val vm = appViewModel { VodPlayerViewModel(it, appContext, screen) }
     PlayerFrame(vm, controls = { buttons, root -> VodControls(vm, buttons, root) })
+    // TMDB's panels from the menu, as the title's page opens them.
+    TitlePanels(vm.panel, screen.playlistId, vm.title, vm.tmdb, film = screen.seriesId == null) { vm.panel = null }
+    val nav = LocalNavigator.current
+    vm.pendingScreen?.let { s ->
+        LaunchedEffect(s) {
+            vm.pendingScreen = null
+            nav.push(s)
+        }
+    }
 }
 
 @Composable

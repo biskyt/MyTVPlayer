@@ -221,8 +221,13 @@ class LiveViewModel(
      */
     var removedStreamId by mutableStateOf<Long?>(null)
 
+    /** The place of [removedStreamId] in the list, noted as it was taken off (it is the row with focus). */
+    var removedAt: Int? = null
+        private set
+
     private fun leaving(ch: ChannelEntity) {
         closeOptions()
+        removedAt = focusIndex.takeIf { focusStreamId == ch.streamId }
         removedStreamId = ch.streamId
     }
 

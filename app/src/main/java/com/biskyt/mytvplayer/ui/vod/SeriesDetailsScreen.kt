@@ -65,6 +65,7 @@ import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.tmdb.TmdbEpisode
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.vod.CastMember
+import com.biskyt.mytvplayer.core.vod.DownloadNames
 import com.biskyt.mytvplayer.core.xtream.EpisodeInfo
 import com.biskyt.mytvplayer.core.xtream.SeriesDetails
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
@@ -132,6 +133,14 @@ class SeriesDetailsViewModel(
     val info by derivedStateOf { merge(details?.info, tmdb) }
 
     /** TMDB's episodes of each season read so far, by season number. */
+    /** Starts downloading [e] (see Downloads): where it goes, or null if it can't be. */
+    suspend fun download(e: EpisodeInfo): DownloadNames.Place? {
+        val p = c.playlists.get(playlistId) ?: return null
+        val place = DownloadNames.episode(series?.title ?: e.title, e.season, e.number, e.extension)
+        c.startDownload(p.id, c.vod.episodeUrl(p, e.id, e.extension), place)
+        return place
+    }
+
     private val tmdbSeasons = mutableStateMapOf<Int, List<TmdbEpisode>>()
 
     /** Seasons asked of TMDB, or being asked: each once, unless it gave nothing (then again when shown again). */
@@ -235,20 +244,6 @@ sealed interface SeriesPanel {
 private fun SeriesDetails.withSeason(season: Int, tmdb: List<TmdbEpisode>): SeriesDetails = copy(
     episodes = episodes.map { e -> if (e.season == season) e.filledFrom(tmdb.firstOrNull { it.number == e.number }) else e }
 )
-
-/**
- * [this] episode with [t]'s (TMDB's) plot, picture and date where the provider gave none. Not its name: what is saved
- * of an episode (marking it watched) is the provider's words only.
- */
-private fun EpisodeInfo.filledFrom(t: TmdbEpisode?): EpisodeInfo = if (t == null) {
-    this
-} else {
-    copy(
-        plot = plot?.takeIf { it.isNotBlank() } ?: t.overview,
-        imageUrl = imageUrl ?: t.stillUrl,
-        airDate = airDate ?: t.airDate
-    )
-}
 
 /**
  * Where to carry on: the last episode watched if it isn't finished, otherwise the one after it; the first episode
@@ -468,6 +463,7 @@ private fun EpisodeOptions(
     // One partly watched can be counted as watched, or started again (its progress forgotten).
     val episode = listOfNotNull(
         episodeDescriptionAction(e) { vm.open = SeriesPanel.Describe(e) },
+        downloadAction { vm.download(e) },
         if (saved?.finished != true) markWatched(false, set) else null,
         if (saved?.started == true) markWatched(true, set) else null
     )

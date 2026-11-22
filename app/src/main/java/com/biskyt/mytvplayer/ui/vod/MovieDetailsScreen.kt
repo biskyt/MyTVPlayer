@@ -35,6 +35,7 @@ import com.biskyt.mytvplayer.AppText
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.vod.CastMember
+import com.biskyt.mytvplayer.core.vod.DownloadNames
 import com.biskyt.mytvplayer.core.xtream.VodDetails
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.CategoryEntity
@@ -74,6 +75,15 @@ class MovieDetailsViewModel(private val c: AppContainer, private val playlistId:
         private set
     var details by mutableStateOf<VodDetails?>(null)
         private set
+
+    /** Starts downloading the film (see Downloads): where it goes, or null if it can't be. */
+    suspend fun download(): DownloadNames.Place? {
+        val m = movie ?: return null
+        val p = c.playlists.get(playlistId) ?: return null
+        val place = DownloadNames.movie(m.title, m.year, m.extension)
+        c.startDownload(p.id, c.vod.movieUrl(p, m), place)
+        return place
+    }
 
     /** What TMDB knows of it: null without a TMDB key, until it is read, or when TMDB has nothing. */
     var tmdb by mutableStateOf<TmdbTitle?>(null)
@@ -169,7 +179,8 @@ private fun FilmPanels(
         FilmPanel.NONE -> Unit
         FilmPanel.MORE -> {
             val favourite by vm.favourite.collectAsState()
-            val actions = listOf(favouriteAction(favourite) { vm.toggleFavourite() }) + titleActions(
+            val download = downloadAction { vm.download() }
+            val actions = listOfNotNull(favouriteAction(favourite) { vm.toggleFavourite() }, download) + titleActions(
                 tmdb,
                 film = true,
                 playTrailer,

@@ -24,7 +24,12 @@ import com.biskyt.mytvplayer.data.db.VOD_MOVIE
 import com.biskyt.mytvplayer.data.db.VodCard
 import com.biskyt.mytvplayer.data.db.VodFavouriteEntity
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 /** Which movies or series a grid shows. */
 sealed interface VodFilter {
@@ -333,50 +338,69 @@ class VodRepository(
     suspend fun sync(p: PlaylistEntity, onProgress: (Int) -> Unit = {}) {
         if (p.isM3u) return m3u.sync(p, onProgress)
         val client = playlists.client(p)
-        var failure: java.io.IOException? = null
+        val failure = AtomicReference<java.io.IOException?>(null)
+        // Items read so far of each list, for one progress count over both.
+        val movies = AtomicInteger()
+        val series = AtomicInteger()
 
         // Each list on its own: a broken movie list shouldn't stop series loading (the failure is reported after).
         suspend fun guarded(block: suspend () -> Int): Int = try {
             block()
         } catch (e: java.io.IOException) {
-            failure = failure ?: e
+            failure.compareAndSet(null, e)
             0
         }
-        val movies = guarded {
-            syncKind(
-                p.id,
-                CAT_MOVIE,
-                client::movieCategories,
-                { cat, emit -> client.movies(cat, emit) },
-                XtreamMovie::categoryId,
-                vod::insertMovies,
-                vod::deleteStaleMovies,
-                onProgress
-            ) { m, stamp ->
-                val clean = VodTitles.clean(m.name)
-                MovieEntity(
-                    p.id, m.streamId, clean.title, clean.year, m.categoryId, m.posterUrl, m.rating, m.added, m.extension, m.number, stamp
-                )
+        // Both lists at once (the owner, 2026-11-22): their downloads and reading go on side by side, on two of the
+        // TV's cores. The database writes their batches one at a time.
+        coroutineScope {
+            launch(Dispatchers.IO) {
+                guarded {
+                    syncKind(
+                        p.id,
+                        CAT_MOVIE,
+                        client::movieCategories,
+                        { cat, emit -> client.movies(cat, emit) },
+                        XtreamMovie::categoryId,
+                        vod::insertMovies,
+                        vod::deleteStaleMovies,
+                        {
+                            movies.set(it)
+                            onProgress(it + series.get())
+                        }
+                    ) { m, stamp ->
+                        val clean = VodTitles.clean(m.name)
+                        MovieEntity(
+                            p.id, m.streamId, clean.title, clean.year, m.categoryId, m.posterUrl, m.rating, m.added, m.extension,
+                            m.number, stamp
+                        )
+                    }
+                }
+            }
+            launch(Dispatchers.IO) {
+                guarded {
+                    syncKind(
+                        p.id,
+                        CAT_SERIES,
+                        client::seriesCategories,
+                        { cat, emit -> client.series(cat, emit) },
+                        XtreamSeries::categoryId,
+                        vod::insertSeries,
+                        vod::deleteStaleSeries,
+                        {
+                            series.set(it)
+                            onProgress(movies.get() + it)
+                        }
+                    ) { s, stamp ->
+                        val clean = VodTitles.clean(s.name)
+                        SeriesEntity(
+                            p.id, s.seriesId, clean.title, s.year ?: clean.year, s.categoryId, s.coverUrl, s.rating, s.lastModified,
+                            s.number, stamp
+                        )
+                    }
+                }
             }
         }
-        guarded {
-            syncKind(
-                p.id,
-                CAT_SERIES,
-                client::seriesCategories,
-                { cat, emit -> client.series(cat, emit) },
-                XtreamSeries::categoryId,
-                vod::insertSeries,
-                vod::deleteStaleSeries,
-                { onProgress(movies + it) }
-            ) { s, stamp ->
-                val clean = VodTitles.clean(s.name)
-                SeriesEntity(
-                    p.id, s.seriesId, clean.title, s.year ?: clean.year, s.categoryId, s.coverUrl, s.rating, s.lastModified, s.number, stamp
-                )
-            }
-        }
-        failure?.let { throw it }
+        failure.get()?.let { throw it }
     }
 
     /** One list (movies or series): categories, then the included items in batches, then what the provider dropped. */

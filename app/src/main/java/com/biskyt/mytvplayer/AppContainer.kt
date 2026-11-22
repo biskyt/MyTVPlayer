@@ -28,6 +28,7 @@ import com.biskyt.mytvplayer.core.net.ProxyClients
 import com.biskyt.mytvplayer.core.sync.DriveStore
 import com.biskyt.mytvplayer.core.sync.GoogleAuth
 import com.biskyt.mytvplayer.core.sync.SyncException
+import com.biskyt.mytvplayer.core.vod.DownloadNames
 import com.biskyt.mytvplayer.core.xtream.CatchupProgramme
 import com.biskyt.mytvplayer.data.BackupFile
 import com.biskyt.mytvplayer.data.BackupRepository
@@ -36,6 +37,7 @@ import com.biskyt.mytvplayer.data.CategoryStore
 import com.biskyt.mytvplayer.data.ChannelRepository
 import com.biskyt.mytvplayer.data.ChoiceLog
 import com.biskyt.mytvplayer.data.CrashLog
+import com.biskyt.mytvplayer.data.Downloads
 import com.biskyt.mytvplayer.data.DriveBackup
 import com.biskyt.mytvplayer.data.EpgRepository
 import com.biskyt.mytvplayer.data.ExternalIp
@@ -92,11 +94,17 @@ val USER_AGENT = "MyTVPlayer/${BuildConfig.VERSION_NAME} (+https://github.com/bi
 private const val IP_TIMEOUT_S = 10L
 
 /** Background work that needs the network waits until the TV is online. */
-private val online = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+internal val online = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
 /** Hand-wired dependencies: small enough that a DI framework would only add start-up time. */
 /** [launcherWriter]: what writes the cards to the TV's home screen (see LauncherSync); none in the JVM tests. */
 class AppContainer(context: Context, launcherWriter: LauncherWriter = TvLauncher(context)) {
+    /** For work that outlives a screen (downloads). */
+    val appContext: Context = context.applicationContext
+
+    /** Starts a download (see Downloads); tests note it instead, as they have no background scheduler. */
+    var startDownload: (playlistId: Long, url: String, place: DownloadNames.Place) -> Unit =
+        { playlistId, url, place -> Downloads.start(appContext, playlistId, url, place) }
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val db: AppDatabase = AppDatabase.create(context)
     val http: OkHttpClient = OkHttpClient.Builder()

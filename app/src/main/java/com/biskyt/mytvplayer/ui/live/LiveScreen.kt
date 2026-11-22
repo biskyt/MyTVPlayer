@@ -254,7 +254,7 @@ private fun ChannelList(vm: LiveViewModel, items: LazyPagingItems<ChannelEntity>
     LaunchedEffect(Unit) { if (vm.restoreFocusPending) vm.revealFocused() }
     vm.removedStreamId?.let { removed ->
         LaunchedEffect(removed) {
-            afterRemoval(items, removed, { it.streamId }) { next ->
+            afterRemoval(items, removed, vm.removedAt, { it.streamId }) { next ->
                 vm.focusStreamId = next
                 vm.restoreFocusPending = true
             }

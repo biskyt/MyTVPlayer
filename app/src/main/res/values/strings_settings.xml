@@ -250,9 +250,9 @@
     <string name="settings_warn_vpn">Warn if VPN is not connected</string>
     <string name="settings_warn_vpn_help">Shows in the top bar whether Android reports a VPN on this device. A VPN set up on your router or on another device cannot be detected.</string>
     <string name="settings_external_ip">Show your external IP address</string>
-    <string name="settings_external_ip_help">Shows next to the VPN badge the address that websites see, and its country. To find it, MyTVPlayer asks ipinfo.io when the network or the VPN changes.</string>
+    <string name="settings_external_ip_help">Shows next to the VPN badge the address that websites see, and its country. To find it, MyTVPlayer asks ipinfo.io (or, when it is busy, ipwho.is or ipify.org) when the network or the VPN changes.</string>
     <string name="settings_warn_proxy">Warn if the proxy is not working</string>
-    <string name="settings_warn_proxy_help">Shows in the top bar and next to the player\'s clock whether the active playlist\'s proxy works, and the address that its provider sees through it. To check, MyTVPlayer asks ipinfo.io for your address with and without the proxy when the network or the proxy changes.</string>
+    <string name="settings_warn_proxy_help">Shows in the top bar and next to the player\'s clock whether the active playlist\'s proxy works, and the address that its provider sees through it. To check, MyTVPlayer asks ipinfo.io (or, when it is busy, ipwho.is or ipify.org) for your address with and without the proxy when the network or the proxy changes.</string>
     <string name="settings_launcher">Show on the TV\'s home screen</string>
     <string name="settings_launcher_help">Continue watching in the home screen\'s Play Next row, and your favourite channels, movies and series as rows of their own. Restricted titles and channels never go there.</string>
     <!-- The name of the app\'s row of favourite channels on the TV\'s home screen. -->
@@ -301,4 +301,6 @@
     <string name="settings_backup_drive_signed_out">Google no longer accepts the sign-in. Sign in again.</string>
     <!-- Under the phone QR code: Android lets a browser reach a device at home only with the Nearby devices permission. -->
     <string name="settings_tmdb_phone_nearby">Page does not open? On your phone, allow Nearby devices for the browser: Settings › Apps › the browser › Permissions.</string>
+    <string name="settings_downloads">Downloads</string>
+    <string name="settings_downloads_help">Adds Download to the options of films and episodes. They are saved in the Download folder, in Movies and TV Shows, with a folder for each title.</string>
 </resources>

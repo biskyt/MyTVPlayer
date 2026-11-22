@@ -1,11 +1,6 @@
-@file:OptIn(androidx.compose.ui.test.ExperimentalTestApi::class)
-
 package com.biskyt.mytvplayer.ui
 
 import androidx.compose.runtime.remember
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.test.performKeyInput
-import androidx.compose.ui.test.pressKey
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.core.player.RemoteKey
@@ -15,7 +10,6 @@ import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.addHomeTv
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
-import com.biskyt.mytvplayer.testutil.topRoot
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.testutil.waitForText
 import com.biskyt.mytvplayer.ui.player.PlayerViewModel
@@ -40,7 +34,8 @@ class CatchupSwitchUiTest {
     @get:Rule(order = Navigators.ORDER)
     val navigators = Navigators()
 
-    private val provider = FakeProvider()
+    // A stream that loads without end (no error panel over the player to take the keys).
+    private val provider = FakeProvider().apply { streamsTrickle = true }
     private val app = ApplicationProvider.getApplicationContext<TestApp>()
     private var playlistId = 0L
     private lateinit var navigator: Navigator
@@ -58,12 +53,15 @@ class CatchupSwitchUiTest {
         compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
         compose.waitForText("Channel guide")
         // The player takes keys once it has read the skip settings, which can be just after the controls show.
-        val vm = ViewModelProvider(navigator.current)[PlayerViewModel::class.java]
+        vm = ViewModelProvider(navigator.current)[PlayerViewModel::class.java]
         compose.waitAdvancingClock { vm.actsOn(RemoteKey.REWIND) }
     }
 
-    private fun press(key: Key) {
-        compose.topRoot().performKeyInput { pressKey(key) }
+    private lateinit var vm: PlayerViewModel
+
+    /** The remote's button, to the player (which windows have focus is not what is tested here). */
+    private fun press(key: RemoteKey) {
+        compose.runOnUiThread { vm.onKey(key) }
         compose.waitForIdle()
     }
 
@@ -71,7 +69,7 @@ class CatchupSwitchUiTest {
     fun `back on a channel with catch-up switches to catch-up, from a little earlier`() {
         play(101) // with 3 days of catch-up
         val pressed = System.currentTimeMillis()
-        press(Key.MediaRewind)
+        press(RemoteKey.REWIND)
         compose.waitAdvancingClock { navigator.current.screen is Screen.CatchupPlayer }
         val screen = navigator.current.screen as Screen.CatchupPlayer
         assertEquals(101L, screen.streamId)
@@ -84,7 +82,7 @@ class CatchupSwitchUiTest {
     @Test
     fun `back on a channel without catch-up still says it can't skip`() {
         play(102)
-        press(Key.MediaRewind)
+        press(RemoteKey.REWIND)
         compose.waitForText("Skipping isn't available here")
         assertTrue(navigator.current.screen is Screen.Player)
     }

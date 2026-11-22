@@ -185,9 +185,9 @@
     <string name="settings_warn_vpn">Avisar se a VPN não estiver conectada</string>
     <string name="settings_warn_vpn_help">Mostra na barra superior se o Android indica uma VPN neste dispositivo. Não é possível detectar uma VPN configurada no roteador ou em outro dispositivo.</string>
     <string name="settings_external_ip">Mostrar seu endereço IP externo</string>
-    <string name="settings_external_ip_help">Mostra ao lado do indicador de VPN o endereço que os sites veem e o país dele. Para obtê-lo, o MyTVPlayer consulta o ipinfo.io quando a rede ou a VPN muda.</string>
+    <string name="settings_external_ip_help">Mostra ao lado do indicador de VPN o endereço que os sites veem e o país dele. Para obtê-lo, o MyTVPlayer consulta o ipinfo.io (ou, se estiver ocupado, ipwho.is ou ipify.org) quando a rede ou a VPN muda.</string>
     <string name="settings_warn_proxy">Avisar se o proxy não estiver funcionando</string>
-    <string name="settings_warn_proxy_help">Mostra na barra superior e ao lado do relógio do player se o proxy da playlist ativa funciona, e o endereço que o provedor vê através dele. Para verificar, o MyTVPlayer consulta o ipinfo.io sobre o seu endereço com e sem o proxy quando a rede ou o proxy muda.</string>
+    <string name="settings_warn_proxy_help">Mostra na barra superior e ao lado do relógio do player se o proxy da playlist ativa funciona, e o endereço que o provedor vê através dele. Para verificar, o MyTVPlayer consulta o ipinfo.io (ou, se estiver ocupado, ipwho.is ou ipify.org) sobre o seu endereço com e sem o proxy quando a rede ou o proxy muda.</string>
     <string name="settings_launcher">Mostrar na tela inicial da TV</string>
     <string name="settings_launcher_help">Continuar assistindo na fileira "A seguir" da tela inicial, e seus canais, filmes e séries favoritos em fileiras próprias. Títulos e canais restritos nunca aparecem lá.</string>
     <string name="launcher_favourites">Canais favoritos</string>
@@ -234,4 +234,6 @@
     <string name="settings_backup_drive_error">O Google Drive recusou (%1$s). Tente de novo mais tarde.</string>
     <string name="settings_backup_drive_signed_out">O Google não aceita mais o login. Entre de novo.</string>
     <string name="settings_tmdb_phone_nearby">A página não abre? No celular, permita Dispositivos próximos para o navegador: Configurações › Apps › o navegador › Permissões.</string>
+    <string name="settings_downloads">Downloads</string>
+    <string name="settings_downloads_help">Adiciona Baixar às opções de filmes e episódios. Eles são salvos na pasta Download, em Movies e TV Shows, com uma pasta para cada título.</string>
 </resources>

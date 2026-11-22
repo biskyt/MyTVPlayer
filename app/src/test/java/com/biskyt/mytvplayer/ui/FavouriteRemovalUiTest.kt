@@ -68,24 +68,39 @@ class FavouriteRemovalUiTest {
         compose.onAllNodes(hasText("Remove from favourites") and hasClickAction())[0].performSemanticsAction(SemanticsActions.OnClick)
     }
 
+    /**
+     * Of [titles], the one after [removed] as the list shows them (by place on screen), or the one before it if it is
+     * last: where focus goes once it is gone. (Favourites added in the same millisecond can come in either order.)
+     */
+    private fun nextAfter(removed: String, titles: List<String>): String {
+        val shown = titles.map { t ->
+            t to
+                compose.onAllNodes(hasText(t, substring = true) and hasClickAction())[0].fetchSemanticsNode().boundsInRoot
+        }
+            .sortedWith(compareBy({ it.second.top }, { it.second.left })).map { it.first }
+        val i = shown.indexOf(removed)
+        return shown.getOrNull(i + 1) ?: shown[i - 1]
+    }
+
     @Test
     fun `in Live TV, focus goes to the next favourite channel`() {
         show(Screen.Live(ChannelFilter.Favourites))
         compose.waitForText("ARENA", stepMs = 50)
+        compose.waitForText("KITE", stepMs = 50)
+        compose.waitForText("CHANNEL ONE", stepMs = 50)
+        val next = nextAfter("ARENA", listOf("CHANNEL ONE", "ARENA", "KITE"))
         removeFavourite("ARENA")
-        compose.waitAdvancingClock(stepMs = 50) { compose.focusedText().contains("KITE") }
+        compose.waitAdvancingClock(stepMs = 50) { compose.focusedText().contains(next) }
     }
 
     @Test
     fun `in Movies, focus goes to the next favourite film`() {
         show(Screen.Movies(VodFilter.Favourites))
         compose.waitForText("Paddington 2", stepMs = 50)
-        val before = compose.onAllNodes(hasClickAction()).fetchSemanticsNodes().size
+        compose.waitForText("Heat", stepMs = 50)
+        compose.waitForText("Dune", stepMs = 50)
+        val next = nextAfter("Paddington 2", listOf("Dune", "Paddington 2", "Heat"))
         removeFavourite("Paddington 2")
-        compose.waitAdvancingClock(stepMs = 50) {
-            compose.onAllNodes(hasClickAction()).fetchSemanticsNodes().size < before && compose.focusedText().isNotEmpty()
-        }
-        // The one after it in Favourites (in the order they were added: Dune, Paddington 2, Heat).
-        compose.waitAdvancingClock(stepMs = 50) { compose.focusedText().contains("Heat") }
+        compose.waitAdvancingClock(stepMs = 50) { compose.focusedText().contains(next) }
     }
 }

@@ -94,4 +94,7 @@
     <string name="vod_other_trailers">Outros trailers</string>
     <string name="vod_other_trailers_help">Outros envios, se um trailer não puder ser visto no seu país</string>
     <string name="vod_tmdb_season_failed">Não foi possível carregar esta temporada do TMDB</string>
+    <string name="vod_download">Baixar</string>
+    <string name="vod_downloading">Baixando %1$s</string>
+    <string name="vod_download_started">Baixando em Download/%1$s</string>
 </resources>

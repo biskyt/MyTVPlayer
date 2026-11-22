@@ -53,6 +53,8 @@ data class Settings(
      * by default.
      */
     val warnProxy: Boolean = false,
+    /** Download in the options of films and episodes (see Downloads); off by default (the owner, 2026-11-22). */
+    val downloads: Boolean = false,
     /** Continue watching and the favourite channels on the TV's home screen (see LauncherSync), the owner 2026-11-14. */
     val launcherRows: Boolean = false,
     /** Parental controls: leave restricted categories out of these (see ParentalRepository). */
@@ -88,6 +90,7 @@ class SettingsRepository(private val context: Context) {
         val largeText = booleanPreferencesKey("large_text")
         val warnVpn = booleanPreferencesKey("warn_vpn")
         val warnProxy = booleanPreferencesKey("warn_proxy")
+        val downloads = booleanPreferencesKey("downloads")
         val launcherRows = booleanPreferencesKey("launcher_rows")
         val showIp = booleanPreferencesKey("show_external_ip")
         val hideRecent = booleanPreferencesKey("restricted_hide_recent")
@@ -151,6 +154,7 @@ class SettingsRepository(private val context: Context) {
             largeText = valueOr(K.largeText, d.largeText),
             warnVpn = valueOr(K.warnVpn, d.warnVpn),
             warnProxy = valueOr(K.warnProxy, d.warnProxy),
+            downloads = valueOr(K.downloads, d.downloads),
             launcherRows = valueOr(K.launcherRows, d.launcherRows),
             showExternalIp = valueOr(K.showIp, d.showExternalIp),
             hideRestrictedRecent = valueOr(K.hideRecent, d.hideRestrictedRecent),
@@ -185,6 +189,7 @@ class SettingsRepository(private val context: Context) {
             prefs[K.largeText] = s.largeText
             prefs[K.warnVpn] = s.warnVpn
             prefs[K.warnProxy] = s.warnProxy
+            prefs[K.downloads] = s.downloads
             prefs[K.launcherRows] = s.launcherRows
             prefs[K.showIp] = s.showExternalIp
             prefs[K.hideRecent] = s.hideRestrictedRecent

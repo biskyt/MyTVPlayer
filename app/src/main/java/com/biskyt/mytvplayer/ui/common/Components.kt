@@ -351,7 +351,7 @@ fun ErrorRetry(message: String, focusAfter: FocusRequester? = null, onRetry: () 
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         Muted(message, Modifier.weight(1f, fill = false), maxLines = 3)
         PillButton(stringResource(R.string.common_retry), {
-            val moved = focusAfter?.let { runCatching { it.requestFocus() }.getOrDefault(false) } ?: false
+            val moved = focusAfter?.tryFocus() ?: false
             if (!moved) focus.moveFocus(FocusDirection.Up)
             onRetry()
         }, rememberFirstFocus())
