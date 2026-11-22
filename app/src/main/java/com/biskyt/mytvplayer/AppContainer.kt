@@ -28,6 +28,7 @@ import com.biskyt.mytvplayer.core.net.ProxyClients
 import com.biskyt.mytvplayer.core.sync.DriveStore
 import com.biskyt.mytvplayer.core.sync.GoogleAuth
 import com.biskyt.mytvplayer.core.sync.SyncException
+import com.biskyt.mytvplayer.core.xtream.CatchupProgramme
 import com.biskyt.mytvplayer.data.BackupFile
 import com.biskyt.mytvplayer.data.BackupRepository
 import com.biskyt.mytvplayer.data.CatchupRepository
@@ -153,7 +154,10 @@ class AppContainer(context: Context, launcherWriter: LauncherWriter = TvLauncher
     val search = SearchRepository(db)
     val people = PersonRepository(vod, tmdb)
     val similar = SimilarRepository(vod, tmdb)
-    val catchup = CatchupRepository(playlists)
+    val catchup = CatchupRepository(playlists, guide = { p, ch, from, to ->
+        epg.programmes(p.id, listOf(ch.streamId), from, to, details = false)[ch.streamId].orEmpty()
+            .map { CatchupProgramme(it.startMs, it.stopMs, it.title, it.description, hasArchive = true) }
+    })
     val sync: SyncManager = SyncManager(appScope, playlists, vod, epg, settings)
     val vpn = VpnMonitor(context, appScope)
 

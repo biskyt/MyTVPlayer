@@ -37,6 +37,7 @@
     <string name="live_catchup_title">Catch-up · %1$s</string>
     <string name="live_catchup_load_failed">Couldn\'t load catch-up</string>
     <string name="live_catchup_empty_day">Nothing to catch up on for this day.</string>
+    <string name="live_catchup_replay_from">Replay from %1$s</string>
 
     <!-- TV guide grid -->
     <!-- Touch buttons moving the guide's time window back or forward. Very short: they sit above the narrow channel column -->

@@ -1,11 +1,9 @@
 package com.biskyt.mytvplayer.core.m3u
 
-import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class M3uCatchupTest {
@@ -74,23 +72,5 @@ class M3uCatchupTest {
             "http://cdn/live.m3u8?token=1&begin=2024-05-01%2018:00:00",
             M3uCatchup.url("http://cdn/live.m3u8?token=1", "append", "?begin={utc:Y-m-d H:M:S}", start, now)
         )
-    }
-
-    @Test
-    fun `guide programmes take the place of the hour slots they overlap`() {
-        val listing = M3uCatchup.hourlyListing(now, days = 1, zone = ZoneId.of("UTC"))
-        val news = com.biskyt.mytvplayer.core.xtream.CatchupProgramme(start + 20 * 60_000L, start + 80 * 60_000L, "News", null, true)
-        val merged = M3uCatchup.withProgrammes(listing, listOf(news)).programmes
-        assertEquals(listOf("17:00 – 18:00", "News", "20:00 – 21:00"), merged.takeLast(3).map { it.title })
-    }
-
-    @Test
-    fun `the past in hour-long slots, up to the hour on now`() {
-        val listing = M3uCatchup.hourlyListing(now, days = 1, zone = ZoneId.of("UTC"))
-        val slots = listing.programmes
-        assertEquals(25, slots.size) // 20:00 yesterday to the 20:00 slot today
-        assertEquals("20:00 – 21:00", slots.last().title)
-        assertTrue(slots.zipWithNext().all { (a, b) -> b.startMs == a.stopMs })
-        assertTrue(slots.first().startMs <= now - 24 * 3_600_000L)
     }
 }

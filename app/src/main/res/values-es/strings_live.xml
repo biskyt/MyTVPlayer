@@ -25,6 +25,7 @@
     <string name="live_catchup_title">Diferido · %1$s</string>
     <string name="live_catchup_load_failed">No se pudo cargar el diferido</string>
     <string name="live_catchup_empty_day">No hay nada en diferido para este día.</string>
+    <string name="live_catchup_replay_from">Repetir desde las %1$s</string>
 
     <string name="live_guide_earlier">Antes</string>
     <string name="live_guide_later">Después</string>

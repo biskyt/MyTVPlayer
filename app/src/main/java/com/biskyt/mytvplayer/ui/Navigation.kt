@@ -50,7 +50,9 @@ sealed interface Screen {
         val playlistId: Long,
         val streamId: Long,
         val startMs: Long? = null,
-        val filter: ChannelFilter = ChannelFilter.All
+        val filter: ChannelFilter = ChannelFilter.All,
+        /** Opened by ◀ on the live channel: it says so while it loads (see PlayerViewModel.catchupFrom). */
+        val switched: Boolean = false
     ) : Screen
 
     /**

@@ -25,6 +25,7 @@
     <string name="live_catchup_title">Reprises · %1$s</string>
     <string name="live_catchup_load_failed">Não foi possível carregar as reprises</string>
     <string name="live_catchup_empty_day">Nenhuma reprise disponível neste dia.</string>
+    <string name="live_catchup_replay_from">Rever desde as %1$s</string>
 
     <string name="live_guide_earlier">Antes</string>
     <string name="live_guide_later">Depois</string>

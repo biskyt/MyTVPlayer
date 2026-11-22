@@ -386,6 +386,9 @@ data class CategoryCount(val categoryId: String, val name: String, val lang: Str
 
 data class ChannelName(val streamId: Long, val name: String, val providerEpgId: String?)
 
+/** A guide channel chosen for a channel with catch-up, and how many days its catch-up goes back. */
+data class CatchupGuideChannel(val xmlId: String, val days: Int)
+
 @Dao
 interface FavouriteDao {
     @Query("SELECT streamId FROM favourite WHERE playlistId = :pid")
@@ -613,8 +616,27 @@ interface EpgDao {
     @Query("SELECT DISTINCT xmlId FROM programme WHERE sourceId = :sourceId AND xmlId IN (:xmlIds)")
     suspend fun xmlIdsWithProgrammes(sourceId: Long, xmlIds: List<String>): List<String>
 
-    @Query("DELETE FROM programme WHERE stopMs < :before")
-    suspend fun pruneProgrammes(before: Long)
+    /**
+     * Deletes programmes that ended before [before], except those of guide channels chosen for channels with catch-up,
+     * kept for as many days back as the catch-up goes, [maxDays] at most (they fill catch-up: see CatchupRepository).
+     */
+    @Query(
+        """DELETE FROM programme WHERE stopMs < :before AND NOT EXISTS (
+               SELECT 1 FROM channel_epg_mapping m JOIN channel c ON c.playlistId = m.playlistId AND c.streamId = m.streamId
+               WHERE m.sourceId = programme.sourceId AND m.xmlId = programme.xmlId AND c.archiveDays > 0
+                 AND programme.stopMs >= :now - MIN(c.archiveDays, :maxDays) * 86400000)"""
+    )
+    suspend fun pruneProgrammes(before: Long, now: Long, maxDays: Int)
+
+    /** The guide channels of [sourceId] chosen for channels with catch-up, each with the most days of catch-up. */
+    @Query(
+        """SELECT m.xmlId AS xmlId, MAX(c.archiveDays) AS days FROM channel_epg_mapping m
+           JOIN playlist_epg_source l ON l.playlistId = m.playlistId AND l.sourceId = m.sourceId
+           JOIN channel c ON c.playlistId = m.playlistId AND c.streamId = m.streamId
+           WHERE m.sourceId = :sourceId AND c.archiveDays > 0 AND m.xmlId IS NOT NULL
+           GROUP BY m.xmlId"""
+    )
+    suspend fun catchupXmlIds(sourceId: Long): List<CatchupGuideChannel>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProgrammes(items: List<ProgrammeEntity>)

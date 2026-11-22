@@ -255,8 +255,9 @@ class PlayerKeysUiTest {
         waitForFocus("Today")
         press(Key.DirectionRight)
         waitForFocus("On Now")
-        // Back from playing one, focus is on it again.
+        // Back from playing one, focus is on it again. (Down past the slot that fills the time between them.)
         press(Key.DirectionDown)
+        if (!focused().contains("Earlier Today")) press(Key.DirectionDown)
         waitForFocus("Earlier Today")
         press(Key.DirectionCenter)
         compose.waitAdvancingClock { navigator.current.screen is Screen.CatchupPlayer }

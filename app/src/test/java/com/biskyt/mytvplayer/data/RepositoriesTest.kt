@@ -621,8 +621,15 @@ class RepositoriesTest {
         val catchup = CatchupRepository(playlists)
         val p = playlists.get(id)!!
         val listing = catchup.listing(p, one)
-        // Started, kept by the provider, and within the channel's 3 days.
-        assertEquals(listOf("Yesterday Show", "Earlier Today", "On Now"), catchup.playable(listing, one).map { it.title })
+        // Started and within the channel's 3 days: the provider's programmes, also one it lists without its archive
+        // (other apps replay those), and "Replay from" slots for the times it leaves out (the owner, 2026-11-22).
+        val playable = catchup.playable(listing, one)
+        assertEquals(
+            listOf("Yesterday Show", "Not Kept", "Earlier Today", "On Now"),
+            playable.map { it.title }.filterNot { it.startsWith("Replay from") }
+        )
+        assertTrue(playable.any { it.title.startsWith("Replay from") })
+        assertTrue(playable.zipWithNext().all { (a, b) -> b.startMs >= a.startMs })
         assertEquals("On Now", catchup.onNow(listing)?.title)
         assertEquals("About Earlier Today", listing.programmes.first { it.title == "Earlier Today" }.description)
 
@@ -661,8 +668,11 @@ class RepositoriesTest {
         val catchup = CatchupRepository(playlists) { now }
         val one = all.getValue("Channel One")
         val listing = catchup.listing(p, one)
-        // Three days of hours, from the first that starts within them to the one on now.
-        assertEquals(3 * 24, catchup.playable(listing, one).size)
+        // Three days: the half hour from their start to the next hour, then hours to the one on now.
+        val slots = catchup.playable(listing, one)
+        assertEquals(1 + 3 * 24, slots.size)
+        assertEquals(now - 3 * 24 * 3_600_000L, slots.first().startMs)
+        assertTrue(slots.all { it.title.startsWith("Replay from") })
         val start = listing.programmes.last().startMs
         assertEquals("http://stream.example/one.m3u8?utc=${start / 1000}&lutc=${now / 1000}", catchup.url(p, one, listing, start))
         val two = all.getValue("Channel Two")

@@ -53,6 +53,7 @@
     <string name="player_failure_vod">Não é possível reproduzir isto agora. Tente de novo mais tarde.</string>
     <string name="player_failure_catchup">Não é possível rever isto agora. Tente de novo mais tarde.</string>
     <string name="player_catchup_nothing_to_start_over">Não há nada para começar de novo neste canal agora.</string>
+    <string name="player_catchup_switching">Mudando para reprises…</string>
     <string name="player_unsupported_format">Isto usa um formato de stream que o MyTVPlayer não consegue reproduzir.</string>
 
     <string name="player_error_dns">O servidor do stream não foi encontrado: o endereço pode não existir mais.</string>

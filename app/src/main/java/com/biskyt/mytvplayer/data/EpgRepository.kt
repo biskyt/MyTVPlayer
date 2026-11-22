@@ -11,6 +11,7 @@ import com.biskyt.mytvplayer.core.epg.EpgMatch
 import com.biskyt.mytvplayer.core.epg.ReadAhead
 import com.biskyt.mytvplayer.core.epg.XmltvChannel
 import com.biskyt.mytvplayer.core.epg.XmltvParser
+import com.biskyt.mytvplayer.core.epg.XmltvProgramme
 import com.biskyt.mytvplayer.core.net.ProxyClients
 import com.biskyt.mytvplayer.data.db.AppDatabase
 import com.biskyt.mytvplayer.data.db.ChannelEpgMappingEntity
@@ -360,7 +361,7 @@ class EpgRepository(
                 ?.let { if (it.isNotEmpty()) late[s.id] = it }
         }
         if (late.isNotEmpty()) addLateChannels(late, playlistIds, onProgress)
-        epg.pruneProgrammes(clock() - KEEP_PAST_MS)
+        epg.pruneProgrammes(clock() - KEEP_PAST_MS, clock(), MAX_CATCHUP_DAYS)
         synchronized(noProgrammes) { noProgrammes.clear() }
         changed()
     }
@@ -832,7 +833,10 @@ class EpgRepository(
                 }
             }
         }
-        val parser = parser(now - KEEP_PAST_MS, now + KEEP_FUTURE_MS)
+        // Channels with catch-up keep their past programmes as far back as it goes (they fill it: see CatchupRepository).
+        val catchupMs = epg.catchupXmlIds(sourceId).associate { it.xmlId to minOf(it.days, MAX_CATCHUP_DAYS) * DAY_MS }
+        val parser = parser(now - maxOf(KEEP_PAST_MS, catchupMs.values.maxOrNull() ?: 0), now + KEEP_FUTURE_MS)
+        fun kept(p: XmltvProgramme) = p.stopMs >= now - maxOf(KEEP_PAST_MS, catchupMs[p.channelId] ?: 0)
         // A choice's channels (see readOnNow): stops as soon as they are no longer shown, not at the end. (Not an update:
         // its callers keep a failure as the guide's error.)
         val job = if (mode == ImportMode.CHOICES) currentCoroutineContext()[Job] else null
@@ -845,11 +849,13 @@ class EpgRepository(
                 job?.ensureActive()
                 it in xmlIds
             }, onChannel = onChannel, onProgramme = { p ->
-                add(
-                    ProgrammeEntity(
-                        sourceId, p.channelId, p.startMs, p.stopMs, p.title, p.subtitle, p.description, now, p.kind, p.season, p.episode
+                if (kept(p)) {
+                    add(
+                        ProgrammeEntity(
+                            sourceId, p.channelId, p.startMs, p.stopMs, p.title, p.subtitle, p.description, now, p.kind, p.season, p.episode
+                        )
                     )
-                )
+                }
             })
         }
         // When its matched channels' programmes end ("Programmes up to" on the guide sources screen), with the clean-up.
@@ -887,6 +893,9 @@ class EpgRepository(
         const val SHORT_AHEAD_MS = 3 * DAY_MS
         const val PROGRESS_EVERY = 100
         const val KEEP_PAST_MS = 2 * 3_600_000L
+
+        /** The most days back that past programmes are kept for a channel with catch-up. */
+        const val MAX_CATCHUP_DAYS = 7
         const val KEEP_FUTURE_MS = GUIDE_DAYS_AHEAD * DAY_MS
         const val REMAP_DEBOUNCE_MS = 1_500L
     }

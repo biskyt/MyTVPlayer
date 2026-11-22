@@ -81,6 +81,7 @@
     <string name="player_failure_vod">This can\'t be played right now. Try again later.</string>
     <string name="player_failure_catchup">This can\'t be replayed right now. Try again later.</string>
     <string name="player_catchup_nothing_to_start_over">There\'s nothing to start over on this channel right now.</string>
+    <string name="player_catchup_switching">Switching to catch-up…</string>
     <string name="player_unsupported_format">This uses a stream format MyTVPlayer can\'t play.</string>
 
     <!-- Playback errors: why (shown under the message above) -->

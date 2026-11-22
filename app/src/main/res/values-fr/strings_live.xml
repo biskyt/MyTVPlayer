@@ -25,6 +25,7 @@
     <string name="live_catchup_title">Replay · %1$s</string>
     <string name="live_catchup_load_failed">Impossible de charger le replay</string>
     <string name="live_catchup_empty_day">Rien à revoir pour ce jour.</string>
+    <string name="live_catchup_replay_from">Revoir depuis %1$s</string>
 
     <string name="live_guide_earlier">Avant</string>
     <string name="live_guide_later">Après</string>

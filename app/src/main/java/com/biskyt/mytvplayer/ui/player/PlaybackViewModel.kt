@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.C
@@ -30,7 +31,9 @@ import com.biskyt.mytvplayer.ui.common.ItemAction
 import com.biskyt.mytvplayer.ui.common.formatDuration
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * What every player screen shares, live TV or on demand: the engine, the overlay and side sheets, remote keys,
@@ -389,10 +392,13 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
      * jumps there once the button rests, so scrubbing through a film doesn't reload the stream at every step.
      */
     private fun scrub(ms: Long, repeat: Int) {
-        val (range, now) = scrubBounds() ?: return flash(appString(R.string.player_skipping_unavailable))
+        val (range, now) = scrubBounds() ?: return skipUnavailable(ms)
         if (overlay == OverlayState.NONE) showControls(forSkip = true)
         moveScrub(scrubTarget(scrubMs ?: now, ms, repeat, range), now)
     }
+
+    /** ◀ ▶ where playback can't skip (most live TV): says so. Live TV with catch-up goes back in it instead. */
+    protected open fun skipUnavailable(ms: Long) = flash(appString(R.string.player_skipping_unavailable))
 
     /** Touch: tapping or dragging along the play bar moves the point to play from to [fraction] of [span]. */
     fun scrubTo(span: LongRange, fraction: Float) {
@@ -549,6 +555,16 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         }
     }
 
+    /** Shows [text] while the stream loads, until it plays ([WAITING_MESSAGE_MS] at most): why the picture waits. */
+    fun showWhileLoading(text: String) {
+        message = text
+        messageJob?.cancel()
+        messageJob = viewModelScope.launch {
+            withTimeoutOrNull(WAITING_MESSAGE_MS) { snapshotFlow { buffering }.first { !it } }
+            message = null
+        }
+    }
+
     override fun onCleared() {
         released = true
         engine?.player?.removeListener(listener)
@@ -560,6 +576,9 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         /** How long a track change is given to take effect before saying how it went. */
         const val TRACK_CHECK_MS = 1_500L
         const val MAX_RETRIES = 3
+
+        /** The longest a message about the stream loading stays (see showWhileLoading). */
+        const val WAITING_MESSAGE_MS = 15_000L
 
         /** Having played this long (in all) since the last failure counts as working: later failures get fresh retries. */
         const val STEADY_MS = 20_000L
