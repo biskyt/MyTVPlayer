@@ -41,12 +41,15 @@ import com.biskyt.mytvplayer.ui.common.displayLanguage
 import com.biskyt.mytvplayer.ui.common.formatRange
 import com.biskyt.mytvplayer.ui.common.perform
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
-import com.biskyt.mytvplayer.ui.common.rememberSchedule
+import com.biskyt.mytvplayer.ui.common.rememberScheduleWithPast
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.bd
 import kotlinx.coroutines.delay
 
-/** The channel guide beside the video (agreed side-overlay design); ◀ ▶ previews other channels' guides. */
+/**
+ * The channel guide beside the video (agreed side-overlay design); ◀ ▶ previews other channels' guides. A channel with
+ * catch-up also lists what it showed, above what is on now: Up goes back in time, and OK replays one.
+ */
 @Composable
 fun GuidePanel(vm: PlayerViewModel) {
     val ch = vm.guideChannel ?: return
@@ -77,7 +80,10 @@ fun GuidePanel(vm: PlayerViewModel) {
                 }
             }
             TouchStepButtons(stringResource(R.string.player_guide_previous), stringResource(R.string.player_guide_next), vm::previewGuide)
-            ScheduleList(rememberSchedule(ch.playlistId, ch.streamId), onSelect = { vm.watchGuideChannel() })
+            // With catch-up, what it showed is there too, above what is on now: one of those replays from its start.
+            ScheduleList(rememberScheduleWithPast(ch), onSelect = { p ->
+                if (ch.archiveDays > 0 && p.stopMs <= System.currentTimeMillis()) vm.watchFromGuide(p.startMs) else vm.watchGuideChannel()
+            })
         }
     }
 }

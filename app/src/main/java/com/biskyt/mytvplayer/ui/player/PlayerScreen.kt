@@ -121,9 +121,10 @@ fun PlayerScreen(screen: Screen.Player) {
     val vm = appViewModel { PlayerViewModel(it, appContext, screen) }
     vm.nowNext.PauseWhenHidden()
     val nav = LocalNavigator.current
-    vm.catchupFrom?.let { from ->
-        LaunchedEffect(from) {
-            vm.channel?.let { ch -> nav.replace(Screen.CatchupPlayer(ch.playlistId, ch.streamId, from, vm.filter, switched = true)) }
+    vm.catchupFrom?.let { start ->
+        LaunchedEffect(start) {
+            val ch = start.channel
+            nav.replace(Screen.CatchupPlayer(ch.playlistId, ch.streamId, start.startMs, vm.filter, switched = true))
         }
     }
     PlayerFrame(
