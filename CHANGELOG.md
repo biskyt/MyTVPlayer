@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.34.6
+- Live TV whose picture freezes again after a reconnect, while the sound plays, is now opened again, rather than left frozen.
+- A film that cannot show its picture after a reconnect now shows an error, rather than reconnecting every minute.
+- Live TV paused after a drop-out now gets its full 5 minutes of reconnecting when it plays again.
+
 ## 1.34.5
 - Live TV whose feed drops in the middle of a part now reconnects, rather than showing an error after a few seconds.
 - A radio channel with a still picture now gets its full 5 minutes of reconnecting after each drop-out, as other channels do.

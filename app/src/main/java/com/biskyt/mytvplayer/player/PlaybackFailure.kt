@@ -25,7 +25,7 @@ const val ERROR_CODE_STALLED = PlaybackException.CUSTOM_ERROR_CODE_BASE
 const val ERROR_CODE_FROZEN = PlaybackException.CUSTOM_ERROR_CODE_BASE + 1
 
 /**
- * Whether [e] is a failure that passes, which live TV goes on trying however long it lasts: the network or the
+ * Whether [e] is a failure that passes, which live TV goes on trying for up to GIVE_UP_MS: the network or the
  * connection to the server, a time-out, a stall or a frozen picture, or a server that is busy (5xx, 408, 429). A
  * refusal (other 4xx: the session ended, no access), a decoder or a format that cannot play does not get better by
  * asking again: it gets a few tries, then an error (MyPlexPlayer's review, 2026-11-23).

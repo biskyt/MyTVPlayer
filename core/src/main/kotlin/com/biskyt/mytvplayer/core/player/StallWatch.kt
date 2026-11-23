@@ -60,7 +60,14 @@ class StallWatch(
     /** Whether [onMoving] was called since the start. */
     private var moving = false
 
-    /** Starts again (a new stream, or one opened again). */
+    /**
+     * Whether this stream's picture has moved at a video's rate, at any time since [newStream]: then it is video, and
+     * after a reopen or a seek its picture must move again (MyPlexPlayer's review, 2026-11-23). A radio channel's slide
+     * never moves at that rate.
+     */
+    private var isVideo = false
+
+    /** Starts again (a stream opened again, or a seek). */
     fun reset() {
         last = null
         waitingMs = 0
@@ -69,15 +76,22 @@ class StallWatch(
         moving = false
     }
 
+    /** Starts again for another stream. */
+    fun newStream() {
+        reset()
+        isVideo = false
+    }
+
     /** Takes [now], and says what is stuck, if anything has been for too long. */
     fun check(now: Sample): Stall? {
         val before = last
         last = now
         waitingMs = if (now.buffering && before?.buffering == true && now.buffered == before.buffered) waitingMs + stepMs else 0
-        var limit: Long? = null
-        if (before != null && before.playing) {
+        val limit = if (before?.playing == true) {
             noteMoving(before, now)
-            limit = stillLimit(before, now)
+            stillLimit(before, now)
+        } else {
+            null
         }
         frozenForMs = if (now.playing && limit != null) frozenForMs + stepMs else 0
         return when {
@@ -92,10 +106,14 @@ class StallWatch(
      * stream plays.
      */
     private fun noteMoving(before: Sample, now: Sample) {
-        if (before.frames != null && now.frames != null && now.frames - before.frames >= videoFrames) pictureMoved = true
+        if (before.frames != null && now.frames != null && now.frames - before.frames >= videoFrames) {
+            pictureMoved = true
+            isVideo = true
+        }
         // The time moving counts too: a radio channel's slide changes only now and then, yet its sound plays
-        // (MyPlexPlayer's review, 2026-11-23). A still picture with a still time does not.
-        if (!moving && (pictureMoved || now.position != before.position)) {
+        // (MyPlexPlayer's review, 2026-11-23). Not for live video that showed it moves: its picture must move again.
+        val timeCounts = now.frames == null || !(watchPicture && isVideo)
+        if (!moving && (pictureMoved || timeCounts && now.position != before.position)) {
             moving = true
             onMoving()
         }
@@ -114,8 +132,9 @@ class StallWatch(
             pictureMoved -> frozenMs.takeIf { timeStill || watchPicture && sameFrames }
             // Before the picture has moved, a still time alone is not a freeze (a first picture held, or the sound's
             // output starting again, as when the TV's HDMI link changes). With a still picture too, it is given as
-            // long as a start.
-            else -> startMs.takeIf { timeStill && sameFrames }
+            // long as a start. So is a still picture alone, on live video that showed it moves (a picture that froze
+            // again after a reopen, while the sound plays).
+            else -> startMs.takeIf { sameFrames && (timeStill || watchPicture && isVideo) }
         }
     }
 

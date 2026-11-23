@@ -5,6 +5,9 @@ package com.biskyt.mytvplayer.core.player
  * reports a network's state again and again while nothing changes (a new signal strength, every few seconds on some
  * Wi-Fi), so only the change from not validated to validated counts (MyPlexPlayer's review, 2026-11-23: each report
  * made a film try again at once and used up its few tries). [N] is the network's type (Android's Network).
+ *
+ * It takes the default network's callback, not a request for validated networks with its onAvailable: that request
+ * reports every validated network, not only the default one the streams use.
  */
 class NetworkReturn<N> {
     /** The network last found validated, or null. Android's callbacks come on another thread. */
@@ -13,7 +16,7 @@ class NetworkReturn<N> {
     /** Takes [network]'s state: true when it has just become validated. */
     fun changed(network: N, isValidated: Boolean): Boolean {
         if (!isValidated) {
-            if (validated == network) validated = null
+            lost(network)
             return false
         }
         if (validated == network) return false
