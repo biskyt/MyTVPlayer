@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.34.2
+- A film or episode on a slow server is now given up to a minute to start or to send more, rather than 15 seconds.
+- Live TV that keeps freezing between short moments of playing now shows an error after 5 minutes, rather than reconnecting for ever.
+- A stream is no longer opened again while its picture holds at the start, also when the time does not move either.
+
 ## 1.34.1
 - Live TV now shows an error, with Try again, after 5 minutes of reconnecting with no picture.
 - A film or episode on a slow server now waits up to a minute for more data, also after a seek, before it is opened again.

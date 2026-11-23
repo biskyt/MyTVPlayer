@@ -3,6 +3,7 @@ package com.biskyt.mytvplayer.ui.player
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
+import android.os.SystemClock
 import androidx.annotation.StringRes
 import androidx.annotation.VisibleForTesting
 import androidx.compose.runtime.getValue
@@ -158,7 +159,6 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             if (state == Player.STATE_READY) {
                 error = null
                 reconnecting = false
-                failingSince = 0
             }
             if (state == Player.STATE_ENDED) onEnded()
             // Paused again after a retry or a stop (which ended the countdown): the dimming counts from now. A
@@ -178,14 +178,20 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             // A stream that failed again after a retry, before it ever played, may play another way.
             if (engine?.retryAsHls(e) == true || (!hasPlayed && retries.used > 0 && tryOtherFormat())) return
             // Streams drop out now and then; retry a few times before showing an error.
-            if (playedSinceFailure() >= STEADY_MS) retries.reset()
+            // Played steadily since the last failure: a new run of failures. A moment of READY between stalls (a frozen
+            // stream, a playlist that replays old parts) is not enough, or the give-up time would never come.
+            if (playedSinceFailure() >= STEADY_MS) {
+                retries.reset()
+                failingSince = 0
+            }
             playedMs = 0
             playingSince = 0
             // Live TV that has played goes on trying, as a TV does, while the feed is gone (the owner, 2026-11-23), if
             // the failure is one that passes, for a while with no picture (see keepsTrying): a session the server ended without
             // saying so (a playlist that stops) then shows an error, with Try again. One that never played (a dead
             // channel), or a refusal, gets a few tries, then says why.
-            val now = System.currentTimeMillis()
+            // The time since the device started, not the clock on the wall, which can jump when the time is set.
+            val now = SystemClock.elapsedRealtime()
             if (failingSince == 0L) failingSince = now
             val keepTrying = keepsTrying(isLive, hasPlayed, isPassing(e), failingForMs = now - failingSince)
             if (!retries.take() && !keepTrying) {
@@ -434,9 +440,8 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
 
     private fun watchNetwork() {
         if (watchingNetwork || exit || engine == null) return
-        watchingNetwork = runCatching {
-            appContext.getSystemService(ConnectivityManager::class.java)?.registerDefaultNetworkCallback(networkBack)
-        }.isSuccess
+        val connectivity = appContext.getSystemService(ConnectivityManager::class.java) ?: return
+        watchingNetwork = runCatching { connectivity.registerDefaultNetworkCallback(networkBack) }.isSuccess
     }
 
     /** The network is no longer watched (hidden, stopped, or the screen gone). */

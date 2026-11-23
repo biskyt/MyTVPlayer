@@ -68,6 +68,7 @@ import com.biskyt.mytvplayer.launcher.LauncherImages
 import com.biskyt.mytvplayer.launcher.LauncherWriter
 import com.biskyt.mytvplayer.launcher.TvLauncher
 import com.biskyt.mytvplayer.player.Ac3Encoder
+import com.biskyt.mytvplayer.player.PlaybackEngine
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -92,6 +93,18 @@ val USER_AGENT = "MyTVPlayer/${BuildConfig.VERSION_NAME} (+https://github.com/bi
 
 /** The longest wait for the external IP lookup, from the request to the last byte. */
 private const val IP_TIMEOUT_S = 10L
+
+/**
+ * The player's streams' client: a shorter wait to connect. A read waits as long as the player's own stall check does
+ * at most (PlaybackEngine.ON_DEMAND_REBUFFER_MS), which finds a stall sooner where it should: a shorter read time-out
+ * would end a film on a slow server first (MyPlexPlayer's review, 2026-11-23).
+ */
+internal fun playerClient(http: OkHttpClient): OkHttpClient = http.newBuilder()
+    .connectTimeout(PLAYER_CONNECT_S, TimeUnit.SECONDS)
+    .readTimeout(PlaybackEngine.ON_DEMAND_REBUFFER_MS, TimeUnit.MILLISECONDS)
+    .build()
+
+private const val PLAYER_CONNECT_S = 10L
 
 /** Background work that needs the network waits until the TV is online. */
 private val online = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
@@ -136,8 +149,8 @@ class AppContainer(context: Context, launcherWriter: LauncherWriter = TvLauncher
     /** One client for each playlist proxy: the playlists, their guides and the player share them. */
     val proxies = ProxyClients(http)
 
-    /** The same for the player's streams: shorter waits than the downloads', so a stall is found sooner. */
-    val playerProxies = ProxyClients(http.newBuilder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build())
+    /** The same for the player's streams (see [playerClient]). */
+    val playerProxies = ProxyClients(playerClient(http))
     val epg = EpgRepository(db, http, context.filesDir, appScope, proxies = proxies, log = choiceLog)
     val categoryStore = CategoryStore(db, choiceLog)
     val playlists = PlaylistRepository(db, http, settings, epg, context.cacheDir.resolve("playlists"), categoryStore, proxies)

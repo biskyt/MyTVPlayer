@@ -3,6 +3,7 @@ package com.biskyt.mytvplayer.player
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.data.Settings
+import com.biskyt.mytvplayer.playerClient
 import com.biskyt.mytvplayer.testutil.PlainApp
 import com.biskyt.mytvplayer.ui.player.GIVE_UP_MS
 import com.biskyt.mytvplayer.ui.player.RetryBudget
@@ -59,6 +60,12 @@ class PlaybackEngineTest {
     @Test
     fun `tries in a row wait longer each time, then every 15 seconds`() {
         assertEquals(listOf(1_000L, 2_000L, 4_000L, 8_000L, 15_000L, 15_000L), (0..5).map(::retryDelayMs))
+    }
+
+    @Test
+    fun `a stream's read waits as long as the longest stall wait, so that a slow server is not cut off first`() {
+        val client = playerClient(okhttp3.OkHttpClient())
+        assertTrue(client.readTimeoutMillis >= PlaybackEngine.ON_DEMAND_REBUFFER_MS)
     }
 
     @Test
