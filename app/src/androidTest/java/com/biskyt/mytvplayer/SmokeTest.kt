@@ -2,6 +2,8 @@ package com.biskyt.mytvplayer
 
 import android.view.KeyEvent
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasClickAction
@@ -105,8 +107,16 @@ class SmokeTest {
      * What a failed wait saw: the screen's tree, with its words and the item that has focus. If the screen cannot be read
      * (the app crashed), a short note, so the wait's own failure is still reported.
      */
-    private fun screen() = runCatching { "On screen: " + compose.onAllNodes(isRoot()).printToString() }
-        .getOrElse { "The screen could not be read: $it" }
+    private fun screen() = runCatching {
+        // Short first, as the test report cuts long messages: the item with focus, and the words on screen.
+        val focused = compose.onAllNodes(isFocused()).fetchSemanticsNodes().map { it.config.getOrNull(SemanticsProperties.Text) }
+        val words = compose.onAllNodes(hasAnyText()).fetchSemanticsNodes().flatMap {
+            it.config.getOrNull(SemanticsProperties.Text).orEmpty()
+        }
+        "Focus on: $focused. Words: ${words.joinToString(" | ").take(SHORT)}. Tree: " + compose.onAllNodes(isRoot()).printToString()
+    }.getOrElse { "The screen could not be read: $it" }
+
+    private fun hasAnyText() = SemanticsMatcher.keyIsDefined(SemanticsProperties.Text)
 
     private fun waitFor(
         matcher: SemanticsMatcher,
@@ -126,6 +136,9 @@ class SmokeTest {
     }
 
     private companion object {
+        /** How much of the screen's words a failure says first. */
+        const val SHORT = 600
+
         /** Generous: an emulator on a shared CI runner can be slow. */
         const val WAIT_MS = 30_000L
 
