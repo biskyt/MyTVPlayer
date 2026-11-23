@@ -60,8 +60,12 @@ class CatchupPlayerViewModel(
     private var tickJob: Job? = null
 
     init {
-        // From the live channel by ◀: why the picture pauses, for as long as catch-up loads.
-        if (screen.switched) showWhileLoading(appString(R.string.player_catchup_switching))
+        // From the live channel by ◀: why the picture pauses, for as long as catch-up loads. Focus stays on the play
+        // bar, where ◀ ▶ go on skipping (the owner, 2026-11-23).
+        if (screen.switched) {
+            showWhileLoading(appString(R.string.player_catchup_switching))
+            focusOnBar()
+        }
         viewModelScope.launch {
             startEngine()
             val p = c.playlists.get(screen.playlistId) ?: return@launch stop()
@@ -105,7 +109,7 @@ class CatchupPlayerViewModel(
         // channel's headers.
         val hls = if (p.isM3u) M3uCatchup.isHls(url, ch.streamUrl.orEmpty(), ch.catchupType.orEmpty()) else false
         engine?.play(url, hls = hls, userAgent = ch.userAgent, referrer = ch.referrer, proxy = p.proxy)
-        showControls()
+        showControls(forSkip = screen.switched)
     }
 
     /** The programme on at [t]. */
@@ -181,10 +185,10 @@ class CatchupPlayerViewModel(
         super.stop()
     }
 
-    private companion object {
-        const val TICK_MS = 1_000L
+    internal companion object {
+        private const val TICK_MS = 1_000L
 
-        const val MIN_PLAYED_MS = 10_000L
+        private const val MIN_PLAYED_MS = 10_000L
 
         /** Closer than this to now is live. */
         const val LIVE_MARGIN_MS = 2 * 60_000L

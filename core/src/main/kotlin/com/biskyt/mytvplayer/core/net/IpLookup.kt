@@ -15,8 +15,8 @@ import okhttp3.Request
 data class PublicIp(val ip: String, val country: String? = null)
 
 /**
- * Every service was asked, and the first, ipinfo.io, answered 429: too many requests from this address for now. The
- * service answered, so the network (or the proxy it went through) works.
+ * ipinfo.io answered 429 (too many requests from this address for now), or is left alone after one, and the other
+ * services answered with errors. The services answered, so the network (or the proxy it went through) works.
  */
 class IpLookupLimited(message: String) : IOException(message)
 
@@ -33,9 +33,14 @@ class IpLookup(
     /** A service: its address, and how to read its answer. */
     class Service(val name: String, val url: String, val read: (String) -> PublicIp?)
 
-    /** Throws an [IOException] when no service can be reached or answers ([IpLookupLimited] when ipinfo.io is busy). */
+    /**
+     * Throws an [IOException] when no service can be reached or answers. It is [IpLookupLimited] when ipinfo.io is
+     * busy and the others answered too, with an error: the network works. A service that could not be reached (no
+     * network yet, after a change) is the failure, so that the caller tries again.
+     */
     suspend fun lookup(): PublicIp = withContext(Dispatchers.IO) {
-        var first: IOException? = null
+        var unreached: IOException? = null
+        var answered: IOException? = null
         var limited: String? = null
         for (s in services) {
             // A service that said "too many requests" is left alone for a while, not asked again at each check.
@@ -45,25 +50,32 @@ class IpLookup(
             }
             try {
                 return@withContext ask(s)
-            } catch (e: IpLookupLimited) {
+            } catch (_: IpLookupLimited) {
                 resting[s.name] = clock() + REST_MS
                 limited = limited ?: s.name
-                first = first ?: e
+            } catch (e: Answered) {
+                // It answered, but not with an address: the network works.
+                answered = answered ?: e
             } catch (e: IOException) {
-                first = first ?: e
+                unreached = unreached ?: e
             }
         }
-        if (limited != null) throw IpLookupLimited("$limited answered 429 (too many requests)")
-        throw first ?: IOException("No IP address service")
+        throw unreached
+            ?: limited?.let { IpLookupLimited("$it answered 429 (too many requests)") }
+            ?: answered
+            ?: IOException("No IP address service")
     }
+
+    /** A service answered, but with an error or something that is not an address. */
+    private class Answered(message: String) : IOException(message)
 
     private fun ask(s: Service): PublicIp {
         val body = http.newCall(Request.Builder().url(s.url).header("Accept", "application/json").build()).execute().use { r ->
             if (r.code == TOO_MANY) throw IpLookupLimited("${s.name} answered 429")
-            if (!r.isSuccessful) throw IOException("${s.name} answered ${r.code}")
+            if (!r.isSuccessful) throw Answered("${s.name} answered ${r.code}")
             r.body?.string().orEmpty()
         }
-        return read(s, body) ?: throw IOException("Unexpected answer from ${s.name}")
+        return read(s, body) ?: throw Answered("Unexpected answer from ${s.name}")
     }
 
     /** [s]'s answer [body] read; null when it is not what the service sends. */

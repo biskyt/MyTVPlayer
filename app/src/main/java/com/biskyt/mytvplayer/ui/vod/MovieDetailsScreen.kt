@@ -70,7 +70,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class MovieDetailsViewModel(private val c: AppContainer, private val playlistId: Long, private val streamId: Long) : ViewModel() {
+class MovieDetailsViewModel(private val c: AppContainer, val playlistId: Long, private val streamId: Long) : ViewModel() {
     var movie by mutableStateOf<MovieEntity?>(null)
         private set
     var details by mutableStateOf<VodDetails?>(null)
@@ -81,7 +81,7 @@ class MovieDetailsViewModel(private val c: AppContainer, private val playlistId:
         val m = movie ?: return null
         val p = c.playlists.get(playlistId) ?: return null
         val place = DownloadNames.movie(m.title, m.year, m.extension)
-        c.startDownload(p.id, c.vod.movieUrl(p, m), place)
+        c.startDownload(c.vod.movieUrl(p, m), place)
         return place
     }
 
@@ -179,7 +179,7 @@ private fun FilmPanels(
         FilmPanel.NONE -> Unit
         FilmPanel.MORE -> {
             val favourite by vm.favourite.collectAsState()
-            val download = downloadAction { vm.download() }
+            val download = downloadAction(vm.playlistId) { vm.download() }
             val actions = listOfNotNull(favouriteAction(favourite) { vm.toggleFavourite() }, download) + titleActions(
                 tmdb,
                 film = true,

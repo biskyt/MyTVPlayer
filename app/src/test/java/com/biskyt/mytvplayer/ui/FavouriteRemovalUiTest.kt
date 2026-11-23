@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.data.ChannelFilter
 import com.biskyt.mytvplayer.data.VodFilter
@@ -17,9 +18,12 @@ import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.focusedText
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.testutil.waitForText
+import com.biskyt.mytvplayer.ui.live.LiveViewModel
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -29,7 +33,8 @@ import org.robolectric.annotation.Config
 
 /**
  * Taking a favourite off in Favourites: focus goes to the one in its place, not out of the list (the owner,
- * 2026-11-22), in Live TV and in Movies (Series is the same screen).
+ * 2026-11-22), in Live TV and in Movies (Series is the same screen). Taken off in the TV guide, nothing is kept for
+ * the list to move focus by later.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "+w960dp-h540dp-tvdpi")
@@ -53,8 +58,10 @@ class FavouriteRemovalUiTest {
     @After
     fun tearDown() = provider.close()
 
+    private lateinit var navigator: Navigator
+
     private fun show(screen: Screen) {
-        val navigator = navigators.new(screen)
+        navigator = navigators.new(screen)
         compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
     }
 
@@ -102,5 +109,18 @@ class FavouriteRemovalUiTest {
         val next = nextAfter("Paddington 2", listOf("Dune", "Paddington 2", "Heat"))
         removeFavourite("Paddington 2")
         compose.waitAdvancingClock(stepMs = 50) { compose.focusedText().contains(next) }
+    }
+
+    @Test
+    fun `in the TV guide, a removal is not kept for the list to act on later`() {
+        show(Screen.Live(ChannelFilter.Favourites))
+        compose.waitForText("ARENA", stepMs = 50)
+        val vm = ViewModelProvider(navigator.current)[LiveViewModel::class.java]
+        compose.runOnUiThread { vm.showGuide(true, moveFocus = false) }
+        val ch = runBlocking { app.container.channels.get(pid, 102)!! }
+        compose.runOnUiThread { vm.setFavourite(ch, false) }
+        compose.waitAdvancingClock { runBlocking { 102L !in app.container.channels.observeFavouriteIds(pid).first() } }
+        assertNull(vm.removedStreamId)
+        assertNull(vm.removedAt)
     }
 }

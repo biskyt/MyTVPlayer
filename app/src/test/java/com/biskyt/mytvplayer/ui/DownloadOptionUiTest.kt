@@ -6,7 +6,10 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.core.app.ApplicationProvider
+import com.biskyt.mytvplayer.core.net.ProxySettings
+import com.biskyt.mytvplayer.core.net.ProxyType
 import com.biskyt.mytvplayer.core.vod.DownloadNames
+import com.biskyt.mytvplayer.data.db.withProxy
 import com.biskyt.mytvplayer.testutil.FakeProvider
 import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
@@ -26,7 +29,10 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** With the setting Downloads on, a film's More… offers Download, which starts it (the owner, 2026-11-22). */
+/**
+ * With the setting Downloads on, a film's More… offers Download, which starts it (the owner, 2026-11-22), with a warning
+ * when the playlist has a proxy, which the download does not use (2026-11-23).
+ */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "+w960dp-h540dp-tvdpi")
 class DownloadOptionUiTest {
@@ -43,7 +49,7 @@ class DownloadOptionUiTest {
     @Before
     fun setUp() = runBlocking {
         pid = app.container.addHomeTv(provider, vod = true)
-        app.container.startDownload = { _, url, place -> started += url to place }
+        app.container.startDownload = { url, place -> started += url to place }
     }
 
     @After
@@ -76,5 +82,24 @@ class DownloadOptionUiTest {
         compose.waitAdvancingClock { started.isNotEmpty() }
         assertEquals(place, started.single().second)
         assertTrue(started.single().first, started.single().first.contains("/movie/me/secret/501."))
+    }
+
+    @Test
+    fun `with a playlist proxy, Download warns that it will not use it`() {
+        runBlocking {
+            app.container.settings.update { it.copy(downloads = true) }
+            val p = app.container.playlists.get(pid)!!
+            app.container.db.playlists().upsert(p.withProxy(ProxySettings(ProxyType.HTTP, "proxy.example", 8080)))
+        }
+        more()
+        compose.waitForText("WARNING. Will not use proxy")
+    }
+
+    @Test
+    fun `without a proxy, there is no warning`() {
+        runBlocking { app.container.settings.update { it.copy(downloads = true) } }
+        more()
+        compose.waitForText("Download")
+        assertTrue(!shown("WARNING. Will not use proxy"))
     }
 }

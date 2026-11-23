@@ -300,19 +300,14 @@ fun PlaybackSettingsScreen() {
 }
 
 /**
- * "Downloads" (see Downloads): turned on, it asks for what downloads need, the first time: to show their progress
- * (Android 13 and later), or to write to the Download folder (Android 9). They work without the first.
+ * "Downloads" (see Downloads): on Android 9, turned on, it asks the first time to write to the Download folder. Later
+ * versions need no permission for it.
  */
 @Composable
 private fun DownloadsRow(on: Boolean, set: (Boolean) -> Unit) {
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     SettingRow(stringResource(R.string.settings_downloads), stringResource(R.string.settings_downloads_help), {
-        if (!on) {
-            when {
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> ask.launch(Manifest.permission.POST_NOTIFICATIONS)
-                Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> ask.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            }
-        }
+        if (!on && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) ask.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
         set(!on)
     }) { Toggle(on) }
 }

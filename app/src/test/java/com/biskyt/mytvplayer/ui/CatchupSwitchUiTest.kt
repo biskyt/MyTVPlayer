@@ -12,6 +12,8 @@ import com.biskyt.mytvplayer.testutil.addHomeTv
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.testutil.waitForText
+import com.biskyt.mytvplayer.ui.player.CatchupPlayerViewModel
+import com.biskyt.mytvplayer.ui.player.PlaybackViewModel
 import com.biskyt.mytvplayer.ui.player.PlayerViewModel
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import kotlinx.coroutines.runBlocking
@@ -25,7 +27,10 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Skipping back on live TV: a channel with catch-up switches to it, from that moment (the owner, 2026-11-22). */
+/**
+ * Skipping back on live TV: a channel with catch-up moves along the play bar, then switches to catch-up from there once
+ * the button rests, with focus on the bar (the owner, 2026-11-22 and 2026-11-23).
+ */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "+w960dp-h540dp-tvdpi")
 class CatchupSwitchUiTest {
@@ -59,24 +64,49 @@ class CatchupSwitchUiTest {
 
     private lateinit var vm: PlayerViewModel
 
-    /** The remote's button, to the player (which windows have focus is not what is tested here). */
-    private fun press(key: RemoteKey) {
-        compose.runOnUiThread { vm.onKey(key) }
+    /** The remote's button, to the player (which windows have focus is not what is tested here); [repeat] while held. */
+    private fun press(key: RemoteKey, repeat: Int = 0) {
+        compose.runOnUiThread { vm.onKey(key, repeat = repeat) }
         compose.waitForIdle()
     }
 
     @Test
-    fun `back on a channel with catch-up switches to catch-up, from a little earlier`() {
+    fun `back on a channel with catch-up moves along the bar, then switches to catch-up once the button rests`() {
         play(101) // with 3 days of catch-up
         val pressed = System.currentTimeMillis()
         press(RemoteKey.REWIND)
-        compose.waitAdvancingClock { navigator.current.screen is Screen.CatchupPlayer }
+        // Not yet: the button may be pressed again, or held.
+        assertTrue(navigator.current.screen is Screen.Player)
+        assertTrue(vm.scrubMs!! < pressed)
+        compose.waitAdvancingClock(stepMs = 100) { navigator.current.screen is Screen.CatchupPlayer }
         val screen = navigator.current.screen as Screen.CatchupPlayer
         assertEquals(101L, screen.streamId)
         assertTrue(screen.switched)
-        assertTrue(screen.startMs!! < pressed)
-        // It says why the picture pauses.
+        // Far enough back for catch-up to have it, so that it does not go straight back to live.
+        assertTrue(screen.startMs!! <= pressed - CatchupPlayerViewModel.LIVE_MARGIN_MS)
+        // It says why the picture pauses, and focus is on the play bar, where ◀ ▶ go on skipping.
         compose.waitForText("Switching to catch-up…")
+        val catchup = ViewModelProvider(navigator.current)[CatchupPlayerViewModel::class.java]
+        assertEquals(PlaybackViewModel.ControlsFocus.VIDEO, catchup.controlsFocus)
+    }
+
+    @Test
+    fun `held, it goes back further, and switches once, to where it was let go`() {
+        play(101)
+        repeat(30) { press(RemoteKey.LEFT, repeat = it) }
+        val target = vm.scrubMs!!
+        assertTrue(target < System.currentTimeMillis() - 10 * 60_000L)
+        compose.waitAdvancingClock(stepMs = 100) { navigator.current.screen is Screen.CatchupPlayer }
+        assertEquals(target, (navigator.current.screen as Screen.CatchupPlayer).startMs)
+    }
+
+    @Test
+    fun `forward at the present says it can't skip, and stays live`() {
+        play(101)
+        press(RemoteKey.FAST_FORWARD)
+        compose.waitForText("Skipping isn't available here")
+        assertEquals(null, vm.scrubMs)
+        assertTrue(navigator.current.screen is Screen.Player)
     }
 
     @Test

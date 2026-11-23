@@ -94,7 +94,7 @@ val USER_AGENT = "MyTVPlayer/${BuildConfig.VERSION_NAME} (+https://github.com/bi
 private const val IP_TIMEOUT_S = 10L
 
 /** Background work that needs the network waits until the TV is online. */
-internal val online = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+private val online = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
 /** Hand-wired dependencies: small enough that a DI framework would only add start-up time. */
 /** [launcherWriter]: what writes the cards to the TV's home screen (see LauncherSync); none in the JVM tests. */
@@ -103,8 +103,7 @@ class AppContainer(context: Context, launcherWriter: LauncherWriter = TvLauncher
     val appContext: Context = context.applicationContext
 
     /** Starts a download (see Downloads); tests note it instead, as they have no background scheduler. */
-    var startDownload: (playlistId: Long, url: String, place: DownloadNames.Place) -> Unit =
-        { playlistId, url, place -> Downloads.start(appContext, playlistId, url, place) }
+    var startDownload: (url: String, place: DownloadNames.Place) -> Unit = { url, place -> Downloads.start(appContext, url, place) }
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val db: AppDatabase = AppDatabase.create(context)
     val http: OkHttpClient = OkHttpClient.Builder()

@@ -13,6 +13,7 @@ import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.net.ProxySettings
 import com.biskyt.mytvplayer.core.player.OverlayState
 import com.biskyt.mytvplayer.core.xtream.XtreamClient
+import com.biskyt.mytvplayer.data.CatchupRepository
 import com.biskyt.mytvplayer.data.StreamFormat
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
@@ -47,21 +48,35 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
 
     /**
      * Catch-up to switch to, as a channel and the moment to replay from (the screen opens it; the owner, 2026-11-22):
-     * set by ◀ on a channel with catch-up (live streams can't skip back themselves), or by a past programme in the
-     * channel guide panel.
+     * set by skipping back on a channel with catch-up, or by a past programme in the channel guide panel.
      */
     var catchupFrom by mutableStateOf<CatchupStart?>(null)
         private set
 
     data class CatchupStart(val channel: ChannelEntity, val startMs: Long)
 
-    override fun skipUnavailable(ms: Long) {
-        val ch = channel
-        if (ms < 0 && ch != null && ch.archiveDays > 0) {
-            if (catchupFrom == null) catchupFrom = CatchupStart(ch, System.currentTimeMillis() + ms)
-        } else {
-            super.skipUnavailable(ms)
-        }
+    /**
+     * Live TV with catch-up is catch-up at the present (the owner, 2026-11-23): ◀ ▶ move along the play bar, as in
+     * catch-up, from the channel's oldest catch-up to now. Live streams cannot skip themselves: once the button rests,
+     * a moment in the past switches to catch-up (see [playFrom]). Without catch-up, as any stream.
+     */
+    override fun scrubBounds(): Pair<LongRange, Long>? {
+        val ch = channel ?: return null
+        if (ch.archiveDays <= 0) return super.scrubBounds()
+        if (catchupFrom != null) return null // switching already
+        val now = System.currentTimeMillis()
+        return now - ch.archiveDays * CatchupRepository.DAY_MS..now to now
+    }
+
+    /**
+     * Back from now: catch-up from there. At least [CatchupPlayerViewModel.LIVE_MARGIN_MS] back, with a little more, or
+     * catch-up would go straight back to live (its archive has not got the last minutes yet). Forward from now: stays live.
+     */
+    override fun playFrom(ms: Long) {
+        val ch = channel ?: return
+        if (ch.archiveDays <= 0) return super.playFrom(ms)
+        val now = System.currentTimeMillis()
+        if (ms < now) catchupFrom = CatchupStart(ch, minOf(ms, now - CatchupPlayerViewModel.LIVE_MARGIN_MS - NEWEST_MARGIN_MS))
     }
 
     /** A past programme chosen in the channel guide panel: the channel shown there, replayed from its start. */
@@ -254,5 +269,8 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
 
     private companion object {
         const val WATCHED_AFTER_MS = 3_000L
+
+        /** How much further back than catch-up's live margin skipping back from live starts it. */
+        const val NEWEST_MARGIN_MS = 30_000L
     }
 }

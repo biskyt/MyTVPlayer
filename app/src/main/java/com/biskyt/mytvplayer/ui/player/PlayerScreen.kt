@@ -434,12 +434,17 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
         nn?.now?.let { current ->
             // Whole minutes, rounded up: "1 min left" until it ends (and nothing once it has, until the guide moves on).
             val minutesLeft = (current.stopMs - now + MINUTE_MS - 1) / MINUTE_MS
+            val span = current.startMs..current.stopMs
+            // The same play bar as catch-up's and a film's (the owner, 2026-11-23): its handle on the bar, and where
+            // skipping back goes (on a channel with catch-up; not before the programme on now, on this bar).
             Timeline(
                 formatTime(current.startMs),
                 nn.progress(now),
                 formatTime(current.stopMs),
+                scrub = vm.scrubMs?.let { ((it - span.first).toFloat() / (span.last - span.first).coerceAtLeast(1)).coerceIn(0f, 1f) },
+                handle = LocalBarSelected.current,
                 after = if (minutesLeft > 0) stringResource(R.string.common_time_left, formatRuntime((minutesLeft * 60).toInt())) else null
-            )
+            ) { vm.scrubTo(span, it) }
         }
         ControlsBar(vm, buttons, root) {
             PillButton(stringResource(R.string.player_channel_guide), vm::openGuide)

@@ -156,6 +156,18 @@ object AppIcons {
         verticalLineTo(5.5f)
     }
 
+    /** A warning: a triangle with an exclamation mark. */
+    val Warning = icon("warning", false) {
+        moveTo(12f, 3.5f)
+        lineTo(21f, 19.5f)
+        horizontalLineTo(3f)
+        close()
+        moveTo(12f, 9.5f)
+        verticalLineTo(13.5f)
+        moveTo(12f, 16.6f)
+        verticalLineTo(16.7f)
+    }
+
     /** A clock with a backwards arrow: past programmes can be watched again. */
     val Catchup = icon("catchup", false) {
         moveTo(5f, 12f)

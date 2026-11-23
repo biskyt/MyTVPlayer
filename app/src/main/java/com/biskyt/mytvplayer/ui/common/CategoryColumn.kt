@@ -221,7 +221,8 @@ fun <F> CategoryColumn(
             },
         state = state,
         verticalArrangement = Arrangement.spacedBy(4.dp),
-        contentPadding = PaddingValues(bottom = 24.dp)
+        // Room above the first entry for its glow, which the list would cut off (Today, at the top of Catch-up).
+        contentPadding = PaddingValues(top = GLOW_GAP, bottom = 24.dp)
     ) {
         itemsIndexed(entries, key = { _, e -> e.label + e.filter.hashCode() }) { i, entry ->
             val (f, label, count) = entry
@@ -364,7 +365,8 @@ fun <F> FilteredCategoryColumn(
             }
         }
     }
-    Column(Modifier.width(CATEGORY_WIDTH), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // (No gap: the column has room above its first entry, for its glow.)
+    Column(Modifier.width(CATEGORY_WIDTH)) {
         FilterField(query, { query = it }, stringResource(R.string.common_filter_categories), Modifier.fillMaxWidth())
         CategoryColumn(shown, selected, onFocus, onSelect, onHide, right)
     }

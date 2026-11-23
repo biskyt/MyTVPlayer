@@ -225,8 +225,10 @@ class LiveViewModel(
     var removedAt: Int? = null
         private set
 
+    /** Only the list moves focus on as a channel leaves it: from the guide, nothing is noted, to act on in the list later. */
     private fun leaving(ch: ChannelEntity) {
         closeOptions()
+        if (guideMode) return
         removedAt = focusIndex.takeIf { focusStreamId == ch.streamId }
         removedStreamId = ch.streamId
     }
@@ -238,6 +240,9 @@ class LiveViewModel(
     fun showGuide(guide: Boolean, moveFocus: Boolean) {
         if (guide == guideMode) return
         guideMode = guide
+        // A removal from the list not yet acted on is forgotten: back in the list, focus goes to the channel used last.
+        removedStreamId = null
+        removedAt = null
         // (A restore still waiting, e.g. for the list's rows, stays: focus is on neither view yet.)
         restoreFocusPending = restoreFocusPending || moveFocus
     }
