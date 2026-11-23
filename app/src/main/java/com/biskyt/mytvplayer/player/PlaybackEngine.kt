@@ -254,6 +254,12 @@ class PlaybackEngine(
 
     init {
         player.addAnalyticsListener(events)
+        // After a seek, the picture can hold again while the sound catches up: as at the start, not a freeze.
+        player.addListener(object : Player.Listener {
+            override fun onPositionDiscontinuity(old: Player.PositionInfo, new: Player.PositionInfo, reason: Int) {
+                if (reason == Player.DISCONTINUITY_REASON_SEEK) stalls.reset()
+            }
+        })
     }
 
     /** The current stream's address. */
