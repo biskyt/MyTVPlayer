@@ -96,8 +96,8 @@ private const val IP_TIMEOUT_S = 10L
 
 /**
  * The player's streams' client: a shorter wait to connect. A read waits as long as the player's own stall check does
- * at most (PlaybackEngine.ON_DEMAND_REBUFFER_MS), which finds a stall sooner where it should: a shorter read time-out
- * would end a film on a slow server first (MyPlexPlayer's review, 2026-11-23).
+ * at most (PlaybackEngine.ON_DEMAND_REBUFFER_MS), which finds a stall where it should: a shorter read time-out would
+ * end a film on a slow server first (MyPlexPlayer's review, 2026-11-23).
  */
 internal fun playerClient(http: OkHttpClient): OkHttpClient = http.newBuilder()
     .connectTimeout(PLAYER_CONNECT_S, TimeUnit.SECONDS)

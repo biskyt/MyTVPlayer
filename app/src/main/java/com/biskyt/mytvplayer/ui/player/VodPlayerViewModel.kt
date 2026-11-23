@@ -196,8 +196,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         saving = false
         resetForNewStream()
         val engine = engine ?: return
-        // A film or an episode on a slow server (a file made on the fly, a disk that sleeps) may take a while to start:
-        // the engine gives it longer than live TV (see PlaybackEngine.play).
+        // The engine gives a film or an episode its own waits (see PlaybackEngine.play).
         engine.play(url, hls = null, proxy = p.proxy)
         // Resume unless it was nearly finished (or the user asked to start over).
         val saved = if (fromStart) null else known

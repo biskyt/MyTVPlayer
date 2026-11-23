@@ -86,6 +86,22 @@ class PlaybackEngineTest {
     }
 
     @Test
+    fun `a reopen's own first-picture wait is for that reopen only`() {
+        engine.play("https://example.invalid/tune.ts", hls = false, proxy = null, firstPictureMs = 60_000)
+        engine.reopen(firstPictureMs = 20_000)
+        assertEquals(20_000L, engine.firstPictureMs)
+        engine.reopen()
+        assertEquals(60_000L, engine.firstPictureMs) // the stream's own wait again
+    }
+
+    @Test
+    fun `films and episodes get as long as live TV to start, then a new try`() {
+        engine.live = false
+        engine.play("https://example.invalid/film.mkv", hls = null, proxy = null)
+        assertEquals(PlaybackEngine.FIRST_PICTURE_MS, engine.firstPictureMs)
+    }
+
+    @Test
     fun `a stream's read waits as long as the longest stall wait, so that a slow server is not cut off first`() {
         val client = playerClient(okhttp3.OkHttpClient())
         assertTrue(client.readTimeoutMillis >= PlaybackEngine.ON_DEMAND_REBUFFER_MS)
