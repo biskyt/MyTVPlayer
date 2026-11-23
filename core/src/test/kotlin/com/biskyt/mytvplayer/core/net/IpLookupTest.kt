@@ -28,10 +28,10 @@ class IpLookupTest {
         IpLookup.forgetResting()
     }
 
-    /** The app's services, each at its own path on [server]. */
-    private fun lookup() = IpLookup(
+    /** The app's services, each at its own path on [server], or at the address [url] gives it. */
+    private fun lookup(url: (Int) -> String = { server.url("/$it").toString() }) = IpLookup(
         OkHttpClient(),
-        IpLookup.SERVICES.mapIndexed { i, s -> IpLookup.Service(s.name, server.url("/$i").toString(), s.read) },
+        IpLookup.SERVICES.mapIndexed { i, s -> IpLookup.Service(s.name, url(i), s.read) },
         clock = { now }
     )
 
@@ -83,10 +83,7 @@ class IpLookupTest {
     fun `with ipinfo busy and the others out of reach, it is a network failure, so that it is tried again`() = runTest {
         // ipinfo.io on the server; the others where nothing answers (no network yet).
         val closed = java.net.ServerSocket(0).use { it.localPort }
-        val services = IpLookup.SERVICES.mapIndexed { i, s ->
-            IpLookup.Service(s.name, if (i == 0) server.url("/0").toString() else "http://127.0.0.1:$closed/", s.read)
-        }
-        val lookup = IpLookup(OkHttpClient(), services, clock = { now })
+        val lookup = lookup { i -> if (i == 0) server.url("/0").toString() else "http://127.0.0.1:$closed/" }
         answer(429)
         val e = runCatching { lookup.lookup() }.exceptionOrNull()
         assertTrue("$e", e is IOException)

@@ -443,7 +443,8 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     private fun scrub(ms: Long, repeat: Int) {
         val (range, now) = scrubBounds() ?: return skipUnavailable(ms)
         val target = scrubTarget(scrubMs ?: now, ms, repeat, range)
-        // Live TV with catch-up, at the present: there is nothing ahead to skip to.
+        // Live TV (and catch-up) at either end of what it can skip to, such as the present: nothing that way to skip to.
+        // (Live TV that cannot skip at all has no bounds, above.)
         if (isLive && scrubMs == null && target == now) return skipUnavailable(ms)
         if (overlay == OverlayState.NONE) showControls(forSkip = true)
         moveScrub(target, now)
