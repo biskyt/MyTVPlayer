@@ -67,6 +67,9 @@ class StallWatch(
      */
     private var isVideo = false
 
+    /** Video whose picture is watched, and that showed it moves (see [isVideo]). */
+    private val liveVideo get() = watchPicture && isVideo
+
     /** Starts again (a stream opened again, or a seek). */
     fun reset() {
         last = null
@@ -112,7 +115,7 @@ class StallWatch(
         }
         // The time moving counts too: a radio channel's slide changes only now and then, yet its sound plays
         // (MyPlexPlayer's review, 2026-11-23). Not for live video that showed it moves: its picture must move again.
-        val timeCounts = now.frames == null || !(watchPicture && isVideo)
+        val timeCounts = now.frames == null || !liveVideo
         if (!moving && (pictureMoved || timeCounts && now.position != before.position)) {
             moving = true
             onMoving()
@@ -134,7 +137,7 @@ class StallWatch(
             // output starting again, as when the TV's HDMI link changes). With a still picture too, it is given as
             // long as a start. So is a still picture alone, on live video that showed it moves (a picture that froze
             // again after a reopen, while the sound plays).
-            else -> startMs.takeIf { sameFrames && (timeStill || watchPicture && isVideo) }
+            else -> startMs.takeIf { sameFrames && (timeStill || liveVideo) }
         }
     }
 

@@ -57,7 +57,7 @@
     <string name="player_unsupported_format">Usa un formato de transmisión que MyTVPlayer no puede reproducir.</string>
 
     <string name="player_error_dns">No se encuentra el servidor de la transmisión: puede que su dirección ya no exista.</string>
-    <string name="player_error_stalled">El servidor de la transmisión la envió demasiado lento para empezar. Puede que esté saturado.</string>
+    <string name="player_error_stalled">El servidor de la transmisión la envió demasiado lento para reproducirla. Puede que esté saturado.</string>
     <string name="player_error_frozen">La imagen de la transmisión dejó de moverse. Puede que su servidor se haya caído.</string>
     <string name="player_reconnecting">Reconectando…</string>
     <string name="player_error_timeout">El servidor de la transmisión no respondió. Puede que esté caído o saturado.</string>

@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.34.7
+- A stream that stops coming in after it played now says that the server sent it too slowly to play, not "to start".
+- An error is no longer replaced by a reconnect that was already waiting.
+
 ## 1.34.6
 - Live TV whose picture freezes again after a reconnect, while the sound plays, is now opened again, rather than left frozen.
 - A film that cannot show its picture after a reconnect now shows an error, rather than reconnecting every minute.
