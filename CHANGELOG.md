@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.33.1
+- A picture that holds on its first frame while the sound catches up, as catch-up often starts, no longer counts as frozen.
+
 ## 1.33.0
 - Live TV now reconnects by itself when a channel drops out, and says "Reconnecting…" until the picture is back.
 - A stream that gets stuck while it plays, or whose picture freezes, is now noticed and opened again.

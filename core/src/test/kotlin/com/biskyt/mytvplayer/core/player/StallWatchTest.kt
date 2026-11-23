@@ -34,9 +34,19 @@ class StallWatchTest {
     }
 
     @Test
-    fun `a picture that does not move while the time does is frozen`() {
-        assertNull(after(List(4) { playing(it * 2_000L, frames = 50) }))
-        assertEquals(Stall.FROZEN, watch.check(playing(10_000, frames = 50)))
+    fun `a picture that stops moving while the time goes on is frozen`() {
+        assertNull(after(List(3) { playing(it * 2_000L, frames = it * 50L) })) // it moves
+        assertNull(after(List(3) { playing(6_000L + it * 2_000L, frames = 100) })) // still for 6 s
+        assertEquals(Stall.FROZEN, watch.check(playing(12_000, frames = 100))) // 8 s
+    }
+
+    @Test
+    fun `a first picture held while the sound catches up is not frozen, however long`() {
+        assertNull(after(List(30) { playing(it * 2_000L, frames = 1) }))
+        // Then it moves, and a freeze after that counts.
+        assertNull(after(List(2) { playing(60_000L + it * 2_000L, frames = 2L + it) }))
+        assertNull(after(List(3) { playing(64_000L + it * 2_000L, frames = 3) })) // still for 6 s
+        assertEquals(Stall.FROZEN, watch.check(playing(70_000, frames = 3))) // 8 s
     }
 
     @Test

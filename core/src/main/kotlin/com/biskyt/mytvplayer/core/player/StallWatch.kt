@@ -7,7 +7,8 @@ package com.biskyt.mytvplayer.core.player
  * - Waiting for data, and the buffer gets no further: no data, or data that trickles in too slowly to play. A stream
  *   that has not started yet is given [startMs], one that played and is waiting again [rebufferMs].
  * - Playing, and the picture or the time does not move: a frozen picture, or a stream that only seems to play. It is
- *   given [frozenMs].
+ *   given [frozenMs]. The picture counts only once it has moved since the start (or a seek): a stream often starts
+ *   with its first picture held while the sound catches up with it (the owner, 2026-11-23), which is not frozen.
  */
 class StallWatch(
     private val stepMs: Long,
@@ -35,11 +36,15 @@ class StallWatch(
     private var waitingMs = 0L
     private var frozenForMs = 0L
 
+    /** Whether the picture has moved since the start: until then, a still picture is a first one held, not a freeze. */
+    private var pictureMoved = false
+
     /** Starts again (a new stream, or one opened again). */
     fun reset() {
         last = null
         waitingMs = 0
         frozenForMs = 0
+        pictureMoved = false
     }
 
     /** Takes [now], and says what is stuck, if anything has been for too long. */
@@ -47,8 +52,9 @@ class StallWatch(
         val before = last
         last = now
         waitingMs = if (now.buffering && before?.buffering == true && now.buffered == before.buffered) waitingMs + stepMs else 0
-        val still =
-            before != null && before.playing && (now.position == before.position || now.frames != null && now.frames == before.frames)
+        val sameFrames = before != null && now.frames != null && now.frames == before.frames
+        if (before?.frames != null && now.frames != null && !sameFrames) pictureMoved = true
+        val still = before != null && before.playing && (now.position == before.position || pictureMoved && sameFrames)
         frozenForMs = if (now.playing && still) frozenForMs + stepMs else 0
         return when {
             waitingMs >= if (now.started) rebufferMs else startMs -> Stall.BUFFERING
