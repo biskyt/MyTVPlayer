@@ -116,10 +116,8 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
 
     // The retries of a stream that fails.
     private var retryJob: Job? = null
-    private val retries = RetryBudget(MAX_RETRIES)
-
-    /** When the stream began to fail, with no picture since (0: it plays). */
-    private var failingSince = 0L
+    private val failures = FailureRun(MAX_RETRIES)
+    private val retries get() = failures.retries
 
     /** Whether the last failure was falling behind live TV's window: [reconnect] then goes back to the live point. */
     private var behindLive = false
@@ -142,6 +140,9 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             // Paused, the controls stay up; playing again, they go after the usual while.
             if (!playWhenReady || overlay == OverlayState.CONTROLS) showControls(keepOverlay = true)
+            // Paused by the viewer: the time with no picture stops there, so a failure after playing again has its
+            // full 5 minutes (MyPlexPlayer's review, 2026-11-23).
+            if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST) failures.paused()
             wake()
         }
 
@@ -188,9 +189,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             // A stream that failed again after a retry, before it ever played, may play another way.
             if (engine?.retryAsHls(e) == true || (!hasPlayed && retries.used > 0 && tryOtherFormat())) return
             // Streams drop out now and then; retry a few times before showing an error.
-            // Played steadily since the last failure: a new run of failures. A moment of READY between stalls (a frozen
-            // stream, a playlist that replays old parts) is not enough, or the give-up time would never come.
-            if (playedSinceFailure() >= STEADY_MS) retries.reset()
+            val played = playedSinceFailure()
             // Behind the live window: the next try goes back to the live point. Anything else opens where it was, so
             // a viewer who paused live TV, or went back in it, keeps the place after a short drop-out.
             behindLive = e.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW
@@ -200,11 +199,8 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             // the failure is one that passes, for a while with no picture (see keepsTrying): a session the server ended without
             // saying so (a playlist that stops) then shows an error, with Try again. One that never played (a dead
             // channel), or a refusal, gets a few tries, then says why.
-            // The time since the device started, not the clock on the wall, which can jump when the time is set.
-            val now = SystemClock.elapsedRealtime()
-            if (failingSince == 0L) failingSince = now
-            val keepTrying = keepsTrying(isLive, hasPlayed, isPassing(e), failingForMs = now - failingSince)
-            if (!retries.take() && !keepTrying) {
+            val tryAgain = failures.failed(SystemClock.elapsedRealtime(), played, isLive, hasPlayed, isPassing(e))
+            if (!tryAgain) {
                 reconnecting = false
                 val url = engine?.currentUrl
                 fail(reason = explainFailure(e, engine?.sentNothing(url) == true), url = url)
@@ -260,7 +256,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             it.onStalled = listener::onPlayerError
             // A picture came back (or with no video, the time moves): the 5 minutes with no picture start again. Play
             // time alone does not count: a frozen picture or a still time also "plays" (MyPlexPlayer's review).
-            it.onMoving = { failingSince = 0 }
+            it.onMoving = failures::moving
             it.onUnsupported =
                 { url -> fail(appString(R.string.player_unsupported_format), url = url.ifEmpty { null }) }
             engine = it
@@ -288,6 +284,8 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
      * NetworkReturn): a network that comes and goes would otherwise use up a film's few tries in seconds (MyPlexPlayer's
      * review, 2026-11-23).
      */
+    private val back = NetworkReturn<Network>()
+
     private val networkBack = object : ConnectivityManager.NetworkCallback() {
         override fun onLost(network: Network) = back.lost(network)
 
@@ -322,8 +320,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         cancelScrub()
         cancelRetry()
         error = null
-        failingSince = 0
-        retries.reset()
+        failures.reset()
         playedMs = 0
         playingSince = 0
         hasPlayed = false
@@ -458,9 +455,6 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         exit = true
         stopWatchingNetwork()
     }
-
-    /** When the network comes back, for [networkBack]. */
-    private val back = NetworkReturn<Network>()
 
     /** Whether [networkBack] is registered: only while the player is shown and not stopped. */
     private var watchingNetwork = false
@@ -708,8 +702,6 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         /** The longest a message about the stream loading stays (see showWhileLoading). */
         const val WAITING_MESSAGE_MS = 15_000L
 
-        /** Having played this long (in all) since the last failure counts as working: later failures get fresh retries. */
-        const val STEADY_MS = 20_000L
         const val OVERLAY_TIMEOUT_MS = 5_000L
 
         /** How long the paused screen is left alone before it dims. */

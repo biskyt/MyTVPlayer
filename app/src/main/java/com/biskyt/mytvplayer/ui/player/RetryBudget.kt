@@ -33,3 +33,53 @@ fun keepsTrying(live: Boolean, played: Boolean, passing: Boolean, failingForMs: 
 
 /** How long live TV goes on trying with no picture before it shows an error. */
 const val GIVE_UP_MS = 5 * 60_000L
+
+/** Having played this long (in all) since the last failure counts as working: later failures get fresh retries. */
+const val STEADY_MS = 20_000L
+
+/**
+ * A stream's run of failures: its [retries], and since when it has failed with no picture. Times are from the device's
+ * start, not the clock on the wall, which can jump when the time is set.
+ */
+class FailureRun(maxRetries: Int) {
+    val retries = RetryBudget(maxRetries)
+
+    /** When the stream began to fail, with no picture since (0: it plays). */
+    private var failingSince = 0L
+
+    /** Whether the stream really played (its picture or its time moved, see StallWatch) since its last failure. */
+    private var moved = false
+
+    /** The stream really plays again: the time with no picture starts again. */
+    fun moving() {
+        failingSince = 0
+        moved = true
+    }
+
+    /** Paused by the viewer: the time with no picture stops there, so a later failure has its full [GIVE_UP_MS]. */
+    fun paused() {
+        failingSince = 0
+    }
+
+    /** Another stream: nothing of this one's failures is kept. */
+    fun reset() {
+        failingSince = 0
+        moved = false
+        retries.reset()
+    }
+
+    /**
+     * A failure at [now], after [playedMs] of play since the last one: whether to try again (see [keepsTrying] for
+     * [live], [played] and [passing]).
+     * - Played steadily since the last failure: a new run of failures. A moment of READY between stalls (a frozen
+     *   stream, a playlist that replays old parts) is not enough, or the give-up time would never come. Nor is play time
+     *   with no picture and no time that moved (MyPlexPlayer's review, 2026-11-23).
+     */
+    fun failed(now: Long, playedMs: Long, live: Boolean, played: Boolean, passing: Boolean): Boolean {
+        if (moved && playedMs >= STEADY_MS) retries.reset()
+        moved = false
+        if (failingSince == 0L) failingSince = now
+        val keepTrying = keepsTrying(live, played, passing, failingForMs = now - failingSince)
+        return retries.take() || keepTrying
+    }
+}

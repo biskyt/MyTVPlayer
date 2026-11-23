@@ -94,9 +94,28 @@ class StallWatchTest {
         watch.reset()
         after(List(3) { playing(5_000L + it * 2_000L, frames = null) }) // no video: the time moves
         assertEquals(2, said)
-        watch.reset()
+        watch.newStream()
         after(List(3) { playing(5_000L + it * 2_000L, frames = 1) }) // a slide that has not changed yet, with sound
         assertEquals(3, said)
+    }
+
+    @Test
+    fun `live video whose picture holds again after a reopen, while the sound plays, is frozen after a start's time`() {
+        var said = 0
+        watch.onMoving = { said++ }
+        after(List(3) { playing(it * 2_000L, frames = it * 50L) }) // video
+        watch.reset() // opened again
+        assertNull(after(List(10) { playing(10_000L + it * 2_000L, frames = 200) })) // 18 s
+        assertEquals(Stall.FROZEN, watch.check(playing(40_000, frames = 200))) // 20 s
+        assertEquals(1, said) // the time alone did not count as playing again
+    }
+
+    @Test
+    fun `a film's picture that holds after a seek, while its time goes on, is not frozen`() {
+        watch.watchPicture = false
+        after(List(3) { playing(it * 2_000L, frames = it * 50L) })
+        watch.reset()
+        assertNull(after(List(30) { playing(10_000L + it * 2_000L, frames = 200) }))
     }
 
     @Test

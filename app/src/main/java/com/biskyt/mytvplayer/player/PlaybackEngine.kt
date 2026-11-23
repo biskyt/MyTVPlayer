@@ -336,6 +336,7 @@ class PlaybackEngine(
         firstPictureMs: Long = if (live) FIRST_PICTURE_MS else ON_DEMAND_REBUFFER_MS,
         rebufferMs: Long = if (live) REBUFFER_MS else ON_DEMAND_REBUFFER_MS,
     ) {
+        stalls.newStream()
         stalls.startMs = firstPictureMs
         stalls.rebufferMs = rebufferMs
         // A film can have long still scenes with no new pictures (a variable frame rate): only its time counts.
