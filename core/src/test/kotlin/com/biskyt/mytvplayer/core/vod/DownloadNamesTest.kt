@@ -11,12 +11,12 @@ class DownloadNamesTest {
     }
 
     @Test
-    fun `an episode goes in its series' folder, with its season and episode`() {
+    fun `an episode goes in its series' folder and its season's folder, with its season and episode`() {
         assertEquals(
-            DownloadNames.Place("TV Shows/Line of Duty", "Line of Duty S01E02.mkv"),
+            DownloadNames.Place("TV Shows/Line of Duty/Season 01", "Line of Duty S01E02.mkv"),
             DownloadNames.episode("Line of Duty", 1, 2, "mkv")
         )
-        assertEquals("Show S10E123.mp4", DownloadNames.episode("Show", 10, 123, "").file)
+        assertEquals(DownloadNames.Place("TV Shows/Show/Season 10", "Show S10E123.mp4"), DownloadNames.episode("Show", 10, 123, ""))
     }
 
     @Test

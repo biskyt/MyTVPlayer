@@ -1,6 +1,7 @@
 package com.biskyt.mytvplayer.player
 
 import android.content.Context
+import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.data.Settings
 import com.biskyt.mytvplayer.playerClient
@@ -9,6 +10,10 @@ import com.biskyt.mytvplayer.ui.player.GIVE_UP_MS
 import com.biskyt.mytvplayer.ui.player.RetryBudget
 import com.biskyt.mytvplayer.ui.player.keepsTrying
 import com.biskyt.mytvplayer.ui.player.retryDelayMs
+import java.time.Duration
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -16,6 +21,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -45,6 +51,23 @@ class PlaybackEngineTest {
         assertEquals(1, unsupported)
         // The error shows its address.
         assertEquals("https://example.invalid/channel.ism/Manifest", unsupportedUrl)
+    }
+
+    @Test
+    fun `the stall check runs only while the player wants to play, and starts again when it plays`() {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE)) // waits for data
+            val looper = shadowOf(Looper.getMainLooper())
+            engine.play(server.url("/live.ts").toString(), hls = false, proxy = null)
+            looper.idle()
+            assertTrue(engine.checking)
+            engine.player.pause()
+            looper.idleFor(Duration.ofSeconds(3)) // the next check notes the pause, and posts no more
+            assertFalse(engine.checking)
+            engine.player.play()
+            looper.idle()
+            assertTrue(engine.checking)
+        }
     }
 
     @Test

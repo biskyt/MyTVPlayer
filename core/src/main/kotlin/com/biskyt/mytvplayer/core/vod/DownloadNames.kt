@@ -1,9 +1,12 @@
 package com.biskyt.mytvplayer.core.vod
 
+import java.util.Locale
+
 /**
  * Where a download goes, under the device's Download folder (the owner, 2026-11-22): a film in "Movies/Dune (2021)/" as
- * "Dune (2021).mkv", an episode in "TV Shows/Line of Duty/" as "Line of Duty S01E02.mkv". Each title has a folder of its
- * own. Characters that file systems refuse are left out.
+ * "Dune (2021).mkv", an episode in "TV Shows/Line of Duty/Season 01/" as "Line of Duty S01E02.mkv" (a folder for each
+ * season: the owner, 2026-11-23). Each title has a folder of its own. Characters that file systems refuse are left out.
+ * The folder names stay in English in every language, as media servers such as Plex expect them.
  */
 object DownloadNames {
     const val MOVIES = "Movies"
@@ -19,7 +22,9 @@ object DownloadNames {
 
     fun episode(series: String, season: Int, episode: Int, extension: String): Place {
         val show = safe(series)
-        return Place("$TV_SHOWS/$show", "$show S%02dE%02d.${ext(extension)}".format(season, episode))
+        // Latin digits in every language.
+        val folder = "$TV_SHOWS/$show/Season %02d".format(Locale.ROOT, season)
+        return Place(folder, "$show S%02dE%02d.${ext(extension)}".format(Locale.ROOT, season, episode))
     }
 
     // Braces escaped: Android's regex engine (ICU) rejects a bare one.

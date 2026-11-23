@@ -197,6 +197,16 @@ class PlaybackEngine(
      */
     var onStalled: (PlaybackException) -> Unit = {}
 
+    /**
+     * Called when the stream really plays again after its start, a reopen or a seek: its picture moves, or with no
+     * video, its time (see [StallWatch.onMoving]).
+     */
+    var onMoving: () -> Unit
+        get() = stalls.onMoving
+        set(value) {
+            stalls.onMoving = value
+        }
+
     /** True once the default subtitle choice has been applied to the current stream (the user may change it after). */
     private var subtitlesApplied = false
 
@@ -219,20 +229,32 @@ class PlaybackEngine(
      * disk that sleeps) can take a while to send more.
      */
     var live = true
-    private val checkStall = object : Runnable {
-        override fun run() {
-            if (player.playbackState == Player.STATE_READY) started = true
-            when (stalls.check(sample())) {
-                null -> handler.postDelayed(this, STALL_CHECK_MS)
-                StallWatch.Stall.BUFFERING -> stalled(PlaybackException("Buffering got nowhere", null, ERROR_CODE_STALLED))
-                StallWatch.Stall.FROZEN -> stalled(PlaybackException("The picture froze", null, ERROR_CODE_FROZEN))
-            }
+
+    /** Whether a check is posted. */
+    internal var checking = false
+        private set
+
+    // A check while the player cannot stall (paused, stopped after an error, ended) still records how it is, which
+    // ends any wait counted before. Then no more checks are posted until it can stall again (see keepChecking).
+    private val checkStall = Runnable {
+        checking = false
+        when (stalls.check(sample())) {
+            null -> keepChecking()
+            StallWatch.Stall.BUFFERING -> stalled(PlaybackException("Buffering got nowhere", null, ERROR_CODE_STALLED))
+            StallWatch.Stall.FROZEN -> stalled(PlaybackException("The picture froze", null, ERROR_CODE_FROZEN))
         }
+    }
+
+    /** Posts the next check, while the player wants to play and is waiting for data or playing. */
+    private fun keepChecking() {
+        val state = player.playbackState
+        if (checking || !player.playWhenReady || (state != Player.STATE_BUFFERING && state != Player.STATE_READY)) return
+        checking = true
+        handler.postDelayed(checkStall, STALL_CHECK_MS)
     }
 
     private fun stalled(e: PlaybackException) {
         player.stop()
-        handler.postDelayed(checkStall, STALL_CHECK_MS)
         onStalled(e)
     }
 
@@ -255,8 +277,9 @@ class PlaybackEngine(
     /** Watches a new stream from its start. */
     private fun watchForStall() {
         handler.removeCallbacks(checkStall)
+        checking = false
         stalls.reset()
-        handler.postDelayed(checkStall, STALL_CHECK_MS)
+        keepChecking()
     }
 
     init {
@@ -266,18 +289,17 @@ class PlaybackEngine(
         player.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_READY) started = true
+                keepChecking()
+            }
+
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) = keepChecking()
+
+            // After every seek, the watch starts again: the picture can hold while the sound catches up, as at the
+            // start, and it is not a freeze. It keeps [started], so the waits stay those of a stream that played.
+            override fun onPositionDiscontinuity(old: Player.PositionInfo, new: Player.PositionInfo, reason: Int) {
+                if (reason == Player.DISCONTINUITY_REASON_SEEK) stalls.reset()
             }
         })
-    }
-
-    /**
-     * A seek the viewer asked for. The watch starts again: the picture can hold while the sound catches up, as at the
-     * start, and it is not a freeze. A reconnect's own seek to the live point does not come here: its waits stay live
-     * TV's (MyPlexPlayer's review, 2026-11-23).
-     */
-    fun seekTo(ms: Long) {
-        player.seekTo(ms)
-        stalls.reset()
     }
 
     /**
@@ -296,8 +318,9 @@ class PlaybackEngine(
 
     /**
      * [hls]: null works the format out from the stream (retrying once as HLS when that fails, see [retryAsHls]).
-     * [userAgent] / [referrer]: some M3U streams only play when these headers are sent. [firstPictureMs]: how long the
-     * stream is given to start, see [StallWatch].
+     * [userAgent] / [referrer]: some M3U streams only play when these headers are sent. [firstPictureMs] and
+     * [rebufferMs]: how long the stream is given to start, and to get more data once it played (see [StallWatch]). By
+     * default, [FIRST_PICTURE_MS] and [REBUFFER_MS] for live TV, [ON_DEMAND_REBUFFER_MS] for a film or an episode.
      */
     @Suppress("LongParameterList") // what one stream needs, as MyPlexPlayer's engine has it
     fun play(
@@ -306,10 +329,11 @@ class PlaybackEngine(
         proxy: ProxySettings?,
         userAgent: String? = null,
         referrer: String? = null,
-        firstPictureMs: Long = FIRST_PICTURE_MS,
+        firstPictureMs: Long = if (live) FIRST_PICTURE_MS else ON_DEMAND_REBUFFER_MS,
+        rebufferMs: Long = if (live) REBUFFER_MS else ON_DEMAND_REBUFFER_MS,
     ) {
         stalls.startMs = firstPictureMs
-        stalls.rebufferMs = if (live) REBUFFER_MS else ON_DEMAND_REBUFFER_MS
+        stalls.rebufferMs = rebufferMs
         // A film can have long still scenes with no new pictures (a variable frame rate): only its time counts.
         stalls.watchPicture = live
         client = clients.forProxy(proxy)
@@ -356,7 +380,9 @@ class PlaybackEngine(
         if (!currentInferred || e.errorCode != PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED) return false
         currentInferred = false
         hlsUrls += url
-        return start(MediaItem.Builder().setUri(url).setMimeType(MimeTypes.APPLICATION_M3U8).build())
+        if (!start(MediaItem.Builder().setUri(url).setMimeType(MimeTypes.APPLICATION_M3U8).build())) return false
+        watchForStall() // the try as HLS has its own waits, not those of the try that failed
+        return true
     }
 
     /** Applies the user's default subtitle setting the first time tracks are known for a stream. */
@@ -434,6 +460,7 @@ class PlaybackEngine(
 
     fun release() {
         handler.removeCallbacks(checkStall)
+        checking = false
         player.release()
     }
 
@@ -500,7 +527,7 @@ class PlaybackEngine(
         /** How often the stream is checked for a stall (see StallWatch). */
         private const val STALL_CHECK_MS = 2_000L
 
-        /** How long a stream is given to start, unless [play] is told otherwise. */
+        /** How long a live stream is given to start, unless [play] is told otherwise. */
         const val FIRST_PICTURE_MS = 20_000L
 
         /** How long live TV that has played may wait with no new data before it is opened again. */

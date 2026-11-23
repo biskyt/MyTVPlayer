@@ -73,8 +73,27 @@ class StallWatchTest {
     }
 
     @Test
-    fun `a still time before the picture has moved, as when the sound's output starts again, is not frozen`() {
-        assertNull(after(List(30) { playing(5_000, frames = 1) }))
+    fun `a still time and a still first picture are given as long as a start`() {
+        assertNull(after(List(10) { playing(5_000, frames = 1) })) // 18 s
+        assertEquals(Stall.FROZEN, watch.check(playing(5_000, frames = 1))) // 20 s: it never got going
+    }
+
+    @Test
+    fun `a still time before the picture has moved is not frozen while new pictures come`() {
+        assertNull(after(List(30) { playing(5_000, frames = it.toLong()) }))
+    }
+
+    @Test
+    fun `it says once when the stream really plays, and again after it starts again`() {
+        var said = 0
+        watch.onMoving = { said++ }
+        after(List(5) { playing(it * 2_000L, frames = 1) }) // a first picture held
+        assertEquals(0, said)
+        after(List(5) { playing(10_000L + it * 2_000L, frames = 2L + it * 50) }) // it moves
+        assertEquals(1, said)
+        watch.reset()
+        after(List(3) { playing(5_000L + it * 2_000L, frames = null) }) // no video: the time moves
+        assertEquals(2, said)
     }
 
     @Test

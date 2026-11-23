@@ -33,10 +33,10 @@ const val ERROR_CODE_FROZEN = PlaybackException.CUSTOM_ERROR_CODE_BASE + 1
 @OptIn(UnstableApi::class)
 fun isPassing(e: PlaybackException): Boolean {
     val http = e.causes().firstNotNullOfOrNull { it as? HttpDataSource.InvalidResponseCodeException }
-    return if (http != null) http.responseCode >= SERVER_ERROR || http.responseCode in BUSY else e.errorCode in PASSING
+    return if (http != null) http.responseCode in SERVER_ERRORS || http.responseCode in BUSY else e.errorCode in PASSING
 }
 
-private const val SERVER_ERROR = 500
+private val SERVER_ERRORS = 500..599
 private val BUSY = setOf(408, 429)
 
 private val PASSING = setOf(
@@ -116,7 +116,7 @@ private const val RANGE_NOT_SATISFIABLE = 416
 private fun httpReason(code: Int) = when (code) {
     401, 403 -> appString(R.string.player_error_http_refused, code)
     404, 410 -> appString(R.string.player_error_http_gone, code)
-    in 500..599 -> appString(R.string.player_error_http_server, code)
+    in SERVER_ERRORS -> appString(R.string.player_error_http_server, code)
     else -> appString(R.string.player_error_http_other, code)
 }
 
