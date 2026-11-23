@@ -261,6 +261,13 @@ class PlaybackEngine(
 
     init {
         player.addAnalyticsListener(events)
+        // Started as soon as it is ready, not at the next check: a stream that is ready and waits again between two
+        // checks then has the shorter wait of one that played.
+        player.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_READY) started = true
+            }
+        })
     }
 
     /**

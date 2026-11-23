@@ -56,15 +56,23 @@ class StallWatch(
         val before = last
         last = now
         waitingMs = if (now.buffering && before?.buffering == true && now.buffered == before.buffered) waitingMs + stepMs else 0
-        val sameFrames = before != null && now.frames != null && now.frames == before.frames
-        if (before?.frames != null && now.frames != null && now.frames - before.frames >= videoFrames) pictureMoved = true
-        val still = before != null && before.playing && (now.position == before.position || pictureMoved && sameFrames)
+        val still = before != null && before.playing && still(before, now)
         frozenForMs = if (now.playing && still) frozenForMs + stepMs else 0
         return when {
             waitingMs >= if (now.started) rebufferMs else startMs -> Stall.BUFFERING
             frozenForMs >= frozenMs -> Stall.FROZEN
             else -> null
         }.also { if (it != null) reset() }
+    }
+
+    /** Whether the stream stood still from [before] to [now] while it played: its picture, or its time. */
+    private fun still(before: Sample, now: Sample): Boolean {
+        val sameFrames = now.frames != null && now.frames == before.frames
+        if (before.frames != null && now.frames != null && now.frames - before.frames >= videoFrames) pictureMoved = true
+        // Before the picture has moved, a still time is not a freeze either (a first picture held, or the sound's output
+        // starting again, as when the TV's HDMI link changes); with no video, the time is all there is.
+        val timeStill = now.position == before.position && (now.frames == null || pictureMoved)
+        return timeStill || pictureMoved && sameFrames
     }
 
     private companion object {

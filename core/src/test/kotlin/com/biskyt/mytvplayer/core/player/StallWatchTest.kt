@@ -63,6 +63,11 @@ class StallWatchTest {
     }
 
     @Test
+    fun `a still time before the picture has moved, as when the sound's output starts again, is not frozen`() {
+        assertNull(after(List(30) { playing(5_000, frames = 1) }))
+    }
+
+    @Test
     fun `time that does not move while it plays is frozen too, also with no video`() {
         assertNull(after(List(4) { playing(5_000, frames = null) }))
         assertEquals(Stall.FROZEN, watch.check(playing(5_000, frames = null)))

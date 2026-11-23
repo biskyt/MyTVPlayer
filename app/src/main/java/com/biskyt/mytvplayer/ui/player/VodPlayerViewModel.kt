@@ -21,6 +21,7 @@ import com.biskyt.mytvplayer.data.db.VOD_EPISODE
 import com.biskyt.mytvplayer.data.db.VOD_MOVIE
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
 import com.biskyt.mytvplayer.data.db.proxy
+import com.biskyt.mytvplayer.player.PlaybackEngine
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.common.ItemAction
 import com.biskyt.mytvplayer.ui.common.Tab
@@ -196,7 +197,8 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         saving = false
         resetForNewStream()
         val engine = engine ?: return
-        engine.play(url, hls = null, proxy = p.proxy)
+        // A film or an episode on a slow server (a file made on the fly, a disk that sleeps) may take a while to start.
+        engine.play(url, hls = null, proxy = p.proxy, firstPictureMs = PlaybackEngine.ON_DEMAND_REBUFFER_MS)
         // Resume unless it was nearly finished (or the user asked to start over).
         val saved = if (fromStart) null else known
         if (saved != null && !saved.finished && saved.positionMs > RESUME_AFTER_MS) {
