@@ -21,3 +21,15 @@ fun retryDelayMs(attempt: Int): Long = if (attempt >= RETRY_STEPS) MAX_RETRY_MS 
 
 private const val RETRY_STEPS = 4
 private const val MAX_RETRY_MS = 15_000L
+
+/**
+ * Whether a failure past the retry budget is tried again all the same: on live TV that has played ([live], [played]), a
+ * failure that passes ([passing], see isPassing), until it has failed with no picture for [GIVE_UP_MS]. Then the error
+ * shows, with Try again: a session the server ended without saying so (a playlist that stops) does not say
+ * "Reconnecting…" for ever.
+ */
+fun keepsTrying(live: Boolean, played: Boolean, passing: Boolean, failingForMs: Long): Boolean =
+    live && played && passing && failingForMs < GIVE_UP_MS
+
+/** How long live TV goes on trying with no picture before it shows an error. */
+const val GIVE_UP_MS = 5 * 60_000L

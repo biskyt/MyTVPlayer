@@ -158,6 +158,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             if (state == Player.STATE_READY) {
                 error = null
                 reconnecting = false
+                failingSince = 0
             }
             if (state == Player.STATE_ENDED) onEnded()
             // Paused again after a retry or a stop (which ended the countdown): the dimming counts from now. A
@@ -172,32 +173,34 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         }
 
         override fun onPlayerError(e: PlaybackException) {
-            val player = engine?.player ?: return
+            // A late error, after Back or Home (see cancelRetry): nothing is tried again.
+            if (exit || hidden || engine == null) return
             // A stream that failed again after a retry, before it ever played, may play another way.
             if (engine?.retryAsHls(e) == true || (!hasPlayed && retries.used > 0 && tryOtherFormat())) return
             // Streams drop out now and then; retry a few times before showing an error.
             if (playedSinceFailure() >= STEADY_MS) retries.reset()
             playedMs = 0
             playingSince = 0
-            // Live TV that has played goes on trying, as a TV does, however long the feed is gone (the owner,
-            // 2026-11-23), if the failure is one that passes. One that never played (a dead channel), or a refusal,
-            // gets a few tries, then says why.
-            if (!retries.take() && !(isLive && hasPlayed && isPassing(e))) {
+            // Live TV that has played goes on trying, as a TV does, while the feed is gone (the owner, 2026-11-23), if
+            // the failure is one that passes, for a while with no picture (see keepsTrying): a session the server ended without
+            // saying so (a playlist that stops) then shows an error, with Try again. One that never played (a dead
+            // channel), or a refusal, gets a few tries, then says why.
+            val now = System.currentTimeMillis()
+            if (failingSince == 0L) failingSince = now
+            val keepTrying = keepsTrying(isLive, hasPlayed, isPassing(e), failingForMs = now - failingSince)
+            if (!retries.take() && !keepTrying) {
                 reconnecting = false
                 val url = engine?.currentUrl
                 fail(reason = explainFailure(e, engine?.sentNothing(url) == true), url = url)
                 return
             }
-            if (e.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
-                player.seekToDefaultPosition()
-                player.prepare()
-                return
-            }
+            // Behind the live window too: reconnect() goes back to the live point, after the same waits, so a stream
+            // that falls behind again at once is not opened again many times a second.
             if (hasPlayed) reconnecting = true
             retryJob?.cancel()
             retryJob = viewModelScope.launch {
                 delay(retryDelayMs(retries.used - 1))
-                reconnect()
+                if (!exit && !hidden) reconnect()
             }
         }
     }
@@ -239,10 +242,10 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             it.player.addAnalyticsListener(audioFormatListener)
             it.live = isLive
             it.onStalled = listener::onPlayerError
-            runCatching { appContext.getSystemService(ConnectivityManager::class.java)?.registerDefaultNetworkCallback(networkBack) }
             it.onUnsupported =
                 { url -> fail(appString(R.string.player_unsupported_format), url = url.ifEmpty { null }) }
             engine = it
+            if (!hidden) watchNetwork()
         }
     }
 
@@ -255,6 +258,9 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         if (isLive) player.seekToDefaultPosition()
         player.prepare()
     }
+
+    /** When the stream began to fail, with no picture since (0: it plays). */
+    private var failingSince = 0L
 
     /** Set while a stream that played is opened again after it failed: the player says so, over its last picture. */
     var reconnecting by mutableStateOf(false)
@@ -286,6 +292,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         retryJob?.cancel()
         error = null
         reconnecting = false
+        failingSince = 0
         retries.reset()
         playedMs = 0
         playingSince = 0
@@ -391,12 +398,14 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     open fun onAppHidden() {
         hidden = true
         cancelRetry()
+        stopWatchingNetwork()
         cancelScrub()
         engine?.player?.stop()
     }
 
     fun onAppShown() {
         hidden = false
+        watchNetwork()
         resume()
     }
 
@@ -420,8 +429,20 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         stopWatchingNetwork()
     }
 
-    /** The network is no longer watched (stopped, or the screen gone): a second call does nothing. */
+    /** Whether [networkBack] is registered: only while the player is shown and not stopped. */
+    private var watchingNetwork = false
+
+    private fun watchNetwork() {
+        if (watchingNetwork || exit || engine == null) return
+        watchingNetwork = runCatching {
+            appContext.getSystemService(ConnectivityManager::class.java)?.registerDefaultNetworkCallback(networkBack)
+        }.isSuccess
+    }
+
+    /** The network is no longer watched (hidden, stopped, or the screen gone). */
     private fun stopWatchingNetwork() {
+        if (!watchingNetwork) return
+        watchingNetwork = false
         runCatching { appContext.getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(networkBack) }
     }
 
@@ -446,7 +467,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
 
     /** Plays from [ms] (a point within [scrubBounds]). */
     protected open fun playFrom(ms: Long) {
-        engine?.player?.seekTo(ms)
+        engine?.seekTo(ms)
     }
 
     /**
