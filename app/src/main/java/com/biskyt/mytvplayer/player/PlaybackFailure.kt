@@ -47,6 +47,10 @@ private val PASSING = setOf(
     PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
     PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
     PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW,
+    // A feed that drops in the middle of a part or a playlist leaves it cut off: what was read cannot be parsed
+    // (MyPlexPlayer's review, 2026-11-23). A format the player cannot read at all is ..._UNSUPPORTED, which does not pass.
+    PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+    PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED,
 )
 
 /**

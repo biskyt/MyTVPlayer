@@ -74,7 +74,11 @@ class StallWatch(
         val before = last
         last = now
         waitingMs = if (now.buffering && before?.buffering == true && now.buffered == before.buffered) waitingMs + stepMs else 0
-        val limit = if (before != null && before.playing) stillLimit(before, now) else null
+        var limit: Long? = null
+        if (before != null && before.playing) {
+            noteMoving(before, now)
+            limit = stillLimit(before, now)
+        }
         frozenForMs = if (now.playing && limit != null) frozenForMs + stepMs else 0
         return when {
             waitingMs >= if (now.started) rebufferMs else startMs -> Stall.BUFFERING
@@ -84,17 +88,26 @@ class StallWatch(
     }
 
     /**
+     * Notes whether the picture moved at a video's rate from [before] to [now], and calls [onMoving] the first time the
+     * stream plays.
+     */
+    private fun noteMoving(before: Sample, now: Sample) {
+        if (before.frames != null && now.frames != null && now.frames - before.frames >= videoFrames) pictureMoved = true
+        // The time moving counts too: a radio channel's slide changes only now and then, yet its sound plays
+        // (MyPlexPlayer's review, 2026-11-23). A still picture with a still time does not.
+        if (!moving && (pictureMoved || now.position != before.position)) {
+            moving = true
+            onMoving()
+        }
+    }
+
+    /**
      * How long the stream may stand still as it did from [before] to [now] while it played (its picture, or its time),
      * or null when it moved.
      */
     private fun stillLimit(before: Sample, now: Sample): Long? {
         val sameFrames = now.frames != null && now.frames == before.frames
         val timeStill = now.position == before.position
-        if (before.frames != null && now.frames != null && now.frames - before.frames >= videoFrames) pictureMoved = true
-        if (!moving && (pictureMoved || now.frames == null && !timeStill)) {
-            moving = true
-            onMoving()
-        }
         return when {
             // With no video, the time is all there is.
             now.frames == null -> frozenMs.takeIf { timeStill }

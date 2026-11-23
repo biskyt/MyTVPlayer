@@ -87,13 +87,16 @@ class StallWatchTest {
     fun `it says once when the stream really plays, and again after it starts again`() {
         var said = 0
         watch.onMoving = { said++ }
-        after(List(5) { playing(it * 2_000L, frames = 1) }) // a first picture held
+        after(List(5) { playing(5_000, frames = 1) }) // a first picture held, and the time too
         assertEquals(0, said)
         after(List(5) { playing(10_000L + it * 2_000L, frames = 2L + it * 50) }) // it moves
         assertEquals(1, said)
         watch.reset()
         after(List(3) { playing(5_000L + it * 2_000L, frames = null) }) // no video: the time moves
         assertEquals(2, said)
+        watch.reset()
+        after(List(3) { playing(5_000L + it * 2_000L, frames = 1) }) // a slide that has not changed yet, with sound
+        assertEquals(3, said)
     }
 
     @Test
