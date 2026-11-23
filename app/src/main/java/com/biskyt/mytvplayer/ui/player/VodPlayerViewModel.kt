@@ -200,7 +200,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         // Resume unless it was nearly finished (or the user asked to start over).
         val saved = if (fromStart) null else known
         if (saved != null && !saved.finished && saved.positionMs > RESUME_AFTER_MS) {
-            engine.player.seekTo(saved.positionMs)
+            engine.seekTo(saved.positionMs)
             flash(appString(R.string.player_resuming_from, formatDuration(saved.positionMs)))
         }
         showControls()

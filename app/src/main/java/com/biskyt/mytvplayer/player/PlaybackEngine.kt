@@ -215,7 +215,8 @@ class PlaybackEngine(
 
     /**
      * Whether the streams are live TV (catch-up too): once one has played, waiting [REBUFFER_MS] with no data is a stall.
-     * A film or an episode waits as long as for its first picture: a slow server can take a while to send more.
+     * A film or an episode waits [ON_DEMAND_REBUFFER_MS], also after a seek: a slow server (a file made on the fly, a
+     * disk that sleeps) can take a while to send more.
      */
     var live = true
     private val checkStall = object : Runnable {
@@ -260,16 +261,16 @@ class PlaybackEngine(
 
     init {
         player.addAnalyticsListener(events)
-        // After a seek, the picture can hold again while the sound catches up: as at the start, not a freeze.
-        player.addListener(object : Player.Listener {
-            override fun onPositionDiscontinuity(old: Player.PositionInfo, new: Player.PositionInfo, reason: Int) {
-                if (reason == Player.DISCONTINUITY_REASON_SEEK) {
-                    // A seek is a new start: on a slow server it can take as long as the first picture did.
-                    stalls.reset()
-                    started = false
-                }
-            }
-        })
+    }
+
+    /**
+     * A seek the viewer asked for. The watch starts again: the picture can hold while the sound catches up, as at the
+     * start, and it is not a freeze. A reconnect's own seek to the live point does not come here: its waits stay live
+     * TV's (MyPlexPlayer's review, 2026-11-23).
+     */
+    fun seekTo(ms: Long) {
+        player.seekTo(ms)
+        stalls.reset()
     }
 
     /** The current stream's address. */
@@ -291,7 +292,7 @@ class PlaybackEngine(
         firstPictureMs: Long = FIRST_PICTURE_MS,
     ) {
         stalls.startMs = firstPictureMs
-        stalls.rebufferMs = if (live) REBUFFER_MS else firstPictureMs
+        stalls.rebufferMs = if (live) REBUFFER_MS else ON_DEMAND_REBUFFER_MS
         client = clients.forProxy(proxy)
         subtitlesApplied = false
         // A track chosen on the last stream mustn't carry over (or quietly match a different one on this).
@@ -485,6 +486,9 @@ class PlaybackEngine(
 
         /** How long live TV that has played may wait with no new data before it is opened again. */
         const val REBUFFER_MS = 12_000L
+
+        /** How long a film or an episode that has played may wait with no new data (a slow server's read time). */
+        const val ON_DEMAND_REBUFFER_MS = 60_000L
 
         /** How the player's sound is played. */
         private val MOVIE: AudioAttributes = AudioAttributes.Builder().setUsage(
