@@ -278,7 +278,7 @@ class PlaybackEngine(
         )
     }
 
-    /** Watches a new stream from its start. */
+    /** Watches the stream from now (its start, or its try as HLS): the checks start again. */
     private fun watchForStall() {
         stopChecking()
         stalls.reset()
@@ -309,9 +309,11 @@ class PlaybackEngine(
     /**
      * Opens the stream again where it was (a reconnect, Try again, back from Home). The watch starts again too: the new
      * decoder holds its first picture while the sound catches up, which is not a freeze. It keeps [started], so the
-     * waits stay those of a stream that played.
+     * waits stay those of a stream that played. [firstPictureMs], when given, is the new wait for a stream that has not
+     * started (MyPlexPlayer: a tuner that had its minute gets less on a reopen).
      */
-    fun reopen() {
+    fun reopen(firstPictureMs: Long? = null) {
+        if (firstPictureMs != null) stalls.startMs = firstPictureMs
         stalls.reset()
         player.prepare()
     }
@@ -336,7 +338,7 @@ class PlaybackEngine(
         firstPictureMs: Long = if (live) FIRST_PICTURE_MS else ON_DEMAND_REBUFFER_MS,
         rebufferMs: Long = if (live) REBUFFER_MS else ON_DEMAND_REBUFFER_MS,
     ) {
-        stalls.newStream()
+        stalls.newStream() // watchForStall() below resets the rest
         stalls.startMs = firstPictureMs
         stalls.rebufferMs = rebufferMs
         // A film can have long still scenes with no new pictures (a variable frame rate): only its time counts.

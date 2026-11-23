@@ -63,6 +63,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
      * that failed, [url] is its address: the error shows it, and the reason names its server.
      */
     protected fun fail(message: String? = null, reason: String? = null, url: String? = null) {
+        cancelRetry() // a try still waiting would open the stream again over the error (MyPlexPlayer's review)
         error = PlaybackError(message ?: appString(failureMessage), reason, url)
         wake() // an error isn't left under the dimming
     }
@@ -278,14 +279,15 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     var reconnecting by mutableStateOf(false)
         private set
 
+    /** Whether the network has just come back, for [networkBack]. */
+    private val back = NetworkReturn<Network>()
+
     /**
      * The network is back (Wi-Fi again, or a cable): a stream waiting to try again tries at once. Only once Android has
      * found that the network reaches the internet, not when it first connects, and only at that change (see
      * NetworkReturn): a network that comes and goes would otherwise use up a film's few tries in seconds (MyPlexPlayer's
      * review, 2026-11-23).
      */
-    private val back = NetworkReturn<Network>()
-
     private val networkBack = object : ConnectivityManager.NetworkCallback() {
         override fun onLost(network: Network) = back.lost(network)
 

@@ -81,7 +81,7 @@ class PlaybackFailureTest {
         says(failure(PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED, UnknownHostException("x")), "can't be found")
         says(failure(PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED), "Couldn't connect")
         says(failure(PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT), "didn't answer")
-        says(failure(ERROR_CODE_STALLED), "too slowly to start")
+        says(failure(ERROR_CODE_STALLED), "too slowly to play") // at the start, or after it played
         says(failure(PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED), "This TV box can't decode")
         says(failure(PlaybackException.ERROR_CODE_DRM_LICENSE_ACQUISITION_FAILED), "encrypted")
         says(failure(PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED), "can't read")
