@@ -27,6 +27,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 /**
@@ -77,12 +78,11 @@ class PlayerVpnUiTest {
         runBlocking { app.container.settings.update { it.copy(warnVpn = true) } }
         play()
         compose.waitForText("VPN not connected")
-        // The player watches the network too, to try again when it comes back: the VPN status may not be listening
-        // yet when the first callback is, so the change is reported until it shows.
-        compose.waitAdvancingClock {
-            connectivity.reportNetwork(vpn = true)
-            shown("VPN on")
-        }
+        // Two listen: the player, to try again when the network comes back, and the VPN status. A report reaches only
+        // those that listen already.
+        compose.waitAdvancingClock { shadowOf(connectivity).networkCallbacks.size >= 2 }
+        connectivity.reportNetwork(vpn = true)
+        compose.waitForText("VPN on")
         connectivity.reportNetwork(vpn = null)
         compose.waitForText("VPN not connected")
     }
