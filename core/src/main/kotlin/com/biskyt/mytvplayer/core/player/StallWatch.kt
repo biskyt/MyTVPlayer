@@ -9,7 +9,9 @@ package com.biskyt.mytvplayer.core.player
  * - Playing, and the picture or the time does not move: a frozen picture, or a stream that only seems to play. It is
  *   given [frozenMs]. The picture counts only once it has moved at a video's rate since the start (or a seek): a
  *   stream often starts with its first picture held while the sound catches up with it (the owner, 2026-11-23), and a
- *   radio channel's picture can be a slide that changes now and then. Neither is frozen.
+ *   radio channel's picture can be a slide that changes now and then. Neither is frozen. Until the picture has moved,
+ *   a picture and a time that both stand still are given [startMs], as a stream that has not started yet
+ *   (MyPlexPlayer's review, 2026-11-23: otherwise that stream was never seen as stuck).
  */
 class StallWatch(
     private val stepMs: Long,
@@ -25,6 +27,12 @@ class StallWatch(
 
     /** Pictures at a check, at least, for the picture to count as moving: a video's rate, not a slide's now and then. */
     private val videoFrames = MIN_FPS * stepMs / MS_PER_S
+
+    /**
+     * Called once the stream really plays after the start (or a reopen, or a seek): its picture moves at a video's rate,
+     * or with no video, its time moves.
+     */
+    var onMoving: () -> Unit = {}
 
     /** What is stuck. */
     enum class Stall { BUFFERING, FROZEN }
@@ -49,12 +57,16 @@ class StallWatch(
     /** Whether the picture has moved at a video's rate since the start: until then, a still picture is not a freeze. */
     private var pictureMoved = false
 
+    /** Whether [onMoving] was called since the start. */
+    private var moving = false
+
     /** Starts again (a new stream, or one opened again). */
     fun reset() {
         last = null
         waitingMs = 0
         frozenForMs = 0
         pictureMoved = false
+        moving = false
     }
 
     /** Takes [now], and says what is stuck, if anything has been for too long. */
@@ -62,23 +74,36 @@ class StallWatch(
         val before = last
         last = now
         waitingMs = if (now.buffering && before?.buffering == true && now.buffered == before.buffered) waitingMs + stepMs else 0
-        val still = before != null && before.playing && still(before, now)
-        frozenForMs = if (now.playing && still) frozenForMs + stepMs else 0
+        val limit = if (before != null && before.playing) stillLimit(before, now) else null
+        frozenForMs = if (now.playing && limit != null) frozenForMs + stepMs else 0
         return when {
             waitingMs >= if (now.started) rebufferMs else startMs -> Stall.BUFFERING
-            frozenForMs >= frozenMs -> Stall.FROZEN
+            limit != null && frozenForMs >= limit -> Stall.FROZEN
             else -> null
         }.also { if (it != null) reset() }
     }
 
-    /** Whether the stream stood still from [before] to [now] while it played: its picture, or its time. */
-    private fun still(before: Sample, now: Sample): Boolean {
+    /**
+     * How long the stream may stand still as it did from [before] to [now] while it played (its picture, or its time),
+     * or null when it moved.
+     */
+    private fun stillLimit(before: Sample, now: Sample): Long? {
         val sameFrames = now.frames != null && now.frames == before.frames
+        val timeStill = now.position == before.position
         if (before.frames != null && now.frames != null && now.frames - before.frames >= videoFrames) pictureMoved = true
-        // Before the picture has moved, a still time is not a freeze either (a first picture held, or the sound's output
-        // starting again, as when the TV's HDMI link changes); with no video, the time is all there is.
-        val timeStill = now.position == before.position && (now.frames == null || pictureMoved)
-        return timeStill || watchPicture && pictureMoved && sameFrames
+        if (!moving && (pictureMoved || now.frames == null && !timeStill)) {
+            moving = true
+            onMoving()
+        }
+        return when {
+            // With no video, the time is all there is.
+            now.frames == null -> frozenMs.takeIf { timeStill }
+            pictureMoved -> frozenMs.takeIf { timeStill || watchPicture && sameFrames }
+            // Before the picture has moved, a still time alone is not a freeze (a first picture held, or the sound's
+            // output starting again, as when the TV's HDMI link changes). With a still picture too, it is given as
+            // long as a start.
+            else -> startMs.takeIf { timeStill && sameFrames }
+        }
     }
 
     private companion object {

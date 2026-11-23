@@ -3,6 +3,13 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.34.4
+- A downloaded episode now goes in a folder for its season: TV Shows, then the series, then "Season 01".
+- A stream whose first picture and time both stay still is now opened again after 20 seconds, rather than left as it is.
+- Live TV that keeps reconnecting with no new picture now shows an error after 5 minutes, as it should.
+- When the network comes back, the player now waits until it reaches the internet before it tries the stream again.
+- While a stream is paused, stopped or at its end, the player no longer checks it every 2 seconds, which saves a little work.
+
 ## 1.34.3
 - After a short drop-out, paused live TV now carries on where it was, rather than jumping to the live point.
 - A film with long still scenes is no longer taken for a frozen picture.
