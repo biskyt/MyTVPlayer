@@ -25,6 +25,31 @@ const val ERROR_CODE_STALLED = PlaybackException.CUSTOM_ERROR_CODE_BASE
 const val ERROR_CODE_FROZEN = PlaybackException.CUSTOM_ERROR_CODE_BASE + 1
 
 /**
+ * Whether [e] is a failure that passes, which live TV goes on trying however long it lasts: the network or the
+ * connection to the server, a time-out, a stall or a frozen picture, or a server that is busy (5xx, 408, 429). A
+ * refusal (other 4xx: the session ended, no access), a decoder or a format that cannot play does not get better by
+ * asking again: it gets a few tries, then an error (MyPlexPlayer's review, 2026-11-23).
+ */
+@OptIn(UnstableApi::class)
+fun isPassing(e: PlaybackException): Boolean {
+    val http = e.causes().firstNotNullOfOrNull { it as? HttpDataSource.InvalidResponseCodeException }
+    return if (http != null) http.responseCode >= SERVER_ERROR || http.responseCode in BUSY else e.errorCode in PASSING
+}
+
+private const val SERVER_ERROR = 500
+private val BUSY = setOf(408, 429)
+
+private val PASSING = setOf(
+    ERROR_CODE_STALLED,
+    ERROR_CODE_FROZEN,
+    PlaybackException.ERROR_CODE_TIMEOUT,
+    PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
+    PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW,
+)
+
+/**
  * A stream's address to show: Xtream addresses carry the account's user name and password ("/movie/user/pass/501.mkv",
  * "?username=…&password=…"). These are hidden, so that a photo of the screen does not share them.
  */

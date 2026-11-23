@@ -212,6 +212,12 @@ class PlaybackEngine(
     private val handler = Handler(player.applicationLooper)
     private var started = false
     private val stalls = StallWatch(STALL_CHECK_MS)
+
+    /**
+     * Whether the streams are live TV (catch-up too): once one has played, waiting [REBUFFER_MS] with no data is a stall.
+     * A film or an episode waits as long as for its first picture: a slow server can take a while to send more.
+     */
+    var live = true
     private val checkStall = object : Runnable {
         override fun run() {
             if (player.playbackState == Player.STATE_READY) started = true
@@ -257,7 +263,11 @@ class PlaybackEngine(
         // After a seek, the picture can hold again while the sound catches up: as at the start, not a freeze.
         player.addListener(object : Player.Listener {
             override fun onPositionDiscontinuity(old: Player.PositionInfo, new: Player.PositionInfo, reason: Int) {
-                if (reason == Player.DISCONTINUITY_REASON_SEEK) stalls.reset()
+                if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+                    // A seek is a new start: on a slow server it can take as long as the first picture did.
+                    stalls.reset()
+                    started = false
+                }
             }
         })
     }
@@ -268,9 +278,20 @@ class PlaybackEngine(
 
     /**
      * [hls]: null works the format out from the stream (retrying once as HLS when that fails, see [retryAsHls]).
-     * [userAgent] / [referrer]: some M3U streams only play when these headers are sent.
+     * [userAgent] / [referrer]: some M3U streams only play when these headers are sent. [firstPictureMs]: how long the
+     * stream is given to start (and to start again after a seek), see [StallWatch].
      */
-    fun play(url: String, hls: Boolean?, proxy: ProxySettings?, userAgent: String? = null, referrer: String? = null) {
+    @Suppress("LongParameterList") // what one stream needs, as MyPlexPlayer's engine has it
+    fun play(
+        url: String,
+        hls: Boolean?,
+        proxy: ProxySettings?,
+        userAgent: String? = null,
+        referrer: String? = null,
+        firstPictureMs: Long = FIRST_PICTURE_MS,
+    ) {
+        stalls.startMs = firstPictureMs
+        stalls.rebufferMs = if (live) REBUFFER_MS else firstPictureMs
         client = clients.forProxy(proxy)
         subtitlesApplied = false
         // A track chosen on the last stream mustn't carry over (or quietly match a different one on this).
@@ -458,6 +479,12 @@ class PlaybackEngine(
 
         /** How often the stream is checked for a stall (see StallWatch). */
         private const val STALL_CHECK_MS = 2_000L
+
+        /** How long a stream is given to start, unless [play] is told otherwise. */
+        const val FIRST_PICTURE_MS = 20_000L
+
+        /** How long live TV that has played may wait with no new data before it is opened again. */
+        const val REBUFFER_MS = 12_000L
 
         /** How the player's sound is played. */
         private val MOVIE: AudioAttributes = AudioAttributes.Builder().setUsage(
