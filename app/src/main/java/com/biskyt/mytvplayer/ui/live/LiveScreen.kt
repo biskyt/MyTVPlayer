@@ -94,15 +94,15 @@ import com.biskyt.mytvplayer.ui.common.rowsInView
 import com.biskyt.mytvplayer.ui.theme.Palette
 
 @Composable
-fun LiveScreen(initialFilter: ChannelFilter?, initialGuide: Boolean) {
+fun LiveScreen(initialFilter: ChannelFilter?, initialGuide: Boolean, radio: Boolean = false) {
     val nav = LocalNavigator.current
-    val vm = appViewModel { LiveViewModel(it, initialFilter, initialGuide, nav.picked) }
+    val vm = appViewModel { LiveViewModel(it, initialFilter, initialGuide, nav.picked, radio) }
     vm.nowNext.PauseWhenHidden()
     val filter by vm.filter.collectAsState()
     val pid by vm.playlistId.collectAsState()
     val play: (ChannelEntity) -> Unit = { ch ->
         vm.focusStreamId = ch.streamId
-        nav.push(Screen.Player(pid, ch.streamId, filter))
+        nav.push(Screen.Player(pid, ch.streamId, filter, vm.kinds.value))
     }
     // In the Catch-up lists, OK opens the channel's past programmes (Watch, in its options, plays it live).
     val open: (ChannelEntity) -> Unit = { ch ->
@@ -121,7 +121,11 @@ fun LiveScreen(initialFilter: ChannelFilter?, initialGuide: Boolean) {
     val inContent = remember { mutableStateOf(false) }
 
     TabScaffold(
-        if (vm.catchupMode) Tab.CATCHUP else Tab.LIVE,
+        when {
+            vm.catchupMode -> Tab.CATCHUP
+            radio -> Tab.RADIO
+            else -> Tab.LIVE
+        },
         // Anywhere on the screen, the tabs included (else the TV would take the Guide button for its own guide): 0–9
         // on the remote jumps straight to that channel number; the Guide button switches list/guide.
         Modifier.onPreviewKeyEvent { e ->

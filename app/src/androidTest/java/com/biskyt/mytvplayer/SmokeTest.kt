@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.biskyt.mytvplayer.data.ChannelKinds
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.Dispatcher
@@ -92,7 +93,9 @@ class SmokeTest {
         val c = InstrumentationRegistry.getInstrumentation().targetContext.container
         var found: ChannelEntity? = null
         compose.waitUntil(WAIT_MS) {
-            found = runBlocking { c.playlists.allIds().firstNotNullOfOrNull { c.db.channels().search(it, name, 1).firstOrNull() } }
+            found = runBlocking {
+                c.playlists.allIds().firstNotNullOfOrNull { c.db.channels().search(it, name, 1, ChannelKinds.ALL.values).firstOrNull() }
+            }
             found != null
         }
         return found!!

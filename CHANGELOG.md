@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.34.0
+- A new setting, Radio stations, can put radio stations in a Radio section of their own, or hide them from Live TV.
+- Catch-up now shows the same as live TV: the programme's details, what is next, and About programme.
+- Favourites in catch-up's More now work as in live TV.
+
 ## 1.33.2
 - Live TV now goes on reconnecting only while the problem can pass, and shows an error when the server refuses the stream.
 - A radio channel whose picture is a slide that changes now and then is no longer taken for a frozen picture.

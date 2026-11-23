@@ -658,7 +658,7 @@ class RepositoriesTest {
         val id = playlists.addM3u("Free", provider.url + "free.m3u")
         playlists.syncChannels(id)
         val p = playlists.get(id)!!
-        val all = db.channels().search(id, "", 10).associateBy { it.name }
+        val all = db.channels().search(id, "", 10, ChannelKinds.ALL.values).associateBy { it.name }
         assertEquals(3, all.getValue("Channel One").archiveDays)
         assertEquals(7, all.getValue("Channel Two").archiveDays) // no days given: a week
         assertEquals(0, all.getValue("Odd One").archiveDays) // a kind of catch-up it can't play

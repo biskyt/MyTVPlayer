@@ -30,6 +30,7 @@ import androidx.tv.material3.MaterialTheme
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.data.ChannelFilter
+import com.biskyt.mytvplayer.data.ChannelKinds
 import com.biskyt.mytvplayer.data.SearchResults
 import com.biskyt.mytvplayer.data.categoryLabel
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
@@ -95,7 +96,7 @@ class SearchViewModel(private val c: AppContainer, initialQuery: String = "") : 
             .mapLatest { (pid, q) ->
                 // A failed search (e.g. the database busy rebuilding) is shown, never allowed to end searching.
                 try {
-                    Found(pid, q, c.search.search(pid, q))
+                    Found(pid, q, c.search.search(pid, q, ChannelKinds.shown(c.settings.current().radio)))
                 } catch (e: CancellationException) {
                     throw e
                 } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {

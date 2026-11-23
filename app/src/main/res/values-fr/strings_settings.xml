@@ -40,6 +40,11 @@
     <string name="settings_start_last_help">Ouvrir l\'appli directement sur la dernière chaîne regardée</string>
     <string name="settings_zap_up_down">Changer de chaîne avec haut et bas</string>
     <string name="settings_zap_up_down_help">Sinon, seuls les boutons de chaîne le font, et haut ou bas affiche les commandes</string>
+    <string name="settings_radio">Stations de radio</string>
+    <string name="settings_radio_help">Où vont les stations que votre fournisseur marque comme radio. Section Radio les montre dans une section à part, hors de TV en direct. Masquées les retire.</string>
+    <string name="settings_radio_include">Dans TV en direct</string>
+    <string name="settings_radio_section">Section Radio</string>
+    <string name="settings_radio_hide">Masquées</string>
 
     <string name="settings_accent">Couleur d\'accent</string>
     <string name="settings_accent_help">Utilisée partout pour la mise en évidence, les barres de progression et les boutons. Les nuances plus claires et plus foncées sont calculées automatiquement.</string>

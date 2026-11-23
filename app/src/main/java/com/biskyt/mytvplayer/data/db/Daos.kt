@@ -95,6 +95,18 @@ interface CategoryDao {
     @Query("SELECT * FROM category WHERE playlistId = :pid AND type = :type AND included = 1 ORDER BY sortOrder")
     fun observeIncluded(pid: Long, type: String): Flow<List<CategoryEntity>>
 
+    /**
+     * Live TV's (or the Radio section's) included categories: with [all] (both kinds shown) every one, as before; else
+     * those that have a channel of [kinds] (see ChannelKinds).
+     */
+    @Query(
+        """SELECT * FROM category k WHERE k.playlistId = :pid AND k.type = 'live' AND k.included = 1
+           AND (:all OR EXISTS (SELECT 1 FROM channel c WHERE c.playlistId = k.playlistId AND c.categoryId = k.categoryId
+               AND c.hidden = 0 AND c.radio IN (:kinds)))
+           ORDER BY k.sortOrder"""
+    )
+    fun observeLiveIncluded(pid: Long, kinds: List<Boolean>, all: Boolean): Flow<List<CategoryEntity>>
+
     @Query("SELECT * FROM category WHERE playlistId = :pid AND type = :type AND included = 1")
     suspend fun included(pid: Long, type: String): List<CategoryEntity>
 
@@ -161,6 +173,10 @@ private const val CARRY_ON_LATEST =
 /** A channel (the table unnamed) that may be shown: not restricted while locked. */
 private const val CHANNEL_OPEN = "NOT ($P_LOCKED AND $CHANNEL_RESTRICTED)"
 
+/** A channel of the kinds a list shows, TV or radio (see ChannelKinds); and one named c. */
+private const val KIND = "radio IN (:kinds)"
+private const val C_KIND = "c.radio IN (:kinds)"
+
 /** A channel named c that may be shown. */
 private const val C_OPEN = "NOT ($P_LOCKED AND $C_RESTRICTED)"
 private const val MOVIE_OPEN = "NOT ($P_LOCKED AND $MOVIE_RESTRICTED)"
@@ -198,98 +214,98 @@ interface ChannelDao {
     // Users can override the provider order with sortOrder.
 
     @Query(
-        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN
+        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN AND $KIND
            AND (:q = '' OR $CHANNEL_MATCH)
            ORDER BY position, name"""
     )
-    fun pageAll(pid: Long, q: String): PagingSource<Int, ChannelEntity>
+    fun pageAll(pid: Long, q: String, kinds: List<Boolean>): PagingSource<Int, ChannelEntity>
 
     @Query(
-        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN AND categoryId = :cat
+        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN AND categoryId = :cat AND $KIND
            AND (:q = '' OR $CHANNEL_MATCH)
            ORDER BY position, name"""
     )
-    fun pageCategory(pid: Long, cat: String, q: String): PagingSource<Int, ChannelEntity>
+    fun pageCategory(pid: Long, cat: String, q: String, kinds: List<Boolean>): PagingSource<Int, ChannelEntity>
 
-    @Query("SELECT c.* $CHANNEL_FAVOURITES AND (:q = '' OR $CHANNEL_MATCH) $CHANNEL_FAVOURITE_ORDER")
-    fun pageFavourites(pid: Long, q: String): PagingSource<Int, ChannelEntity>
+    @Query("SELECT c.* $CHANNEL_FAVOURITES AND $C_KIND AND (:q = '' OR $CHANNEL_MATCH) $CHANNEL_FAVOURITE_ORDER")
+    fun pageFavourites(pid: Long, q: String, kinds: List<Boolean>): PagingSource<Int, ChannelEntity>
 
     @Query(
         """SELECT c.* FROM channel c JOIN recent r ON r.playlistId = c.playlistId AND r.streamId = c.streamId
-           WHERE c.playlistId = :pid AND $C_RECENT_OPEN AND (:q = '' OR $CHANNEL_MATCH)
+           WHERE c.playlistId = :pid AND $C_RECENT_OPEN AND $C_KIND AND (:q = '' OR $CHANNEL_MATCH)
            ORDER BY r.watchedAt DESC"""
     )
-    fun pageRecent(pid: Long, q: String): PagingSource<Int, ChannelEntity>
+    fun pageRecent(pid: Long, q: String, kinds: List<Boolean>): PagingSource<Int, ChannelEntity>
 
-    @Query("SELECT streamId FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN ORDER BY position, name")
-    suspend fun idsAll(pid: Long): List<Long>
+    @Query("SELECT streamId FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN AND $KIND ORDER BY position, name")
+    suspend fun idsAll(pid: Long, kinds: List<Boolean>): List<Long>
 
     /** Search: the same match as the list filter (name, or the number's start), first [limit] in list order. */
     @Query(
-        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_SEARCHABLE
+        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_SEARCHABLE AND $KIND
            AND $CHANNEL_MATCH ORDER BY position, name LIMIT :limit"""
     )
-    suspend fun search(pid: Long, q: String, limit: Int): List<ChannelEntity>
+    suspend fun search(pid: Long, q: String, limit: Int, kinds: List<Boolean>): List<ChannelEntity>
 
     @Query(
-        "SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_SEARCHABLE AND $NUMBER_MATCH ORDER BY number LIMIT :limit"
+        "SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_SEARCHABLE AND $KIND AND $NUMBER_MATCH ORDER BY number LIMIT :limit"
     )
-    suspend fun searchNumber(pid: Long, q: String, limit: Int): List<ChannelEntity>
+    suspend fun searchNumber(pid: Long, q: String, limit: Int, kinds: List<Boolean>): List<ChannelEntity>
 
     @Query(
-        "SELECT streamId FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN AND categoryId = :cat ORDER BY position, name"
+        "SELECT streamId FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN AND categoryId = :cat AND $KIND ORDER BY position, name"
     )
-    suspend fun idsCategory(pid: Long, cat: String): List<Long>
+    suspend fun idsCategory(pid: Long, cat: String, kinds: List<Boolean>): List<Long>
 
     @Query(
-        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN AND archiveDays > 0
+        """SELECT * FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN AND archiveDays > 0 AND $KIND
            AND (:q = '' OR $CHANNEL_MATCH)
            ORDER BY position, name"""
     )
-    fun pageCatchup(pid: Long, q: String): PagingSource<Int, ChannelEntity>
+    fun pageCatchup(pid: Long, q: String, kinds: List<Boolean>): PagingSource<Int, ChannelEntity>
 
     @Query(
-        "SELECT streamId FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN AND archiveDays > 0 ORDER BY position, name"
+        "SELECT streamId FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN AND archiveDays > 0 AND $KIND ORDER BY position, name"
     )
-    suspend fun idsCatchup(pid: Long): List<Long>
+    suspend fun idsCatchup(pid: Long, kinds: List<Boolean>): List<Long>
 
     @Query(
-        """SELECT * FROM channel WHERE playlistId = :pid AND categoryId = :cat AND hidden = 0 AND $CHANNEL_OPEN AND archiveDays > 0
+        """SELECT * FROM channel WHERE playlistId = :pid AND categoryId = :cat AND hidden = 0 AND $CHANNEL_OPEN AND archiveDays > 0 AND $KIND
            AND (:q = '' OR $CHANNEL_MATCH)
            ORDER BY position, name"""
     )
-    fun pageCatchupCategory(pid: Long, cat: String, q: String): PagingSource<Int, ChannelEntity>
+    fun pageCatchupCategory(pid: Long, cat: String, q: String, kinds: List<Boolean>): PagingSource<Int, ChannelEntity>
 
     @Query(
-        """SELECT streamId FROM channel WHERE playlistId = :pid AND categoryId = :cat AND hidden = 0 AND $CHANNEL_OPEN AND archiveDays > 0
+        """SELECT streamId FROM channel WHERE playlistId = :pid AND categoryId = :cat AND hidden = 0 AND $CHANNEL_OPEN AND archiveDays > 0 AND $KIND
            ORDER BY position, name"""
     )
-    suspend fun idsCatchupCategory(pid: Long, cat: String): List<Long>
+    suspend fun idsCatchupCategory(pid: Long, cat: String, kinds: List<Boolean>): List<Long>
 
     @Query(
         """SELECT c.categoryId AS categoryId, k.name AS name, k.lang AS lang, COUNT(*) AS count
            FROM channel c JOIN category k ON k.playlistId = c.playlistId AND k.type = 'live' AND k.categoryId = c.categoryId
-           WHERE c.playlistId = :pid AND c.hidden = 0 AND c.archiveDays > 0 AND k.included = 1 AND NOT ($P_LOCKED AND k.restricted = 1)
+           WHERE c.playlistId = :pid AND c.hidden = 0 AND c.archiveDays > 0 AND $C_KIND AND k.included = 1 AND NOT ($P_LOCKED AND k.restricted = 1)
            GROUP BY c.categoryId ORDER BY k.sortOrder"""
     )
-    fun observeCatchupCategories(pid: Long): Flow<List<CategoryCount>>
+    fun observeCatchupCategories(pid: Long, kinds: List<Boolean>): Flow<List<CategoryCount>>
 
-    @Query("SELECT EXISTS(SELECT 1 FROM channel WHERE playlistId = :pid AND hidden = 0 AND archiveDays > 0)")
-    fun observeHasCatchup(pid: Long): Flow<Boolean>
+    @Query("SELECT EXISTS(SELECT 1 FROM channel WHERE playlistId = :pid AND hidden = 0 AND archiveDays > 0 AND $KIND)")
+    fun observeHasCatchup(pid: Long, kinds: List<Boolean>): Flow<Boolean>
 
     @Query("DELETE FROM channel WHERE playlistId = :pid AND categoryId = :cat")
     suspend fun deleteCategory(pid: Long, cat: String)
 
-    @Query("SELECT c.streamId $CHANNEL_FAVOURITES $CHANNEL_FAVOURITE_ORDER")
-    suspend fun idsFavourites(pid: Long): List<Long>
+    @Query("SELECT c.streamId $CHANNEL_FAVOURITES AND $C_KIND $CHANNEL_FAVOURITE_ORDER")
+    suspend fun idsFavourites(pid: Long, kinds: List<Boolean>): List<Long>
 
     @Query(
-        "SELECT c.streamId FROM channel c JOIN recent r ON r.playlistId = c.playlistId AND r.streamId = c.streamId WHERE c.playlistId = :pid AND $C_RECENT_OPEN ORDER BY r.watchedAt DESC"
+        "SELECT c.streamId FROM channel c JOIN recent r ON r.playlistId = c.playlistId AND r.streamId = c.streamId WHERE c.playlistId = :pid AND $C_RECENT_OPEN AND $C_KIND ORDER BY r.watchedAt DESC"
     )
-    suspend fun idsRecent(pid: Long): List<Long>
+    suspend fun idsRecent(pid: Long, kinds: List<Boolean>): List<Long>
 
-    @Query("SELECT c.* $CHANNEL_FAVOURITES $CHANNEL_FAVOURITE_ORDER LIMIT :limit")
-    fun observeFavourites(pid: Long, limit: Int): Flow<List<ChannelEntity>>
+    @Query("SELECT c.* $CHANNEL_FAVOURITES AND $C_KIND $CHANNEL_FAVOURITE_ORDER LIMIT :limit")
+    fun observeFavourites(pid: Long, limit: Int, kinds: List<Boolean>): Flow<List<ChannelEntity>>
 
     /** The favourite channels for the TV's home screen: never a restricted one, locked or not (see LauncherSync). */
     @Query("SELECT c.* $CHANNEL_FAVOURITE_JOIN AND NOT $C_RESTRICTED $CHANNEL_FAVOURITE_ORDER LIMIT :limit")
@@ -300,9 +316,9 @@ interface ChannelDao {
     suspend fun launcherMayOpen(pid: Long, id: Long): Boolean
 
     @Query(
-        "SELECT c.* FROM channel c JOIN recent r ON r.playlistId = c.playlistId AND r.streamId = c.streamId WHERE c.playlistId = :pid AND $C_RECENT_OPEN ORDER BY r.watchedAt DESC LIMIT :limit"
+        "SELECT c.* FROM channel c JOIN recent r ON r.playlistId = c.playlistId AND r.streamId = c.streamId WHERE c.playlistId = :pid AND $C_RECENT_OPEN AND $C_KIND ORDER BY r.watchedAt DESC LIMIT :limit"
     )
-    fun observeRecent(pid: Long, limit: Int): Flow<List<ChannelEntity>>
+    fun observeRecent(pid: Long, limit: Int, kinds: List<Boolean>): Flow<List<ChannelEntity>>
 
     @Query("SELECT * FROM channel WHERE playlistId = :pid AND streamId = :id")
     suspend fun get(pid: Long, id: Long): ChannelEntity?
@@ -311,11 +327,11 @@ interface ChannelDao {
     @Query("SELECT * FROM channel WHERE playlistId = :pid AND streamId = :id AND $CHANNEL_OPEN")
     suspend fun getOpen(pid: Long, id: Long): ChannelEntity?
 
-    @Query("SELECT * FROM channel WHERE playlistId = :pid AND number = :number AND hidden = 0 AND $CHANNEL_OPEN LIMIT 1")
-    suspend fun byNumber(pid: Long, number: Int): ChannelEntity?
+    @Query("SELECT * FROM channel WHERE playlistId = :pid AND number = :number AND hidden = 0 AND $CHANNEL_OPEN AND $KIND LIMIT 1")
+    suspend fun byNumber(pid: Long, number: Int, kinds: List<Boolean>): ChannelEntity?
 
-    @Query("SELECT COUNT(*) FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN")
-    fun observeCount(pid: Long): Flow<Int>
+    @Query("SELECT COUNT(*) FROM channel WHERE playlistId = :pid AND hidden = 0 AND $CHANNEL_OPEN AND $KIND")
+    fun observeCount(pid: Long, kinds: List<Boolean>): Flow<Int>
 
     /** The longest catch-up any channel offers (0 when none do): how far back the TV guide can go. */
     @Query("SELECT COALESCE(MAX(archiveDays), 0) FROM channel WHERE playlistId = :pid AND hidden = 0")

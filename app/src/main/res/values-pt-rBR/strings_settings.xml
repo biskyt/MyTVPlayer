@@ -40,6 +40,11 @@
     <string name="settings_start_last_help">Abre o app direto no último canal que você assistiu</string>
     <string name="settings_zap_up_down">Trocar de canal com cima e baixo</string>
     <string name="settings_zap_up_down_help">Senão, só os botões de canal trocam, e cima ou baixo mostra os controles</string>
+    <string name="settings_radio">Estações de rádio</string>
+    <string name="settings_radio_help">Onde ficam as estações que o seu provedor marca como rádio. Seção Rádio as mostra em uma seção própria, fora da TV ao vivo. Ocultas as deixa de fora.</string>
+    <string name="settings_radio_include">Na TV ao vivo</string>
+    <string name="settings_radio_section">Seção Rádio</string>
+    <string name="settings_radio_hide">Ocultas</string>
 
     <string name="settings_accent">Cor de destaque</string>
     <string name="settings_accent_help">Usada em destaques, barras de progresso e botões em todo o app. Os tons mais claros e mais escuros são calculados automaticamente.</string>

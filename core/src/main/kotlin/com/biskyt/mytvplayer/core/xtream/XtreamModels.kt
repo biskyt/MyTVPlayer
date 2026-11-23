@@ -25,7 +25,9 @@ data class XtreamLiveStream(
     val categoryId: String,
     val logoUrl: String?,
     val epgChannelId: String?,
-    val archiveDays: Int
+    val archiveDays: Int,
+    /** A radio station: the panel lists it with `stream_type` `radio_streams`. */
+    val radio: Boolean = false,
 )
 
 // Xtream panels are inconsistent about types: numbers often arrive as strings, empty strings or null.
@@ -64,7 +66,8 @@ internal fun JsonElement.toLiveStream(): XtreamLiveStream? {
         categoryId = o.str("category_id") ?: "",
         logoUrl = o.str("stream_icon"),
         epgChannelId = o.str("epg_channel_id"),
-        archiveDays = archiveDays(o)
+        archiveDays = archiveDays(o),
+        radio = o.str("stream_type") == "radio_streams"
     )
 }
 

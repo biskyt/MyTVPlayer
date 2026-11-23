@@ -84,19 +84,19 @@ class ParentalTest {
         val all = listOf(101L, 102L, 103L) // the UK categories, chosen to start with
         // No PIN: nothing to unlock, so nothing is hidden from the lists.
         stateIs(state())
-        assertEquals(all, c.db.channels().idsAll(id))
+        assertEquals(all, c.db.channels().idsAll(id, ChannelKinds.ALL.values))
 
         c.parental.setPin("1234")
         c.parental.lock() // as leaving the app does
         stateIs(state(locked = true))
-        assertEquals(listOf(102L), c.db.channels().idsAll(id))
-        assertEquals(listOf<Long>(), c.db.channels().idsCategory(id, "1"))
-        assertEquals(1, c.db.channels().observeCount(id).first())
+        assertEquals(listOf(102L), c.db.channels().idsAll(id, ChannelKinds.ALL.values))
+        assertEquals(listOf<Long>(), c.db.channels().idsCategory(id, "1", ChannelKinds.ALL.values))
+        assertEquals(1, c.db.channels().observeCount(id, ChannelKinds.ALL.values).first())
 
         assertFalse(c.parental.unlock("0000"))
         assertTrue(c.parental.unlock("1234"))
         stateIs(state())
-        assertEquals(all, c.db.channels().idsAll(id))
+        assertEquals(all, c.db.channels().idsAll(id, ChannelKinds.ALL.values))
     }
 
     /** Waits until [check] is true: what is forgotten after a settings change goes in the background. */
@@ -109,11 +109,11 @@ class ParentalTest {
         val id = c.addHomeTv(provider)
         restrictEntertainment(id)
         stateIs(state())
-        assertEquals(listOf<Long>(), c.db.channels().search(id, "ONE", 10).map { it.streamId })
+        assertEquals(listOf<Long>(), c.db.channels().search(id, "ONE", 10, ChannelKinds.ALL.values).map { it.streamId })
 
         c.settings.update { it.copy(hideRestrictedSearch = false) }
         stateIs(state(search = false))
-        assertEquals(listOf(101L), c.db.channels().search(id, "ONE", 10).map { it.streamId })
+        assertEquals(listOf(101L), c.db.channels().search(id, "ONE", 10, ChannelKinds.ALL.values).map { it.streamId })
     }
 
     @Test
@@ -127,13 +127,13 @@ class ParentalTest {
         c.settings.update { it.copy(hideRestrictedRecent = false) }
         stateIs(state(recent = false))
         // Turning the setting off shows nothing that was watched in restricted categories.
-        assertEquals(listOf(102L), c.db.channels().idsRecent(id))
+        assertEquals(listOf(102L), c.db.channels().idsRecent(id, ChannelKinds.ALL.values))
 
         c.channels.markWatched(id, 101)
-        assertEquals(listOf(101L, 102L), c.db.channels().idsRecent(id))
+        assertEquals(listOf(101L, 102L), c.db.channels().idsRecent(id, ChannelKinds.ALL.values))
         // Turning it on again forgets it.
         c.settings.update { it.copy(hideRestrictedRecent = true) }
-        eventually { c.db.channels().idsRecent(id) == listOf(102L) }
+        eventually { c.db.channels().idsRecent(id, ChannelKinds.ALL.values) == listOf(102L) }
     }
 
     @Test
@@ -146,7 +146,7 @@ class ParentalTest {
         c.db.favourites().touchRecent(RecentEntity(id, 101, System.currentTimeMillis()))
         c.settings.update { it.copy(hideRestrictedRecent = false) }
         stateIs(state(recent = false))
-        assertEquals(listOf(102L), c.db.channels().idsRecent(id))
+        assertEquals(listOf(102L), c.db.channels().idsRecent(id, ChannelKinds.ALL.values))
     }
 
     @Test

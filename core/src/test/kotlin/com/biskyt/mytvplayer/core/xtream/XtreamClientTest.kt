@@ -112,7 +112,7 @@ class XtreamClientTest {
                   {"num":1,"name":"UK: ARENA 1 HD","stream_id":"101","stream_icon":"","epg_channel_id":null,"category_id":"5","tv_archive":1,"tv_archive_duration":"7"},
                   {"num":"2","name":" Kite Kids ","stream_id":102,"stream_icon":"http://x/logo.png","epg_channel_id":"kite.uk","category_id":5,"tv_archive":"0"},
                   {"num":3,"name":"US: NBC","stream_id":103,"category_id":5,"tv_archive":1,"tv_archive_duration":""},
-                  {"num":4,"name":"  ","stream_id":104,"category_id":5},
+                  {"num":4,"name":"  ","stream_id":104,"category_id":5,"stream_type":"radio_streams"},
                   {"name":"broken, no id"}
                 ]"""
             )
@@ -126,6 +126,8 @@ class XtreamClientTest {
         assertEquals(7, streams[2].archiveDays)
         // No name: its number, which needs no translating (no English "Channel 4" saved).
         assertEquals("#4", streams[3].name)
+        // A radio station, as the panel lists it.
+        assertEquals(listOf(false, false, false, true), streams.map { it.radio })
         server.takeRequest()
         assertEquals("5", server.takeRequest().requestUrl!!.queryParameter("category_id"))
     }

@@ -119,17 +119,24 @@ import com.biskyt.mytvplayer.ui.theme.Palette
 fun PlayerScreen(screen: Screen.Player) {
     val appContext = LocalContext.current.applicationContext
     val vm = appViewModel { PlayerViewModel(it, appContext, screen) }
+    ChannelPlayerFrame(vm) { buttons, root -> LiveControls(vm, buttons, root) }
+}
+
+/**
+ * Live TV's or catch-up's player (they are both live TV, the owner, 2026-11-23): the video, the typed channel number,
+ * the channel guide panel, and the screen that takes this one's place (see ChannelPlayerViewModel.next).
+ */
+@Composable
+internal fun ChannelPlayerFrame(vm: ChannelPlayerViewModel, controls: @Composable (buttons: FocusRequester, root: FocusRequester) -> Unit) {
     vm.nowNext.PauseWhenHidden()
     val nav = LocalNavigator.current
-    vm.catchupFrom?.let { start ->
-        LaunchedEffect(start) {
-            val ch = start.channel
-            nav.replace(Screen.CatchupPlayer(ch.playlistId, ch.streamId, start.startMs, vm.filter, switched = true))
-        }
+    vm.next?.let { next ->
+        LaunchedEffect(next) { nav.replace(next) }
+        return
     }
     PlayerFrame(
         vm,
-        controls = { buttons, root -> LiveControls(vm, buttons, root) },
+        controls = controls,
         extras = { if (vm.numberEntry.typed.isNotEmpty()) FlashLabel(vm.numberEntry.typed, Modifier.align(Alignment.TopEnd)) }
     )
     if (vm.overlay == OverlayState.GUIDE) GuidePanel(vm)
@@ -405,65 +412,92 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
     val ch = vm.channel ?: return
     LaunchedEffect(ch.streamId) { vm.nowNext.request(ch.streamId) }
     val nn = vm.nowNext.entries[ch.streamId]
-    val details = vm.nowDetails
-    val accent = LocalAccent.current
     val now by rememberMinuteClock()
+    val nav = LocalNavigator.current
+    ChannelControls(
+        vm,
+        buttons,
+        root,
+        title = nn?.now?.let { programmeTitle(it.title) },
+        next = nn?.next?.let { it.startMs to programmeTitle(it.title) },
+        timeline = {
+            nn?.now?.let { current ->
+                // Whole minutes, rounded up: "1 min left" until it ends (and nothing once it has, until the guide moves on).
+                val minutesLeft = (current.stopMs - now + MINUTE_MS - 1) / MINUTE_MS
+                val span = current.startMs..current.stopMs
+                // The same play bar as catch-up's and a film's (the owner, 2026-11-23): its handle on the bar, and where
+                // skipping back goes (on a channel with catch-up; not before the programme on now, on this bar).
+                Timeline(
+                    formatTime(current.startMs),
+                    nn.progress(now),
+                    formatTime(current.stopMs),
+                    scrub = vm.scrubMs?.let { ((it - span.first).toFloat() / (span.last - span.first).coerceAtLeast(1)).coerceIn(0f, 1f) },
+                    handle = LocalBarSelected.current,
+                    after = if (minutesLeft >
+                        0
+                    ) {
+                        stringResource(R.string.common_time_left, formatRuntime((minutesLeft * 60).toInt()))
+                    } else {
+                        null
+                    }
+                ) { vm.scrubTo(span, it) }
+            }
+        }
+    ) {
+        if (ch.archiveDays > 0) {
+            PillButton(
+                stringResource(R.string.common_start_over),
+                { nav.replace(Screen.CatchupPlayer(ch.playlistId, ch.streamId, filter = vm.filter, kinds = vm.kinds)) }
+            )
+        }
+    }
+}
+
+/**
+ * The controls of a channel, live or catch-up, the same for both: its logo, number and name (and [line] after them),
+ * the programme's [title] and about it, what is [next] (its start and title), the [timeline], then the channel guide,
+ * About and [extra] before the play controls.
+ */
+@Composable
+internal fun ChannelControls(
+    vm: ChannelPlayerViewModel,
+    buttons: FocusRequester,
+    root: FocusRequester,
+    title: String?,
+    next: Pair<Long, String>?,
+    line: String? = null,
+    timeline: @Composable () -> Unit,
+    extra: @Composable RowScope.() -> Unit = {}
+) {
+    val ch = vm.channel ?: return
+    val details = vm.about
+    val accent = LocalAccent.current
     ControlsPanel {
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(22.dp)) {
             ChannelLogo(ch.logoUrl, ch.name, 110.dp, 66.dp)
             Column(Modifier.weight(1f)) {
-                Muted(listOf(ch.numberLabel, ch.name).filter { it.isNotEmpty() }.joinToString(" · "))
-                Text(
-                    nn?.now?.let { programmeTitle(it.title) } ?: ch.name,
-                    style = MaterialTheme.typography.displaySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Muted(listOfNotNull(ch.numberLabel, ch.name, line).filter { it.isNotEmpty() }.joinToString(" · "))
+                Text(title ?: ch.name, style = MaterialTheme.typography.displaySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 details?.let { ProgrammeAbout(it, maxLines = 2) }
             }
-            nn?.next?.let { next ->
+            next?.let { (startMs, nextTitle) ->
                 Column(Modifier.width(320.dp), horizontalAlignment = Alignment.End) {
                     Text(
-                        stringResource(R.string.player_up_next, formatTime(next.startMs)),
+                        stringResource(R.string.player_up_next, formatTime(startMs)),
                         style = MaterialTheme.typography.labelMedium,
                         color = accent.color
                     )
-                    Text(
-                        programmeTitle(next.title),
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Text(nextTitle, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
-        nn?.now?.let { current ->
-            // Whole minutes, rounded up: "1 min left" until it ends (and nothing once it has, until the guide moves on).
-            val minutesLeft = (current.stopMs - now + MINUTE_MS - 1) / MINUTE_MS
-            val span = current.startMs..current.stopMs
-            // The same play bar as catch-up's and a film's (the owner, 2026-11-23): its handle on the bar, and where
-            // skipping back goes (on a channel with catch-up; not before the programme on now, on this bar).
-            Timeline(
-                formatTime(current.startMs),
-                nn.progress(now),
-                formatTime(current.stopMs),
-                scrub = vm.scrubMs?.let { ((it - span.first).toFloat() / (span.last - span.first).coerceAtLeast(1)).coerceIn(0f, 1f) },
-                handle = LocalBarSelected.current,
-                after = if (minutesLeft > 0) stringResource(R.string.common_time_left, formatRuntime((minutesLeft * 60).toInt())) else null
-            ) { vm.scrubTo(span, it) }
-        }
+        timeline()
         ControlsBar(vm, buttons, root) {
             PillButton(stringResource(R.string.player_channel_guide), vm::openGuide)
             if (details?.description != null || details?.subtitle != null) {
                 PillButton(stringResource(R.string.player_about_programme), { vm.sheet = PlaybackViewModel.Sheet.ABOUT })
             }
-            if (ch.archiveDays > 0) {
-                val nav = LocalNavigator.current
-                PillButton(
-                    stringResource(R.string.common_start_over),
-                    { nav.replace(Screen.CatchupPlayer(ch.playlistId, ch.streamId, filter = vm.filter)) }
-                )
-            }
+            extra()
         }
     }
 }

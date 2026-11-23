@@ -16,6 +16,7 @@
          in the top bar they share one row with the logo, clock and buttons -->
     <string name="common_tab_home">Home</string>
     <string name="common_tab_live">Live TV</string>
+    <string name="common_tab_radio">Radio</string>
     <string name="common_tab_movies">Movies</string>
     <string name="common_tab_series">Series</string>
     <!-- Watching programmes that were already broadcast (a top bar tab, menu entry and channel mark). Keep short -->

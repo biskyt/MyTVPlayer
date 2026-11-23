@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.core.app.ApplicationProvider
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.container
+import com.biskyt.mytvplayer.data.ChannelKinds
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
 import com.biskyt.mytvplayer.testutil.FakeProvider
@@ -115,7 +116,7 @@ class M3uUiTest {
             val c = app.container
             val id = c.playlists.addM3u("Free", provider.url + "free.m3u")
             c.playlists.syncChannels(id)
-            id to c.db.channels().search(id, "Channel One", 1).single()
+            id to c.db.channels().search(id, "Channel One", 1, ChannelKinds.ALL.values).single()
         }
         assertEquals(2, one.archiveDays)
         show(Screen.Catchup(m3u, one.streamId))

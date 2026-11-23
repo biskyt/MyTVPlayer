@@ -15,10 +15,10 @@ import com.biskyt.mytvplayer.core.xtream.CatchupListing
 import com.biskyt.mytvplayer.core.xtream.CatchupProgramme
 import com.biskyt.mytvplayer.data.CatchupRepository
 import com.biskyt.mytvplayer.data.db.ChannelEntity
+import com.biskyt.mytvplayer.data.db.ChannelProgramme
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import com.biskyt.mytvplayer.data.db.proxy
 import com.biskyt.mytvplayer.ui.Screen
-import com.biskyt.mytvplayer.ui.common.NumberEntry
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -34,11 +34,7 @@ class CatchupPlayerViewModel(
     appContext: Context,
     private val screen: Screen.CatchupPlayer,
     private val clock: () -> Long = System::currentTimeMillis
-) : PlaybackViewModel(c, appContext),
-    GuidePlayer {
-    var channel by mutableStateOf<ChannelEntity?>(null)
-        private set
-
+) : ChannelPlayerViewModel(c, appContext, screen.playlistId, screen.filter, screen.kinds) {
     /** The programme being watched (moves on as playback crosses into the next one). */
     var programme by mutableStateOf<CatchupProgramme?>(null)
         private set
@@ -47,58 +43,24 @@ class CatchupPlayerViewModel(
     var at by mutableLongStateOf(screen.startMs ?: clock())
         private set
 
-    /**
-     * The screen to go to in this one's place: the live channel once catch-up reaches the present (or Watch live),
-     * another channel (zapping, a number, the channel guide), or another channel's catch-up (the channel guide).
-     */
-    var next by mutableStateOf<Screen?>(null)
-        private set
+    /** The programme after [programme], as live TV shows what is next. */
+    val upNext: CatchupProgramme?
+        get() = programme?.let { p -> listing?.programmes?.firstOrNull { it.startMs >= p.stopMs } }
 
-    /** Catch-up is live TV, only earlier (the owner, 2026-11-23): the channel buttons, numbers and the guide work as there. */
-    override val isLive = true
+    /** The programme being watched, for the controls and About, as live TV's now. */
+    override val about: ChannelProgramme?
+        get() = programme?.let { ChannelProgramme(screen.streamId, it.startMs, it.stopMs, it.title, null, it.description) }
 
-    override val guide = ChannelGuide(viewModelScope, c, screen.playlistId, screen.filter)
-
-    /** Typed digits switch to that channel number, live. */
-    val numberEntry = NumberEntry(viewModelScope) { n ->
-        val ch = c.channels.byNumber(screen.playlistId, n)
-        if (ch != null) goLiveOn(ch.streamId) else flash(appString(R.string.player_no_channel, n))
-    }
-
-    override fun typeDigit(digit: Int) = numberEntry.type(digit)
-
-    /** The channel buttons: the next channel in the list, live. */
-    override fun zap(step: Int) {
-        guide.next(screen.streamId, step)?.let(::goLiveOn)
-    }
-
-    override fun openGuide() {
-        cancelAutoHide()
-        guide.show(channel)
-        overlay = OverlayState.GUIDE
-    }
-
-    override fun watchGuideChannel() {
-        val target = guide.shownId ?: return
-        closeGuide()
-        goLiveOn(target)
-    }
+    /** Another channel plays live in this one's place. */
+    override fun watch(streamId: Long) = goTo(liveScreen(streamId))
 
     /** A past programme in the channel guide: this channel's catch-up goes there; another's opens in this one's place. */
     override fun watchFromGuide(startMs: Long) {
-        val target = guide.shownId ?: return
+        if (guide.shownId != screen.streamId) return super.watchFromGuide(startMs)
         closeGuide()
-        if (target == screen.streamId) {
-            open(startMs)
-        } else {
-            next = Screen.CatchupPlayer(screen.playlistId, target, startMs, screen.filter)
-        }
+        open(startMs)
     }
 
-    private fun goLiveOn(streamId: Long) {
-        engine?.player?.stop()
-        next = Screen.Player(screen.playlistId, streamId, screen.filter)
-    }
     override val failureMessage = R.string.player_failure_catchup
 
     private var playlist: PlaylistEntity? = null
@@ -201,7 +163,7 @@ class CatchupPlayerViewModel(
         programme?.let { open(it.startMs) }
     }
 
-    fun watchLive() = goLiveOn(screen.streamId)
+    fun watchLive() = watch(screen.streamId)
 
     /**
      * The stream ran out: carry on from where it stopped (some providers cap how long one runs), or go live. A stream

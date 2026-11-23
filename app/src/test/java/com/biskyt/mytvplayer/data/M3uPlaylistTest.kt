@@ -219,7 +219,7 @@ class M3uPlaylistTest {
         val live = db.categories().all(id, com.biskyt.mytvplayer.data.db.CAT_LIVE)
         // One "Live: News" per country, named as the playlist names it; the TV's own country (a UK TV here) is chosen.
         assertEquals(listOf("SE", "UK", "US"), live.filter { it.name == "Live: News" }.mapNotNull { it.lang }.sorted())
-        val loaded = db.channels().idsAll(id).mapNotNull { db.channels().get(id, it)?.name }
+        val loaded = db.channels().idsAll(id, ChannelKinds.ALL.values).mapNotNull { db.channels().get(id, it)?.name }
         assertEquals(listOf("UK News"), loaded.filter { it.endsWith("News") })
         // By language when there's no country; a name that says its own group, or nothing to go by, stays as it is.
         assertEquals("UK", live.single { it.name == "Live: Music" }.lang)
@@ -254,8 +254,23 @@ class M3uPlaylistTest {
         vod.sync(playlists.get(id)!!)
 
         assertTrue(db.categories().all(id, com.biskyt.mytvplayer.data.db.CAT_LIVE).all { it.included })
-        assertEquals(2, db.channels().idsAll(id).size)
+        assertEquals(2, db.channels().idsAll(id, ChannelKinds.ALL.values).size)
         assertEquals(listOf("Detour"), db.vod().searchMovies(id, "%", 10).map { it.title })
+    }
+
+    @Test
+    fun `a radio station marked radio="true" is saved as one, as the channels load`() = runBlocking {
+        provider.m3u = """
+            #EXTM3U
+            #EXTINF:-1 group-title="Live: News",World News
+            http://stream.example/news.m3u8
+            #EXTINF:-1 radio="true" group-title="Live: News",Jazz FM
+            http://stream.example/jazz.mp3
+        """.trimIndent()
+        val id = playlists.addM3u("Free", provider.url + "free.m3u")
+        playlists.syncChannels(id)
+        val radio = db.channels().idsAll(id, ChannelKinds.RADIO.values).mapNotNull { db.channels().get(id, it)?.name }
+        assertEquals(listOf("Jazz FM"), radio)
     }
 
     @Test

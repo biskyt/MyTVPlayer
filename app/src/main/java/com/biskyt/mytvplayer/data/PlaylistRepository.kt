@@ -298,7 +298,8 @@ class PlaylistRepository(
                 ChannelEntity(
                     playlistId = playlistId, streamId = s.streamId, number = s.number, name = s.name, categoryId = s.categoryId,
                     logoUrl = s.logoUrl, providerEpgId = s.epgChannelId, archiveDays = s.archiveDays,
-                    hidden = out.hidden(s.streamId), sortOrder = out.sortOrder(s.streamId), syncStamp = out.stamp
+                    hidden = out.hidden(s.streamId), sortOrder = out.sortOrder(s.streamId), syncStamp = out.stamp,
+                    radio = s.radio
                 )
             )
         }
@@ -347,7 +348,7 @@ class PlaylistRepository(
                             archiveDays = if (catchup == null) 0 else M3uCatchup.daysFor(e.catchupDays),
                             hidden = out.hidden(id), sortOrder = out.sortOrder(id), syncStamp = out.stamp,
                             streamUrl = e.url, userAgent = e.userAgent, referrer = e.referrer,
-                            catchupType = catchup, catchupSource = e.catchupSource
+                            catchupType = catchup, catchupSource = e.catchupSource, radio = e.radio
                         )
                     )
                 }

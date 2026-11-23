@@ -38,47 +38,67 @@ class ChannelRepository(
     private val channels = db.channels()
     private val favourites = db.favourites()
 
+    // Every list is of [ChannelKinds]: TV, radio, or both (see RadioMode).
+
     /** Paged so thousands of channels cost only the rows on screen. */
-    fun page(playlistId: Long, filter: ChannelFilter, query: String): Flow<PagingData<ChannelEntity>> {
+    fun page(
+        playlistId: Long,
+        filter: ChannelFilter,
+        query: String,
+        kinds: ChannelKinds = ChannelKinds.ALL
+    ): Flow<PagingData<ChannelEntity>> {
         val q = likeArg(query)
+        val k = kinds.values
         return Pager(PagingConfig(pageSize = 40, prefetchDistance = 20, initialLoadSize = 60, enablePlaceholders = true)) {
             when (filter) {
-                ChannelFilter.All -> channels.pageAll(playlistId, q)
-                ChannelFilter.Favourites -> channels.pageFavourites(playlistId, q)
-                ChannelFilter.Recent -> channels.pageRecent(playlistId, q)
-                ChannelFilter.Catchup -> channels.pageCatchup(playlistId, q)
-                is ChannelFilter.CatchupCategory -> channels.pageCatchupCategory(playlistId, filter.id, q)
-                is ChannelFilter.Category -> channels.pageCategory(playlistId, filter.id, q)
+                ChannelFilter.All -> channels.pageAll(playlistId, q, k)
+                ChannelFilter.Favourites -> channels.pageFavourites(playlistId, q, k)
+                ChannelFilter.Recent -> channels.pageRecent(playlistId, q, k)
+                ChannelFilter.Catchup -> channels.pageCatchup(playlistId, q, k)
+                is ChannelFilter.CatchupCategory -> channels.pageCatchupCategory(playlistId, filter.id, q, k)
+                is ChannelFilter.Category -> channels.pageCategory(playlistId, filter.id, q, k)
             }
         }.flow
     }
 
     /** Ordered stream ids of a list, used for up/down zapping in the player. */
-    suspend fun ids(playlistId: Long, filter: ChannelFilter): List<Long> = when (filter) {
-        ChannelFilter.All -> channels.idsAll(playlistId)
-        ChannelFilter.Favourites -> channels.idsFavourites(playlistId)
-        ChannelFilter.Recent -> channels.idsRecent(playlistId)
-        ChannelFilter.Catchup -> channels.idsCatchup(playlistId)
-        is ChannelFilter.CatchupCategory -> channels.idsCatchupCategory(playlistId, filter.id)
-        is ChannelFilter.Category -> channels.idsCategory(playlistId, filter.id)
+    suspend fun ids(playlistId: Long, filter: ChannelFilter, kinds: ChannelKinds = ChannelKinds.ALL): List<Long> {
+        val k = kinds.values
+        return when (filter) {
+            ChannelFilter.All -> channels.idsAll(playlistId, k)
+            ChannelFilter.Favourites -> channels.idsFavourites(playlistId, k)
+            ChannelFilter.Recent -> channels.idsRecent(playlistId, k)
+            ChannelFilter.Catchup -> channels.idsCatchup(playlistId, k)
+            is ChannelFilter.CatchupCategory -> channels.idsCatchupCategory(playlistId, filter.id, k)
+            is ChannelFilter.Category -> channels.idsCategory(playlistId, filter.id, k)
+        }
     }
 
     suspend fun get(playlistId: Long, streamId: Long) = channels.get(playlistId, streamId)
 
-    suspend fun byNumber(playlistId: Long, number: Int) = channels.byNumber(playlistId, number)
+    suspend fun byNumber(playlistId: Long, number: Int, kinds: ChannelKinds = ChannelKinds.ALL) =
+        channels.byNumber(playlistId, number, kinds.values)
 
-    fun observeCount(playlistId: Long) = channels.observeCount(playlistId)
+    fun observeCount(playlistId: Long, kinds: ChannelKinds = ChannelKinds.ALL) = channels.observeCount(playlistId, kinds.values)
+
+    /** Live TV's (or the Radio section's) categories: those with a channel of [kinds], or all of them for both kinds. */
+    fun observeCategories(playlistId: Long, kinds: ChannelKinds = ChannelKinds.ALL) =
+        db.categories().observeLiveIncluded(playlistId, kinds.values, all = kinds == ChannelKinds.ALL)
 
     /** The categories with catch-up channels, with how many each has. */
-    fun observeCatchupCategories(playlistId: Long) = channels.observeCatchupCategories(playlistId)
+    fun observeCatchupCategories(playlistId: Long, kinds: ChannelKinds = ChannelKinds.ALL) =
+        channels.observeCatchupCategories(playlistId, kinds.values)
 
-    fun observeHasCatchup(playlistId: Long) = channels.observeHasCatchup(playlistId).distinctUntilChanged()
+    fun observeHasCatchup(playlistId: Long, kinds: ChannelKinds = ChannelKinds.ALL) =
+        channels.observeHasCatchup(playlistId, kinds.values).distinctUntilChanged()
 
     fun observeFavouriteIds(playlistId: Long): Flow<List<Long>> = favourites.observeIds(playlistId)
 
-    fun observeFavourites(playlistId: Long, limit: Int = 12) = channels.observeFavourites(playlistId, limit)
+    fun observeFavourites(playlistId: Long, limit: Int = 12, kinds: ChannelKinds = ChannelKinds.ALL) =
+        channels.observeFavourites(playlistId, limit, kinds.values)
 
-    fun observeRecent(playlistId: Long, limit: Int = 12) = channels.observeRecent(playlistId, limit)
+    fun observeRecent(playlistId: Long, limit: Int = 12, kinds: ChannelKinds = ChannelKinds.ALL) =
+        channels.observeRecent(playlistId, limit, kinds.values)
 
     fun observeHidden(playlistId: Long) = channels.observeHidden(playlistId)
 
@@ -108,7 +128,7 @@ class ChannelRepository(
     }
 
     /** The favourite channels' ids, in their order. */
-    suspend fun favouriteOrder(playlistId: Long): List<Long> = channels.idsFavourites(playlistId)
+    suspend fun favouriteOrder(playlistId: Long): List<Long> = channels.idsFavourites(playlistId, ChannelKinds.ALL.values)
 
     /** Stores favourite channels' places in the order ([positions]: stream id to place). */
     suspend fun setFavouritePositions(playlistId: Long, positions: Map<Long, Long>) {

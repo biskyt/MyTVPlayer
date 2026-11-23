@@ -48,6 +48,7 @@ import com.biskyt.mytvplayer.container
 import com.biskyt.mytvplayer.core.player.SubtitleMode
 import com.biskyt.mytvplayer.core.ui.AccentPalette
 import com.biskyt.mytvplayer.data.BufferSize
+import com.biskyt.mytvplayer.data.RadioMode
 import com.biskyt.mytvplayer.data.Settings
 import com.biskyt.mytvplayer.data.StreamFormat
 import com.biskyt.mytvplayer.data.accentName
@@ -294,6 +295,20 @@ fun PlaybackSettingsScreen() {
             }) {
                 Toggle(s.zapWithUpDown)
             }
+        }
+        item {
+            // Where radio stations go (the owner, 2026-11-23): in Live TV, a Radio section of their own, or hidden.
+            val label = when (s.radio) {
+                RadioMode.INCLUDE -> R.string.settings_radio_include
+                RadioMode.SECTION -> R.string.settings_radio_section
+                RadioMode.HIDE -> R.string.settings_radio_hide
+            }
+            CycleSettingRow(
+                stringResource(R.string.settings_radio),
+                stringResource(R.string.settings_radio_help),
+                stringResource(label),
+                { d -> vm.update { it.copy(radio = RadioMode.entries.cycle(it.radio, d)) } }
+            )
         }
         item { DownloadsRow(s.downloads) { on -> vm.update { it.copy(downloads = on) } } }
     }

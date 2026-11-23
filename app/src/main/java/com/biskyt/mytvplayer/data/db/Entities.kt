@@ -277,7 +277,9 @@ data class ChannelEntity(
     val referrer: String? = null,
     /** M3U catch-up: how the archive's address is made (see M3uCatchup), and the playlist's address template. */
     val catchupType: String? = null,
-    val catchupSource: String? = null
+    val catchupSource: String? = null,
+    /** A radio station, as the provider marks it (see ChannelKinds): read with the channel, at no extra cost. */
+    @ColumnInfo(defaultValue = "0") val radio: Boolean = false
 )
 
 /** [position]: where the user put it (0, as for favourites from before 1.2.0, keeps channel-number order). */

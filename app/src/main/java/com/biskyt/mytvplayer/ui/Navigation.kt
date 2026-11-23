@@ -17,6 +17,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.container
 import com.biskyt.mytvplayer.data.ChannelFilter
+import com.biskyt.mytvplayer.data.ChannelKinds
 import com.biskyt.mytvplayer.data.VodFilter
 import com.biskyt.mytvplayer.ui.common.FocusVisit
 import com.biskyt.mytvplayer.ui.common.KeepsFocus
@@ -30,14 +31,21 @@ sealed interface Screen {
     data object Welcome : Screen
     data object Home : Screen
 
-    /** [filter] null: the list shown last. */
-    data class Live(val filter: ChannelFilter? = null, val guide: Boolean = false) : Screen
+    /** [filter] null: the list shown last. [radio]: the Radio section, Live TV's screens with radio stations only. */
+    data class Live(val filter: ChannelFilter? = null, val guide: Boolean = false, val radio: Boolean = false) : Screen
     data class Movies(val filter: VodFilter? = null) : Screen
     data class Series(val filter: VodFilter? = null) : Screen
 
     /** [query]: already typed (e.g. a TV programme's title). */
     data class Search(val query: String = "") : Screen
-    data class Player(val playlistId: Long, val streamId: Long, val filter: ChannelFilter) : Screen
+
+    /** [kinds]: the list's channels, TV, radio or both (zapping stays in them; see ChannelKinds). */
+    data class Player(
+        val playlistId: Long,
+        val streamId: Long,
+        val filter: ChannelFilter,
+        val kinds: ChannelKinds = ChannelKinds.ALL
+    ) : Screen
 
     /** A channel's catch-up page: days on the left, the programmes that can be replayed on the right. */
     data class Catchup(val playlistId: Long, val streamId: Long) : Screen
@@ -52,7 +60,8 @@ sealed interface Screen {
         val startMs: Long? = null,
         val filter: ChannelFilter = ChannelFilter.All,
         /** Opened by ◀ on the live channel: it says so while it loads (see PlayerViewModel.catchupFrom). */
-        val switched: Boolean = false
+        val switched: Boolean = false,
+        val kinds: ChannelKinds = ChannelKinds.ALL
     ) : Screen
 
     /**
@@ -130,6 +139,9 @@ class NavEntry(val screen: Screen, val id: Int) : ViewModelStoreOwner {
  */
 class PickedLists {
     var live: ChannelFilter? = null
+
+    /** The Radio section's list, apart from Live TV's. */
+    var radio: ChannelFilter? = null
     val vod = HashMap<String, VodFilter>()
 }
 
