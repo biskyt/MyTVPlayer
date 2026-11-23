@@ -33,13 +33,16 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /** Live TV: zapping through the list it was started from, number entry, now/next and the channel guide panel. */
-class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: Screen.Player) : PlaybackViewModel(c, appContext) {
+class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: Screen.Player) :
+    PlaybackViewModel(c, appContext),
+    GuidePlayer {
     var channel by mutableStateOf<ChannelEntity?>(null)
         private set
 
+    override val guide = ChannelGuide(viewModelScope, c, screen.playlistId, screen.filter)
+
     /** Channel previewed in the guide panel (may differ from the one playing). */
-    var guideChannel by mutableStateOf<ChannelEntity?>(null)
-        private set
+    val guideChannel: ChannelEntity? get() = guide.channel
 
     override val isLive = true
 
@@ -80,7 +83,7 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
     }
 
     /** A past programme chosen in the channel guide panel: the channel shown there, replayed from its start. */
-    fun watchFromGuide(startMs: Long) {
+    override fun watchFromGuide(startMs: Long) {
         val ch = guideChannel ?: return
         closeGuide()
         catchupFrom = CatchupStart(ch, startMs)
@@ -140,10 +143,9 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
 
     /** The format the channel being tuned is playing in: null for an M3U one, else [format] until the other is tried. */
     private var tuning: StreamFormat? = null
-    private var ids: List<Long> = emptyList()
 
     /** Whether the channel list (for zapping and the guide panel's ◀ ▶) has loaded: it comes after tuning starts. */
-    internal val channelListLoaded: Boolean get() = ids.isNotEmpty()
+    internal val channelListLoaded: Boolean get() = guide.ids.isNotEmpty()
 
     private var tuneJob: Job? = null
 
@@ -160,7 +162,7 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
             client = playlist?.takeUnless { it.isM3u }?.let(c.playlists::client)
             tuneTo(screen.streamId)
             // Only needed for changing channel: not worth delaying the first picture for.
-            ids = c.channels.ids(screen.playlistId, screen.filter)
+            guide.load()
         }
     }
 
@@ -184,8 +186,7 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
         val ch = c.channels.get(screen.playlistId, streamId) ?: return
         val client = client
         channel = ch
-        guideChannel = ch
-        previewStreamId = ch.streamId
+        guide.show(ch)
         resetForNewStream()
         if (ch.streamUrl != null) {
             // M3U channel: its own URL; the format is worked out from the stream itself.
@@ -236,33 +237,20 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
     }
 
     override fun zap(step: Int) {
-        if (ids.isNotEmpty()) tuneTo(ids.cycle(targetStreamId, step))
+        guide.next(targetStreamId, step)?.let(::tuneTo)
     }
 
     override fun openGuide() {
         cancelAutoHide()
-        previewJob?.cancel()
-        guideChannel = channel
-        previewStreamId = channel?.streamId
+        guide.show(channel)
         overlay = OverlayState.GUIDE
     }
 
-    /** The channel the guide panel is moving to: set at once, so quick presses each count (as zapping's [targetStreamId]). */
-    private var previewStreamId: Long? = null
-    private var previewJob: Job? = null
-
     /** Moves the guide panel's preview to the previous/next channel without changing what is playing. */
-    fun previewGuide(step: Int) {
-        val current = previewStreamId ?: return
-        if (ids.isEmpty()) return
-        val next = ids.cycle(current, step)
-        previewStreamId = next
-        previewJob?.cancel()
-        previewJob = viewModelScope.launch { guideChannel = c.channels.get(screen.playlistId, next) }
-    }
+    fun previewGuide(step: Int) = guide.step(step)
 
-    fun watchGuideChannel() {
-        val target = previewStreamId ?: return
+    override fun watchGuideChannel() {
+        val target = guide.shownId ?: return
         closeGuide()
         if (target != targetStreamId) tuneTo(target)
     }

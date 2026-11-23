@@ -51,8 +51,9 @@ import kotlinx.coroutines.delay
  * catch-up also lists what it showed, above what is on now: Up goes back in time, and OK replays one.
  */
 @Composable
-fun GuidePanel(vm: PlayerViewModel) {
-    val ch = vm.guideChannel ?: return
+fun <T> GuidePanel(vm: T) where T : PlaybackViewModel, T : GuidePlayer {
+    val guide = vm.guide
+    val ch = guide.channel ?: return
     BoardPanel(onDismiss = vm::closeGuide, dim = false, scroll = false) {
         // Inside the panel's window: keys reach it there.
         Column(
@@ -60,11 +61,11 @@ fun GuidePanel(vm: PlayerViewModel) {
                 if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (e.key) {
                     Key.DirectionLeft -> {
-                        vm.previewGuide(-1)
+                        guide.step(-1)
                         true
                     }
                     Key.DirectionRight -> {
-                        vm.previewGuide(1)
+                        guide.step(1)
                         true
                     }
                     else -> false
@@ -79,7 +80,7 @@ fun GuidePanel(vm: PlayerViewModel) {
                     if (!LocalTouch.current) BoardPanelSubtitle(stringResource(R.string.player_guide_hint))
                 }
             }
-            TouchStepButtons(stringResource(R.string.player_guide_previous), stringResource(R.string.player_guide_next), vm::previewGuide)
+            TouchStepButtons(stringResource(R.string.player_guide_previous), stringResource(R.string.player_guide_next), guide::step)
             // With catch-up, what it showed is there too, above what is on now: one of those replays from its start.
             ScheduleList(rememberScheduleWithPast(ch), onSelect = { p ->
                 if (ch.archiveDays > 0 && p.stopMs <= System.currentTimeMillis()) vm.watchFromGuide(p.startMs) else vm.watchGuideChannel()

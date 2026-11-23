@@ -1,6 +1,8 @@
 package com.biskyt.mytvplayer.ui.player
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
 import androidx.annotation.StringRes
 import androidx.annotation.VisibleForTesting
 import androidx.compose.runtime.getValue
@@ -29,6 +31,7 @@ import com.biskyt.mytvplayer.player.PlaybackError
 import com.biskyt.mytvplayer.player.explainFailure
 import com.biskyt.mytvplayer.ui.common.ItemAction
 import com.biskyt.mytvplayer.ui.common.formatDuration
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -96,7 +99,10 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         private set
 
     protected lateinit var settings: Settings
-    private lateinit var mapper: KeyActionMapper
+
+    // The remote works from the start, with the usual skips, until the settings are read (the owner, 2026-11-23: Back
+    // and the channel buttons while a stream is still loading).
+    private var mapper = mapperFor(Settings())
     private var hideJob: Job? = null
     private var dimJob: Job? = null
     private var retryJob: Job? = null
@@ -145,7 +151,10 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
                 return
             }
             buffering = state == Player.STATE_BUFFERING
-            if (state == Player.STATE_READY) error = null
+            if (state == Player.STATE_READY) {
+                error = null
+                reconnecting = false
+            }
             if (state == Player.STATE_ENDED) onEnded()
             // Paused again after a retry or a stop (which ended the countdown): the dimming counts from now. A
             // countdown already running carries on, so a stream that keeps changing state still dims.
@@ -163,10 +172,16 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             // A stream that failed again after a retry, before it ever played, may play another way.
             if (engine?.retryAsHls(e) == true || (!hasPlayed && retries.used > 0 && tryOtherFormat())) return
             // Streams drop out now and then; retry a few times before showing an error.
-            if (playedSinceFailure() >= STEADY_MS) retries.reset()
+            if (playedSinceFailure() >= STEADY_MS) {
+                retries.reset()
+                attempts = 0
+            }
             playedMs = 0
             playingSince = 0
-            if (!retries.take()) {
+            // Live TV that has played goes on trying, as a TV does, however long the feed is gone (the owner,
+            // 2026-11-23). One that never played (a dead channel) gets a few tries, then says why.
+            if (!retries.take() && !(isLive && hasPlayed)) {
+                reconnecting = false
                 val url = engine?.currentUrl
                 fail(reason = explainFailure(e, engine?.sentNothing(url) == true), url = url)
                 return
@@ -176,10 +191,11 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
                 player.prepare()
                 return
             }
+            if (hasPlayed) reconnecting = true
             retryJob?.cancel()
             retryJob = viewModelScope.launch {
-                delay(1_000L * retries.used)
-                player.prepare()
+                delay(retryDelayMs(attempts++))
+                reconnect()
             }
         }
     }
@@ -215,22 +231,56 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     /** Reads the settings and creates the engine; subclasses call this first when they start. */
     protected suspend fun startEngine(): PlaybackEngine {
         settings = c.settings.current()
-        mapper = KeyActionMapper(settings.skipBackSec * 1_000L, settings.skipForwardSec * 1_000L, settings.zapWithUpDown)
+        mapper = mapperFor(settings)
         return PlaybackEngine(appContext, settings, c.playerProxies).also {
             it.player.addListener(listener)
             it.player.addAnalyticsListener(audioFormatListener)
             it.onStalled = listener::onPlayerError
+            runCatching { appContext.getSystemService(ConnectivityManager::class.java)?.registerDefaultNetworkCallback(networkBack) }
             it.onUnsupported =
                 { url -> fail(appString(R.string.player_unsupported_format), url = url.ifEmpty { null }) }
             engine = it
         }
     }
 
+    /**
+     * Opens the stream that failed again: live TV at the live point (where it was is gone), anything else where it was.
+     * Catch-up opens its address again at the moment it got to.
+     */
+    protected open fun reconnect() {
+        val player = engine?.player ?: return
+        if (isLive) player.seekToDefaultPosition()
+        player.prepare()
+    }
+
+    /** Set while a stream that played is opened again after it failed: the player says so, over its last picture. */
+    var reconnecting by mutableStateOf(false)
+        private set
+
+    /** Tries in a row since the stream last played steadily: each waits longer (see [retryDelayMs]). */
+    private var attempts = 0
+
+    /** The network is back (Wi-Fi again, or a cable): a stream waiting to try again tries at once. */
+    private val networkBack = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            viewModelScope.launch(Dispatchers.Main) { if (retryJob?.isActive == true) retryNow() }
+        }
+    }
+
+    private fun retryNow() {
+        retryJob?.cancel()
+        reconnect()
+    }
+
+    private fun mapperFor(s: Settings) = KeyActionMapper(s.skipBackSec * 1_000L, s.skipForwardSec * 1_000L, s.zapWithUpDown)
+
     /** Forgets the previous stream's failures before playing another. */
     protected fun resetForNewStream() {
         cancelScrub()
         retryJob?.cancel()
         error = null
+        reconnecting = false
+        attempts = 0
         retries.reset()
         playedMs = 0
         playingSince = 0
@@ -261,7 +311,6 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
 
     /** A remote key; [repeat] counts the repeats while it's held. */
     fun onKey(key: RemoteKey, digit: Int = 0, repeat: Int = 0): Boolean {
-        if (!::mapper.isInitialized) return false
         // A held OK, Menu or Guide does it once (its repeats would toggle the controls, the pause, a menu or the guide);
         // one the player doesn't act on is the TV's, repeats and all. A held play/pause or stop also acts once: a
         // keyboard's Space and X repeat quickly (the owner, 2026-11-13).
@@ -321,13 +370,13 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     }
 
     /** Whether the player acts on [key] now (else it's left to the TV: Guide on a film opens the TV's own guide). */
-    fun actsOn(key: RemoteKey): Boolean = ::mapper.isInitialized && actionFor(key) != PlayerAction.None
+    fun actsOn(key: RemoteKey): Boolean = actionFor(key) != PlayerAction.None
 
     private fun actionFor(key: RemoteKey, digit: Int = 0) = mapper.map(key, overlay, isLive, digit, menuOpen = sheet == Sheet.MORE)
 
     /** Back closes the topmost overlay, otherwise stops playback (also safe while the player is still starting). */
     fun back() {
-        if (!::mapper.isInitialized) stop() else perform(mapper.map(RemoteKey.BACK, overlay, isLive))
+        if (engine == null) stop() else perform(mapper.map(RemoteKey.BACK, overlay, isLive))
     }
 
     /** Whether the app is in the background, where nothing may stream. */
@@ -394,7 +443,8 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     private fun scrub(ms: Long, repeat: Int) {
         val (range, now) = scrubBounds() ?: return skipUnavailable(ms)
         val target = scrubTarget(scrubMs ?: now, ms, repeat, range)
-        // Live TV with catch-up, at the present: there is nothing ahead to skip to.
+        // Live TV (and catch-up) at either end of what it can skip to, such as the present: nothing that way to skip to.
+        // (Live TV that cannot skip at all has no bounds, above.)
         if (isLive && scrubMs == null && target == now) return skipUnavailable(ms)
         if (overlay == OverlayState.NONE) showControls(forSkip = true)
         moveScrub(target, now)
@@ -575,6 +625,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
 
     override fun onCleared() {
         released = true
+        runCatching { appContext.getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(networkBack) }
         engine?.player?.removeListener(listener)
         engine?.player?.removeAnalyticsListener(audioFormatListener)
         engine?.release()

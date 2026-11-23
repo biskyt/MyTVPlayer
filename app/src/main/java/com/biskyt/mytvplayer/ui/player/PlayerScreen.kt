@@ -213,13 +213,7 @@ internal fun PlayerFrame(
             // zoomed picture doesn't push them off it.
             Subtitles(engine.player, Modifier.picture(vm.picture, presentation.videoSizeDp, onScreen = true))
         }
-        if (vm.buffering && vm.error == null) {
-            Text(
-                stringResource(R.string.common_loading),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.align(Alignment.Center)
-            )
-        }
+        WaitingLabel(vm, Modifier.align(Alignment.Center))
         vm.error?.let { ErrorBox(it, vm) }
         if (vm.overlay == OverlayState.CONTROLS) {
             // With the video focused (Up from the buttons), left and right skip: the bar shows its handle (no remote: none).
@@ -242,6 +236,18 @@ internal fun PlayerFrame(
     }
     vm.sheet?.let { PlayerSheet(it, vm) }
     FocusFollowsOverlay(vm, root)
+}
+
+/** "Loading…" while a stream loads; "Reconnecting…" while one that failed opens again, over its last picture. */
+@Composable
+private fun WaitingLabel(vm: PlaybackViewModel, modifier: Modifier) {
+    if ((vm.buffering || vm.reconnecting) && vm.error == null) {
+        Text(
+            stringResource(if (vm.reconnecting) R.string.player_reconnecting else R.string.common_loading),
+            style = MaterialTheme.typography.titleLarge,
+            modifier = modifier
+        )
+    }
 }
 
 /**

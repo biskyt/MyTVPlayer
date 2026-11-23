@@ -3,6 +3,13 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.33.0
+- Live TV now reconnects by itself when a channel drops out, and says "Reconnecting…" until the picture is back.
+- A stream that gets stuck while it plays, or whose picture freezes, is now noticed and opened again.
+- Playback tries again at once when the network comes back.
+- Catch-up now has the channel guide, and the channel buttons and numbers go to live channels from there.
+- The remote's buttons now work while a stream is still loading.
+
 ## 1.32.0
 - Skipping back on a live channel with catch-up now moves along the play bar, and switches to catch-up when you let go.
 - After that switch, the play bar keeps focus, so that you can go on skipping.

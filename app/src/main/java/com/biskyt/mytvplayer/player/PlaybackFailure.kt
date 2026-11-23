@@ -21,6 +21,9 @@ data class PlaybackError(val message: String, val reason: String? = null, val ad
 /** A stream that buffered for a long while without getting any further (see PlaybackEngine). */
 const val ERROR_CODE_STALLED = PlaybackException.CUSTOM_ERROR_CODE_BASE
 
+/** A stream that played on with a picture, or a time, that did not move (see PlaybackEngine). */
+const val ERROR_CODE_FROZEN = PlaybackException.CUSTOM_ERROR_CODE_BASE + 1
+
 /**
  * A stream's address to show: Xtream addresses carry the account's user name and password ("/movie/user/pass/501.mkv",
  * "?username=…&password=…"). These are hidden, so that a photo of the screen does not share them.
@@ -48,6 +51,7 @@ fun explainFailure(e: PlaybackException, sentNothing: Boolean = false): String {
         http != null -> httpReason(http.responseCode)
         e.causes().any { it is UnknownHostException } -> appString(R.string.player_error_dns)
         e.errorCode == ERROR_CODE_STALLED -> appString(R.string.player_error_stalled)
+        e.errorCode == ERROR_CODE_FROZEN -> appString(R.string.player_error_frozen)
         e.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> appString(R.string.player_error_timeout)
         e.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> appString(R.string.player_error_connection)
         e.errorCode == PlaybackException.ERROR_CODE_IO_INVALID_HTTP_CONTENT_TYPE -> appString(R.string.player_error_not_video)
