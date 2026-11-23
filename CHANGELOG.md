@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.34.3
+- After a short drop-out, paused live TV now carries on where it was, rather than jumping to the live point.
+- A film with long still scenes is no longer taken for a frozen picture.
+- A stream opened again (after a drop-out, Try again, or coming back to the app) no longer counts its first held picture as frozen.
+- A weak channel that keeps playing between drop-outs now goes on reconnecting, rather than stopping after 5 minutes.
+
 ## 1.34.2
 - A film or episode on a slow server is now given up to a minute to start or to send more, rather than 15 seconds.
 - Live TV that keeps freezing between short moments of playing now shows an error after 5 minutes, rather than reconnecting for ever.

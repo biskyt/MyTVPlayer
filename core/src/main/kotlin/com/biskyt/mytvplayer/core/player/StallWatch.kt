@@ -17,6 +17,12 @@ class StallWatch(
     var rebufferMs: Long = 12_000L,
     private val frozenMs: Long = 8_000L,
 ) {
+    /**
+     * Whether a still picture can be a freeze: live TV's. A film's still scenes can send no new pictures (a variable
+     * frame rate), so for a film only a still time counts (MyPlexPlayer's review, 2026-11-23).
+     */
+    var watchPicture = true
+
     /** Pictures at a check, at least, for the picture to count as moving: a video's rate, not a slide's now and then. */
     private val videoFrames = MIN_FPS * stepMs / MS_PER_S
 
@@ -72,7 +78,7 @@ class StallWatch(
         // Before the picture has moved, a still time is not a freeze either (a first picture held, or the sound's output
         // starting again, as when the TV's HDMI link changes); with no video, the time is all there is.
         val timeStill = now.position == before.position && (now.frames == null || pictureMoved)
-        return timeStill || pictureMoved && sameFrames
+        return timeStill || watchPicture && pictureMoved && sameFrames
     }
 
     private companion object {

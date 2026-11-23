@@ -50,6 +50,16 @@ class StallWatchTest {
     }
 
     @Test
+    fun `a film's still scene with no new pictures is not frozen, while its time goes on`() {
+        watch.watchPicture = false
+        assertNull(after(List(3) { playing(it * 2_000L, frames = it * 50L) })) // it moves
+        assertNull(after(List(30) { playing(6_000L + it * 2_000L, frames = 100) }))
+        // Its time standing still is.
+        assertNull(after(List(4) { playing(70_000, frames = 100) }))
+        assertEquals(Stall.FROZEN, watch.check(playing(70_000, frames = 100)))
+    }
+
+    @Test
     fun `a slide that changes now and then, as on a radio channel, is not frozen`() {
         // A new picture every 10 s, while the sound and the time go on.
         assertNull(after(List(60) { playing(it * 2_000L, frames = it / 5L) }))

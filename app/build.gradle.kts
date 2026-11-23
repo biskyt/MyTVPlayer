@@ -17,8 +17,8 @@ android {
         applicationId = "com.biskyt.mytvplayer"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = 36
-        versionCode = 142
-        versionName = "1.34.2"
+        versionCode = 143
+        versionName = "1.34.3"
         ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a") }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
