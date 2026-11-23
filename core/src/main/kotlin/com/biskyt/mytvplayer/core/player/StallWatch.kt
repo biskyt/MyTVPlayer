@@ -93,7 +93,9 @@ class StallWatch(
      */
     private fun noteMoving(before: Sample, now: Sample) {
         if (before.frames != null && now.frames != null && now.frames - before.frames >= videoFrames) pictureMoved = true
-        if (!moving && (pictureMoved || now.frames == null && now.position != before.position)) {
+        // The time moving counts too: a radio channel's slide changes only now and then, yet its sound plays
+        // (MyPlexPlayer's review, 2026-11-23). A still picture with a still time does not.
+        if (!moving && (pictureMoved || now.position != before.position)) {
             moving = true
             onMoving()
         }

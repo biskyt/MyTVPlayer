@@ -4,6 +4,8 @@ Each version's section becomes its GitHub release notes, so it is written for th
 English, one bullet of one sentence per change.
 
 ## 1.34.5
+- Live TV whose feed drops in the middle of a part now reconnects, rather than showing an error after a few seconds.
+- A radio channel with a still picture now gets its full 5 minutes of reconnecting after each drop-out, as other channels do.
 - A film or an episode no longer uses up its tries in seconds while the Wi-Fi reports its signal again and again.
 
 ## 1.34.4

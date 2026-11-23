@@ -37,13 +37,15 @@ class PlaybackFailureTest {
 
     @Test
     fun `live TV goes on trying failures that pass, not refusals or streams that cannot play`() {
-        // The network, the server's connection, time-outs, stalls and busy servers pass.
+        // The network, the server's connection, time-outs, stalls, busy servers and data cut off as the feed dropped pass.
         listOf(
             failure(PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED, UnknownHostException("x")),
             failure(PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT),
             failure(PlaybackException.ERROR_CODE_IO_UNSPECIFIED),
             failure(ERROR_CODE_STALLED),
             failure(ERROR_CODE_FROZEN),
+            failure(PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED),
+            failure(PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED),
             http(500),
             http(503),
             http(429),
