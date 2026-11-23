@@ -280,6 +280,16 @@ class PlaybackEngine(
         stalls.reset()
     }
 
+    /**
+     * Opens the stream again where it was (a reconnect, Try again, back from Home). The watch starts again too: the new
+     * decoder holds its first picture while the sound catches up, which is not a freeze. It keeps [started], so the
+     * waits stay those of a stream that played.
+     */
+    fun reopen() {
+        stalls.reset()
+        player.prepare()
+    }
+
     /** The current stream's address. */
     val currentUrl: String? get() = current
     private var currentInferred = false
@@ -287,7 +297,7 @@ class PlaybackEngine(
     /**
      * [hls]: null works the format out from the stream (retrying once as HLS when that fails, see [retryAsHls]).
      * [userAgent] / [referrer]: some M3U streams only play when these headers are sent. [firstPictureMs]: how long the
-     * stream is given to start (and to start again after a seek), see [StallWatch].
+     * stream is given to start, see [StallWatch].
      */
     @Suppress("LongParameterList") // what one stream needs, as MyPlexPlayer's engine has it
     fun play(
@@ -300,6 +310,8 @@ class PlaybackEngine(
     ) {
         stalls.startMs = firstPictureMs
         stalls.rebufferMs = if (live) REBUFFER_MS else ON_DEMAND_REBUFFER_MS
+        // A film can have long still scenes with no new pictures (a variable frame rate): only its time counts.
+        stalls.watchPicture = live
         client = clients.forProxy(proxy)
         subtitlesApplied = false
         // A track chosen on the last stream mustn't carry over (or quietly match a different one on this).

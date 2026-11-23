@@ -28,6 +28,7 @@ import com.biskyt.mytvplayer.core.player.scrubTarget
 import com.biskyt.mytvplayer.data.ChannelKinds
 import com.biskyt.mytvplayer.data.Settings
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
+import com.biskyt.mytvplayer.player.ERROR_CODE_FROZEN
 import com.biskyt.mytvplayer.player.PlaybackEngine
 import com.biskyt.mytvplayer.player.PlaybackError
 import com.biskyt.mytvplayer.player.explainFailure
@@ -180,10 +181,13 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             // Streams drop out now and then; retry a few times before showing an error.
             // Played steadily since the last failure: a new run of failures. A moment of READY between stalls (a frozen
             // stream, a playlist that replays old parts) is not enough, or the give-up time would never come.
-            if (playedSinceFailure() >= STEADY_MS) {
-                retries.reset()
-                failingSince = 0
-            }
+            if (playedSinceFailure() >= STEADY_MS) retries.reset()
+            // Played a while since the last failure: the 5 minutes with no picture start again. Not after a frozen
+            // picture, which "played" with no picture (MyPlexPlayer's review, 2026-11-23).
+            if (e.errorCode != ERROR_CODE_FROZEN && playedSinceFailure() >= PLAYED_A_WHILE_MS) failingSince = 0
+            // Behind the live window: the next try goes back to the live point. Anything else opens where it was, so
+            // a viewer who paused live TV, or went back in it, keeps the place after a short drop-out.
+            behindLive = e.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW
             playedMs = 0
             playingSince = 0
             // Live TV that has played goes on trying, as a TV does, while the feed is gone (the owner, 2026-11-23), if
@@ -260,10 +264,13 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
      * Catch-up opens its address again at the moment it got to.
      */
     protected open fun reconnect() {
-        val player = engine?.player ?: return
-        if (isLive) player.seekToDefaultPosition()
-        player.prepare()
+        val engine = engine ?: return
+        if (isLive && behindLive) engine.player.seekToDefaultPosition()
+        engine.reopen()
     }
+
+    /** Whether the last failure was falling behind live TV's window: [reconnect] then goes back to the live point. */
+    private var behindLive = false
 
     /** When the stream began to fail, with no picture since (0: it plays). */
     private var failingSince = 0L
@@ -421,7 +428,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
             // Nothing in it yet (what to play is still loading, as the screen's first "shown" comes straight away):
             // prepared empty, it would end at once and close the player.
             if (it.playbackState == Player.STATE_IDLE && it.mediaItemCount > 0 && !exit) {
-                it.prepare()
+                engine?.reopen()
                 it.play()
             }
         }
@@ -616,7 +623,7 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
 
     open fun retry() {
         resetForNewStream()
-        engine?.player?.prepare()
+        engine?.reopen()
     }
 
     private var trackJob: Job? = null
@@ -677,6 +684,9 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
 
         /** The longest a message about the stream loading stays (see showWhileLoading). */
         const val WAITING_MESSAGE_MS = 15_000L
+
+        /** Having played this long since the last failure (not frozen): the time live TV goes on trying starts again. */
+        const val PLAYED_A_WHILE_MS = 5_000L
 
         /** Having played this long (in all) since the last failure counts as working: later failures get fresh retries. */
         const val STEADY_MS = 20_000L
