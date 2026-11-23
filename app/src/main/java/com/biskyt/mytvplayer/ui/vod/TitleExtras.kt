@@ -17,8 +17,10 @@ import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.vod.DownloadNames
 import com.biskyt.mytvplayer.core.xtream.EpisodeInfo
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
+import com.biskyt.mytvplayer.data.db.proxy
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
+import com.biskyt.mytvplayer.ui.common.AppIcons
 import com.biskyt.mytvplayer.ui.common.CastPanel
 import com.biskyt.mytvplayer.ui.common.ItemAction
 import com.biskyt.mytvplayer.ui.common.Tab
@@ -124,15 +126,21 @@ fun TitlePanels(open: TitlePanel?, playlistId: Long, title: String, tmdb: TmdbTi
 
 /**
  * "Download" for a film or an episode, with the setting on (null with it off; see Downloads). [start] finds the
- * stream's address and where it goes, and starts it; a message then says where it is saved.
+ * stream's address and where it goes, and starts it; a message then says where it is saved. Android's download manager
+ * cannot use a proxy: for a playlist ([playlistId]) that has one, a warning says so (the owner, 2026-11-23).
  */
 @Composable
-fun downloadAction(start: suspend AppContainer.() -> DownloadNames.Place?): ItemAction? {
+fun downloadAction(playlistId: Long, start: suspend AppContainer.() -> DownloadNames.Place?): ItemAction? {
     val context = LocalContext.current
     val c = context.container
     val on = c.settings.settings.collectAsState(initial = null).value?.downloads == true
+    val proxied by produceState(false, playlistId) { value = c.playlists.get(playlistId)?.proxy != null }
     if (!on) return null
-    return ItemAction.Run(stringResource(R.string.vod_download)) {
+    return ItemAction.Run(
+        stringResource(R.string.vod_download),
+        help = if (proxied) stringResource(R.string.vod_download_no_proxy) else null,
+        icon = if (proxied) AppIcons.Warning else null
+    ) {
         c.appScope.launch {
             val place = runCatching { c.start() }.getOrNull() ?: return@launch
             withContext(Dispatchers.Main) {

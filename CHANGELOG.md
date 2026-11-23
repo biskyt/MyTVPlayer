@@ -3,6 +3,15 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.32.0
+- Skipping back on a live channel with catch-up now moves along the play bar, and switches to catch-up when you let go.
+- After that switch, the play bar keeps focus, so that you can go on skipping.
+- Live TV's play bar now shows its handle, as in catch-up and films.
+- Downloads now use Android's own download manager, and the Download option warns when a playlist's proxy will not be used.
+- The glow around the search box and the first catch-up day is no longer cut off at the top.
+- The public IP check tries again after a network change, also while one of its services is busy.
+- Taking a channel off in the TV guide no longer moves focus to the wrong row in the list later.
+
 ## 1.31.0
 - On a channel with catch-up, the player's channel guide now shows earlier programmes above what is on now.
 - Choosing an earlier programme there replays it from its start.

@@ -114,7 +114,7 @@ import kotlinx.coroutines.launch
 
 class SeriesDetailsViewModel(
     private val c: AppContainer,
-    private val playlistId: Long,
+    val playlistId: Long,
     private val seriesId: Long,
     season: Int?
 ) : ViewModel() {
@@ -137,7 +137,7 @@ class SeriesDetailsViewModel(
     suspend fun download(e: EpisodeInfo): DownloadNames.Place? {
         val p = c.playlists.get(playlistId) ?: return null
         val place = DownloadNames.episode(series?.title ?: e.title, e.season, e.number, e.extension)
-        c.startDownload(p.id, c.vod.episodeUrl(p, e.id, e.extension), place)
+        c.startDownload(c.vod.episodeUrl(p, e.id, e.extension), place)
         return place
     }
 
@@ -463,7 +463,7 @@ private fun EpisodeOptions(
     // One partly watched can be counted as watched, or started again (its progress forgotten).
     val episode = listOfNotNull(
         episodeDescriptionAction(e) { vm.open = SeriesPanel.Describe(e) },
-        downloadAction { vm.download(e) },
+        downloadAction(vm.playlistId) { vm.download(e) },
         if (saved?.finished != true) markWatched(false, set) else null,
         if (saved?.started == true) markWatched(true, set) else null
     )

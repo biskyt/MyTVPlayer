@@ -1,17 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Android 9 only: saving the backup to Download/MyTVPlayer (later versions need no permission for it). -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
-
-    <!-- Downloads (Settings › Playback › Downloads, off by default): a download goes on in the background, with its
-         progress in a notification (asked for on Android 13 and later when Downloads is turned on). -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- The TV's home screen (Settings › Show on the TV's home screen, off by default): the app's cards in the TV provider. -->
     <uses-permission android:name="com.android.providers.tv.permission.WRITE_EPG_DATA" />
@@ -97,10 +90,5 @@
                 <action android:name="${applicationId}.action.REFRESH_HOME_ROWS" />
             </intent-filter>
         </receiver>
-        <!-- Downloads run as WorkManager's foreground work: a data sync. -->
-        <service
-            android:name="androidx.work.impl.foreground.SystemForegroundService"
-            android:foregroundServiceType="dataSync"
-            tools:node="merge" />
     </application>
 </manifest>

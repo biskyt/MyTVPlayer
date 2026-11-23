@@ -7,6 +7,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -76,6 +77,26 @@ class IpLookupTest {
         val e = runCatching { lookup().lookup() }.exceptionOrNull()
         assertTrue(e is IpLookupLimited)
         assertEquals("ipinfo.io answered 429 (too many requests)", e!!.message)
+    }
+
+    @Test
+    fun `with ipinfo busy and the others out of reach, it is a network failure, so that it is tried again`() = runTest {
+        // ipinfo.io on the server; the others where nothing answers (no network yet).
+        val closed = java.net.ServerSocket(0).use { it.localPort }
+        val services = IpLookup.SERVICES.mapIndexed { i, s ->
+            IpLookup.Service(s.name, if (i == 0) server.url("/0").toString() else "http://127.0.0.1:$closed/", s.read)
+        }
+        val lookup = IpLookup(OkHttpClient(), services, clock = { now })
+        answer(429)
+        val e = runCatching { lookup.lookup() }.exceptionOrNull()
+        assertTrue("$e", e is IOException)
+        assertFalse("$e", e is IpLookupLimited)
+
+        // ipinfo is left alone now: the others out of reach are still a network failure.
+        val again = runCatching { lookup.lookup() }.exceptionOrNull()
+        assertTrue("$again", again is IOException)
+        assertFalse("$again", again is IpLookupLimited)
+        assertEquals(1, server.requestCount)
     }
 
     @Test(expected = IOException::class)

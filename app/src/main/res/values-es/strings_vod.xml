@@ -95,6 +95,6 @@
     <string name="vod_other_trailers_help">Otras subidas, si un tráiler no se puede ver en tu país</string>
     <string name="vod_tmdb_season_failed">No se pudo cargar esta temporada de TMDB</string>
     <string name="vod_download">Descargar</string>
-    <string name="vod_downloading">Descargando %1$s</string>
+    <string name="vod_download_no_proxy">AVISO. No usará el proxy</string>
     <string name="vod_download_started">Descargando en Download/%1$s</string>
 </resources>

@@ -393,8 +393,11 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
      */
     private fun scrub(ms: Long, repeat: Int) {
         val (range, now) = scrubBounds() ?: return skipUnavailable(ms)
+        val target = scrubTarget(scrubMs ?: now, ms, repeat, range)
+        // Live TV with catch-up, at the present: there is nothing ahead to skip to.
+        if (isLive && scrubMs == null && target == now) return skipUnavailable(ms)
         if (overlay == OverlayState.NONE) showControls(forSkip = true)
-        moveScrub(scrubTarget(scrubMs ?: now, ms, repeat, range), now)
+        moveScrub(target, now)
     }
 
     /** ◀ ▶ where playback can't skip (most live TV): says so. Live TV with catch-up goes back in it instead. */
@@ -438,6 +441,11 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         private set
 
     enum class ControlsFocus { PLAY_PAUSE, MORE, VIDEO }
+
+    /** Focus on the play bar as the controls show, where ◀ ▶ skip (catch-up opened by skipping back on live TV). */
+    protected fun focusOnBar() {
+        controlsFocus = ControlsFocus.VIDEO
+    }
 
     /** Counts the Options button's presses: each puts focus on More again. */
     var optionsPresses by mutableIntStateOf(0)
