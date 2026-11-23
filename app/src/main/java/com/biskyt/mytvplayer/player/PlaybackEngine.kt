@@ -221,8 +221,8 @@ class PlaybackEngine(
 
     /**
      * Whether the streams are live TV (catch-up too): once one has played, waiting [REBUFFER_MS] with no data is a stall.
-     * A film or an episode waits [ON_DEMAND_REBUFFER_MS], also after a seek: a slow server (a file made on the fly, a
-     * disk that sleeps) can take a while to send more.
+     * A film or an episode waits [ON_DEMAND_REBUFFER_MS], also after a seek: a server's disk that sleeps can take a few
+     * seconds to send more.
      */
     var live = true
 
@@ -232,6 +232,9 @@ class PlaybackEngine(
 
     /** How long the stream in play may wait for more data once it played (see [play]). */
     internal val rebufferMs: Long get() = stalls.rebufferMs
+
+    /** How long the stream in play is given to start now (see [play] and [reopen]). */
+    internal val firstPictureMs: Long get() = stalls.startMs
 
     // A check while the player cannot stall (paused, stopped after an error, ended) still records how it is, which
     // ends any wait counted before. Then no more checks are posted until it can stall again (see keepChecking).
@@ -309,14 +312,18 @@ class PlaybackEngine(
     /**
      * Opens the stream again where it was (a reconnect, Try again, back from Home). The watch starts again too: the new
      * decoder holds its first picture while the sound catches up, which is not a freeze. It keeps [started], so the
-     * waits stay those of a stream that played. [firstPictureMs], when given, is the new wait for a stream that has not
-     * started (MyPlexPlayer: a tuner that had its minute gets less on a reopen).
+     * waits stay those of a stream that played. [firstPictureMs], when given, is the wait for this reopen of a stream
+     * that has not started (MyPlexPlayer: a tuner that had its minute gets less). A later reopen without it waits as
+     * long as [play] set.
      */
     fun reopen(firstPictureMs: Long? = null) {
-        if (firstPictureMs != null) stalls.startMs = firstPictureMs
+        stalls.startMs = firstPictureMs ?: streamFirstPictureMs
         stalls.reset()
         player.prepare()
     }
+
+    /** How long the stream in play is given to start, as [play] set it. */
+    private var streamFirstPictureMs = FIRST_PICTURE_MS
 
     /** The current stream's address. */
     val currentUrl: String? get() = current
@@ -338,7 +345,8 @@ class PlaybackEngine(
         firstPictureMs: Long = if (live) FIRST_PICTURE_MS else ON_DEMAND_REBUFFER_MS,
         rebufferMs: Long = if (live) REBUFFER_MS else ON_DEMAND_REBUFFER_MS,
     ) {
-        stalls.newStream() // watchForStall() below resets the rest
+        stalls.newStream()
+        streamFirstPictureMs = firstPictureMs
         stalls.startMs = firstPictureMs
         stalls.rebufferMs = rebufferMs
         // A film can have long still scenes with no new pictures (a variable frame rate): only its time counts.
@@ -539,8 +547,13 @@ class PlaybackEngine(
         /** How long live TV that has played may wait with no new data before it is opened again. */
         const val REBUFFER_MS = 12_000L
 
-        /** How long a film or an episode that has played may wait with no new data (a slow server's read time). */
-        const val ON_DEMAND_REBUFFER_MS = 60_000L
+        /**
+         * How long a film or an episode may wait with no new data, at its start and after it has played. Neither app's
+         * server makes files on the fly (MyPlexPlayer does not use Plex transcoding: the owner, 2026-11-23), so a
+         * server that sends nothing for this long gets a new try. A provider's file on slow storage often plays at the
+         * second or third try, and 60 seconds for each try made it sit for minutes.
+         */
+        const val ON_DEMAND_REBUFFER_MS = 20_000L
 
         /** How the player's sound is played. */
         private val MOVIE: AudioAttributes = AudioAttributes.Builder().setUsage(

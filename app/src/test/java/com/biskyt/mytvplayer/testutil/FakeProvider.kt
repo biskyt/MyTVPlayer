@@ -9,6 +9,7 @@ import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
+import okhttp3.mockwebserver.SocketPolicy
 import okio.Buffer
 
 /** A fake Xtream Codes provider (with an XMLTV guide) for tests. Channel lists can be changed between requests. */
@@ -59,11 +60,33 @@ class FakeProvider(private val now: Long = System.currentTimeMillis()) : Dispatc
     /** Films whose server answers "OK" with an empty file, as a provider does for a copy it no longer has. */
     var emptyFilms = false
 
+    /** Films whose server does not answer at all, as one that first fetches the file from slow storage. */
+    var silentFilms = false
+
+    /** Live channels whose MPEG-TS address fails with a server error, while their HLS address answers. */
+    var liveTsFails = false
+
     /** The guide (xmltv.php) fails with a server error. */
     var guideFails = false
 
     /** A panel that serves M3U playlists but refuses Xtream logins. */
     var loginsRefused = false
+
+    /** A stream's reply set by the options above ([streamsTrickle], [emptyFilms]...), or null for the usual one. */
+    private fun streamReply(path: String): MockResponse? {
+        val live = path.startsWith("/live/")
+        if (!live && !path.startsWith("/movie/")) return null
+        return when {
+            streamsTrickle && live ->
+                // MPEG-TS sync bytes: the player takes it for a transport stream and waits for more, never getting a picture.
+                MockResponse().setBody(Buffer().write(ByteArray(10_000) { 0x47 }))
+                    .throttleBody(1, 200, java.util.concurrent.TimeUnit.MILLISECONDS)
+            emptyFilms && !live -> MockResponse().setBody("")
+            silentFilms && !live -> MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE)
+            liveTsFails && live && path.endsWith(".ts") -> MockResponse().setResponseCode(500)
+            else -> null
+        }
+    }
 
     /** The address of an image served at /art/<name>. */
     fun art(name: String) = "${url}art/$name"
@@ -153,6 +176,7 @@ class FakeProvider(private val now: Long = System.currentTimeMillis()) : Dispatc
     override fun dispatch(request: RecordedRequest): MockResponse {
         val url = request.requestUrl!!
         requests += url.encodedPath + "?" + (url.queryParameter("action") ?: "")
+        streamReply(url.encodedPath)?.let { return it }
         val early = when {
             url.encodedPath == "/free.m3u" -> MockResponse().setBody(m3u)
             url.encodedPath == "/not-a-playlist" -> MockResponse().setBody("<html>hello</html>")
@@ -162,11 +186,6 @@ class FakeProvider(private val now: Long = System.currentTimeMillis()) : Dispatc
             url.encodedPath.startsWith("/art/") ->
                 images(url.encodedPath.removePrefix("/art/"))?.let { MockResponse().setBody(Buffer().write(it)) }
                     ?: MockResponse().setResponseCode(404)
-            streamsTrickle && url.encodedPath.startsWith("/live/") ->
-                // MPEG-TS sync bytes: the player takes it for a transport stream and waits for more, never getting a picture.
-                MockResponse().setBody(Buffer().write(ByteArray(10_000) { 0x47 }))
-                    .throttleBody(1, 200, java.util.concurrent.TimeUnit.MILLISECONDS)
-            emptyFilms && url.encodedPath.startsWith("/movie/") -> MockResponse().setBody("")
             url.queryParameter("password") != "secret" -> MockResponse().setBody("""{"user_info":{"auth":0}}""")
             else -> null
         }

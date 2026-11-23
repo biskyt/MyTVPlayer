@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.34.8
+- A film or an episode whose server does not answer at first is now tried again after 20 seconds, not after a minute, so it often plays at the second or third try.
+
 ## 1.34.7
 - A stream that stops coming in after it played now says that the server sent it too slowly to play, not "to start".
 - An error is no longer replaced by a reconnect that was already waiting.

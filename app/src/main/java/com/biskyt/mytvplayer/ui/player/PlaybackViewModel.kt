@@ -267,13 +267,20 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
 
     /**
      * Opens the stream that failed again: live TV at the live point (where it was is gone), anything else where it was.
-     * Catch-up opens its address again at the moment it got to.
+     * Catch-up opens its address again at the moment it got to. A stream that has not played yet waits
+     * [unplayedReopenMs] for its first picture, if set.
      */
     protected open fun reconnect() {
         val engine = engine ?: return
         if (isLive && behindLive) engine.player.seekToDefaultPosition()
-        engine.reopen()
+        engine.reopen(if (hasPlayed) null else unplayedReopenMs)
     }
+
+    /**
+     * How long a reopened stream that has not played yet waits for its first picture (null: as long as its first
+     * open did). A live tune that already waited long for its first picture can set a shorter wait here.
+     */
+    protected open val unplayedReopenMs: Long? get() = null
 
     /** Set while a stream that played is opened again after it failed: the player says so, over its last picture. */
     var reconnecting by mutableStateOf(false)
