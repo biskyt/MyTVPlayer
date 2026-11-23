@@ -7,15 +7,19 @@ package com.biskyt.mytvplayer.core.player
  * - Waiting for data, and the buffer gets no further: no data, or data that trickles in too slowly to play. A stream
  *   that has not started yet is given [startMs], one that played and is waiting again [rebufferMs].
  * - Playing, and the picture or the time does not move: a frozen picture, or a stream that only seems to play. It is
- *   given [frozenMs]. The picture counts only once it has moved since the start (or a seek): a stream often starts
- *   with its first picture held while the sound catches up with it (the owner, 2026-11-23), which is not frozen.
+ *   given [frozenMs]. The picture counts only once it has moved at a video's rate since the start (or a seek): a
+ *   stream often starts with its first picture held while the sound catches up with it (the owner, 2026-11-23), and a
+ *   radio channel's picture can be a slide that changes now and then. Neither is frozen.
  */
 class StallWatch(
     private val stepMs: Long,
-    private val startMs: Long = 20_000L,
-    private val rebufferMs: Long = 12_000L,
+    var startMs: Long = 20_000L,
+    var rebufferMs: Long = 12_000L,
     private val frozenMs: Long = 8_000L,
 ) {
+    /** Pictures at a check, at least, for the picture to count as moving: a video's rate, not a slide's now and then. */
+    private val videoFrames = MIN_FPS * stepMs / MS_PER_S
+
     /** What is stuck. */
     enum class Stall { BUFFERING, FROZEN }
 
@@ -36,7 +40,7 @@ class StallWatch(
     private var waitingMs = 0L
     private var frozenForMs = 0L
 
-    /** Whether the picture has moved since the start: until then, a still picture is a first one held, not a freeze. */
+    /** Whether the picture has moved at a video's rate since the start: until then, a still picture is not a freeze. */
     private var pictureMoved = false
 
     /** Starts again (a new stream, or one opened again). */
@@ -53,7 +57,7 @@ class StallWatch(
         last = now
         waitingMs = if (now.buffering && before?.buffering == true && now.buffered == before.buffered) waitingMs + stepMs else 0
         val sameFrames = before != null && now.frames != null && now.frames == before.frames
-        if (before?.frames != null && now.frames != null && !sameFrames) pictureMoved = true
+        if (before?.frames != null && now.frames != null && now.frames - before.frames >= videoFrames) pictureMoved = true
         val still = before != null && before.playing && (now.position == before.position || pictureMoved && sameFrames)
         frozenForMs = if (now.playing && still) frozenForMs + stepMs else 0
         return when {
@@ -61,5 +65,10 @@ class StallWatch(
             frozenForMs >= frozenMs -> Stall.FROZEN
             else -> null
         }.also { if (it != null) reset() }
+    }
+
+    private companion object {
+        const val MIN_FPS = 5L
+        const val MS_PER_S = 1_000L
     }
 }

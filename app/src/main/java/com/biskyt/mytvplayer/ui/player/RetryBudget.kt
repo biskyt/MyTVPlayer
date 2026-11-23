@@ -5,8 +5,8 @@ class RetryBudget(private val max: Int) {
     var used = 0
         private set
 
-    /** Uses one retry; false when none are left. */
-    fun take(): Boolean = (used < max).also { if (it) used++ }
+    /** Counts one try; false when it is past the [max] (live TV can go on trying, and waits longer each time). */
+    fun take(): Boolean = ++used <= max
 
     fun reset() {
         used = 0

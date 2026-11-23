@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.33.2
+- Live TV now goes on reconnecting only while the problem can pass, and shows an error when the server refuses the stream.
+- A radio channel whose picture is a slide that changes now and then is no longer taken for a frozen picture.
+- Leaving the player, or the app, while it waits to reconnect no longer opens the stream again.
+- A film or episode on a slow server is given as long after a seek, or a pause for data, as it is to start.
+
 ## 1.33.1
 - A picture that holds on its first frame while the sound catches up, as catch-up often starts, no longer counts as frozen.
 

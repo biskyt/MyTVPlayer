@@ -44,9 +44,22 @@ class StallWatchTest {
     fun `a first picture held while the sound catches up is not frozen, however long`() {
         assertNull(after(List(30) { playing(it * 2_000L, frames = 1) }))
         // Then it moves, and a freeze after that counts.
-        assertNull(after(List(2) { playing(60_000L + it * 2_000L, frames = 2L + it) }))
-        assertNull(after(List(3) { playing(64_000L + it * 2_000L, frames = 3) })) // still for 6 s
-        assertEquals(Stall.FROZEN, watch.check(playing(70_000, frames = 3))) // 8 s
+        assertNull(after(List(2) { playing(60_000L + it * 2_000L, frames = 2L + it * 50) }))
+        assertNull(after(List(3) { playing(64_000L + it * 2_000L, frames = 52) })) // still for 6 s
+        assertEquals(Stall.FROZEN, watch.check(playing(70_000, frames = 52))) // 8 s
+    }
+
+    @Test
+    fun `a slide that changes now and then, as on a radio channel, is not frozen`() {
+        // A new picture every 10 s, while the sound and the time go on.
+        assertNull(after(List(60) { playing(it * 2_000L, frames = it / 5L) }))
+    }
+
+    @Test
+    fun `the limits can change for each stream`() {
+        watch.startMs = 60_000
+        assertNull(after(List(30) { waiting(1_000, started = false) })) // 58 s
+        assertEquals(Stall.BUFFERING, watch.check(waiting(1_000, started = false))) // 60 s
     }
 
     @Test
