@@ -18,6 +18,7 @@ import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import com.biskyt.mytvplayer.data.db.proxy
 import com.biskyt.mytvplayer.ui.Screen
+import com.biskyt.mytvplayer.ui.common.NumberEntry
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -33,7 +34,8 @@ class CatchupPlayerViewModel(
     appContext: Context,
     private val screen: Screen.CatchupPlayer,
     private val clock: () -> Long = System::currentTimeMillis
-) : PlaybackViewModel(c, appContext) {
+) : PlaybackViewModel(c, appContext),
+    GuidePlayer {
     var channel by mutableStateOf<ChannelEntity?>(null)
         private set
 
@@ -45,11 +47,58 @@ class CatchupPlayerViewModel(
     var at by mutableLongStateOf(screen.startMs ?: clock())
         private set
 
-    /** Set when catch-up has reached the present: the screen switches to the live channel. */
-    var goLive by mutableStateOf(false)
+    /**
+     * The screen to go to in this one's place: the live channel once catch-up reaches the present (or Watch live),
+     * another channel (zapping, a number, the channel guide), or another channel's catch-up (the channel guide).
+     */
+    var next by mutableStateOf<Screen?>(null)
         private set
 
-    override val isLive = false
+    /** Catch-up is live TV, only earlier (the owner, 2026-11-23): the channel buttons, numbers and the guide work as there. */
+    override val isLive = true
+
+    override val guide = ChannelGuide(viewModelScope, c, screen.playlistId, screen.filter)
+
+    /** Typed digits switch to that channel number, live. */
+    val numberEntry = NumberEntry(viewModelScope) { n ->
+        val ch = c.channels.byNumber(screen.playlistId, n)
+        if (ch != null) goLiveOn(ch.streamId) else flash(appString(R.string.player_no_channel, n))
+    }
+
+    override fun typeDigit(digit: Int) = numberEntry.type(digit)
+
+    /** The channel buttons: the next channel in the list, live. */
+    override fun zap(step: Int) {
+        guide.next(screen.streamId, step)?.let(::goLiveOn)
+    }
+
+    override fun openGuide() {
+        cancelAutoHide()
+        guide.show(channel)
+        overlay = OverlayState.GUIDE
+    }
+
+    override fun watchGuideChannel() {
+        val target = guide.shownId ?: return
+        closeGuide()
+        goLiveOn(target)
+    }
+
+    /** A past programme in the channel guide: this channel's catch-up goes there; another's opens in this one's place. */
+    override fun watchFromGuide(startMs: Long) {
+        val target = guide.shownId ?: return
+        closeGuide()
+        if (target == screen.streamId) {
+            open(startMs)
+        } else {
+            next = Screen.CatchupPlayer(screen.playlistId, target, startMs, screen.filter)
+        }
+    }
+
+    private fun goLiveOn(streamId: Long) {
+        engine?.player?.stop()
+        next = Screen.Player(screen.playlistId, streamId, screen.filter)
+    }
     override val failureMessage = R.string.player_failure_catchup
 
     private var playlist: PlaylistEntity? = null
@@ -72,6 +121,7 @@ class CatchupPlayerViewModel(
             val ch = c.channels.get(screen.playlistId, screen.streamId) ?: return@launch stop()
             playlist = p
             channel = ch
+            guide.show(ch)
             try {
                 val l = c.catchup.listing(p, ch)
                 listing = l
@@ -81,24 +131,26 @@ class CatchupPlayerViewModel(
             } catch (e: java.io.IOException) {
                 fail(e.message)
             }
+            guide.load()
         }
     }
 
     /** Where playback is now. */
     private fun position(): Long = openedAt + (engine?.player?.currentPosition ?: 0)
 
-    private fun open(startMs: Long) {
+    /** Opens the stream at [startMs] (a new stream: its failures so far are forgotten, unless [again]). */
+    private fun open(startMs: Long, again: Boolean = false) {
         val p = playlist ?: return
         val ch = channel ?: return
         val l = listing ?: return
-        if (startMs >= clock() - LIVE_MARGIN_MS) watchLive() else play(p, ch, l, startMs)
+        if (startMs >= clock() - LIVE_MARGIN_MS) watchLive() else play(p, ch, l, startMs, again)
     }
 
-    private fun play(p: PlaylistEntity, ch: ChannelEntity, l: CatchupListing, startMs: Long) {
+    private fun play(p: PlaylistEntity, ch: ChannelEntity, l: CatchupListing, startMs: Long, again: Boolean) {
         openedAt = startMs
         at = startMs
         programme = programmeAt(startMs)
-        resetForNewStream()
+        if (!again) resetForNewStream()
         // An M3U channel whose catch-up address can't be made: say so, as for any stream that won't play.
         val url = try {
             c.catchup.url(p, ch, l, startMs)
@@ -109,7 +161,7 @@ class CatchupPlayerViewModel(
         // channel's headers.
         val hls = if (p.isM3u) M3uCatchup.isHls(url, ch.streamUrl.orEmpty(), ch.catchupType.orEmpty()) else false
         engine?.play(url, hls = hls, userAgent = ch.userAgent, referrer = ch.referrer, proxy = p.proxy)
-        showControls(forSkip = screen.switched)
+        if (!again) showControls(forSkip = screen.switched)
     }
 
     /** The programme on at [t]. */
@@ -149,10 +201,7 @@ class CatchupPlayerViewModel(
         programme?.let { open(it.startMs) }
     }
 
-    fun watchLive() {
-        engine?.player?.stop()
-        goLive = true
-    }
+    fun watchLive() = goLiveOn(screen.streamId)
 
     /**
      * The stream ran out: carry on from where it stopped (some providers cap how long one runs), or go live. A stream
@@ -179,6 +228,9 @@ class CatchupPlayerViewModel(
     }
 
     override fun retry() = open(position())
+
+    /** The stream failed: its address again, at the moment it got to (the same address would start where it first opened). */
+    override fun reconnect() = open(position(), again = true)
 
     override fun stop() {
         tickJob?.cancel()

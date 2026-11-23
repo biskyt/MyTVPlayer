@@ -40,6 +40,7 @@ import com.biskyt.mytvplayer.USER_AGENT
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.net.ProxyClients
 import com.biskyt.mytvplayer.core.net.ProxySettings
+import com.biskyt.mytvplayer.core.player.StallWatch
 import com.biskyt.mytvplayer.core.player.SubtitlePolicy
 import com.biskyt.mytvplayer.core.player.TextTrack
 import com.biskyt.mytvplayer.data.BufferSize
@@ -191,8 +192,8 @@ class PlaybackEngine(
     var onUnsupported: (url: String) -> Unit = {}
 
     /**
-     * Called (with the player stopped) when a stream has buffered for [STALL_MS] without getting any further, so the
-     * caller handles it like any other failure (retries, then an error).
+     * Called (with the player stopped) when a stream is stuck (see [StallWatch]), so the caller handles it like any other
+     * failure (it tries again).
      */
     var onStalled: (PlaybackException) -> Unit = {}
 
@@ -204,43 +205,55 @@ class PlaybackEngine(
     private var current: String? = null
 
     // A server that sends nothing at all fails on the read timeout. One that trickles (a byte now and then, never
-    // enough to play), or sends only some of a stream's tracks, raises no error: this notices a stream that can't get
-    // started. Media3 1.8 has nothing built in for it (its own check only covers a full buffer that can't start).
-    // Once a stream has played, rebuffering is left to the player's own retries.
+    // enough to play), or sends only some of a stream's tracks, raises no error, nor does a picture that freezes while
+    // the sound or the clock goes on. Media3 has nothing built in for these (its own check only covers a full buffer
+    // that can't start). This watches for them from the start of a stream to its end (the owner, 2026-11-23: a stream
+    // could stay on "Loading" for ever), and hands them on as failures, which the player retries.
     private val handler = Handler(player.applicationLooper)
     private var started = false
-    private var lastBuffered = 0L
-    private var stalledMs = 0L
+    private val stalls = StallWatch(STALL_CHECK_MS)
     private val checkStall = object : Runnable {
         override fun run() {
-            val buffered = player.bufferedPosition
-            stalledMs = if (buffered != lastBuffered) 0 else stalledMs + STALL_CHECK_MS
-            lastBuffered = buffered
-            if (stalledMs < STALL_MS) {
-                handler.postDelayed(this, STALL_CHECK_MS)
-                return
+            if (player.playbackState == Player.STATE_READY) started = true
+            when (stalls.check(sample())) {
+                null -> handler.postDelayed(this, STALL_CHECK_MS)
+                StallWatch.Stall.BUFFERING -> stalled(PlaybackException("Buffering got nowhere", null, ERROR_CODE_STALLED))
+                StallWatch.Stall.FROZEN -> stalled(PlaybackException("The picture froze", null, ERROR_CODE_FROZEN))
             }
-            player.stop()
-            onStalled(PlaybackException("Buffering got nowhere for ${STALL_MS / 1000} s", null, ERROR_CODE_STALLED))
         }
     }
 
-    /** Watches while the viewer is waiting on buffering, from the start (again) when a new stream starts. */
+    private fun stalled(e: PlaybackException) {
+        player.stop()
+        handler.postDelayed(checkStall, STALL_CHECK_MS)
+        onStalled(e)
+    }
+
+    /** How the player is now, for [stalls]: the video decoder's output counts as pictures, shown or not. */
+    private fun sample(): StallWatch.Sample {
+        val frames = player.videoDecoderCounters?.takeIf { player.videoFormat != null }?.let {
+            it.ensureUpdated()
+            (it.renderedOutputBufferCount + it.skippedOutputBufferCount + it.droppedBufferCount).toLong()
+        }
+        return StallWatch.Sample(
+            buffering = player.playbackState == Player.STATE_BUFFERING && player.playWhenReady,
+            playing = player.isPlaying,
+            started = started,
+            buffered = player.bufferedPosition,
+            position = player.currentPosition,
+            frames = frames,
+        )
+    }
+
+    /** Watches a new stream from its start. */
     private fun watchForStall() {
         handler.removeCallbacks(checkStall)
-        if (player.playbackState == Player.STATE_READY) started = true
-        if (started || player.playbackState != Player.STATE_BUFFERING || !player.playWhenReady) return
-        lastBuffered = player.bufferedPosition
-        stalledMs = 0
+        stalls.reset()
         handler.postDelayed(checkStall, STALL_CHECK_MS)
     }
 
     init {
         player.addAnalyticsListener(events)
-        player.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(state: Int) = watchForStall()
-            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) = watchForStall()
-        })
     }
 
     /** The current stream's address. */
@@ -437,9 +450,8 @@ class PlaybackEngine(
         private const val TAG = "PlaybackEngine"
         private const val MB = 1024 * 1024
 
-        /** Buffering this long without getting any further counts as a failure. */
-        private const val STALL_MS = 20_000L
-        private const val STALL_CHECK_MS = 5_000L
+        /** How often the stream is checked for a stall (see StallWatch). */
+        private const val STALL_CHECK_MS = 2_000L
 
         /** How the player's sound is played. */
         private val MOVIE: AudioAttributes = AudioAttributes.Builder().setUsage(

@@ -87,6 +87,8 @@
     <!-- Playback errors: why (shown under the message above) -->
     <string name="player_error_dns">The stream\'s server can\'t be found: its address may no longer exist.</string>
     <string name="player_error_stalled">The stream\'s server sent it too slowly to start. It may be busy.</string>
+    <string name="player_error_frozen">The stream\'s picture stopped moving. Its server may have dropped out.</string>
+    <string name="player_reconnecting">Reconnecting…</string>
     <string name="player_error_timeout">The stream\'s server didn\'t answer. It may be down or busy.</string>
     <string name="player_error_connection">Couldn\'t connect to the stream\'s server. It may be down, or not reachable from your network.</string>
     <string name="player_error_not_video">The stream\'s address sent something that isn\'t video (such as a web page).</string>

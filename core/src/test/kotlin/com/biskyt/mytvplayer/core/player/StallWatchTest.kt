@@ -1,0 +1,59 @@
+package com.biskyt.mytvplayer.core.player
+
+import com.biskyt.mytvplayer.core.player.StallWatch.Sample
+import com.biskyt.mytvplayer.core.player.StallWatch.Stall
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
+
+class StallWatchTest {
+    private val watch = StallWatch(stepMs = 2_000, startMs = 20_000, rebufferMs = 12_000, frozenMs = 8_000)
+
+    private fun waiting(buffered: Long, started: Boolean = true) = Sample(true, false, started, buffered, 0, null)
+
+    private fun playing(position: Long, frames: Long? = position) = Sample(false, true, true, position + 5_000, position, frames)
+
+    /** Checks [samples] in turn: what the last one says. */
+    private fun after(samples: List<Sample>): Stall? = samples.map(watch::check).last()
+
+    @Test
+    fun `a stream that played and waits with no new data is stuck after the rebuffer time`() {
+        assertNull(after(List(6) { waiting(1_000) })) // 10 s
+        assertEquals(Stall.BUFFERING, watch.check(waiting(1_000))) // 12 s
+    }
+
+    @Test
+    fun `a stream that has not started is given longer`() {
+        assertNull(after(List(10) { waiting(1_000, started = false) })) // 18 s
+        assertEquals(Stall.BUFFERING, watch.check(waiting(1_000, started = false))) // 20 s
+    }
+
+    @Test
+    fun `data that keeps coming, however slowly, is not a stall`() {
+        assertNull(after(List(30) { waiting(1_000L + it) }))
+    }
+
+    @Test
+    fun `a picture that does not move while the time does is frozen`() {
+        assertNull(after(List(4) { playing(it * 2_000L, frames = 50) }))
+        assertEquals(Stall.FROZEN, watch.check(playing(10_000, frames = 50)))
+    }
+
+    @Test
+    fun `time that does not move while it plays is frozen too, also with no video`() {
+        assertNull(after(List(4) { playing(5_000, frames = null) }))
+        assertEquals(Stall.FROZEN, watch.check(playing(5_000, frames = null)))
+    }
+
+    @Test
+    fun `a stream that plays, or is paused, is never stuck`() {
+        assertNull(after(List(30) { playing(it * 2_000L) }))
+        assertNull(after(List(30) { Sample(false, false, true, 9_000, 4_000, 10) }))
+    }
+
+    @Test
+    fun `after it says so, it starts again`() {
+        assertEquals(Stall.BUFFERING, after(List(7) { waiting(1_000) }))
+        assertNull(watch.check(waiting(1_000)))
+    }
+}

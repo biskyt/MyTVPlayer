@@ -3,6 +3,8 @@ package com.biskyt.mytvplayer.ui.player
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -10,10 +12,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.R
+import com.biskyt.mytvplayer.core.player.OverlayState
 import com.biskyt.mytvplayer.data.programmeTitle
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
+import com.biskyt.mytvplayer.ui.common.FlashLabel
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.formatRuntime
@@ -25,11 +29,16 @@ fun CatchupPlayerScreen(screen: Screen.CatchupPlayer) {
     val appContext = LocalContext.current.applicationContext
     val vm = appViewModel { CatchupPlayerViewModel(it, appContext, screen) }
     val nav = LocalNavigator.current
-    if (vm.goLive) {
-        LaunchedEffect(Unit) { nav.replace(Screen.Player(screen.playlistId, screen.streamId, screen.filter)) }
+    vm.next?.let { next ->
+        LaunchedEffect(next) { nav.replace(next) }
         return
     }
-    PlayerFrame(vm, controls = { buttons, root -> CatchupControls(vm, buttons, root) })
+    PlayerFrame(
+        vm,
+        controls = { buttons, root -> CatchupControls(vm, buttons, root) },
+        extras = { if (vm.numberEntry.typed.isNotEmpty()) FlashLabel(vm.numberEntry.typed, Modifier.align(Alignment.TopEnd)) }
+    )
+    if (vm.overlay == OverlayState.GUIDE) GuidePanel(vm)
 }
 
 @Composable
@@ -60,7 +69,9 @@ private fun CatchupControls(vm: CatchupPlayerViewModel, buttons: FocusRequester,
                 handle = LocalBarSelected.current
             ) { vm.scrubTo(p.startMs..p.stopMs, it) }
         }
+        // As live TV's, with what catch-up adds (the owner, 2026-11-23).
         ControlsBar(vm, buttons, root) {
+            PillButton(stringResource(R.string.player_channel_guide), vm::openGuide)
             PillButton(stringResource(R.string.common_from_start), vm::fromStart)
             PillButton(stringResource(R.string.player_watch_live), vm::watchLive)
         }

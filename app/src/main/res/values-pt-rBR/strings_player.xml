@@ -58,6 +58,8 @@
 
     <string name="player_error_dns">O servidor do stream não foi encontrado: o endereço pode não existir mais.</string>
     <string name="player_error_stalled">O servidor do stream enviou os dados devagar demais para começar. Ele pode estar sobrecarregado.</string>
+    <string name="player_error_frozen">A imagem do stream parou de se mover. O servidor dele pode ter caído.</string>
+    <string name="player_reconnecting">Reconectando…</string>
     <string name="player_error_timeout">O servidor do stream não respondeu. Ele pode estar fora do ar ou sobrecarregado.</string>
     <string name="player_error_connection">Não foi possível conectar ao servidor do stream. Ele pode estar fora do ar ou inacessível pela sua rede.</string>
     <string name="player_error_not_video">O endereço do stream enviou algo que não é vídeo (como uma página da web).</string>

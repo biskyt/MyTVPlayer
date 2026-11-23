@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.data.Settings
 import com.biskyt.mytvplayer.testutil.PlainApp
 import com.biskyt.mytvplayer.ui.player.RetryBudget
+import com.biskyt.mytvplayer.ui.player.retryDelayMs
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -51,6 +52,11 @@ class PlaybackEngineTest {
         budget.reset() // played steadily for a while
         assertTrue(budget.take())
         assertEquals(1, budget.used)
+    }
+
+    @Test
+    fun `tries in a row wait longer each time, then every 15 seconds`() {
+        assertEquals(listOf(1_000L, 2_000L, 4_000L, 8_000L, 15_000L, 15_000L), (0..5).map(::retryDelayMs))
     }
 
     @Test
