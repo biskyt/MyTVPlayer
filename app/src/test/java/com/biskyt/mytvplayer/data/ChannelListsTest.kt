@@ -6,6 +6,7 @@ import androidx.paging.testing.TestPager
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.data.db.AppDatabase
+import com.biskyt.mytvplayer.data.db.CategoryEntity
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.EpgChannelEntity
 import com.biskyt.mytvplayer.data.db.EpgSourceEntity
@@ -15,6 +16,7 @@ import com.biskyt.mytvplayer.data.db.RecentEntity
 import com.biskyt.mytvplayer.testutil.PlainApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import org.junit.After
@@ -49,11 +51,43 @@ class ChannelListsTest {
             db.favourites().touchRecent(RecentEntity(1, it, it))
         }
         for (q in listOf("0", "1", "5_")) {
-            val all = names(channels.pageAll(1, likeArg(q)))
-            assertEquals("favourites, '$q'", all, names(channels.pageFavourites(1, likeArg(q))))
-            assertEquals("recent, '$q'", all.toSet(), names(channels.pageRecent(1, likeArg(q))).toSet())
+            val all = names(channels.pageAll(1, likeArg(q), ChannelKinds.ALL.values))
+            assertEquals("favourites, '$q'", all, names(channels.pageFavourites(1, likeArg(q), ChannelKinds.ALL.values)))
+            assertEquals("recent, '$q'", all.toSet(), names(channels.pageRecent(1, likeArg(q), ChannelKinds.ALL.values)).toSet())
         }
-        assertEquals(listOf("News 10"), names(channels.pageAll(1, likeArg("0")))) // by its name; no channel is number 0
+        // By its name: no channel is number 0.
+        assertEquals(listOf("News 10"), names(channels.pageAll(1, likeArg("0"), ChannelKinds.ALL.values)))
+    }
+
+    @Test
+    fun `each list shows the kinds of channels asked for, TV, radio or both`() = runBlocking {
+        db.channels().upsert(listOf(channel(1, 1, "News TV"), channel(2, 2, "Jazz FM").copy(categoryId = "2", radio = true)))
+        db.categories().upsert(
+            listOf(CategoryEntity(1, "1", "News", null, true, 0), CategoryEntity(1, "2", "Radio", null, true, 1))
+        )
+        val repo = ChannelRepository(db)
+        assertEquals(listOf(1L, 2L), repo.ids(1, ChannelFilter.All, ChannelKinds.ALL))
+        assertEquals(listOf(1L), repo.ids(1, ChannelFilter.All, ChannelKinds.TV))
+        assertEquals(listOf(2L), repo.ids(1, ChannelFilter.All, ChannelKinds.RADIO))
+        assertEquals(listOf("News TV"), names(db.channels().pageAll(1, "", ChannelKinds.TV.values)))
+        // A number finds a channel of the list's kinds only.
+        assertEquals(null, repo.byNumber(1, 2, ChannelKinds.TV))
+        assertEquals(2L, repo.byNumber(1, 2, ChannelKinds.RADIO)?.streamId)
+        // The categories column: those with a channel of the kinds; with both kinds, every one, as before.
+        assertEquals(listOf("2"), repo.observeCategories(1, ChannelKinds.RADIO).first().map { it.categoryId })
+        assertEquals(listOf("1"), repo.observeCategories(1, ChannelKinds.TV).first().map { it.categoryId })
+        assertEquals(listOf("1", "2"), repo.observeCategories(1, ChannelKinds.ALL).first().map { it.categoryId })
+    }
+
+    @Test
+    fun `radio stations go in Live TV, in their own section, or nowhere`() {
+        assertEquals(ChannelKinds.ALL, ChannelKinds.of(radio = false, RadioMode.INCLUDE))
+        assertEquals(ChannelKinds.TV, ChannelKinds.of(radio = false, RadioMode.SECTION))
+        assertEquals(ChannelKinds.TV, ChannelKinds.of(radio = false, RadioMode.HIDE))
+        assertEquals(ChannelKinds.RADIO, ChannelKinds.of(radio = true, RadioMode.SECTION))
+        // Outside the sections (Home, Search, Catch-up): radio too, unless hidden.
+        assertEquals(ChannelKinds.ALL, ChannelKinds.shown(RadioMode.SECTION))
+        assertEquals(ChannelKinds.TV, ChannelKinds.shown(RadioMode.HIDE))
     }
 
     @Test

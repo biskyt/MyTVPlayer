@@ -24,6 +24,7 @@ import com.biskyt.mytvplayer.core.player.OverlayState
 import com.biskyt.mytvplayer.core.player.PlayerAction
 import com.biskyt.mytvplayer.core.player.RemoteKey
 import com.biskyt.mytvplayer.core.player.scrubTarget
+import com.biskyt.mytvplayer.data.ChannelKinds
 import com.biskyt.mytvplayer.data.Settings
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
 import com.biskyt.mytvplayer.player.PlaybackEngine
@@ -99,6 +100,9 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
         private set
 
     protected lateinit var settings: Settings
+
+    /** The kinds of channels shown outside their sections: radio stations too, unless hidden (see ChannelKinds). */
+    protected val shownKinds: ChannelKinds get() = if (::settings.isInitialized) ChannelKinds.shown(settings.radio) else ChannelKinds.ALL
 
     // The remote works from the start, with the usual skips, until the settings are read (the owner, 2026-11-23: Back
     // and the channel buttons while a stream is still loading).

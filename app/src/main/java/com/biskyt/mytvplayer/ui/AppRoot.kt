@@ -313,7 +313,7 @@ private fun ScreenBody(screen: Screen) {
     when (screen) {
         Screen.Welcome -> WelcomeScreen()
         Screen.Home -> HomeScreen()
-        is Screen.Live -> LiveScreen(screen.filter, screen.guide)
+        is Screen.Live -> LiveScreen(screen.filter, screen.guide, screen.radio)
         is Screen.Movies -> VodBrowseScreen(CAT_MOVIE, screen.filter)
         is Screen.Series -> VodBrowseScreen(CAT_SERIES, screen.filter)
         is Screen.MovieDetails -> MovieDetailsScreen(screen)

@@ -8,6 +8,7 @@
 
     <string name="common_tab_home">Inicio</string>
     <string name="common_tab_live">TV en vivo</string>
+    <string name="common_tab_radio">Radio</string>
     <string name="common_tab_movies">Películas</string>
     <string name="common_tab_series">Series</string>
     <string name="common_catchup">Diferido</string>

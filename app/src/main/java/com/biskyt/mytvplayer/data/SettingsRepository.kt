@@ -20,6 +20,12 @@ import kotlinx.serialization.Serializable
 
 enum class BufferSize { SMALL, NORMAL, LARGE }
 
+/**
+ * Where radio stations go (the owner, 2026-11-23): in Live TV, as before (the default); in a Radio section of their
+ * own, and out of Live TV; or out of Live TV, with no Radio section.
+ */
+enum class RadioMode { INCLUDE, SECTION, HIDE }
+
 enum class StreamFormat { TS, HLS }
 
 /** Serializable for backups (see BackupRepository). */
@@ -41,6 +47,7 @@ data class Settings(
     val startOnLastChannel: Boolean = false,
     /** Up and down on the remote change channel while watching (else only the channel buttons do). */
     val zapWithUpDown: Boolean = false,
+    val radio: RadioMode = RadioMode.INCLUDE,
     val lastChannelId: Long = 0,
     val accent: Int = AccentPalette.DEFAULT,
     val largeText: Boolean = false,
@@ -82,6 +89,7 @@ class SettingsRepository(private val context: Context) {
         val subtitleMode = stringPreferencesKey("subtitle_mode")
         val subtitleLang = stringPreferencesKey("subtitle_lang")
         val buffer = stringPreferencesKey("buffer")
+        val radio = stringPreferencesKey("radio")
         val format = stringPreferencesKey("stream_format")
         val startLast = booleanPreferencesKey("start_last")
         val zapUpDown = booleanPreferencesKey("zap_up_down")
@@ -146,6 +154,7 @@ class SettingsRepository(private val context: Context) {
             subtitleMode = enumOr(this[K.subtitleMode], d.subtitleMode),
             subtitleLanguage = valueOr(K.subtitleLang, d.subtitleLanguage),
             bufferSize = enumOr(this[K.buffer], d.bufferSize),
+            radio = enumOr(this[K.radio], d.radio),
             streamFormat = enumOr(this[K.format], d.streamFormat),
             startOnLastChannel = valueOr(K.startLast, d.startOnLastChannel),
             zapWithUpDown = valueOr(K.zapUpDown, d.zapWithUpDown),
@@ -181,6 +190,7 @@ class SettingsRepository(private val context: Context) {
             prefs[K.subtitleMode] = s.subtitleMode.name
             prefs[K.subtitleLang] = s.subtitleLanguage
             prefs[K.buffer] = s.bufferSize.name
+            prefs[K.radio] = s.radio.name
             prefs[K.format] = s.streamFormat.name
             prefs[K.startLast] = s.startOnLastChannel
             prefs[K.zapUpDown] = s.zapWithUpDown

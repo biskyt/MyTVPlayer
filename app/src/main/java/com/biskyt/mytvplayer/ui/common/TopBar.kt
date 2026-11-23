@@ -64,6 +64,8 @@ import com.biskyt.mytvplayer.container
 import com.biskyt.mytvplayer.core.net.ProxyCheck
 import com.biskyt.mytvplayer.core.net.PublicIp
 import com.biskyt.mytvplayer.data.ChannelFilter
+import com.biskyt.mytvplayer.data.ChannelKinds
+import com.biskyt.mytvplayer.data.RadioMode
 import com.biskyt.mytvplayer.data.Settings
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
@@ -76,6 +78,9 @@ import kotlinx.coroutines.flow.flowOf
 enum class Tab(@param:StringRes val label: Int) {
     HOME(R.string.common_tab_home),
     LIVE(R.string.common_tab_live),
+
+    /** With the setting Radio stations on Radio section (see RadioMode). */
+    RADIO(R.string.common_tab_radio),
     SERIES(R.string.common_tab_series),
     MOVIES(R.string.common_tab_movies),
     CATCHUP(R.string.common_catchup)
@@ -95,9 +100,11 @@ fun TopBar(selected: Tab?) {
     val settings by remember { container.settings.settings }.collectAsState(initial = null)
     val active = remember { container.playlists.observeActive() }.collectAsState(initial = null).value
 
-    // Catch-up only for playlists that have some.
-    val hasCatchup by remember(active?.id) { active?.let { container.channels.observeHasCatchup(it.id) } ?: flowOf(false) }
+    // Catch-up only for playlists that have some; Radio only with its own section (see RadioMode).
+    val kinds = ChannelKinds.shown(settings?.radio)
+    val hasCatchup by remember(active?.id, kinds) { active?.let { container.channels.observeHasCatchup(it.id, kinds) } ?: flowOf(false) }
         .collectAsState(initial = false)
+    val radioSection = settings?.radio == RadioMode.SECTION
     val screen = LocalScreenFocus.current
     Row(
         // The board's 40 and 22, less the room each item keeps around its text for its focus fill.
@@ -107,12 +114,13 @@ fun TopBar(selected: Tab?) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(BAR_GAP)
     ) {
-        Tab.entries.filter { it != Tab.CATCHUP || hasCatchup }.forEach { tab ->
+        Tab.entries.filter { (it != Tab.CATCHUP || hasCatchup) && (it != Tab.RADIO || radioSection) }.forEach { tab ->
             BarItem({
                 nav.reset(
                     when (tab) {
                         Tab.HOME -> Screen.Home
                         Tab.LIVE -> Screen.Live()
+                        Tab.RADIO -> Screen.Live(radio = true)
                         Tab.MOVIES -> Screen.Movies()
                         Tab.SERIES -> Screen.Series()
                         Tab.CATCHUP -> Screen.Live(ChannelFilter.Catchup)

@@ -53,6 +53,11 @@
     <string name="settings_start_last_help">Open the app straight into the channel you watched last</string>
     <string name="settings_zap_up_down">Change channel with up and down</string>
     <string name="settings_zap_up_down_help">Otherwise only the channel buttons do, and up or down shows the controls</string>
+    <string name="settings_radio">Radio stations</string>
+    <string name="settings_radio_help">Where the stations your provider marks as radio go. Radio section shows them in a section of their own, out of Live TV. Hidden leaves them out.</string>
+    <string name="settings_radio_include">In Live TV</string>
+    <string name="settings_radio_section">Radio section</string>
+    <string name="settings_radio_hide">Hidden</string>
 
     <!-- Appearance -->
     <string name="settings_accent">Accent colour</string>

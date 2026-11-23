@@ -41,6 +41,7 @@ import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.container
 import com.biskyt.mytvplayer.core.xtream.EpisodeInfo
 import com.biskyt.mytvplayer.data.ChannelFilter
+import com.biskyt.mytvplayer.data.ChannelKinds
 import com.biskyt.mytvplayer.data.db.CAT_LIVE
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
@@ -99,10 +100,12 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -119,14 +122,18 @@ class HomeViewModel(private val c: AppContainer) : ViewModel() {
     private val activePlaylist = c.settings.activePlaylistId
     val playlistId = activePlaylist.stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
 
+    /** The playlist, and the kinds of channels shown: radio stations too, unless they are hidden (see ChannelKinds). */
+    private val channelLists =
+        combine(activePlaylist, c.settings.settings.map { ChannelKinds.shown(it.radio) }.distinctUntilChanged(), ::Pair)
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    val favourites = activePlaylist.flatMapLatest {
-        c.channels.observeFavourites(it, CHANNEL_ROW_LIMIT)
+    val favourites = channelLists.flatMapLatest { (pid, kinds) ->
+        c.channels.observeFavourites(pid, CHANNEL_ROW_LIMIT, kinds)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val recent = activePlaylist.flatMapLatest {
-        c.channels.observeRecent(it, CHANNEL_ROW_LIMIT)
+    val recent = channelLists.flatMapLatest { (pid, kinds) ->
+        c.channels.observeRecent(pid, CHANNEL_ROW_LIMIT, kinds)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** The first favourite series and movies, by type ([VOD_TYPES]). */

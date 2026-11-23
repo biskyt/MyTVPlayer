@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.data.ChannelFilter
+import com.biskyt.mytvplayer.data.ChannelKinds
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.ui.common.cycle
 import kotlinx.coroutines.CoroutineScope
@@ -20,7 +21,9 @@ class ChannelGuide(
     private val scope: CoroutineScope,
     private val c: AppContainer,
     private val playlistId: Long,
-    private val filter: ChannelFilter
+    private val filter: ChannelFilter,
+    /** The kinds of channels in the list (see ChannelKinds), read once the player has its settings. */
+    private val kinds: () -> ChannelKinds,
 ) {
     /** The channel the panel shows. */
     var channel by mutableStateOf<ChannelEntity?>(null)
@@ -37,7 +40,7 @@ class ChannelGuide(
 
     /** Reads the list (after the first picture: it is not worth holding that up for). */
     suspend fun load() {
-        ids = c.channels.ids(playlistId, filter)
+        ids = c.channels.ids(playlistId, filter, kinds())
     }
 
     /** Shows [ch] in the panel. */

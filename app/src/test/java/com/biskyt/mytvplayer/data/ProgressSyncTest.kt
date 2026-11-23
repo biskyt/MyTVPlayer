@@ -262,7 +262,7 @@ class ProgressSyncTest {
         b.sync()
         assertEquals(listOf(101L), b.favourites())
         assertEquals(listOf(501L), b.db.backup().vodFavourites().map { it.itemId })
-        assertEquals(listOf(102L), b.db.channels().idsRecent(b.pid))
+        assertEquals(listOf(102L), b.db.channels().idsRecent(b.pid, ChannelKinds.ALL.values))
         assertTrue(b.db.channels().get(b.pid, 102)!!.hidden)
 
         b.now = NOW + 2_000

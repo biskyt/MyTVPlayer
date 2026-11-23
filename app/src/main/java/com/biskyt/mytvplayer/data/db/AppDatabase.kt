@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.biskyt.mytvplayer.core.epg.CategoryLanguageDetector
 
 @Database(
-    version = 14,
+    version = 15,
     exportSchema = true,
     // 2: M3U playlists (playlist.kind; channel.streamUrl/userAgent/referrer).
     // 3: movies and series (category.type; movie, series, watch_progress, vod_favourite).
@@ -26,6 +26,7 @@ import com.biskyt.mytvplayer.core.epg.CategoryLanguageDetector
     // 11: progress this TV forgot, for the sync between TVs (sync_tombstone).
     // 12: a proxy for each playlist (playlist.proxyType, proxyHost, proxyPort, proxyUsername, proxyPassword).
     // 13: the user's choices, with when each last changed, for the sync between TVs (sync_choice).
+    // 15: radio stations (channel.radio).
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -38,7 +39,8 @@ import com.biskyt.mytvplayer.core.epg.CategoryLanguageDetector
         AutoMigration(from = 10, to = 11),
         AutoMigration(from = 11, to = 12),
         AutoMigration(from = 12, to = 13),
-        AutoMigration(from = 13, to = 14)
+        AutoMigration(from = 13, to = 14),
+        AutoMigration(from = 14, to = 15)
     ],
     entities = [
         PlaylistEntity::class, CategoryEntity::class, ChannelEntity::class, FavouriteEntity::class, RecentEntity::class,

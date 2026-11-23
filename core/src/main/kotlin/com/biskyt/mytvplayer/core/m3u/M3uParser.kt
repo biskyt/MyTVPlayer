@@ -16,6 +16,8 @@ data class M3uEntry(
     val catchup: String? = null,
     val catchupDays: Int? = null,
     val catchupSource: String? = null,
+    /** A radio station: `radio="true"`, as Kodi's playlists mark one. */
+    val radio: Boolean = false,
     /**
      * The open M3U VOD convention (FORMAT.md in biskyt/legalFreeIPTVplaylist): `tvg-type` (`movie`, `series` or
      * `live`, lower-cased), and for an episode its `series-name`, `season` and `episode`; `year` for either.
@@ -138,6 +140,7 @@ object M3uParser {
             // Some playlists give the days as tvg-rec or timeshift.
             catchupDays = (attrs["catchup-days"] ?: attrs["tvg-rec"] ?: attrs["timeshift"])?.trim()?.toIntOrNull(),
             catchupSource = attrs["catchup-source"]?.ifEmpty { null },
+            radio = attrs["radio"].equals("true", ignoreCase = true),
             type = attrs["tvg-type"]?.lowercase()?.ifEmpty { null },
             seriesName = attrs["series-name"]?.ifEmpty { null },
             season = attrs["season"]?.toIntOrNull()?.takeIf { it > 0 },

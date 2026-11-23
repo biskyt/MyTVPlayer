@@ -47,6 +47,22 @@ class M3uParserTest {
     }
 
     @Test
+    fun `a radio station is marked as Kodi's playlists mark one`() = runBlocking {
+        val playlist = """
+            #EXTM3U
+            #EXTINF:-1 radio="true" group-title="Radio",Jazz FM
+            http://example.com/jazz.mp3
+            #EXTINF:-1 radio="false",News TV
+            http://example.com/news.m3u8
+            #EXTINF:-1,Sport TV
+            http://example.com/sport.m3u8
+        """.trimIndent()
+        val entries = mutableListOf<M3uEntry>()
+        M3uParser.parse(playlist.reader().buffered()) { entries += it }
+        assertEquals(listOf(true, false, false), entries.map { it.radio })
+    }
+
+    @Test
     fun `windows line endings are read the same`() = runBlocking {
         val entries = mutableListOf<M3uEntry>()
         val guides = M3uParser.parse(playlist.replace("\n", "\r\n").reader().buffered()) { entries += it }

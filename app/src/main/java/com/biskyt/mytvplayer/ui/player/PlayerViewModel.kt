@@ -9,9 +9,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
-import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.net.ProxySettings
-import com.biskyt.mytvplayer.core.player.OverlayState
 import com.biskyt.mytvplayer.core.xtream.XtreamClient
 import com.biskyt.mytvplayer.data.CatchupRepository
 import com.biskyt.mytvplayer.data.StreamFormat
@@ -19,12 +17,7 @@ import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
 import com.biskyt.mytvplayer.data.db.proxy
 import com.biskyt.mytvplayer.ui.Screen
-import com.biskyt.mytvplayer.ui.common.ItemAction
-import com.biskyt.mytvplayer.ui.common.NumberEntry
-import com.biskyt.mytvplayer.ui.common.channelActions
 import com.biskyt.mytvplayer.ui.common.cycle
-import com.biskyt.mytvplayer.ui.common.favouriteFlash
-import com.biskyt.mytvplayer.ui.common.guideNowNext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -34,29 +27,9 @@ import kotlinx.coroutines.launch
 
 /** Live TV: zapping through the list it was started from, number entry, now/next and the channel guide panel. */
 class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: Screen.Player) :
-    PlaybackViewModel(c, appContext),
-    GuidePlayer {
-    var channel by mutableStateOf<ChannelEntity?>(null)
-        private set
-
-    override val guide = ChannelGuide(viewModelScope, c, screen.playlistId, screen.filter)
-
+    ChannelPlayerViewModel(c, appContext, screen.playlistId, screen.filter, screen.kinds) {
     /** Channel previewed in the guide panel (may differ from the one playing). */
     val guideChannel: ChannelEntity? get() = guide.channel
-
-    override val isLive = true
-
-    /** The list being zapped through (kept when going to catch-up and back). */
-    val filter get() = screen.filter
-
-    /**
-     * Catch-up to switch to, as a channel and the moment to replay from (the screen opens it; the owner, 2026-11-22):
-     * set by skipping back on a channel with catch-up, or by a past programme in the channel guide panel.
-     */
-    var catchupFrom by mutableStateOf<CatchupStart?>(null)
-        private set
-
-    data class CatchupStart(val channel: ChannelEntity, val startMs: Long)
 
     /**
      * Live TV with catch-up is catch-up at the present (the owner, 2026-11-23): ◀ ▶ move along the play bar, as in
@@ -66,7 +39,7 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
     override fun scrubBounds(): Pair<LongRange, Long>? {
         val ch = channel ?: return null
         if (ch.archiveDays <= 0) return super.scrubBounds()
-        if (catchupFrom != null) return null // switching already
+        if (next != null) return null // switching already
         val now = System.currentTimeMillis()
         return now - ch.archiveDays * CatchupRepository.DAY_MS..now to now
     }
@@ -79,18 +52,13 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
         val ch = channel ?: return
         if (ch.archiveDays <= 0) return super.playFrom(ms)
         val now = System.currentTimeMillis()
-        if (ms < now) catchupFrom = CatchupStart(ch, minOf(ms, now - CatchupPlayerViewModel.LIVE_MARGIN_MS - NEWEST_MARGIN_MS))
+        if (ms < now) {
+            val start = minOf(ms, now - CatchupPlayerViewModel.LIVE_MARGIN_MS - NEWEST_MARGIN_MS)
+            goTo(catchupScreen(ch.streamId, start, switched = true))
+        }
     }
 
-    /** A past programme chosen in the channel guide panel: the channel shown there, replayed from its start. */
-    override fun watchFromGuide(startMs: Long) {
-        val ch = guideChannel ?: return
-        closeGuide()
-        catchupFrom = CatchupStart(ch, startMs)
-    }
     override val failureMessage = R.string.player_failure_live
-
-    val nowNext = guideNowNext(viewModelScope, c) { screen.playlistId }
 
     /** What's on now, with its description once read (for the controls and About); read again as the programme changes. */
     var nowDetails by mutableStateOf<ChannelProgramme?>(null)
@@ -120,19 +88,6 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
         p
     }
 
-    /** This playlist's favourite channels, for the More menu's "Add to / Remove from favourites". */
-    private var favouriteIds by mutableStateOf(emptySet<Long>())
-
-    override fun menuActions(): List<ItemAction> {
-        val ch = channel ?: return emptyList()
-        return channelActions(ch, ch.streamId in favouriteIds) { favourite ->
-            viewModelScope.launch {
-                c.channels.setFavourite(ch.playlistId, ch.streamId, favourite)
-                flash(favouriteFlash(favourite))
-            }
-        }
-    }
-
     private var client: XtreamClient? = null
 
     /** The playlist's proxy, for its streams too. */
@@ -153,7 +108,6 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
     private var targetStreamId: Long = screen.streamId
 
     init {
-        viewModelScope.launch { c.channels.observeFavouriteIds(screen.playlistId).collect { favouriteIds = it.toSet() } }
         viewModelScope.launch {
             startEngine()
             format = c.settings.streamFormatFor(screen.playlistId) ?: settings.streamFormat
@@ -165,14 +119,6 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
             guide.load()
         }
     }
-
-    /** Typed digits switch to that channel number. */
-    val numberEntry = NumberEntry(viewModelScope) { n ->
-        val ch = c.channels.byNumber(screen.playlistId, n)
-        if (ch != null) tuneTo(ch.streamId) else flash(appString(R.string.player_no_channel, n))
-    }
-
-    override fun typeDigit(digit: Int) = numberEntry.type(digit)
 
     /** Starts tuning to [streamId], cancelling any tune still in progress so the last request always wins. */
     private fun tuneTo(streamId: Long) {
@@ -236,24 +182,15 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
         playFrom(client, ch, format)
     }
 
-    override fun zap(step: Int) {
-        guide.next(targetStreamId, step)?.let(::tuneTo)
-    }
+    /** Zapping counts from the channel being tuned to, so that quick presses each count. */
+    override fun zapFrom() = targetStreamId
 
-    override fun openGuide() {
-        cancelAutoHide()
-        guide.show(channel)
-        overlay = OverlayState.GUIDE
+    override fun watch(streamId: Long) {
+        if (streamId != targetStreamId) tuneTo(streamId)
     }
 
     /** Moves the guide panel's preview to the previous/next channel without changing what is playing. */
     fun previewGuide(step: Int) = guide.step(step)
-
-    override fun watchGuideChannel() {
-        val target = guide.shownId ?: return
-        closeGuide()
-        if (target != targetStreamId) tuneTo(target)
-    }
 
     private companion object {
         const val WATCHED_AFTER_MS = 3_000L

@@ -12,6 +12,7 @@ import androidx.paging.cachedIn
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.core.epg.ProgrammeKind
 import com.biskyt.mytvplayer.data.ChannelFilter
+import com.biskyt.mytvplayer.data.ChannelKinds
 import com.biskyt.mytvplayer.data.db.CAT_LIVE
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
@@ -39,15 +40,21 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+/** What a list shows: the playlist, the list, what is typed, and the kinds of channels. */
+private data class ListQuery(val playlistId: Long, val filter: ChannelFilter, val query: String, val kinds: ChannelKinds)
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class LiveViewModel(
     private val c: AppContainer,
     initialFilter: ChannelFilter?,
     initialGuide: Boolean,
-    private val picked: PickedLists
+    private val picked: PickedLists,
+    /** The Radio section: Live TV's screens, with radio stations only (see RadioMode). */
+    val radio: Boolean = false,
 ) : ViewModel() {
     private val activePlaylist = c.settings.activePlaylistId
     val playlistId: StateFlow<Long> = activePlaylist.stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
@@ -55,12 +62,27 @@ class LiveViewModel(
     /** Opened from the Catch-up tab: the categories are those with catch-up channels, and OK opens past programmes. */
     val catchupMode = initialFilter?.isCatchup == true
 
+    /** The channels this section lists, TV, radio or both, as the setting Radio stations puts them (see ChannelKinds). */
+    private val kindsFlow: Flow<ChannelKinds> = c.settings.settings
+        .map { s -> if (catchupMode) ChannelKinds.shown(s.radio) else ChannelKinds.of(radio, s.radio) }
+        .distinctUntilChanged()
+    val kinds: StateFlow<ChannelKinds> =
+        kindsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, if (radio) ChannelKinds.RADIO else ChannelKinds.ALL)
+
     // Opens on the list asked for (e.g. Catch-up), else the one picked earlier while the app has been open, else
     // Favourites. A different list: the remembered channel may not be in it, so focus starts from the top.
     val filters =
-        CategoryFilter(viewModelScope, initialFilter ?: picked.live ?: ChannelFilter.Favourites, settled = initialFilter != null) { f ->
+        CategoryFilter(
+            viewModelScope,
+            initialFilter ?: (if (radio) picked.radio else picked.live) ?: ChannelFilter.Favourites,
+            settled = initialFilter != null
+        ) { f ->
             // Not Catch-up: the Live TV tab opens on live lists (Catch-up has its own tab).
-            if (!f.isCatchup) picked.live = f
+            if (radio) {
+                picked.radio = f
+            } else if (!f.isCatchup) {
+                picked.live = f
+            }
             focusStreamId = null
         }
     val filter = filters.value
@@ -83,12 +105,14 @@ class LiveViewModel(
     /** Shared by the list and the guide grid, so switching between them keeps the same channels on screen. */
     val listState = LazyListState()
 
-    val categories: StateFlow<List<CategoryEntity>> = activePlaylist.flatMapLatest { c.db.categories().observeIncluded(it, CAT_LIVE) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val categories: StateFlow<List<CategoryEntity>> =
+        combine(activePlaylist, kindsFlow, ::Pair).flatMapLatest { (pid, k) -> c.channels.observeCategories(pid, k) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** The categories with catch-up channels (the Catch-up tab's column). */
-    val catchupCategories: StateFlow<List<CategoryCount>> = activePlaylist.flatMapLatest { c.channels.observeCatchupCategories(it) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val catchupCategories: StateFlow<List<CategoryCount>> =
+        combine(activePlaylist, kindsFlow, ::Pair).flatMapLatest { (pid, k) -> c.channels.observeCatchupCategories(pid, k) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Hides a category (from its options in the column, which shows the one beside it); if still shown, All channels. */
     fun hideCategory(cat: CategoryEntity) = viewModelScope.launch {
@@ -96,16 +120,18 @@ class LiveViewModel(
         c.playlists.hideCategory(cat)
     }
 
-    val totalCount: StateFlow<Int?> = activePlaylist.flatMapLatest { c.channels.observeCount(it) }
+    val totalCount: StateFlow<Int?> = combine(activePlaylist, kindsFlow, ::Pair).flatMapLatest { (pid, k) ->
+        c.channels.observeCount(pid, k)
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Null until read. */
     val favouriteIds: StateFlow<Set<Long>?> = c.favourites.channels
 
     val channels: Flow<PagingData<ChannelEntity>> =
-        combine(activePlaylist, filter, query.debounce(250)) { pid, f, q -> Triple(pid, f, q) }
+        combine(activePlaylist, filter, query.debounce(250), kindsFlow) { pid, f, q, k -> ListQuery(pid, f, q, k) }
             .distinctUntilChanged()
-            .flatMapLatest { (pid, f, q) -> c.channels.page(pid, f, q) }
+            .flatMapLatest { c.channels.page(it.playlistId, it.filter, it.query, it.kinds) }
             .cachedIn(viewModelScope)
 
     val nowNext =
@@ -188,7 +214,7 @@ class LiveViewModel(
         // Unknown position (e.g. a channel picked by number): look it up, unless a search makes the list different.
         val index = focusIndex ?: run {
             if (query.value.isNotBlank()) return null
-            c.channels.ids(playlistId.value, filter.value).indexOf(id).takeIf { it >= 0 } ?: return null
+            c.channels.ids(playlistId.value, filter.value, kinds.value).indexOf(id).takeIf { it >= 0 } ?: return null
         }
         focusMoved(id, index)
         listState.reveal(index)
@@ -200,7 +226,7 @@ class LiveViewModel(
     var playNumber: (ChannelEntity) -> Unit = {}
 
     /** Digits typed on the remote jump straight to that channel number. */
-    val numberEntry = NumberEntry(viewModelScope) { n -> c.channels.byNumber(playlistId.value, n)?.let { playNumber(it) } }
+    val numberEntry = NumberEntry(viewModelScope) { n -> c.channels.byNumber(playlistId.value, n, kinds.value)?.let { playNumber(it) } }
 
     fun toggleFavourite(ch: ChannelEntity) = setFavourite(ch, ch.streamId !in favouriteIds.value.orEmpty())
 
