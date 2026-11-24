@@ -37,6 +37,9 @@ import com.biskyt.mytvplayer.data.db.CAT_SERIES
 import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import com.biskyt.mytvplayer.data.db.VOD_EPISODE
 import com.biskyt.mytvplayer.data.db.VOD_MOVIE
+import com.biskyt.mytvplayer.ui.common.Ambience
+import com.biskyt.mytvplayer.ui.common.AmbientBackground
+import com.biskyt.mytvplayer.ui.common.LocalAmbience
 import com.biskyt.mytvplayer.ui.common.LocalTopBarInset
 import com.biskyt.mytvplayer.ui.common.SyncToast
 import com.biskyt.mytvplayer.ui.common.Tab
@@ -145,13 +148,18 @@ fun AppRoot() {
             }
         }
         val hasPlaylist = s.activePlaylistId != 0L
+        // The browsing screens' background follows the card with focus (see AmbientBackground).
+        val ambience = remember { Ambience() }
         Box(
             Modifier.fillMaxSize().background(Palette.background)
                 // Clear of a phone's camera cutout (TVs have none).
                 .windowInsetsPadding(WindowInsets.displayCutout)
                 .guideButton(nav, hasPlaylist)
         ) {
-            NavHost(nav) { screen -> ScreenContent(screen, hasPlaylist) }
+            AmbientBackground(ambience, s.backdropLevel, shown = nav.current.screen.hasAmbience)
+            CompositionLocalProvider(LocalAmbience provides ambience) {
+                NavHost(nav) { screen -> ScreenContent(screen, hasPlaylist) }
+            }
             SyncToast(nav, Modifier.align(Alignment.BottomEnd).padding(24.dp))
         }
     }
@@ -298,6 +306,15 @@ private val Screen.drawsOwnTopBar: Boolean
         Screen.GuideSources,
         is Screen.GuideMatching, Screen.Backup, Screen.About, Screen.Licences -> false
     }
+
+/** The browsing screens, which have the background that follows the card with focus (see AmbientBackground). */
+private val Screen.hasAmbience: Boolean
+    get() = this == Screen.Home ||
+        this is Screen.Live ||
+        this is Screen.Movies ||
+        this is Screen.Series ||
+        this is Screen.Search ||
+        this is Screen.Catchup
 
 /** The tab a screen comes under in the top bar, if any. */
 private val Screen.tab: Tab?

@@ -13,6 +13,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
+import com.biskyt.mytvplayer.ui.common.AmbientSource
 import com.biskyt.mytvplayer.ui.common.OneLine
 import com.biskyt.mytvplayer.ui.common.Poster
 import com.biskyt.mytvplayer.ui.common.PosterTile
@@ -56,6 +57,7 @@ internal fun TitleCard(title: String, imageUrl: String?, line: String?, modifier
         modifier,
         listOfNotNull(title, line),
         width = POSTER,
+        ambient = AmbientSource.picture(imageUrl),
         // (Its initials, shown until the picture loads, are not read: the card's texts are.)
         poster = { Poster(imageUrl, title, POSTER, Modifier.clearAndSetSemantics {}) }
     ) { focused ->

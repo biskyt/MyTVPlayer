@@ -131,12 +131,21 @@ fun AndroidComposeTestRule<*, out ComponentActivity>.drawScreen(): Bitmap {
     return screen
 }
 
-/** On [screen] (see drawScreen), [node]'s middle row is [colour] at each of [xs] pixels from its left edge. */
-fun assertColourAcross(screen: Bitmap, node: SemanticsNode, xs: List<Int>, colour: Color) {
+/**
+ * On [screen] (see drawScreen), [node]'s middle row is [colour] at each of [xs] pixels from its left edge, within
+ * [tolerance] steps (of 255) in each channel: a see-through colour's blend can round a step either way.
+ */
+fun assertColourAcross(screen: Bitmap, node: SemanticsNode, xs: List<Int>, colour: Color, tolerance: Int = 0) {
     val middle = (node.positionInRoot.y + node.size.height / 2).toInt()
     xs.forEach { x ->
         val pixel = Color(screen.getPixel(node.positionInRoot.x.toInt() + x, middle))
-        assertEquals("pixel $x across", colour.toArgb(), pixel.toArgb())
+        if (tolerance == 0) {
+            assertEquals("pixel $x across", colour.toArgb(), pixel.toArgb())
+        } else {
+            listOf(pixel.red to colour.red, pixel.green to colour.green, pixel.blue to colour.blue).forEach { (got, want) ->
+                assertEquals("pixel $x across: $pixel, not $colour", want, got, tolerance / 255f)
+            }
+        }
     }
 }
 
