@@ -94,6 +94,7 @@ fun SettingsPage(title: String, content: LazyListScope.() -> Unit) {
 fun SettingsScreen() {
     val nav = LocalNavigator.current
     val pid = LocalContext.current.container.settings.settings.collectAsState(initial = null).value?.activePlaylistId ?: 0
+    AskToShowLauncherRows()
     SettingsPage(stringResource(R.string.common_settings)) {
         item {
             SettingRow(
@@ -129,8 +130,11 @@ fun SettingsScreen() {
                 nav.push(Screen.Appearance)
             })
         }
-        item { LauncherRow() }
-        item { NetworkWarningRows() }
+        item {
+            SettingRow(stringResource(R.string.settings_misc_title), stringResource(R.string.settings_misc_help), {
+                nav.push(Screen.MiscSettings)
+            })
+        }
         item { TmdbRow() }
         item { ParentalControlsRow() }
         item { SyncRow() }
@@ -147,16 +151,21 @@ fun SettingsScreen() {
     }
 }
 
+/** Whether the app runs on a TV: only there can its rows show on the home screen. */
+@Composable
+private fun onTv(): Boolean {
+    val context = LocalContext.current
+    return remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
+}
+
 /**
- * "Show on the TV's home screen" (see LauncherSync), off by default: only on a TV. Turned on, the TV is asked to show each
- * of the app's rows there, the first time it is made (the TV can ask the user).
+ * Asks the TV to show each of the app's rows on its home screen, the first time it is made (the TV can ask the user).
+ * Both the main settings list and the Misc page do this, because a row can be made after the user leaves Misc.
  */
 @Composable
-private fun LauncherRow() {
+private fun AskToShowLauncherRows() {
+    if (!onTv()) return
     val context = LocalContext.current
-    if (!remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }) return
-    val vm = appViewModel { SettingsViewModel(it) }
-    val s = vm.settings.collectAsState().value ?: return
     val activity = LocalActivity.current
     LaunchedEffect(activity) {
         activity ?: return@LaunchedEffect // (kept for later: no activity to ask from)
@@ -167,6 +176,14 @@ private fun LauncherRow() {
             made.update { it - ids } // (after asking: kept if Settings closes first; not those made meanwhile)
         }
     }
+}
+
+/** "Show on the TV's home screen" (see LauncherSync), off by default: only on a TV. */
+@Composable
+private fun LauncherRow() {
+    if (!onTv()) return
+    val vm = appViewModel { SettingsViewModel(it) }
+    val s = vm.settings.collectAsState().value ?: return
     SettingRow(stringResource(R.string.settings_launcher), stringResource(R.string.settings_launcher_help), {
         vm.update { it.copy(launcherRows = !it.launcherRows) }
     }) { Toggle(s.launcherRows) }
@@ -296,6 +313,19 @@ fun PlaybackSettingsScreen() {
                 Toggle(s.zapWithUpDown)
             }
         }
+    }
+}
+
+/**
+ * Misc settings (the owner, 2026-11-24): where radio stations go, downloads, the TV's home screen and the network
+ * warnings.
+ */
+@Composable
+fun MiscSettingsScreen() {
+    val vm = appViewModel { SettingsViewModel(it) }
+    val s = vm.settings.collectAsState().value ?: return
+    AskToShowLauncherRows()
+    SettingsPage(stringResource(R.string.settings_misc_title)) {
         item {
             // Where radio stations go (the owner, 2026-11-23): in Live TV, a Radio section of their own, or hidden.
             val label = when (s.radio) {
@@ -307,10 +337,13 @@ fun PlaybackSettingsScreen() {
                 stringResource(R.string.settings_radio),
                 stringResource(R.string.settings_radio_help),
                 stringResource(label),
-                { d -> vm.update { it.copy(radio = RadioMode.entries.cycle(it.radio, d)) } }
+                { d -> vm.update { it.copy(radio = RadioMode.entries.cycle(it.radio, d)) } },
+                rememberFirstFocus(once = true)
             )
         }
         item { DownloadsRow(s.downloads) { on -> vm.update { it.copy(downloads = on) } } }
+        item { LauncherRow() }
+        item { NetworkWarningRows() }
     }
 }
 

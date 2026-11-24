@@ -51,6 +51,7 @@ import com.biskyt.mytvplayer.ui.search.SearchScreen
 import com.biskyt.mytvplayer.ui.settings.AppearanceScreen
 import com.biskyt.mytvplayer.ui.settings.BackupScreen
 import com.biskyt.mytvplayer.ui.settings.CategoriesScreen
+import com.biskyt.mytvplayer.ui.settings.MiscSettingsScreen
 import com.biskyt.mytvplayer.ui.settings.PlaybackSettingsScreen
 import com.biskyt.mytvplayer.ui.settings.PlaylistsScreen
 import com.biskyt.mytvplayer.ui.settings.SettingsScreen
@@ -126,6 +127,7 @@ class AppUiTest {
             is Screen.Live -> LiveScreen(screen.filter, screen.guide)
             is Screen.GuideMatching -> GuideMatchingScreen(screen.playlistId, screen.streamId)
             Screen.PlaybackSettings -> PlaybackSettingsScreen()
+            Screen.MiscSettings -> MiscSettingsScreen()
             Screen.Appearance -> AppearanceScreen()
             Screen.Backup -> BackupScreen()
             Screen.Welcome -> WelcomeScreen()
