@@ -12,6 +12,9 @@ on:
 
 permissions:
   contents: write
+  # To find the commit's pull request and read its CI results (see "Pull request CI passed").
+  pull-requests: read
+  checks: read
 
 # One release at a time (a tag push and a hand-started run could otherwise both publish and upload to Play).
 concurrency:
@@ -64,6 +67,27 @@ jobs:
             *) fail "Couldn't check for an existing release (HTTP $release)" ;;
           esac
 
+      # The checks and tests ran on the pull request (CI and the emulator runs) on this same code, so they do not run
+      # again here (the owner, 2026-11-24, as MyTVLauncher). This step makes sure they passed: the commit's pull request
+      # must have every check run green (or skipped). A commit with no pull request is refused.
+      - name: Pull request CI passed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          fail() { echo "::error::$1"; exit 1; }
+          # The pull request merged as this very commit (a merge commit is in one pull request only).
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+            --jq '[.[] | select(.merged_at != null and .merge_commit_sha == env.GITHUB_SHA)][0].head.sha // empty') \
+            || fail "Couldn't find the pull request of $GITHUB_SHA"
+          [ -n "$head" ] || fail "$GITHUB_SHA came from no merged pull request, so no CI ran on it. Release from a merged pull request."
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$head/check-runs?per_page=100" \
+            --jq '.check_runs[] | "\(.name)=\(.status)/\(.conclusion)"') || fail "Couldn't read the check runs of $head"
+          echo "$runs"
+          # CI itself must be there and green: other runs (the emulators) alone are not enough.
+          echo "$runs" | grep -qx 'build=completed/success' || fail "CI (build) did not pass on the pull request's head $head"
+          bad=$(echo "$runs" | grep -v -E '=completed/(success|skipped|neutral)$' || true)
+          [ -z "$bad" ] || fail "The pull request's checks did not all pass: $bad"
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -71,9 +95,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
-      # Robolectric's Android images (about 250 MB), outside Gradle's cache. Saved here, on main, after the tests when
-      # they were not cached yet: CI runs on pull requests only, which read caches from main. setup-gradle saves
-      # Gradle's own cache from main too.
+      # Robolectric's Android images (about 250 MB), outside Gradle's cache. Saved here, on main, when they were not
+      # cached yet: CI runs on pull requests only, which read caches from main. setup-gradle saves Gradle's own cache
+      # from main too. The tests no longer run here, so when the cache is missing (a new Robolectric version or SDK
+      # level), a few small tests fetch the images for it.
       - name: Robolectric cache key
         id: robolectric
         run: echo "key=$(.github/scripts/robolectric-cache-key.sh)" >> "$GITHUB_OUTPUT"
@@ -109,23 +134,13 @@ jobs:
             echo "SIGNED_WITH=development" >> "$GITHUB_ENV"
           fi
 
-      # Separate steps, as in CI: run together (org.gradle.parallel), lint takes the CPU the UI tests' waits need.
-      - name: Check
-        run: ./gradlew ktlintCheck detekt lintDebug
-
-      - name: Test
-        id: test
-        run: ./gradlew :core:test :app:testDebugUnitTest
-
-      # A failed test's results and reports (with any thread dump), kept to find its cause (MyPlexPlayer's review).
-      - uses: actions/upload-artifact@v6
-        if: failure() && steps.test.outcome == 'failure'
-        with:
-          name: test-results
-          retention-days: 14
-          path: |
-            **/build/test-results/
-            **/build/reports/tests/
+      # One small test for each SDK level in the cache key (robolectric-cache-key.sh: the tests' @Config(sdk = ...)):
+      # BackupFileTest 28, AllAudioChannelsTest 30 and 31, CastPanelUiTest 34. A test with a new level needs one here.
+      - name: Fill the Robolectric cache
+        if: github.ref == 'refs/heads/main' && steps.robolectric-cache.outputs.cache-hit != 'true'
+        run: >-
+          ./gradlew :app:testDebugUnitTest --tests '*BackupFileTest*' --tests '*AllAudioChannelsTest*'
+          --tests '*CastPanelUiTest*'
 
       # From main only: a run from a tag push would save it under the tag, where pull requests cannot read it.
       - uses: actions/cache/save@v5

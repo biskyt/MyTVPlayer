@@ -1,7 +1,8 @@
 name: CI
 
 # Pull requests only (the owner, 2026-11-24): a merge to main repeats what its PR checked. Also by hand from the
-# Actions tab. The release workflow, which runs on main after each merge, keeps the caches that the PR runs read.
+# Actions tab. The release workflow does not test again (the owner, 2026-11-24): it checks that its PR's runs passed.
+# It runs on main after each merge, and keeps the caches that the PR runs read.
 on:
   pull_request:
   workflow_dispatch:
