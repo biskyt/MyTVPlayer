@@ -83,6 +83,7 @@
     <string name="player_about_programme">Sobre este programa</string>
     <string name="player_description">Descrição do episódio</string>
     <string name="player_stream_info">Informações do stream</string>
+    <string name="player_playback_heading">Reprodução</string>
     <string name="player_info_address">Endereço: %1$s</string>
     <string name="player_info_video">Vídeo: %1$s</string>
     <string name="player_info_audio">Faixa de áudio: %1$s</string>

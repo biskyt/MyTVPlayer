@@ -18,6 +18,7 @@ import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.vod.DownloadNames
 import com.biskyt.mytvplayer.core.xtream.EpisodeInfo
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
+import com.biskyt.mytvplayer.data.db.PlaylistEntity
 import com.biskyt.mytvplayer.data.db.proxy
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
@@ -53,13 +54,24 @@ sealed interface TitlePanel {
 
 /**
  * The film's or series' TMDB title for playlist [playlistId] ([type] CAT_MOVIE or CAT_SERIES, [id] its stream or
- * series id), found by its name as its page finds it; null without a TMDB key, or when TMDB has no match.
+ * series id), found as its page finds it: by the TMDB id in the provider's details, else by its name. Null without a
+ * TMDB key, or when TMDB has no match. The details are the provider's that the page reads too (kept for a while).
  */
-suspend fun AppContainer.tmdbFor(playlistId: Long, type: String, id: Long): TmdbTitle? = if (type == CAT_MOVIE) {
-    vod.movie(playlistId, id)?.let { tmdb.movie(it.title, null) }
-} else {
-    vod.series(playlistId, id)?.let { tmdb.series(it.title, null) }
+suspend fun AppContainer.tmdbFor(playlistId: Long, type: String, id: Long): TmdbTitle? {
+    val p = playlists.get(playlistId)
+    suspend fun <T> details(read: suspend (PlaylistEntity) -> T): T? = p?.let { runCatching { read(it) }.getOrNull() }
+    return if (type == CAT_MOVIE) {
+        vod.movie(playlistId, id)?.let { tmdb.movie(it.title, details { pl -> vod.movieDetails(pl, id) }) }
+    } else {
+        vod.series(playlistId, id)?.let { tmdb.series(it.title, details { pl -> vod.seriesDetails(pl, id) }?.info) }
+    }
 }
+
+/**
+ * Episode [e] of [show] as its description tells of it, the same everywhere (the series page, the player, Home): with
+ * TMDB's plot, picture and date where the provider gave none, and TMDB's episode [t] for its score and people.
+ */
+fun describedEpisode(show: String?, e: EpisodeInfo, t: TmdbEpisode?) = DescribedEpisode(show, e.filledFrom(t), t)
 
 /** [tmdbFor], read once for a panel: null until it is known (the panel's other options show at once). */
 @Composable

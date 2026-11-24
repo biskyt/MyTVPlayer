@@ -1,6 +1,5 @@
 package com.biskyt.mytvplayer.player
 
-import android.media.MediaFormat
 import android.os.Build
 import androidx.annotation.OptIn
 import androidx.media3.common.MimeTypes
@@ -17,7 +16,7 @@ fun allAudioChannels(plain: MediaCodecAdapter.Factory) = MediaCodecAdapter.Facto
     if (Build.VERSION.SDK_INT < MEDIA3_ASKS && MimeTypes.isAudio(configuration.codecInfo.mimeType)) {
         configuration.mediaFormat.setInteger(MAX_OUTPUT_CHANNELS, ANY_CHANNELS)
         // The older AAC-only form of the same request (Android 9 and later).
-        configuration.mediaFormat.setInteger(MediaFormat.KEY_AAC_MAX_OUTPUT_CHANNEL_COUNT, AAC_MAX_CHANNELS)
+        configuration.mediaFormat.setInteger(AAC_MAX_OUTPUT_CHANNELS, AAC_MAX_CHANNELS)
     }
     plain.createAdapter(configuration)
 }
@@ -27,6 +26,12 @@ private const val MEDIA3_ASKS = 32
 
 /** MediaFormat.KEY_MAX_OUTPUT_CHANNEL_COUNT (API 32). A decoder from before ignores a key that it does not know. */
 private const val MAX_OUTPUT_CHANNELS = "max-output-channel-count"
+
+/**
+ * MediaFormat.KEY_AAC_MAX_OUTPUT_CHANNEL_COUNT, by its value: Android deprecates the name in favour of the key above,
+ * which these older versions do not have.
+ */
+internal const val AAC_MAX_OUTPUT_CHANNELS = "aac-max-output-channel_count"
 
 /** As Media3 sets it: as many as the track has. */
 private const val ANY_CHANNELS = 99

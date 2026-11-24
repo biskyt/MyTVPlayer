@@ -97,7 +97,6 @@ import com.biskyt.mytvplayer.ui.common.rememberTrailerOpener
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.common.shortEpisodeLabel
 import com.biskyt.mytvplayer.ui.common.timeLeft
-import com.biskyt.mytvplayer.ui.player.DescribedEpisode
 import com.biskyt.mytvplayer.ui.player.EpisodeDescriptionPanel
 import com.biskyt.mytvplayer.ui.player.episodeDescriptionAction
 import com.biskyt.mytvplayer.ui.player.episodeName
@@ -369,7 +368,7 @@ private fun SeriesPanels(
         }
         SeriesPanel.About -> tmdb?.let { AboutPanel(film = false, it, close) }
         SeriesPanel.Trailers -> TrailersPanel(title, vm.info.trailers, close)
-        is SeriesPanel.Describe -> EpisodeDescriptionPanel(DescribedEpisode(title, now(p.e), vm.tmdbEpisode(p.e)), close)
+        is SeriesPanel.Describe -> EpisodeDescriptionPanel(describedEpisode(title, now(p.e), vm.tmdbEpisode(p.e)), close)
         is SeriesPanel.EpisodeCast -> EpisodeCastPanel(
             vm.playlistId,
             episodeName(p.e, title),
@@ -479,7 +478,7 @@ private fun EpisodeOptions(
     val credits = rememberEpisodeCredits(c, vm.tmdb, e.season, e.number)
     // One partly watched can be counted as watched, or started again (its progress forgotten).
     val episode = listOfNotNull(
-        episodeDescriptionAction(DescribedEpisode(vm.series?.title, e, vm.tmdbEpisode(e))) { vm.open = SeriesPanel.Describe(e) },
+        episodeDescriptionAction(describedEpisode(vm.series?.title, e, vm.tmdbEpisode(e))) { vm.open = SeriesPanel.Describe(e) },
         episodeCastAction(credits) {
             vm.castFocus = 0
             vm.open = credits?.let { SeriesPanel.EpisodeCast(e, it) }

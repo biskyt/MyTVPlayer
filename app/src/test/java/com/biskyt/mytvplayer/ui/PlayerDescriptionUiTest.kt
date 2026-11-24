@@ -108,6 +108,23 @@ class PlayerDescriptionUiTest {
     }
 
     @Test
+    fun `the player finds the show on TMDB as the series page does, by the provider's TMDB id`() {
+        // The owner, 2026-11-24: the series page's description had TMDB's plot and people, the player's its date only.
+        provider.seriesInfo = { FakeProvider().seriesInfo(it).replaceFirst(""""info":{""", """"info":{"tmdb_id":"31917",""") }
+        tmdb.use(app.container)
+        tmdb.searchFindsNothing = true
+        val vm = play(9002) // no plot from the provider: TMDB's
+        // The show's options from TMDB come with it (the owner, 2026-11-24: missing in 1.35.0 too).
+        compose.waitAdvancingClock { vm.menuActions().any { it.label == "Links" } }
+        assertTrue(vm.menuActions().any { it.label == "More like this" })
+        vm.sheet = PlaybackViewModel.Sheet.MORE
+        compose.waitForText("PLAYBACK") // the player's own options, under their own heading
+        compose.waitForText("Episode description")
+        compose.onAllNodes(hasText("Episode description"))[0].performClick()
+        compose.waitForText("TMDB's second.")
+    }
+
+    @Test
     fun `an episode with only a date has the item too`() {
         val vm = play(9003)
         assertTrue(vm.menuActions().any { it.label == "Episode description" })
