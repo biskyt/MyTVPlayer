@@ -17,10 +17,13 @@ import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.settle
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.testutil.waitForText
+import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
+import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -92,21 +95,26 @@ class TmdbFilmUiTest {
     }
 
     @Test
-    fun `with a TMDB key, More lists the favourite, Cast and crew, About and the links`() {
+    fun `with a TMDB key, More lists the favourite, Cast and crew and the links, with no About`() {
         tmdb.use(app.container)
         open()
         compose.waitForText("Trailer")
         click("More…")
         compose.waitForText("Add to favourites")
         compose.waitForText("Cast and crew")
-        compose.waitForText("About this film")
         compose.waitForText("Links")
+        assertFalse(shown("About this film"))
         compose.waitAdvancingClock { compose.onAllNodes(hasContentDescription("IMDb")).fetchSemanticsNodes().isNotEmpty() }
         assertEquals(1, compose.onAllNodes(hasContentDescription("TMDB") and hasClickAction()).fetchSemanticsNodes().size)
-        click("About this film")
-        compose.waitForText("Dune: Part One")
-        compose.waitForText("Legendary Pictures")
-        compose.waitForText("Science Fiction, Adventure")
+    }
+
+    @Test
+    fun `with a TMDB key, the page shows the original title and the release date`() {
+        tmdb.use(app.container)
+        open()
+        compose.waitForText("Original title: Dune: Part One")
+        // In place of the year: "15 Sept 2021 · …".
+        compose.waitAdvancingClock { shown(formatDate(LocalDate.of(2021, 9, 15)), substring = true) }
     }
 
     @Test

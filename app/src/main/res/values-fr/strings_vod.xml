@@ -42,14 +42,13 @@
     <string name="vod_the_show">La série</string>
     <string name="vod_links">Liens</string>
     <string name="vod_original_title">Titre original</string>
+    <string name="vod_original_title_is">Titre original : %1$s</string>
     <string name="vod_released">Sortie</string>
     <string name="vod_studio">Studio</string>
     <string name="vod_countries">Pays</string>
     <string name="vod_genres">Genres</string>
     <string name="vod_cast_crew">Distribution et équipe</string>
     <string name="vod_cast_crew_help">Tout le monde, avec leurs photos</string>
-    <string name="vod_about_this_film">À propos de ce film</string>
-    <string name="vod_about_film_help">Titre original, sortie, studio, genres</string>
     <string name="vod_about_this_show">À propos de cette série</string>
     <string name="vod_role_director">Réalisation</string>
     <string name="vod_role_writer">Scénario</string>

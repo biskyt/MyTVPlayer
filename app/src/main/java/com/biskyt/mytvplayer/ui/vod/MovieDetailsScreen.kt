@@ -55,6 +55,7 @@ import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TrailersPanel
 import com.biskyt.mytvplayer.ui.common.cardColor
 import com.biskyt.mytvplayer.ui.common.favouriteAction
+import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.common.formatRuntime
 import com.biskyt.mytvplayer.ui.common.onOptionsKey
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
@@ -116,7 +117,7 @@ class MovieDetailsViewModel(private val c: AppContainer, val playlistId: Long, p
 }
 
 /** The panels over the film page. */
-private enum class FilmPanel { NONE, MORE, CAST, ABOUT, TRAILERS }
+private enum class FilmPanel { NONE, MORE, CAST, TRAILERS }
 
 @Composable
 fun MovieDetailsScreen(screen: Screen.MovieDetails) {
@@ -186,8 +187,7 @@ private fun FilmPanels(
                 playTrailer,
                 otherTrailers = { show(FilmPanel.TRAILERS) },
                 showCast = { show(FilmPanel.CAST) },
-                showSimilar = moreLike,
-                showAbout = { show(FilmPanel.ABOUT) }
+                showSimilar = moreLike
             )
             ItemActionsPanel(movie.title, actions, close, panelLine(movie.year ?: info.year, info.genre))
         }
@@ -195,14 +195,13 @@ private fun FilmPanels(
             val crew = remember(tmdb) { castAndCrew(tmdb) }
             CastPanel(movie.title, crew, stringResource(R.string.vod_cast_crew), castFocus, { openPerson(it, crew[it]) }, close)
         }
-        FilmPanel.ABOUT -> tmdb?.let { AboutPanel(film = true, it, close) }
         FilmPanel.TRAILERS -> TrailersPanel(movie.title, info.trailers, close)
     }
 }
 
 /**
- * The film page (MyPlexPlayer's board "PlexFilm"): the backdrop, the poster, then the title, the facts, TMDB's score,
- * the plot, who directed and wrote it, and the buttons; the cast along the bottom (OK on one opens their page,
+ * The film page (MyPlexPlayer's board "PlexFilm"): the backdrop, the poster, then the title, the facts (with TMDB's
+ * release date in place of the year), the original title (when TMDB's differs), TMDB's score, the plot, who directed and wrote it, and the buttons; the cast along the bottom (OK on one opens their page,
  * [openPerson]). A line with no data is left out
  * ("TvFilmMinimal": an M3U film shows its category in place of the facts). [info] has the provider's data and TMDB's
  * (see [merge]). The remote's Menu button opens [more] from anywhere on it. [playTrailer] is null when there is no trailer.
@@ -229,8 +228,10 @@ fun FilmPage(
             Poster(movie.posterUrl ?: info.posterUrl, movie.title, 180.bd, radius = 10.bd)
             Column(Modifier.widthIn(max = 640.bd), verticalArrangement = Arrangement.spacedBy(8.bd)) {
                 Text(movie.title, style = FilmTitle.current, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                // With no genre (an M3U film), its category says what it is: "1958 · Movies: Classics".
-                val facts = metaLine(movie.year ?: info.year, info.durationSec, info.genre ?: category, movie.rating ?: info.rating)
+                // With no genre (an M3U film), its category says what it is: "1958 · Movies: Classics". TMDB's release
+                // date, when known, in place of the year (the owner, 2026-11-24).
+                val released = info.tmdb?.released?.let(::formatDate) ?: (movie.year ?: info.year)?.toString()
+                val facts = metaLine(released, info.durationSec, info.genre ?: category, movie.rating ?: info.rating)
                 if (facts.isNotEmpty()) {
                     Text(
                         facts,
@@ -240,10 +241,28 @@ fun FilmPage(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+                val original = originalTitle(movie.title, info.tmdb)
+                original?.let {
+                    Text(
+                        stringResource(R.string.vod_original_title_is, it),
+                        style = SmallMuted.current,
+                        color = Palette.textDim,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 info.score?.let { TmdbScore(it) }
-                // Fewer lines with the cast along the bottom, so that the buttons stay above it.
+                // Fewer lines with the cast along the bottom, so that the buttons stay above it: one fewer again under
+                // the original title's line.
                 info.plot?.let {
-                    PlotWithMore(movie.title, it, FilmPlot.current, maxLines = if (cast.isEmpty()) 6 else 3)
+                    val lines = if (cast.isEmpty()) {
+                        6
+                    } else if (original == null) {
+                        3
+                    } else {
+                        2
+                    }
+                    PlotWithMore(movie.title, it, FilmPlot.current, maxLines = lines)
                 }
                 people(info)?.let {
                     Text(it, style = SmallMuted.current, color = Palette.textDim, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -347,9 +366,15 @@ private val CastHeading = BoardStyle(14, EXTRA_BOLD)
 private val CastName = BoardStyle(13, EXTRA_BOLD, 1.2f)
 private val CastRole = BoardStyle(12, MEDIUM, 1.2f)
 
-/** "2021 · 2 h 35 min · Drama · ★ 8.1", skipping whatever is unknown; a series' [seasons] ("3 seasons") after the year. */
-fun metaLine(year: Int?, durationSec: Int?, genre: String?, rating: Double?, seasons: String? = null): String = listOfNotNull(
-    year?.toString(),
+/** A film's original title, from TMDB, when it is not the [title] shown. */
+fun originalTitle(title: String, tmdb: TmdbTitle?): String? = tmdb?.originalTitle?.takeUnless { it.equals(title, ignoreCase = true) }
+
+/**
+ * "2021 · 2 h 35 min · Drama · ★ 8.1", skipping whatever is unknown; a series' [seasons] ("3 seasons") after the year.
+ * [released] is the year, or a film's release date ("15 Sept 2021").
+ */
+fun metaLine(released: String?, durationSec: Int?, genre: String?, rating: Double?, seasons: String? = null): String = listOfNotNull(
+    released,
     seasons,
     durationSec?.takeIf { it > 0 }?.let(::formatRuntime),
     genre,

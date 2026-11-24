@@ -23,6 +23,7 @@ import com.biskyt.mytvplayer.ui.player.VodPlayerViewModel
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -101,24 +102,23 @@ class TitleExtrasUiTest {
     }
 
     @Test
-    fun `a favourite film offers About this film`() {
+    fun `a favourite film offers no About this film`() {
         runBlocking { app.container.vod.setFavourite(pid, CAT_MOVIE, 501, true) }
         home()
         options("Dune")
         compose.waitForText("Remove from favourites", stepMs = 50)
-        compose.waitForText("About this film", stepMs = 50)
-        click("About this film")
-        compose.waitForText("Legendary Pictures", stepMs = 50)
+        compose.waitForText("More like this", stepMs = 50)
+        assertFalse(compose.onAllNodes(hasText("About this film")).fetchSemanticsNodes().isNotEmpty())
     }
 
     @Test
-    fun `the player's menu offers the film's cast and crew, More like this and About`() {
+    fun `the player's menu offers the film's cast and crew and More like this, with no About`() {
         val navigator = navigators.new(Screen.VodPlayer(pid, 501))
         compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
         val vm = ViewModelProvider(navigator.current)[VodPlayerViewModel::class.java]
         compose.waitAdvancingClock { vm.menuActions().any { it.label == "Cast and crew" } }
         val labels = vm.menuActions().map { it.label }
-        assertTrue(labels.toString(), labels.containsAll(listOf("More like this", "About this film")))
+        assertTrue(labels.toString(), "More like this" in labels && "About this film" !in labels)
         // Cast and crew opens its panel over the player.
         compose.runOnUiThread { (vm.menuActions().first { it.label == "Cast and crew" } as ItemAction.Run).run() }
         compose.waitForText("Timothée Chalamet", stepMs = 50)

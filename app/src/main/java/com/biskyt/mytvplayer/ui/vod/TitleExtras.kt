@@ -116,8 +116,8 @@ fun EpisodeCastPanel(playlistId: Long, name: String, credits: TmdbCredits, focus
 
 /**
  * What a More… away from the title's page adds from TMDB, as its page offers it: the episode's description (with
- * TMDB's extra details, see [filledFrom]), then the trailer, Other trailers, Cast and crew, More like this, About and
- * links (see [titleActions]). [open] opens their panels (see [TitlePanels]).
+ * TMDB's extra details, see [filledFrom]), then the trailer, Other trailers, Cast and crew, More like this, a show's
+ * About and links (see [titleActions]). [open] opens their panels (see [TitlePanels]).
  */
 @Composable
 fun titleExtraActions(
@@ -139,7 +139,7 @@ fun titleExtraActions(
         otherTrailers = { open(TitlePanel.Trailers) },
         showCast = { open(TitlePanel.Cast) },
         showSimilar = { id -> nav.push(Screen.MoreLike(playlistId, id, series = !film, title, tab)) },
-        showAbout = { open(TitlePanel.About) },
+        showAbout = if (film) null else ({ open(TitlePanel.About) }),
     )
 }
 
@@ -157,7 +157,7 @@ fun TitlePanels(open: TitlePanel?, playlistId: Long, title: String, tmdb: TmdbTi
                 personScreen(playlistId, crew[i], title, tab, i < acting)?.let(nav::push)
             }, onDismiss = close)
         }
-        TitlePanel.About -> tmdb?.let { AboutPanel(film, it, close) }
+        TitlePanel.About -> tmdb?.let { AboutPanel(it, close) }
         TitlePanel.Trailers -> TrailersPanel(title, tmdb?.trailers.orEmpty(), close)
         is TitlePanel.Describe -> EpisodeDescriptionPanel(open.episode, close)
         is TitlePanel.EpisodeCast -> EpisodeCastPanel(playlistId, open.name, open.credits, 0, {}, close)

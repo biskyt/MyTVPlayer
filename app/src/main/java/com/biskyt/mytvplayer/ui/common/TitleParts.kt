@@ -24,7 +24,10 @@ import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.core.tmdb.TmdbVideo
 import com.biskyt.mytvplayer.core.vod.CastMember
 import com.biskyt.mytvplayer.core.vod.TitleLink
+import com.biskyt.mytvplayer.ui.theme.BoardStyle
+import com.biskyt.mytvplayer.ui.theme.EXTRA_BOLD
 import com.biskyt.mytvplayer.ui.theme.Palette
+import com.biskyt.mytvplayer.ui.theme.SEMI_BOLD
 import com.biskyt.mytvplayer.ui.theme.bd
 
 // The parts of the film and series pages that show a title's people and its pages elsewhere (MyPlexPlayer's
@@ -80,7 +83,10 @@ fun trailerActions(trailers: List<TmdbVideo>): List<ItemAction> {
     }
 }
 
-/** One of the cast: photo (loaded only when shown), name and part. */
+/**
+ * One of the cast: photo (loaded only when shown), name and part. Larger than a panel's options (the owner, 2026-11-24):
+ * the name 18, the part 14.
+ */
 @Composable
 fun CastPerson(person: CastMember, photo: Dp, modifier: Modifier = Modifier) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.bd), verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
@@ -88,13 +94,13 @@ fun CastPerson(person: CastMember, photo: Dp, modifier: Modifier = Modifier) {
         Column {
             Text(
                 person.name,
-                style = BoardOptionText.current,
+                style = CastNameText.current,
                 color = LocalContentColor.current,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             person.role?.let {
-                Text(it, style = BoardHelpText.current, color = cardColor(Palette.textDim), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(it, style = CastRoleText.current, color = cardColor(Palette.textDim), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -123,9 +129,14 @@ fun CastPanel(
             itemsIndexed(cast) { i, person ->
                 val modifier = if (i == first) rememberFirstFocus() else Modifier
                 BoardRow({ if (person.id != null) open(i) }, modifier) {
-                    CastPerson(person, 48.bd, Modifier.padding(horizontal = 14.bd, vertical = 6.bd))
+                    CastPerson(person, CAST_PHOTO, Modifier.padding(horizontal = 14.bd, vertical = 6.bd))
                 }
             }
         }
     }
 }
+
+/** A cast panel's photos: half as large again as the 48 they were (the owner, 2026-11-24). */
+private val CAST_PHOTO = 72.bd
+private val CastNameText = BoardStyle(18, EXTRA_BOLD)
+private val CastRoleText = BoardStyle(14, SEMI_BOLD)

@@ -366,7 +366,7 @@ private fun SeriesPanels(
             val crew = remember(tmdb) { castAndCrew(tmdb) }
             CastPanel(title, crew, stringResource(R.string.vod_cast_crew), vm.castFocus, { openPerson(it, crew[it]) }, close)
         }
-        SeriesPanel.About -> tmdb?.let { AboutPanel(film = false, it, close) }
+        SeriesPanel.About -> tmdb?.let { AboutPanel(it, close) }
         SeriesPanel.Trailers -> TrailersPanel(title, vm.info.trailers, close)
         is SeriesPanel.Describe -> EpisodeDescriptionPanel(describedEpisode(title, now(p.e), vm.tmdbEpisode(p.e)), close)
         is SeriesPanel.EpisodeCast -> EpisodeCastPanel(
@@ -408,7 +408,7 @@ fun SeriesColumn(
         val year = d?.episodes?.filter { it.season == season }?.mapNotNull { it.airDate?.year }?.minOrNull()
         val facts = listOfNotNull(
             current,
-            metaLine(year ?: show.year ?: info.year, null, info.genre, show.rating ?: info.rating, seasons).ifEmpty { null }
+            metaLine((year ?: show.year ?: info.year)?.toString(), null, info.genre, show.rating ?: info.rating, seasons).ifEmpty { null }
         ).joinToString(" · ")
         if (facts.isNotEmpty() || info.score != null) {
             // TMDB's score after the facts, on the next line when they fill this one (as MyPlexPlayer's scores).

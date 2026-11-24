@@ -64,8 +64,9 @@
     <string name="vod_the_show">The show</string>
     <!-- More…: the row of links to the title's pages on IMDb and TMDB. -->
     <string name="vod_links">Links</string>
-    <!-- About this film / show: the labels of its facts (from TMDB). -->
+    <!-- About this show: the labels of its facts (from TMDB). Original title: also on the film page. -->
     <string name="vod_original_title">Original title</string>
+    <string name="vod_original_title_is">Original title: %1$s</string>
     <string name="vod_released">Released</string>
     <string name="vod_studio">Studio</string>
     <string name="vod_countries">Countries</string>
@@ -73,8 +74,6 @@
     <!-- More…: the options with TMDB data, and the help under them. -->
     <string name="vod_cast_crew">Cast and crew</string>
     <string name="vod_cast_crew_help">Everyone, with their photos</string>
-    <string name="vod_about_this_film">About this film</string>
-    <string name="vod_about_film_help">Original title, release, studio, genres</string>
     <string name="vod_about_this_show">About this show</string>
     <!-- Cast and crew: the part of who directed and wrote it. -->
     <string name="vod_role_director">Director</string>
