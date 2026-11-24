@@ -25,6 +25,9 @@ class FakeTmdb : Dispatcher() {
     /** While set, a season's episodes fail (TMDB out of reach for a moment). */
     @Volatile var seasonsFail = false
 
+    /** How long a season's episodes take to arrive (a slow TMDB), in real time. */
+    @Volatile var seasonDelayMs = 0L
+
     /** While set, a search by name finds nothing: only the provider's TMDB id finds a title. */
     @Volatile var searchFindsNothing = false
 
@@ -40,6 +43,7 @@ class FakeTmdb : Dispatcher() {
         val path = request.requestUrl!!.encodedPath.removePrefix("/3/")
         requests += path
         if (seasonsFail && "/season/" in path) return MockResponse().setResponseCode(503)
+        if ("/season/" in path && seasonDelayMs > 0) Thread.sleep(seasonDelayMs)
         if (searchFindsNothing && path.startsWith("search/")) return MockResponse().setBody("""{"results":[]}""")
         val body = when (path) {
             "search/movie" -> """{"results":[{"id":438631,"release_date":"2021-09-15"}]}"""

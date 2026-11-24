@@ -166,6 +166,8 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         tmdb = t
         if (episode != null) {
             tmdbEpisode = c.tmdb.season(t.id, episode.season)?.firstOrNull { it.number == episode.number }
+            // A description opened before TMDB answered shows what came in (MyPlexPlayer's review, 2026-11-24).
+            if (panel is TitlePanel.Describe) described?.let { panel = TitlePanel.Describe(it) }
             episodeCredits = c.tmdb.episodeCredits(t.id, episode.season, episode.number)
         }
     }

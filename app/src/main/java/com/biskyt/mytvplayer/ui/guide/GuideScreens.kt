@@ -143,6 +143,7 @@ private fun guideRows(
  */
 data class GuideRow(val source: EpgSourceEntity, val on: Boolean, val others: List<String>, val provider: PlaylistEntity?)
 
+@OptIn(ExperimentalCoroutinesApi::class) // flatMapLatest
 class GuideSourcesViewModel(private val c: AppContainer) : ViewModel() {
     /** How long each guide's last update took (see [UpdateTimes]). */
     val times = c.epg.times

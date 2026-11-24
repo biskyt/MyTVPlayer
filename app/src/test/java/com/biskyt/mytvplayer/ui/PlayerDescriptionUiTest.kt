@@ -125,6 +125,19 @@ class PlayerDescriptionUiTest {
     }
 
     @Test
+    fun `the description opened before TMDB answers fills in when it does`() {
+        // MyPlexPlayer's review, 2026-11-24: the panel kept the episode as it was when it opened.
+        tmdb.use(app.container)
+        tmdb.seasonDelayMs = 3_000
+        val vm = play(9001) // the provider's plot: the item is there before TMDB answers
+        vm.sheet = PlaybackViewModel.Sheet.MORE
+        compose.waitForText("Episode description")
+        compose.onAllNodes(hasText("Episode description"))[0].performClick()
+        compose.waitForText("First.")
+        compose.waitForText("Directed by David Caffrey · Written by Jed Mercurio")
+    }
+
+    @Test
     fun `an episode with only a date has the item too`() {
         val vm = play(9003)
         assertTrue(vm.menuActions().any { it.label == "Episode description" })
