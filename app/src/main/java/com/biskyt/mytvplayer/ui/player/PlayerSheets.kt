@@ -33,6 +33,8 @@ import com.biskyt.mytvplayer.ui.common.BoardPanelSubtitle
 import com.biskyt.mytvplayer.ui.common.BoardPanelText
 import com.biskyt.mytvplayer.ui.common.BoardPanelTitle
 import com.biskyt.mytvplayer.ui.common.ChannelLogo
+import com.biskyt.mytvplayer.ui.common.ItemAction
+import com.biskyt.mytvplayer.ui.common.ItemActionRow
 import com.biskyt.mytvplayer.ui.common.LocalTouch
 import com.biskyt.mytvplayer.ui.common.ProgrammeAbout
 import com.biskyt.mytvplayer.ui.common.ScheduleList
@@ -128,18 +130,20 @@ fun PlayerSheet(sheet: PlaybackViewModel.Sheet, vm: PlaybackViewModel) {
                     }
                 }
                 PlaybackViewModel.Sheet.MORE -> {
-                    item { Header(stringResource(R.string.player_more), null) }
+                    item { Header(vm.menuTitle() ?: stringResource(R.string.player_more), null) }
+                    // Drawn as every options panel draws them (the series page's): headings, help lines, links.
                     val actions = vm.menuActions()
+                    val firstOption = actions.indexOfFirst { it !is ItemAction.Heading }
                     itemsIndexed(actions) { i, a ->
                         // A screen pushed over the player stops it while it's covered.
-                        Choice(a.label, false, if (i == 0) first else Modifier) { a.perform(nav, close, vm::beforeLeaving) }
+                        ItemActionRow(a, if (i == firstOption) first else Modifier) { a.perform(nav, close, vm::beforeLeaving) }
                     }
                     item {
                         // What it says now, and what it flashes once pressed (the next mode).
                         val label = stringResource(R.string.player_picture, stringResource(vm.picture.label))
                         val next = vm.picture.next
                         val nextLabel = stringResource(R.string.player_picture, stringResource(next.label))
-                        Choice(label, false, if (actions.isEmpty()) first else Modifier) {
+                        Choice(label, false, if (firstOption < 0) first else Modifier) {
                             vm.picture = next
                             vm.flash(nextLabel)
                         }
@@ -168,10 +172,6 @@ fun PlayerSheet(sheet: PlaybackViewModel.Sheet, vm: PlaybackViewModel) {
                     item { Header(programmeTitle(p.title), formatRange(p.startMs, p.stopMs)) }
                     // Focusable, so the remote's keys (Back, play/pause) reach the panel.
                     item { Column(first.focusable()) { ProgrammeAbout(p, maxLines = 18) } }
-                }
-                PlaybackViewModel.Sheet.DESCRIPTION -> vm.described?.let { d ->
-                    // Focusable, so the remote's keys (Back, play/pause) reach the panel.
-                    item { EpisodeDescription(d, first.focusable()) }
                 }
             }
         }

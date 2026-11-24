@@ -2,6 +2,8 @@ package com.biskyt.mytvplayer.ui.vod
 
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
+import com.biskyt.mytvplayer.core.tmdb.TmdbCredits
+import com.biskyt.mytvplayer.core.tmdb.TmdbEpisode
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.vod.CastMember
 import com.biskyt.mytvplayer.ui.common.ItemAction
@@ -50,3 +52,29 @@ fun castAndCrew(t: TmdbTitle?): List<CastMember> = t?.let {
     it.cast + it.directors.map { d -> d.copy(role = appString(R.string.vod_role_director)) } +
         it.writers.map { w -> w.copy(role = appString(R.string.vod_role_writer)) }
 }.orEmpty()
+
+/** An episode's own cast and crew: the show's cast in it, its guest stars, then who directed and wrote it. */
+fun castAndCrew(c: TmdbCredits): List<CastMember> = c.cast + c.guestStars +
+    c.directors.map { d -> d.copy(role = appString(R.string.vod_role_director)) } +
+    c.writers.map { w -> w.copy(role = appString(R.string.vod_role_writer)) }
+
+/** How many of [castAndCrew]'s first act in it: their role is their part. */
+fun TmdbCredits.acting() = cast.size + guestStars.size
+
+/** "Directed by Ana Ruiz · Written by Ana Ruiz, Paul Okafor", for an episode, where TMDB knows. */
+fun episodePeople(e: TmdbEpisode): String? = people(TitleInfo(directors = e.directors.map { it.name }, writers = e.writers.map { it.name }))
+
+/** "Cast and crew" for an episode's own people ([open] opens them); null while unknown, or when TMDB has none. */
+fun episodeCastAction(credits: TmdbCredits?, open: () -> Unit): ItemAction? =
+    credits?.takeUnless { it.isEmpty }?.let { ItemAction.Run(appString(R.string.vod_cast_crew), run = open) }
+
+/**
+ * An episode's options, then its show's, under "This episode" and "The show" (the series page and the player share
+ * them, the owner, 2026-11-24). When one of the two has none, the other's alone, with no headings.
+ */
+fun episodeAndShowActions(episode: List<ItemAction>, show: List<ItemAction>): List<ItemAction> = if (show.isEmpty() || episode.isEmpty()) {
+    episode + show
+} else {
+    listOf(ItemAction.Heading(appString(R.string.vod_this_episode))) + episode +
+        ItemAction.Heading(appString(R.string.vod_the_show)) + show
+}

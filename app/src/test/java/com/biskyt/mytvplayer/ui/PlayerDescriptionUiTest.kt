@@ -8,6 +8,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.testutil.FakeProvider
+import com.biskyt.mytvplayer.testutil.FakeTmdb
 import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.addHomeTv
@@ -21,6 +22,7 @@ import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -47,8 +49,13 @@ class PlayerDescriptionUiTest {
         playlistId = app.container.addHomeTv(provider, vod = true)
     }
 
+    private val tmdb = FakeTmdb()
+
     @After
-    fun tearDown() = provider.close()
+    fun tearDown() {
+        provider.close()
+        tmdb.close()
+    }
 
     private fun play(episodeId: Long): VodPlayerViewModel {
         val navigator = navigators.new(Screen.VodPlayer(playlistId, episodeId, seriesId = 77))
@@ -67,6 +74,36 @@ class PlayerDescriptionUiTest {
         compose.waitForText("First.")
         compose.waitForText("First shown ${formatDate(LocalDate.of(2014, 6, 26))}")
         compose.waitForText("Line of Duty")
+        assertTrue("still playing", vm.engine?.player?.playWhenReady == true)
+    }
+
+    @Test
+    fun `with TMDB, More offers what the series page offers for the episode and its show, but no trailers`() {
+        tmdb.use(app.container)
+        val vm = play(9001)
+        compose.waitAdvancingClock { vm.menuActions().count { it.label == "Cast and crew" } == 2 }
+        val labels = vm.menuActions().map { it.label }
+        // This episode: its description and its own cast and crew; the show: its options, its links, no trailers.
+        assertEquals(listOf("This episode", "Episode description", "Cast and crew", "The show"), labels.take(4))
+        assertTrue(labels.containsAll(listOf("Go to series", "More like this", "About this show", "Links")))
+        assertTrue(labels.none { "trailer" in it.lowercase() })
+        assertEquals("Episode 1", vm.menuTitle())
+    }
+
+    @Test
+    fun `the episode's description and its own Cast and crew open over the video, as on the series page`() {
+        tmdb.use(app.container)
+        val vm = play(9001)
+        compose.waitAdvancingClock { vm.menuActions().count { it.label == "Cast and crew" } == 2 }
+        vm.sheet = PlaybackViewModel.Sheet.MORE
+        compose.waitForText("Episode description")
+        compose.onAllNodes(hasText("Episode description"))[0].performClick()
+        compose.waitForText("Directed by David Caffrey · Written by Jed Mercurio")
+        vm.panel = null
+        vm.sheet = PlaybackViewModel.Sheet.MORE
+        compose.waitForText("THIS EPISODE")
+        compose.onAllNodes(hasText("Cast and crew"))[0].performClick()
+        compose.waitForText("Neil Morrissey")
         assertTrue("still playing", vm.engine?.player?.playWhenReady == true)
     }
 

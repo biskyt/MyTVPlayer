@@ -407,7 +407,7 @@ private fun CarryOnOptions(p: WatchProgressEntity, vm: HomeViewModel, onDismiss:
     val tmdbEpisode = rememberTmdbEpisode(c, tmdb, p.season, p.episode)
     val described = tmdbEpisode?.takeIf { series != null }?.let { t ->
         val e = EpisodeInfo(p.itemId, p.season ?: 0, p.episode ?: 0, p.episodeTitle.orEmpty(), "", null, null, null)
-        DescribedEpisode(p.title, e.filledFrom(t))
+        DescribedEpisode(p.title, e.filledFrom(t), t)
     }
     var panel by remember { mutableStateOf<TitlePanel?>(null) }
     val actions = listOf(

@@ -21,7 +21,12 @@ internal data class CastJson(
 internal data class CrewJson(val id: Long = 0, val name: String = "", val job: String? = null, val department: String? = null)
 
 @Serializable
-internal data class CreditsJson(val cast: List<CastJson> = emptyList(), val crew: List<CrewJson> = emptyList())
+internal data class CreditsJson(
+    val cast: List<CastJson> = emptyList(),
+    val crew: List<CrewJson> = emptyList(),
+    /** An episode's: who is in it besides the show's own cast. */
+    @SerialName("guest_stars") val guestStars: List<CastJson> = emptyList()
+)
 
 @Serializable
 internal data class VideoJson(
@@ -89,7 +94,12 @@ internal data class EpisodeJson(
     val name: String? = null,
     val overview: String? = null,
     @SerialName("still_path") val stillPath: String? = null,
-    @SerialName("air_date") val airDate: String? = null
+    @SerialName("air_date") val airDate: String? = null,
+    @SerialName("vote_average") val voteAverage: Double = 0.0,
+    @SerialName("vote_count") val voteCount: Int = 0,
+    /** A season's episodes have who made them, and their guest stars (not the show's own cast). */
+    val crew: List<CrewJson> = emptyList(),
+    @SerialName("guest_stars") val guestStars: List<CastJson> = emptyList()
 )
 
 @Serializable
@@ -119,9 +129,12 @@ private const val CAST = 20
 /** Fewer votes than this make a score that means little. */
 private const val MIN_VOTES = 10
 
-private val WRITING = setOf("Screenplay", "Writer", "Story", "Novel", "Author")
+private val WRITING = setOf("Screenplay", "Writer", "Story", "Novel", "Author", "Teleplay")
+private val DIRECTING = setOf("Director")
 
-private fun CreditsJson.people(): List<CastMember> = cast.take(CAST).filter { it.name.isNotBlank() }
+private fun CreditsJson.people(): List<CastMember> = cast.people()
+
+private fun List<CastJson>.people(): List<CastMember> = take(CAST).filter { it.name.isNotBlank() }
     .map { CastMember(it.name, it.character?.ifBlank { null }, image(it.profilePath, "w185"), personId(it.id)) }
 
 /** A TMDB person id, or null for none (TMDB's ids start at 1; a missing one reads as 0). */
@@ -131,8 +144,18 @@ private fun personId(id: Long): Long? = id.takeIf { it > 0 }
 private fun crewMember(name: String, id: Long) = CastMember(name, null, null, personId(id))
 
 /** The crew of [jobs], each once. */
-private fun CreditsJson.crewFor(jobs: Set<String>) = crew.filter { it.job in jobs && it.name.isNotBlank() }.distinctBy { it.name }
+private fun CreditsJson.crewFor(jobs: Set<String>) = crew.crewFor(jobs)
+
+private fun List<CrewJson>.crewFor(jobs: Set<String>) = filter { it.job in jobs && it.name.isNotBlank() }.distinctBy { it.name }
     .map { crewMember(it.name, it.id) }
+
+/** An episode's own cast and crew (its credits): the show's cast in it, its guest stars, who directed and wrote it. */
+internal fun CreditsJson.toEpisodeCredits() = TmdbCredits(
+    cast = cast.people(),
+    guestStars = guestStars.people(),
+    directors = crewFor(DIRECTING),
+    writers = crewFor(WRITING)
+)
 
 /**
  * The trailers and teasers that the app can play (on YouTube or Vimeo), best first: trailers before teasers, then those
@@ -165,7 +188,7 @@ internal fun MovieJson.toTitle(region: String? = null) = TmdbTitle(
     overview = overview?.ifBlank { null },
     score = score(voteAverage, voteCount),
     cast = credits.people(),
-    directors = credits.crewFor(setOf("Director")),
+    directors = credits.crewFor(DIRECTING),
     writers = credits.crewFor(WRITING),
     trailers = videos.trailers(region),
     posterUrl = image(posterPath, "w342"),
@@ -204,5 +227,15 @@ internal fun SeriesJson.toTitle(region: String? = null) = TmdbTitle(
 
 internal fun SeasonJson.toEpisodes() = episodes.map { it.toEpisode() }
 
-internal fun EpisodeJson.toEpisode() =
-    TmdbEpisode(season, number, name?.ifBlank { null }, overview?.ifBlank { null }, image(stillPath, "w300"), dateOf(airDate))
+internal fun EpisodeJson.toEpisode() = TmdbEpisode(
+    season,
+    number,
+    name?.ifBlank { null },
+    overview?.ifBlank { null },
+    image(stillPath, "w300"),
+    dateOf(airDate),
+    score = score(voteAverage, voteCount),
+    directors = crew.crewFor(DIRECTING),
+    writers = crew.crewFor(WRITING),
+    guestStars = guestStars.people()
+)

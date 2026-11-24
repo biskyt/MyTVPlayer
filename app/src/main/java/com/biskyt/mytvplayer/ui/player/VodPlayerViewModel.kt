@@ -10,6 +10,7 @@ import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.player.OverlayState
+import com.biskyt.mytvplayer.core.tmdb.TmdbCredits
 import com.biskyt.mytvplayer.core.tmdb.TmdbEpisode
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.vod.VodTitles
@@ -28,6 +29,8 @@ import com.biskyt.mytvplayer.ui.common.favouriteAction
 import com.biskyt.mytvplayer.ui.common.favouriteFlash
 import com.biskyt.mytvplayer.ui.common.formatDuration
 import com.biskyt.mytvplayer.ui.vod.TitlePanel
+import com.biskyt.mytvplayer.ui.vod.episodeAndShowActions
+import com.biskyt.mytvplayer.ui.vod.episodeCastAction
 import com.biskyt.mytvplayer.ui.vod.filledFrom
 import com.biskyt.mytvplayer.ui.vod.titleActions
 import com.biskyt.mytvplayer.ui.vod.tmdbFor
@@ -85,15 +88,34 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         private set
     private var tmdbEpisode by mutableStateOf<TmdbEpisode?>(null)
 
+    /** The episode's own cast and crew on TMDB (null until known, or without a TMDB key). */
+    private var episodeCredits by mutableStateOf<TmdbCredits?>(null)
+
     /** A TMDB panel open over the player (cast and crew, About), as the title's page opens it. */
     var panel by mutableStateOf<TitlePanel?>(null)
 
     /** The episode, with TMDB's plot and date where the provider gave none: as the series page describes it. */
-    override val described: DescribedEpisode?
-        get() = current?.let { p -> p.episode?.let { DescribedEpisode(p.show, it.filledFrom(tmdbEpisode)) } }
+    private val described: DescribedEpisode?
+        get() = current?.let { p -> p.episode?.let { DescribedEpisode(p.show, it.filledFrom(tmdbEpisode), tmdbEpisode) } }
 
-    override fun menuActions(): List<ItemAction> = listOfNotNull(
-        described?.let { d -> episodeDescriptionAction(d.episode) { sheet = Sheet.DESCRIPTION } },
+    override fun menuTitle(): String? = current?.let { p -> p.episode?.let { episodeName(it, p.show) } ?: p.title }
+
+    /**
+     * The same options as the series page's for an episode (the owner, 2026-11-24): this episode's (its description, its
+     * own cast and crew), then the show's, but no trailers. A film's are the show's alone.
+     */
+    override fun menuActions(): List<ItemAction> {
+        val d = described ?: return showActions()
+        val episode = listOfNotNull(
+            episodeDescriptionAction(d) { openPanel(TitlePanel.Describe(d)) },
+            episodeCastAction(episodeCredits) {
+                episodeCredits?.let { openPanel(TitlePanel.EpisodeCast(episodeName(d.episode, d.show), it)) }
+            },
+        )
+        return episodeAndShowActions(episode, showActions())
+    }
+
+    private fun showActions(): List<ItemAction> = listOfNotNull(
         favouriteAction(favourite) { add ->
             viewModelScope.launch {
                 c.vod.setFavourite(screen.playlistId, favouriteType, favouriteId, add)
@@ -113,7 +135,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         }
     ) + tmdbActions()
 
-    /** As the title's page offers them: Cast and crew, More like this and About (not its links, nor trailers). */
+    /** As the title's page offers them: Cast and crew, More like this, About and its links (not its trailers). */
     private fun tmdbActions(): List<ItemAction> = titleActions(
         tmdb,
         film = series == null,
@@ -125,7 +147,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
             pendingScreen = Screen.MoreLike(screen.playlistId, id, series = series != null, title, tab)
         },
         showAbout = { openPanel(TitlePanel.About) },
-    ).filterNot { it is ItemAction.Links }
+    )
 
     private fun openPanel(p: TitlePanel) {
         sheet = null
@@ -137,9 +159,15 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
 
     /** The film's or series' TMDB data, once playback has started: for the menu's options. */
     private fun readTmdb(episode: EpisodeInfo?) = viewModelScope.launch {
-        val t = c.tmdbFor(screen.playlistId, favouriteType, favouriteId) ?: return@launch
+        // The last episode's mustn't show for the next one.
+        tmdbEpisode = null
+        episodeCredits = null
+        val t = tmdb ?: c.tmdbFor(screen.playlistId, favouriteType, favouriteId) ?: return@launch
         tmdb = t
-        if (episode != null) tmdbEpisode = c.tmdb.season(t.id, episode.season)?.firstOrNull { it.number == episode.number }
+        if (episode != null) {
+            tmdbEpisode = c.tmdb.season(t.id, episode.season)?.firstOrNull { it.number == episode.number }
+            episodeCredits = c.tmdb.episodeCredits(t.id, episode.season, episode.number)
+        }
     }
 
     override fun beforeLeaving() = save(trim = true)

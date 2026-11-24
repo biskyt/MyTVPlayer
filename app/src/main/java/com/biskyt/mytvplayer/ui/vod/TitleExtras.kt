@@ -12,6 +12,7 @@ import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.container
+import com.biskyt.mytvplayer.core.tmdb.TmdbCredits
 import com.biskyt.mytvplayer.core.tmdb.TmdbEpisode
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.vod.DownloadNames
@@ -45,6 +46,9 @@ sealed interface TitlePanel {
     data object Trailers : TitlePanel
 
     data class Describe(val episode: DescribedEpisode) : TitlePanel
+
+    /** An episode's own cast and crew: [name] is the episode's. */
+    data class EpisodeCast(val name: String, val credits: TmdbCredits) : TitlePanel
 }
 
 /**
@@ -75,6 +79,29 @@ fun rememberTmdbEpisode(c: AppContainer, tmdb: TmdbTitle?, season: Int?, number:
     return episode
 }
 
+/** TMDB's cast and crew of episode [number] of [season] of series [tmdb], read once for a panel: null until known. */
+@Composable
+fun rememberEpisodeCredits(c: AppContainer, tmdb: TmdbTitle?, season: Int?, number: Int?): TmdbCredits? {
+    val credits by produceState<TmdbCredits?>(null, tmdb?.id, season, number) {
+        if (tmdb != null && tmdb.series && season != null && number != null) value = c.tmdb.episodeCredits(tmdb.id, season, number)
+    }
+    return credits
+}
+
+/**
+ * An episode's own cast and crew ([credits]) in a side panel, titled [name] (the episode's). The person at [focus] has
+ * the remote first; OK on one opens their page, after [opening] is told their place (to come back to it).
+ */
+@Composable
+fun EpisodeCastPanel(playlistId: Long, name: String, credits: TmdbCredits, focus: Int, opening: (Int) -> Unit, onDismiss: () -> Unit) {
+    val nav = LocalNavigator.current
+    val crew = remember(credits) { castAndCrew(credits) }
+    CastPanel(name, crew, stringResource(R.string.vod_cast_crew), focus, open = { i ->
+        opening(i)
+        personScreen(playlistId, crew[i], name, Tab.SERIES, i < credits.acting())?.let(nav::push)
+    }, onDismiss = onDismiss)
+}
+
 /**
  * What a More… away from the title's page adds from TMDB, as its page offers it: the episode's description (with
  * TMDB's extra details, see [filledFrom]), then the trailer, Other trailers, Cast and crew, More like this, About and
@@ -92,7 +119,7 @@ fun titleExtraActions(
     val nav = LocalNavigator.current
     val playTrailer = rememberTrailerOpener()
     val tab = if (film) Tab.MOVIES else Tab.SERIES
-    val episode = described?.let { d -> episodeDescriptionAction(d.episode) { open(TitlePanel.Describe(d)) } }
+    val episode = described?.let { d -> episodeDescriptionAction(d) { open(TitlePanel.Describe(d)) } }
     return listOfNotNull(episode) + titleActions(
         tmdb,
         film,
@@ -121,6 +148,7 @@ fun TitlePanels(open: TitlePanel?, playlistId: Long, title: String, tmdb: TmdbTi
         TitlePanel.About -> tmdb?.let { AboutPanel(film, it, close) }
         TitlePanel.Trailers -> TrailersPanel(title, tmdb?.trailers.orEmpty(), close)
         is TitlePanel.Describe -> EpisodeDescriptionPanel(open.episode, close)
+        is TitlePanel.EpisodeCast -> EpisodeCastPanel(playlistId, open.name, open.credits, 0, {}, close)
     }
 }
 

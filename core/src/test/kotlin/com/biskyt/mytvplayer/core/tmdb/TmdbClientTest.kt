@@ -152,6 +152,40 @@ class TmdbClientTest {
     }
 
     @Test
+    fun `a season's episode says who directed and wrote it, its guest stars and its score`() = runBlocking {
+        reply(
+            """{"episodes":[{"season_number":1,"episode_number":1,"name":"Yankee White","vote_average":7.6,"vote_count":120,
+            "crew":[{"id":10,"name":"Donald P. Bellisario","job":"Director"},{"id":11,"name":"Don McGill","job":"Teleplay"},
+            {"id":12,"name":"Someone","job":"Editor"}],
+            "guest_stars":[{"id":20,"name":"Caterina Scorsone","character":"Kate","profile_path":"/c.jpg"}]},
+            {"season_number":1,"episode_number":2,"vote_average":9.0,"vote_count":3}]}"""
+        )
+        val (first, second) = client().season(4614, 1)
+        assertEquals(7.6, first.score)
+        assertEquals(listOf("Donald P. Bellisario"), first.directors.map { it.name })
+        assertEquals(listOf("Don McGill"), first.writers.map { it.name })
+        assertEquals(listOf(CastMember("Caterina Scorsone", "Kate", "https://image.tmdb.org/t/p/w185/c.jpg", 20)), first.guestStars)
+        assertNull(second.score) // too few votes to mean much
+    }
+
+    @Test
+    fun `an episode's own cast and crew`() = runBlocking {
+        reply(
+            """{"cast":[{"id":1,"name":"Mark Harmon","character":"Gibbs"}],
+            "guest_stars":[{"id":2,"name":"Caterina Scorsone","character":"Kate"}],
+            "crew":[{"id":3,"name":"Donald P. Bellisario","job":"Director"},{"id":4,"name":"Don McGill","job":"Writer"}]}"""
+        )
+        val credits = client().episodeCredits(4614, 1, 1)!!
+        assertEquals(listOf(CastMember("Mark Harmon", "Gibbs", null, 1)), credits.cast)
+        assertEquals(listOf("Caterina Scorsone"), credits.guestStars.map { it.name })
+        assertEquals(listOf("Donald P. Bellisario"), credits.directors.map { it.name })
+        assertEquals(listOf("Don McGill"), credits.writers.map { it.name })
+        assertEquals("/3/tv/4614/season/1/episode/1/credits", server.takeRequest().requestUrl!!.encodedPath)
+        reply("", code = 404)
+        assertNull(client().episodeCredits(4614, 1, 99))
+    }
+
+    @Test
     fun `a search prefers a hit from the title's year`() = runBlocking {
         reply("""{"results":[{"id":1,"release_date":"2021-10-22"},{"id":2,"release_date":"1984-12-14"}]}""")
         assertEquals(2, client().findMovie("Dune", 1984))

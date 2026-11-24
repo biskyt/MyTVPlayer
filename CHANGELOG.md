@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.35.0
+- With TMDB, an episode's options, on the series page and in the player, now have its own Cast and crew: the cast who are in it, its guest stars, and who directed and wrote it.
+- The player's More menu now offers the same as the series page for the episode and its show, links included, in the same style.
+- An episode's description now gives its TMDB score and who directed and wrote it.
+
 ## 1.34.8
 - A film or an episode whose server does not answer at first is now tried again after 20 seconds, not after a minute, so it often plays at the second or third try.
 
