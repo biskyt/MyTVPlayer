@@ -107,6 +107,28 @@ class TmdbSeriesUiTest {
     }
 
     @Test
+    fun `an episode's own Cast and crew lists who is in it and who made it, and its description who directed and wrote it`() {
+        tmdb.use(app.container)
+        options("Episode 1")
+        compose.waitForText("THE SHOW")
+        // Two Cast and crew: the episode's (first, under This episode) and the show's.
+        compose.waitAdvancingClock { compose.onAllNodes(hasText("Cast and crew") and hasClickAction()).fetchSemanticsNodes().size == 2 }
+        compose.onAllNodes(hasText("Cast and crew") and hasClickAction())[0].performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForText("Neil Morrissey") // a guest star
+        assertTrue(shown("Vicky McClure")) // the show's cast who are in it
+        assertTrue(shown("David Caffrey"))
+        assertTrue(!shown("Martin Compston")) // the show's cast who are not
+    }
+
+    @Test
+    fun `an episode's description says who directed and wrote it`() {
+        tmdb.use(app.container)
+        options("Episode 1")
+        click("Episode description")
+        compose.waitForText("Directed by David Caffrey · Written by Jed Mercurio")
+    }
+
+    @Test
     fun `the page says whether the series goes on, its seasons and episodes, and when the next episode is shown`() {
         tmdb.use(app.container)
         val navigator = navigators.new(Screen.SeriesDetails(playlistId, 77, season = 1))

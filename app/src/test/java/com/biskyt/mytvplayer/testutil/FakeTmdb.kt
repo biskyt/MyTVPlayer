@@ -43,6 +43,7 @@ class FakeTmdb : Dispatcher() {
             "search/tv" -> """{"results":[{"id":31917,"first_air_date":"2012-06-26"}]}"""
             "tv/31917" -> LINE_OF_DUTY
             "tv/31917/season/1" -> SEASON_1
+            "tv/31917/season/1/episode/1/credits" -> EPISODE_1_CREDITS
             "person/$PERSON" -> CHALAMET
             "movie/438631/recommendations" -> DUNE_LIKE
             "tv/31917/recommendations" -> LINE_OF_DUTY_LIKE
@@ -56,6 +57,12 @@ class FakeTmdb : Dispatcher() {
     }
 
     companion object {
+        /** Line of Duty's first episode's own cast and crew. */
+        private const val EPISODE_1_CREDITS =
+            """{"cast":[{"id":504,"name":"Vicky McClure","character":"Kate Fleming"}],""" +
+                """"guest_stars":[{"id":503,"name":"Neil Morrissey","character":"Morton"}],""" +
+                """"crew":[{"id":501,"name":"David Caffrey","job":"Director"},{"id":502,"name":"Jed Mercurio","job":"Writer"}]}"""
+
         /** 32 characters, as a v3 key has: not a real key. */
         const val TEST_KEY = "00000000000000000000000000000000"
 
@@ -135,7 +142,9 @@ class FakeTmdb : Dispatcher() {
                 """{"season_number":3,"episode_number":2,"name":"Afterwards"}]}"""
 
         private const val SEASON_1 =
-            """{"episodes":[{"season_number":1,"episode_number":1,"overview":"TMDB's first."},""" +
+            """{"episodes":[{"season_number":1,"episode_number":1,"overview":"TMDB's first.","vote_average":8.1,"vote_count":50,""" +
+                """"crew":[{"id":501,"name":"David Caffrey","job":"Director"},{"id":502,"name":"Jed Mercurio","job":"Writer"}],""" +
+                """"guest_stars":[{"id":503,"name":"Neil Morrissey","character":"Morton"}]},""" +
                 """{"season_number":1,"episode_number":2,"overview":"TMDB's second.","air_date":"2012-07-03"}]}"""
     }
 }

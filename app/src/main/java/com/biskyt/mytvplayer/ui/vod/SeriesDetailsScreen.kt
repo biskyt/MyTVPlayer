@@ -62,6 +62,8 @@ import coil3.request.allowRgb565
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
+import com.biskyt.mytvplayer.container
+import com.biskyt.mytvplayer.core.tmdb.TmdbCredits
 import com.biskyt.mytvplayer.core.tmdb.TmdbEpisode
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.vod.CastMember
@@ -76,7 +78,6 @@ import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.AppIcons
 import com.biskyt.mytvplayer.ui.common.CastPanel
-import com.biskyt.mytvplayer.ui.common.ItemAction
 import com.biskyt.mytvplayer.ui.common.ItemActionsPanel
 import com.biskyt.mytvplayer.ui.common.LocalTopBarInset
 import com.biskyt.mytvplayer.ui.common.Muted
@@ -185,6 +186,9 @@ class SeriesDetailsViewModel(
         if (tmdb == null && show != null) tmdb = c.tmdb.series(show.title, details?.info)
     }
 
+    /** TMDB's [e], once its season is read from TMDB. */
+    fun tmdbEpisode(e: EpisodeInfo): TmdbEpisode? = tmdbSeasons[e.season]?.firstOrNull { it.number == e.number }
+
     /** Reads TMDB's episodes of [season] (once), when TMDB knows the series. */
     fun loadTmdbSeason(season: Int) {
         val id = tmdb?.id ?: return
@@ -238,6 +242,9 @@ sealed interface SeriesPanel {
     data object About : SeriesPanel
     data object Trailers : SeriesPanel
     data class Describe(val e: EpisodeInfo) : SeriesPanel
+
+    /** An episode's own cast and crew (TMDB's [credits] for it). */
+    data class EpisodeCast(val e: EpisodeInfo, val credits: TmdbCredits) : SeriesPanel
 }
 
 /** These details with [tmdb]'s episodes of [season] filled in (see [filledFrom]); the other seasons' as they are. */
@@ -362,7 +369,15 @@ private fun SeriesPanels(
         }
         SeriesPanel.About -> tmdb?.let { AboutPanel(film = false, it, close) }
         SeriesPanel.Trailers -> TrailersPanel(title, vm.info.trailers, close)
-        is SeriesPanel.Describe -> EpisodeDescriptionPanel(DescribedEpisode(title, now(p.e)), close)
+        is SeriesPanel.Describe -> EpisodeDescriptionPanel(DescribedEpisode(title, now(p.e), vm.tmdbEpisode(p.e)), close)
+        is SeriesPanel.EpisodeCast -> EpisodeCastPanel(
+            vm.playlistId,
+            episodeName(p.e, title),
+            p.credits,
+            vm.castFocus,
+            remember(vm) { { i: Int -> vm.castFocus = i } },
+            close
+        )
     }
 }
 
@@ -460,9 +475,15 @@ private fun EpisodeOptions(
         vm.setWatched(e, watched)
         close()
     }
+    val c = LocalContext.current.container
+    val credits = rememberEpisodeCredits(c, vm.tmdb, e.season, e.number)
     // One partly watched can be counted as watched, or started again (its progress forgotten).
     val episode = listOfNotNull(
-        episodeDescriptionAction(e) { vm.open = SeriesPanel.Describe(e) },
+        episodeDescriptionAction(DescribedEpisode(vm.series?.title, e, vm.tmdbEpisode(e))) { vm.open = SeriesPanel.Describe(e) },
+        episodeCastAction(credits) {
+            vm.castFocus = 0
+            vm.open = credits?.let { SeriesPanel.EpisodeCast(e, it) }
+        },
         downloadAction(vm.playlistId) { vm.download(e) },
         if (saved?.finished != true) markWatched(false, set) else null,
         if (saved?.started == true) markWatched(true, set) else null
@@ -476,13 +497,7 @@ private fun EpisodeOptions(
         moreLike,
         showAbout = { vm.open = SeriesPanel.About }
     )
-    val actions = if (show.isEmpty()) {
-        episode
-    } else {
-        listOf(ItemAction.Heading(appString(R.string.vod_this_episode))) + episode +
-            ItemAction.Heading(appString(R.string.vod_the_show)) + show
-    }
-    ItemActionsPanel(episodeName(e, vm.series?.title), actions, close)
+    ItemActionsPanel(episodeName(e, vm.series?.title), episodeAndShowActions(episode, show), close)
 }
 
 /** Focus for Play as the page opens and whenever where to carry on changes, unless the remote is in the episode list. */

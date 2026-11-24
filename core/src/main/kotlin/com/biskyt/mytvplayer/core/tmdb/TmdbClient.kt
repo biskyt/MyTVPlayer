@@ -82,6 +82,10 @@ class TmdbClient(
         return list("recommendations").ifEmpty { list("similar") }
     }
 
+    /** The cast and crew of episode [number] of [season] of series [seriesId]; null when TMDB has no such episode. */
+    suspend fun episodeCredits(seriesId: Int, season: Int, number: Int): TmdbCredits? =
+        get(CreditsJson.serializer(), "tv/$seriesId/season/$season/episode/$number/credits", emptyList())?.toEpisodeCredits()
+
     /** The episodes of [season] of series [seriesId]; empty when TMDB has none. */
     suspend fun season(seriesId: Int, season: Int): List<TmdbEpisode> =
         get(SeasonJson.serializer(), "tv/$seriesId/season/$season", emptyList())?.toEpisodes().orEmpty()
@@ -251,14 +255,35 @@ enum class SeriesStatus {
 /** One of a series' seasons on TMDB: [number] (from 1), its [episodeCount], and when it was first shown. */
 data class TmdbSeason(val number: Int, val name: String?, val episodeCount: Int, val airDate: LocalDate?)
 
+/**
+ * An episode as a season's page on TMDB gives it: with its users' [score] (out of 10, when enough voted), who directed
+ * and wrote it, and its [guestStars] (not the show's own cast: [TmdbClient.episodeCredits] gives the whole cast).
+ */
 data class TmdbEpisode(
     val season: Int,
     val number: Int,
     val name: String?,
     val overview: String?,
     val stillUrl: String?,
-    val airDate: LocalDate?
+    val airDate: LocalDate?,
+    val score: Double? = null,
+    val directors: List<CastMember> = emptyList(),
+    val writers: List<CastMember> = emptyList(),
+    val guestStars: List<CastMember> = emptyList()
 )
+
+/**
+ * An episode's own cast and crew on TMDB (the owner, 2026-11-24, as Plex shows it): the show's [cast] who are in it, its
+ * [guestStars], and who directed and wrote it.
+ */
+data class TmdbCredits(
+    val cast: List<CastMember>,
+    val guestStars: List<CastMember>,
+    val directors: List<CastMember>,
+    val writers: List<CastMember>
+) {
+    val isEmpty get() = cast.isEmpty() && guestStars.isEmpty() && directors.isEmpty() && writers.isEmpty()
+}
 
 /** A TMDB image path as a URL of [size] (such as "w185"). */
 internal fun image(path: String?, size: String): String? =

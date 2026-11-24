@@ -126,12 +126,18 @@ fun ItemActionsPanel(title: String, actions: List<ItemAction>, onDismiss: () -> 
         subtitle?.let { BoardPanelSubtitle(it, Modifier.padding(bottom = 8.bd)) }
         val first = actions.indexOfFirst { it !is ItemAction.Heading }
         actions.forEachIndexed { i, a ->
-            val focus = if (i == first) rememberFirstFocus() else Modifier
-            when (a) {
-                is ItemAction.Heading -> BoardSection(a.label)
-                is ItemAction.Links -> BoardLinksRow(a.label, a.links, focus)
-                else -> BoardOption(a.label, a.help, focus, icon = (a as? ItemAction.Run)?.icon) { a.perform(nav, onDismiss) }
-            }
+            ItemActionRow(a, if (i == first) rememberFirstFocus() else Modifier) { a.perform(nav, onDismiss) }
         }
     }
+}
+
+/**
+ * One row of an options panel, drawn the same in every one ([ItemActionsPanel], the player's More): a heading, a row of
+ * links, or an option with its help line and icon, which [perform] does.
+ */
+@Composable
+fun ItemActionRow(a: ItemAction, modifier: Modifier = Modifier, perform: () -> Unit) = when (a) {
+    is ItemAction.Heading -> BoardSection(a.label)
+    is ItemAction.Links -> BoardLinksRow(a.label, a.links, modifier)
+    else -> BoardOption(a.label, a.help, modifier, icon = (a as? ItemAction.Run)?.icon, onClick = perform)
 }

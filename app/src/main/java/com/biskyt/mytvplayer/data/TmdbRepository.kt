@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.annotation.VisibleForTesting
 import com.biskyt.mytvplayer.AppText
 import com.biskyt.mytvplayer.core.tmdb.TmdbClient
+import com.biskyt.mytvplayer.core.tmdb.TmdbCredits
 import com.biskyt.mytvplayer.core.tmdb.TmdbEpisode
 import com.biskyt.mytvplayer.core.tmdb.TmdbException
 import com.biskyt.mytvplayer.core.tmdb.TmdbPerson
@@ -65,6 +66,10 @@ class TmdbRepository(
 
     /** The episodes of [season] of the TMDB series [seriesId]; null when TMDB cannot give them (no key, or out of reach). */
     suspend fun season(seriesId: Int, season: Int): List<TmdbEpisode>? = quietly { it.season(seriesId, season) }
+
+    /** The cast and crew of an episode of the TMDB series [seriesId]; null when TMDB cannot give them. */
+    suspend fun episodeCredits(seriesId: Int, season: Int, number: Int): TmdbCredits? =
+        quietly { it.episodeCredits(seriesId, season, number) }
 
     /** Film (or, when [series], series) [id]'s page on TMDB; null when TMDB cannot give it (no key, or out of reach). */
     suspend fun title(series: Boolean, id: Int): TmdbTitle? = quietly { if (series) it.series(id) else it.movie(id) }

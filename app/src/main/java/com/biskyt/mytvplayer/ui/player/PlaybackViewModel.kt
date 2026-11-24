@@ -81,20 +81,20 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     /** The programme the About sheet tells of (live TV's, on now). */
     open val about: ChannelProgramme? get() = null
 
-    /** The episode the Episode description sheet tells of (see EpisodeDescription); null where there's none. */
-    open val described: DescribedEpisode? get() = null
-
     /** Set when playback should end and the screen close. */
     var exit by mutableStateOf(false)
         private set
 
-    enum class Sheet { AUDIO, SUBTITLES, MORE, ABOUT, DESCRIPTION, STREAM_INFO }
+    enum class Sheet { AUDIO, SUBTITLES, MORE, ABOUT, STREAM_INFO }
 
     /**
      * What can be done with what's playing, at the top of the More menu; read while drawing it, so labels follow state
      * (e.g. "Remove from favourites"). A screen opened from it stops playback until Back, like leaving the app.
      */
     open fun menuActions(): List<ItemAction> = emptyList()
+
+    /** The More menu's title: what is playing (a film's or an episode's name); null for "More". */
+    open fun menuTitle(): String? = null
 
     /** Before an action replaces the player with another screen (e.g. saves how far a movie got). */
     open fun beforeLeaving() = Unit
