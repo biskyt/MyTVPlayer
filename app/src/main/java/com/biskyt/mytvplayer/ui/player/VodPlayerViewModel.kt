@@ -135,7 +135,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         }
     ) + tmdbActions()
 
-    /** As the title's page offers them: Cast and crew, More like this, About and its links (not its trailers). */
+    /** As the title's page offers them: Cast and crew, More like this, a show's About and its links (not its trailers). */
     private fun tmdbActions(): List<ItemAction> = titleActions(
         tmdb,
         film = series == null,
@@ -146,7 +146,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
             val tab = if (series == null) Tab.MOVIES else Tab.SERIES
             pendingScreen = Screen.MoreLike(screen.playlistId, id, series = series != null, title, tab)
         },
-        showAbout = { openPanel(TitlePanel.About) },
+        showAbout = if (series == null) null else ({ openPanel(TitlePanel.About) }),
     )
 
     private fun openPanel(p: TitlePanel) {

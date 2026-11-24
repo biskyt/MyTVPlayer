@@ -16,20 +16,17 @@ import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.theme.bd
 
-// The film's More… › About this film, and a show's About this show (MyPlexPlayer's board "PlexFilmAbout"), from what
-// TMDB knows of it. Each fact takes the remote in turn, so that a long list scrolls.
+// A show's More… › About this show (MyPlexPlayer's board "PlexFilmAbout"), from what TMDB knows of it. Each fact takes
+// the remote in turn, so that a long list scrolls.
 
 /**
- * About this film (or this show, when not [film]): its original title, when it was released, its studios, countries and
- * genres. A line with no data is left out.
+ * About this show: its original title, when it was first shown, its studios, countries and genres. A line with no data
+ * is left out. A film has no About: its page shows its original title and release date (the owner, 2026-11-24).
  */
 @Composable
-fun AboutPanel(film: Boolean, tmdb: TmdbTitle, onDismiss: () -> Unit) {
+fun AboutPanel(tmdb: TmdbTitle, onDismiss: () -> Unit) {
     BoardPanel(onDismiss) {
-        BoardPanelTitle(
-            stringResource(if (film) R.string.vod_about_this_film else R.string.vod_about_this_show),
-            Modifier.padding(bottom = 3.bd)
-        )
+        BoardPanelTitle(stringResource(R.string.vod_about_this_show), Modifier.padding(bottom = 3.bd))
         remember(tmdb) { aboutFacts(tmdb) }.forEachIndexed { i, (label, value) ->
             BoardFact(label, value, ABOUT_LABEL, if (i == 0) rememberFirstFocus() else Modifier)
         }

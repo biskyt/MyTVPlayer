@@ -87,4 +87,18 @@ class TitleInfoTest {
         assertNull(info.tmdb)
         assertEquals(TitleInfo(), merge(null, null))
     }
+
+    @Test
+    fun `the film page shows TMDB's original title only when it differs from the title shown`() {
+        assertNull(originalTitle("Dune", tmdb))
+        assertNull(originalTitle("Dune", tmdb.copy(originalTitle = "dune")))
+        assertEquals("Dune: Part One", originalTitle("Dune", tmdb.copy(originalTitle = "Dune: Part One")))
+        assertNull(originalTitle("Dune", null))
+    }
+
+    @Test
+    fun `the facts line starts with what was released, and skips it when unknown`() {
+        assertEquals("15 Sept 2021 · Drama", metaLine("15 Sept 2021", null, "Drama", null))
+        assertEquals("Drama", metaLine(null, null, "Drama", null))
+    }
 }
