@@ -71,8 +71,9 @@ class LauncherSync(
     private val launcher: LauncherWriter = TvLauncher(context),
 ) {
     /**
-     * The app's rows (channels) made and not yet shown: Settings asks the TV to show them (the TV can ask the user),
-     * then takes them out. Kept until then (they can be made while Settings is not open), unless taken away first.
+     * The app's rows (channels) made and not yet shown: the settings list or its Misc page asks the TV to show them (the
+     * TV can ask the user), then takes them out. Kept until then (they can be made while neither is open), unless taken
+     * away first.
      */
     val madeChannels = MutableStateFlow<Set<Long>>(emptySet())
 

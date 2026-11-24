@@ -82,10 +82,10 @@ class VpnBadgeUiTest {
     }
 
     @Test
-    fun `the setting is in the main settings list`() {
-        val navigator = navigators.new(Screen.Settings)
+    fun `the setting is in the Misc settings`() {
+        val navigator = navigators.new(Screen.MiscSettings)
         compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
-        compose.waitForText("Playlists")
+        compose.waitForText("Radio stations")
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Warn if VPN is not connected"))
         compose.onNode(hasText("Warn if VPN is not connected") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
         compose.waitAdvancingClock { runBlocking { app.container.settings.current().warnVpn } }
@@ -94,9 +94,9 @@ class VpnBadgeUiTest {
 
     @Test
     fun `the external IP setting shows only while the VPN warning is on, and is off by default`() {
-        val navigator = navigators.new(Screen.Settings)
+        val navigator = navigators.new(Screen.MiscSettings)
         compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
-        compose.waitForText("Playlists")
+        compose.waitForText("Radio stations")
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Warn if VPN is not connected"))
         assertFalse(shown("Show your external IP address"))
         compose.onNode(hasText("Warn if VPN is not connected") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)

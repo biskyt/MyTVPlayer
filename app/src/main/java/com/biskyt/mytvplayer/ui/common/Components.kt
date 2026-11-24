@@ -73,11 +73,9 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import coil3.BitmapImage
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowRgb565
-import coil3.request.transformations
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.data.db.ChannelEntity
@@ -85,10 +83,8 @@ import com.biskyt.mytvplayer.data.db.VodCard
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.LocalOnAccentTypography
 import com.biskyt.mytvplayer.ui.theme.Palette
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /** The ring around what has focus. */
 
@@ -479,28 +475,23 @@ private fun ImageWithInitials(
     textStyle: TextStyle,
     modifier: Modifier = Modifier,
     opaque: Boolean = false,
-    /** A TV channel's logo: a dark one gets a light tile (see LogoDark). */
+    /** A TV channel's logo: it gets the light tile ([LIGHT_LOGO_TILE]) once it shows (the owner, 2026-11-24). */
     logo: Boolean = false
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    // A channel logo's address: one that may get a light tile (only then is any of that work done).
-    val logoUrl = url.takeIf { logo }
     val request = remember(url) {
         url?.let {
             with(density) {
                 ImageRequest.Builder(context).data(it).size(width.roundToPx(), height.roundToPx()).apply {
                     if (opaque) allowRgb565(true)
-                    if (logoUrl != null) transformations(LogoDark(logoUrl))
                 }.build()
             }
         }
     }
     var loaded by remember(url) { mutableStateOf(false) }
-    val dark = logoUrl?.let { remember(it) { mutableStateOf(LogoDark.known(it) == true) } }
-    val scope = if (logoUrl != null) rememberCoroutineScope() else null
     // Only once it shows: the initials, while it loads or when it fails, keep the dark tile they are made for.
-    val tile = if (loaded && dark?.value == true) LIGHT_LOGO_TILE else Palette.surfaceHigh
+    val tile = if (loaded && logo) LIGHT_LOGO_TILE else Palette.surfaceHigh
     Box(modifier.size(width, height).clip(shape).background(tile), contentAlignment = Alignment.Center) {
         if (!loaded) Text(remember(name) { initials(name) }, style = textStyle, color = Palette.textDim, maxLines = 1)
         if (request != null) {
@@ -508,26 +499,15 @@ private fun ImageWithInitials(
                 model = request,
                 contentDescription = null,
                 contentScale = contentScale,
-                onSuccess = { state ->
-                    loaded = true
-                    if (logoUrl != null && dark != null && scope != null) {
-                        val known = LogoDark.known(logoUrl)
-                        // From Coil's memory cache after this note was dropped: looked at again, off the main thread.
-                        val bitmap = (state.result.image as? BitmapImage)?.bitmap
-                        when {
-                            known != null -> dark.value = known
-                            bitmap != null -> scope.launch {
-                                dark.value =
-                                    withContext(Dispatchers.Default) { LogoDark.look(logoUrl, bitmap) }
-                            }
-                        }
-                    }
-                },
+                onSuccess = { loaded = true },
                 modifier = Modifier.size(width, height).padding(padding)
             )
         }
     }
 }
+
+/** The tile behind every channel logo: light enough for black text, softer than white (MyTVLauncher's). */
+internal val LIGHT_LOGO_TILE = Color(0xFFC4C5C8)
 
 private val countryPrefix = Regex("^\\W*[A-Za-z]{2,3}\\s*[|:\\-]\\s*")
 

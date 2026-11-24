@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.35.3
+- Every channel logo shows on a light background.
+- The settings have a new Misc page.
+
 ## 1.35.2
 - The player's episode description adds TMDB's details when they arrive after it opens.
 

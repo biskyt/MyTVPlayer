@@ -10,6 +10,8 @@
     <string name="settings_guide_matching_help">Elige el canal de guía que usa cada canal</string>
     <string name="settings_appearance_title">Apariencia</string>
     <string name="settings_appearance_help">Color de acento y tamaño del texto</string>
+    <string name="settings_misc_title">Varios</string>
+    <string name="settings_misc_help">Emisoras de radio, descargas, pantalla de inicio del televisor, avisos de red</string>
     <string name="settings_backup_title">Copia de seguridad</string>
     <string name="settings_backup_help">Guarda tus listas y preferencias en un archivo o en Google Drive, o restáuralas</string>
     <string name="settings_about_title">Acerca de</string>

@@ -12,6 +12,8 @@
     <string name="settings_guide_matching_help">Pick the guide channel used by each channel</string>
     <string name="settings_appearance_title">Appearance</string>
     <string name="settings_appearance_help">Accent colour and text size</string>
+    <string name="settings_misc_title">Misc</string>
+    <string name="settings_misc_help">Radio stations, downloads, the TV\'s home screen, network warnings</string>
     <string name="settings_backup_title">Backup &amp; restore</string>
     <string name="settings_backup_help">Save your playlists and choices to a file or Google Drive, or restore them</string>
     <string name="settings_about_title">About</string>

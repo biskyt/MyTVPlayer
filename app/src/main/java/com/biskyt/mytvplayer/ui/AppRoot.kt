@@ -57,6 +57,7 @@ import com.biskyt.mytvplayer.ui.settings.AppearanceScreen
 import com.biskyt.mytvplayer.ui.settings.BackupScreen
 import com.biskyt.mytvplayer.ui.settings.CategoriesScreen
 import com.biskyt.mytvplayer.ui.settings.LicencesScreen
+import com.biskyt.mytvplayer.ui.settings.MiscSettingsScreen
 import com.biskyt.mytvplayer.ui.settings.ParentalScreen
 import com.biskyt.mytvplayer.ui.settings.PlaybackSettingsScreen
 import com.biskyt.mytvplayer.ui.settings.PlaylistEditScreen
@@ -293,7 +294,8 @@ private val Screen.drawsOwnTopBar: Boolean
         Screen.Welcome, is Screen.Player, is Screen.VodPlayer, is Screen.CatchupPlayer, is Screen.MovieDetails,
         is Screen.SeriesDetails, is Screen.Person, is Screen.MoreLike, is Screen.TmdbTitle, Screen.Settings, Screen.Playlists,
         is Screen.PlaylistEdit,
-        is Screen.Categories, Screen.PlaybackSettings, Screen.Appearance, Screen.Parental, Screen.Sync, Screen.GuideSources,
+        is Screen.Categories, Screen.PlaybackSettings, Screen.Appearance, Screen.MiscSettings, Screen.Parental, Screen.Sync,
+        Screen.GuideSources,
         is Screen.GuideMatching, Screen.Backup, Screen.About, Screen.Licences -> false
     }
 
@@ -332,6 +334,7 @@ private fun ScreenBody(screen: Screen) {
         is Screen.Categories -> CategoriesScreen(screen.playlistId, screen.firstRun)
         Screen.PlaybackSettings -> PlaybackSettingsScreen()
         Screen.Appearance -> AppearanceScreen()
+        Screen.MiscSettings -> MiscSettingsScreen()
         Screen.Parental -> ParentalScreen()
         Screen.Sync -> SyncScreen()
         Screen.GuideSources -> GuideSourcesScreen()

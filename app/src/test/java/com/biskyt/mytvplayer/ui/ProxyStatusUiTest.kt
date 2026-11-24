@@ -34,8 +34,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * "Warn if the proxy is not working" (the owner, 2026-11-13): a setting in the main list, off by default; the status
- * says "Proxy on" with the address seen through the proxy, or warns.
+ * "Warn if the proxy is not working" (the owner, 2026-11-13): a setting in Misc settings (since 2026-11-24), off by
+ * default; the status says "Proxy on" with the address seen through the proxy, or warns.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "+w960dp-h540dp-tvdpi")
@@ -59,10 +59,13 @@ class ProxyStatusUiTest {
     private fun count(text: String) = compose.onAllNodes(hasText(text)).fetchSemanticsNodes().size
 
     @Test
-    fun `the setting is in the main settings list, off by default, and turns on`() {
+    fun `the setting is in Misc settings, off by default, and turns on`() {
         val navigator = navigators.new(Screen.Settings)
         compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
         compose.waitForText("Playlists")
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Misc"))
+        compose.onNode(hasText("Misc") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForText("Radio stations")
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Warn if the proxy is not working"))
         assertFalse(runBlocking { app.container.settings.current().warnProxy })
         compose.onNode(hasText("Warn if the proxy is not working") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
