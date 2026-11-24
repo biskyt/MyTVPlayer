@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.biskyt.mytvplayer.core.player.SubtitleMode
 import com.biskyt.mytvplayer.core.ui.AccentPalette
+import com.biskyt.mytvplayer.core.ui.BackdropLevel
 import java.util.Locale
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -51,6 +52,8 @@ data class Settings(
     val lastChannelId: Long = 0,
     val accent: Int = AccentPalette.DEFAULT,
     val largeText: Boolean = false,
+    /** How bright the browsing screens' background is (see BackdropLevel and AmbientBackground). */
+    val backdropLevel: Int = BackdropLevel.DEFAULT,
     /** Show in the top bar whether Android reports a VPN (see VpnMonitor). */
     val warnVpn: Boolean = false,
     /** With [warnVpn]: also show the public IP address (see ExternalIp). It asks ipinfo.io, so it is off by default. */
@@ -96,6 +99,7 @@ class SettingsRepository(private val context: Context) {
         val lastChannel = longPreferencesKey("last_channel")
         val accent = intPreferencesKey("accent")
         val largeText = booleanPreferencesKey("large_text")
+        val backdrop = intPreferencesKey("backdrop_level")
         val warnVpn = booleanPreferencesKey("warn_vpn")
         val warnProxy = booleanPreferencesKey("warn_proxy")
         val downloads = booleanPreferencesKey("downloads")
@@ -161,6 +165,7 @@ class SettingsRepository(private val context: Context) {
             lastChannelId = valueOr(K.lastChannel, d.lastChannelId),
             accent = valueOr(K.accent, d.accent),
             largeText = valueOr(K.largeText, d.largeText),
+            backdropLevel = BackdropLevel.valid(valueOr(K.backdrop, d.backdropLevel)),
             warnVpn = valueOr(K.warnVpn, d.warnVpn),
             warnProxy = valueOr(K.warnProxy, d.warnProxy),
             downloads = valueOr(K.downloads, d.downloads),
@@ -197,6 +202,7 @@ class SettingsRepository(private val context: Context) {
             prefs[K.lastChannel] = s.lastChannelId
             prefs[K.accent] = s.accent
             prefs[K.largeText] = s.largeText
+            prefs[K.backdrop] = s.backdropLevel
             prefs[K.warnVpn] = s.warnVpn
             prefs[K.warnProxy] = s.warnProxy
             prefs[K.downloads] = s.downloads

@@ -52,6 +52,10 @@
     <string name="settings_accent_help">Usada em destaques, barras de progresso e botões em todo o app. Os tons mais claros e mais escuros são calculados automaticamente.</string>
     <string name="settings_large_text">Texto grande</string>
     <string name="settings_large_text_help">Texto maior é mais fácil de ler do sofá</string>
+    <string name="settings_backdrop">Brilho do fundo</string>
+    <string name="settings_backdrop_help">O brilho do fundo atrás dos cartões</string>
+    <string name="settings_backdrop_off">Desligado</string>
+    <string name="settings_backdrop_value">%1$d%%</string>
 
     <string name="settings_about_licence">Gratuito e de código aberto (GPL 3.0). Feito por biskyt.</string>
     <string name="settings_licences_title">Licenças de código aberto</string>

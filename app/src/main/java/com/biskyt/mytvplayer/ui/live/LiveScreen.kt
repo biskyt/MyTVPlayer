@@ -53,6 +53,7 @@ import com.biskyt.mytvplayer.data.programmeTitle
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
+import com.biskyt.mytvplayer.ui.common.AmbientSource
 import com.biskyt.mytvplayer.ui.common.CatchupMark
 import com.biskyt.mytvplayer.ui.common.CategoryEntry
 import com.biskyt.mytvplayer.ui.common.ChannelLogo
@@ -60,6 +61,7 @@ import com.biskyt.mytvplayer.ui.common.FilteredCategoryColumn
 import com.biskyt.mytvplayer.ui.common.FlashLabel
 import com.biskyt.mytvplayer.ui.common.KeepInView
 import com.biskyt.mytvplayer.ui.common.ListHeader
+import com.biskyt.mytvplayer.ui.common.LocalAmbience
 import com.biskyt.mytvplayer.ui.common.LockedCategory
 import com.biskyt.mytvplayer.ui.common.MovableTile
 import com.biskyt.mytvplayer.ui.common.MoveBackHandler
@@ -74,6 +76,7 @@ import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TabScaffold
 import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.afterRemoval
+import com.biskyt.mytvplayer.ui.common.ambientSource
 import com.biskyt.mytvplayer.ui.common.categoryEntries
 import com.biskyt.mytvplayer.ui.common.collectIds
 import com.biskyt.mytvplayer.ui.common.digit
@@ -322,7 +325,12 @@ fun ChannelRow(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    TvCard(onClick = onClick, onLongClick = onLongClick, modifier = modifier.fillMaxWidth().height(64.dp), color = Palette.surfaceLow) {
+    TvCard(
+        onClick = onClick,
+        onLongClick = onLongClick,
+        modifier = modifier.ambientSource(LocalAmbience.current, AmbientSource.logo(ch.logoUrl)).fillMaxWidth().height(64.dp),
+        color = Palette.surfaceLow
+    ) {
         Row(
             Modifier.fillMaxSize().padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,

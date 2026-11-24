@@ -76,6 +76,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowRgb565
+import coil3.request.transformations
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.data.db.ChannelEntity
@@ -293,7 +294,7 @@ fun ProgressLine(fraction: Float, modifier: Modifier = Modifier, height: Dp = 5.
 @Composable
 fun ChannelLogo(url: String?, name: String, width: Dp = 72.dp, height: Dp = 40.dp, favourite: Boolean = false) = FavouriteBadge(favourite) {
     val style = MaterialTheme.typography.labelMedium
-    ImageWithInitials(url, name, width, height, LogoShape, ContentScale.Fit, 4.dp, style, logo = true)
+    ImageWithInitials(url, name, width, height, LogoShape, ContentScale.Fit, 0.dp, style, logo = true)
 }
 
 /**
@@ -377,6 +378,8 @@ fun PosterTile(
     texts: List<String>,
     /** The poster's width (MyPlexPlayer's person page has larger posters). */
     width: Dp = POSTER_WIDTH,
+    /** What the browsing screens' background shows while the card has focus (see AmbientBackground). */
+    ambient: AmbientSource = AmbientSource.Plain,
     poster: @Composable () -> Unit,
     below: @Composable (focused: Boolean) -> Unit
 ) {
@@ -389,7 +392,7 @@ fun PosterTile(
         TvCard(
             onClick = onClick,
             onLongClick = onLongClick,
-            modifier = modifier.onFocusChanged {
+            modifier = modifier.ambientSource(LocalAmbience.current, ambient).onFocusChanged {
                 focused.value = it.hasFocus
                 if (it.hasFocus) scope.launch { tile.bringIntoView() }
             }.semantics { this[SemanticsProperties.Text] = texts.filter { it.isNotBlank() }.map(::AnnotatedString) },
@@ -426,6 +429,7 @@ fun PosterCard(
     onLongClick,
     modifier,
     listOfNotNull(card.title, card.year?.toString(), detail),
+    ambient = AmbientSource.picture(card.imageUrl),
     // (Its initials, shown until the picture loads, are not read: the card's texts are.)
     poster = {
         FavouriteBadge(favourite, inside = true) { Poster(card.imageUrl, card.title, POSTER_WIDTH, Modifier.clearAndSetSemantics {}) }
@@ -475,7 +479,7 @@ private fun ImageWithInitials(
     textStyle: TextStyle,
     modifier: Modifier = Modifier,
     opaque: Boolean = false,
-    /** A TV channel's logo: it gets the light tile ([LIGHT_LOGO_TILE]) once it shows (the owner, 2026-11-24). */
+    /** A TV channel's logo: trimmed, fitted and lightened where it is dark (see LogoTile.kt), on [LOGO_TILE]. */
     logo: Boolean = false
 ) {
     val context = LocalContext.current
@@ -483,31 +487,31 @@ private fun ImageWithInitials(
     val request = remember(url) {
         url?.let {
             with(density) {
-                ImageRequest.Builder(context).data(it).size(width.roundToPx(), height.roundToPx()).apply {
+                // A logo at twice the size: once its transparent border is cut off (see LogoTrim), it is scaled up
+                // to fill the tile, and would look soft from a small decode.
+                val scale = if (logo) 2 else 1
+                ImageRequest.Builder(context).data(it).size(width.roundToPx() * scale, height.roundToPx() * scale).apply {
                     if (opaque) allowRgb565(true)
+                    if (logo) transformations(LogoTrim)
                 }.build()
             }
         }
     }
     var loaded by remember(url) { mutableStateOf(false) }
-    // Only once it shows: the initials, while it loads or when it fails, keep the dark tile they are made for.
-    val tile = if (loaded && logo) LIGHT_LOGO_TILE else Palette.surfaceHigh
+    val tile = if (logo) LOGO_TILE else Palette.surfaceHigh
     Box(modifier.size(width, height).clip(shape).background(tile), contentAlignment = Alignment.Center) {
         if (!loaded) Text(remember(name) { initials(name) }, style = textStyle, color = Palette.textDim, maxLines = 1)
         if (request != null) {
             AsyncImage(
                 model = request,
                 contentDescription = null,
-                contentScale = contentScale,
+                contentScale = if (logo) LogoFit else contentScale,
                 onSuccess = { loaded = true },
                 modifier = Modifier.size(width, height).padding(padding)
             )
         }
     }
 }
-
-/** The tile behind every channel logo: light enough for black text, softer than white (MyTVLauncher's). */
-internal val LIGHT_LOGO_TILE = Color(0xFFC4C5C8)
 
 private val countryPrefix = Regex("^\\W*[A-Za-z]{2,3}\\s*[|:\\-]\\s*")
 

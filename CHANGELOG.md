@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.36.0
+- The background takes its colours from the film, series or channel that you select.
+- Channel logos are all the same size, on a dark tile.
+- Black channel logos show in white.
+- Appearance has a setting for how bright the background is.
+
 ## 1.35.4
 - A film's page shows its release date and original title.
 - A film's More menu no longer has About this film.

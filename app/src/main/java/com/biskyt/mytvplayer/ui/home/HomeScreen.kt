@@ -52,6 +52,7 @@ import com.biskyt.mytvplayer.data.db.WatchProgressEntity
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
+import com.biskyt.mytvplayer.ui.common.AmbientSource
 import com.biskyt.mytvplayer.ui.common.ChannelCard
 import com.biskyt.mytvplayer.ui.common.FavouriteMover
 import com.biskyt.mytvplayer.ui.common.ItemAction
@@ -532,6 +533,7 @@ private fun CarryOnCard(p: WatchProgressEntity, modifier: Modifier, onLongClick:
         onLongClick,
         modifier,
         listOf(p.title, left),
+        ambient = AmbientSource.picture(p.imageUrl),
         poster = {
             Box {
                 // (Its initials, shown until the picture loads, are not read: the card's texts are.)

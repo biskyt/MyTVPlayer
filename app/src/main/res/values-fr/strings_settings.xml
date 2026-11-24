@@ -52,6 +52,10 @@
     <string name="settings_accent_help">Utilisée partout pour la mise en évidence, les barres de progression et les boutons. Les nuances plus claires et plus foncées sont calculées automatiquement.</string>
     <string name="settings_large_text">Grand texte</string>
     <string name="settings_large_text_help">Un texte plus grand se lit plus facilement depuis le canapé</string>
+    <string name="settings_backdrop">Luminosité du fond</string>
+    <string name="settings_backdrop_help">La luminosité du fond derrière les cartes</string>
+    <string name="settings_backdrop_off">Désactivé</string>
+    <string name="settings_backdrop_value">%1$d %%</string>
 
     <string name="settings_about_licence">Libre et open source (GPL 3.0). Créé par biskyt.</string>
     <string name="settings_licences_title">Licences open source</string>
