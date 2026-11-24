@@ -5,6 +5,8 @@ English, one bullet of one sentence per change.
 
 ## 1.35.1
 - The player's episode description shows the same details as the series page.
+- The player's More menu shows the show's Cast and crew, More like this, About and Links again.
+- The player's More menu has a Playback heading for Picture and Stream info.
 
 ## 1.35.0
 - Episodes have their own Cast and crew, from TMDB.

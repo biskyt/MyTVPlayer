@@ -114,7 +114,11 @@ class PlayerDescriptionUiTest {
         tmdb.use(app.container)
         tmdb.searchFindsNothing = true
         val vm = play(9002) // no plot from the provider: TMDB's
+        // The show's options from TMDB come with it (the owner, 2026-11-24: missing in 1.35.0 too).
+        compose.waitAdvancingClock { vm.menuActions().any { it.label == "Links" } }
+        assertTrue(vm.menuActions().any { it.label == "More like this" })
         vm.sheet = PlaybackViewModel.Sheet.MORE
+        compose.waitForText("PLAYBACK") // the player's own options, under their own heading
         compose.waitForText("Episode description")
         compose.onAllNodes(hasText("Episode description"))[0].performClick()
         compose.waitForText("TMDB's second.")

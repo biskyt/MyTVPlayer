@@ -138,6 +138,8 @@ fun PlayerSheet(sheet: PlaybackViewModel.Sheet, vm: PlaybackViewModel) {
                         // A screen pushed over the player stops it while it's covered.
                         ItemActionRow(a, if (i == firstOption) first else Modifier) { a.perform(nav, close, vm::beforeLeaving) }
                     }
+                    // The player's own options, under their own heading (the owner, 2026-11-24).
+                    item { ItemActionRow(ItemAction.Heading(stringResource(R.string.player_playback_heading))) {} }
                     item {
                         // What it says now, and what it flashes once pressed (the next mode).
                         val label = stringResource(R.string.player_picture, stringResource(vm.picture.label))
