@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.35.2
+- The player's episode description adds TMDB's details when they arrive after it opens.
+
 ## 1.35.1
 - The player's episode description shows the same details as the series page.
 - The player's More menu shows the show's Cast and crew, More like this, About and Links again.

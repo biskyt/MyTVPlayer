@@ -61,7 +61,7 @@ class ProgressSyncTest {
 
         /** What [sync] asked to download again, for each playlist. */
         val reloaded = ConcurrentHashMap<Long, Reload>()
-        private lateinit var choices: SyncedChoices
+        private val choices: SyncedChoices
         val sync = ProgressSync(
             db,
             SyncAccount(PreferenceDataStoreFactory.create(scope = scope) { context.filesDir.resolve("sync-$name.preferences_pb") }),

@@ -259,7 +259,7 @@ class M3uPlaylistTest {
     }
 
     @Test
-    fun `a radio station marked radio="true" is saved as one, as the channels load`() = runBlocking {
+    fun `a radio station marked as radio is saved as one, as the channels load`() = runBlocking {
         provider.m3u = """
             #EXTM3U
             #EXTINF:-1 group-title="Live: News",World News

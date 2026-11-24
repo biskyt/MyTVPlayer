@@ -167,7 +167,7 @@ val openSourceNotices = listOf(
     ),
     OpenSourceNotice(
         "Kotlin serialization",
-        "1.9.0",
+        "1.11.0",
         R.string.settings_lib_serialization,
         Licence.APACHE,
         "https://github.com/Kotlin/kotlinx.serialization",
@@ -181,7 +181,7 @@ val openSourceNotices = listOf(
         "https://github.com/zxing/zxing",
         listOf("com.google.zxing:core")
     ),
-    OpenSourceNotice("Kotlin", "2.2.0", R.string.settings_lib_kotlin, Licence.APACHE, "https://github.com/JetBrains/kotlin"),
+    OpenSourceNotice("Kotlin", "2.3.21", R.string.settings_lib_kotlin, Licence.APACHE, "https://github.com/JetBrains/kotlin"),
     OpenSourceNotice("Guava", null, R.string.settings_lib_guava, Licence.APACHE, "https://github.com/google/guava"),
     OpenSourceNotice(
         "Nunito",
