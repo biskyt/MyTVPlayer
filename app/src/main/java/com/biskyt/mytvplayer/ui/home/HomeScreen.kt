@@ -89,10 +89,9 @@ import com.biskyt.mytvplayer.ui.common.titledRow
 import com.biskyt.mytvplayer.ui.common.vodActions
 import com.biskyt.mytvplayer.ui.common.vodDetails
 import com.biskyt.mytvplayer.ui.live.ChannelOptionsPanel
-import com.biskyt.mytvplayer.ui.player.DescribedEpisode
 import com.biskyt.mytvplayer.ui.vod.TitlePanel
 import com.biskyt.mytvplayer.ui.vod.TitlePanels
-import com.biskyt.mytvplayer.ui.vod.filledFrom
+import com.biskyt.mytvplayer.ui.vod.describedEpisode
 import com.biskyt.mytvplayer.ui.vod.rememberTmdb
 import com.biskyt.mytvplayer.ui.vod.rememberTmdbEpisode
 import com.biskyt.mytvplayer.ui.vod.titleExtraActions
@@ -407,7 +406,7 @@ private fun CarryOnOptions(p: WatchProgressEntity, vm: HomeViewModel, onDismiss:
     val tmdbEpisode = rememberTmdbEpisode(c, tmdb, p.season, p.episode)
     val described = tmdbEpisode?.takeIf { series != null }?.let { t ->
         val e = EpisodeInfo(p.itemId, p.season ?: 0, p.episode ?: 0, p.episodeTitle.orEmpty(), "", null, null, null)
-        DescribedEpisode(p.title, e.filledFrom(t), t)
+        describedEpisode(p.title, e, t)
     }
     var panel by remember { mutableStateOf<TitlePanel?>(null) }
     val actions = listOf(

@@ -145,6 +145,7 @@ object CategoryLanguageDetector {
         val c = country?.uppercase()?.let { aliases[it] ?: it }
         if (c != null && (c in groups || c in isoCountries)) return groupForCountry(c)
         val code = language?.let(Languages::code) ?: return null
-        return languageGroups[code]?.first() ?: Locale(code).getDisplayLanguage(Locale.ENGLISH).ifEmpty { null }
+        return languageGroups[code]?.first()
+            ?: runCatching { Languages.locale(code) }.getOrNull()?.getDisplayLanguage(Locale.ENGLISH)?.ifEmpty { null }
     }
 }

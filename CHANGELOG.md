@@ -3,13 +3,16 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.35.1
+- The player's episode description shows the same details as the series page.
+
 ## 1.35.0
-- With TMDB, an episode's options, on the series page and in the player, now have its own Cast and crew: the cast who are in it, its guest stars, and who directed and wrote it.
-- The player's More menu now offers the same as the series page for the episode and its show, links included, in the same style.
-- An episode's description now gives its TMDB score and who directed and wrote it.
+- Episodes have their own Cast and crew, from TMDB.
+- The player's More menu has the same options as the series page.
+- An episode's description shows its TMDB score, director and writers.
 
 ## 1.34.8
-- A film or an episode whose server does not answer at first is now tried again after 20 seconds, not after a minute, so it often plays at the second or third try.
+- Films and episodes try again after 20 seconds when the server does not answer.
 
 ## 1.34.7
 - A stream that stops coming in after it played now says that the server sent it too slowly to play, not "to start".

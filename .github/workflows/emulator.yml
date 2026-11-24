@@ -48,6 +48,9 @@ jobs:
             target: google-tv
             arch: x86_64
     steps:
+      # actions/checkout runs "git init", which otherwise prints a hint about the default branch's name.
+      - run: git config --global init.defaultBranch main
+
       - uses: actions/checkout@v5
 
       - uses: actions/setup-java@v5

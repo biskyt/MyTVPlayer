@@ -19,10 +19,13 @@ object Languages {
         return iso3to2[p] ?: p
     }
 
+    /** The language [code] ("en") as a locale: Locale's own constructor is deprecated. */
+    fun locale(code: String): Locale = Locale.Builder().setLanguage(code).build()
+
     // Every language Java knows, by its English name, its own code and its 3-letter code.
     private val codes: Map<String, String> by lazy {
         Locale.getISOLanguages().flatMap { code ->
-            val l = Locale(code)
+            val l = locale(code)
             val iso3 = runCatching { l.isO3Language }.getOrNull()
             listOfNotNull(code to code, l.getDisplayLanguage(Locale.ENGLISH).lowercase() to code, iso3?.let { it to code })
         }.toMap() + iso3to2

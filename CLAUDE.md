@@ -44,7 +44,9 @@ See also:
 4. Bump `versionCode` (+1) and `versionName` in `app/build.gradle.kts`, for every PR that changes the app, released or
    not: the patch number for fixes and small changes, the minor for a notable feature (1.1.0: languages).
 5. Add a `## x.y.z` section at the top of `CHANGELOG.md`, written for people using the app: plain English, one
-   bullet of one sentence per change (the owner, 2026-10-29).
+   bullet of one sentence per change (the owner, 2026-10-29). Each bullet is a short, simple fact: what changed, not
+   why, and no lists or explanations inside it (the owner, 2026-11-24: "The player's More menu has the same options
+   as the series page.").
    - A release's notes are its section plus those of any unreleased versions since the last release
      (`.github/scripts/release-notes.sh`). For Play's "What's new" (500 characters), `play-notes.py` keeps the whole
      bullets that fit in about 420 and adds a link to the full notes, so put the change users notice most first.
@@ -53,8 +55,9 @@ See also:
      Console.
 6. Commit with the session's attribution trailers, then push to the working branch and open a PR to `main`.
 7. When CI and the emulator runs (if the PR has them; see below) are green, merge the PR (merge commit).
-   - CI runs once per commit: on pull requests and on `main` after a merge (or by hand). A push to a branch without a
-     PR runs nothing, so open the PR to get CI.
+   - CI runs on pull requests only (or by hand), not on `main` after a merge (the owner, 2026-11-24). A push to a
+     branch without a PR runs nothing, so open the PR to get CI. The release run on `main` saves the caches that the
+     PR runs read.
    - CI runs `:core:test :app:recordRoborazziDebug` (the unit tests, recording screenshots to `app/screenshots/`; don't
      commit those unless meant to). The emulator runs are on PRs (or started by hand), and skipped when every
      changed file is one that can't reach the app: `.md`, `docs/`, `store/`, JVM tests and screenshots, or the other

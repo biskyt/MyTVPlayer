@@ -29,9 +29,9 @@ import com.biskyt.mytvplayer.ui.common.favouriteAction
 import com.biskyt.mytvplayer.ui.common.favouriteFlash
 import com.biskyt.mytvplayer.ui.common.formatDuration
 import com.biskyt.mytvplayer.ui.vod.TitlePanel
+import com.biskyt.mytvplayer.ui.vod.describedEpisode
 import com.biskyt.mytvplayer.ui.vod.episodeAndShowActions
 import com.biskyt.mytvplayer.ui.vod.episodeCastAction
-import com.biskyt.mytvplayer.ui.vod.filledFrom
 import com.biskyt.mytvplayer.ui.vod.titleActions
 import com.biskyt.mytvplayer.ui.vod.tmdbFor
 import kotlinx.coroutines.Job
@@ -96,7 +96,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
 
     /** The episode, with TMDB's plot and date where the provider gave none: as the series page describes it. */
     private val described: DescribedEpisode?
-        get() = current?.let { p -> p.episode?.let { DescribedEpisode(p.show, it.filledFrom(tmdbEpisode), tmdbEpisode) } }
+        get() = current?.let { p -> p.episode?.let { describedEpisode(p.show, it, tmdbEpisode) } }
 
     override fun menuTitle(): String? = current?.let { p -> p.episode?.let { episodeName(it, p.show) } ?: p.title }
 

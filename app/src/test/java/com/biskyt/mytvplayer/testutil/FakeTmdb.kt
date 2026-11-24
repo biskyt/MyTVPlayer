@@ -25,6 +25,9 @@ class FakeTmdb : Dispatcher() {
     /** While set, a season's episodes fail (TMDB out of reach for a moment). */
     @Volatile var seasonsFail = false
 
+    /** While set, a search by name finds nothing: only the provider's TMDB id finds a title. */
+    @Volatile var searchFindsNothing = false
+
     /** Points [c]'s TMDB at this server; with [key], TMDB is on, as with a key in Settings. */
     fun use(c: AppContainer, key: String? = TEST_KEY) = runBlocking {
         c.tmdb.base = server.url("/3/").toString()
@@ -37,6 +40,7 @@ class FakeTmdb : Dispatcher() {
         val path = request.requestUrl!!.encodedPath.removePrefix("/3/")
         requests += path
         if (seasonsFail && "/season/" in path) return MockResponse().setResponseCode(503)
+        if (searchFindsNothing && path.startsWith("search/")) return MockResponse().setBody("""{"results":[]}""")
         val body = when (path) {
             "search/movie" -> """{"results":[{"id":438631,"release_date":"2021-09-15"}]}"""
             "movie/438631" -> DUNE
