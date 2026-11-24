@@ -12,8 +12,12 @@ import okhttp3.mockwebserver.RecordedRequest
 import okhttp3.mockwebserver.SocketPolicy
 import okio.Buffer
 
-/** A fake Xtream Codes provider (with an XMLTV guide) for tests. Channel lists can be changed between requests. */
-class FakeProvider(private val now: Long = System.currentTimeMillis()) : Dispatcher() {
+/**
+ * A fake Xtream Codes provider (with an XMLTV guide) for tests. Channel lists can be changed between requests.
+ * [now]: the time its guide and catch-up are made from. A test that checks shown times works them out from it, not from
+ * its own clock: a minute can turn between the two (GuideFreshnessUiTest failed on CI so, 2026-11-24).
+ */
+class FakeProvider(val now: Long = System.currentTimeMillis()) : Dispatcher() {
     val server = MockWebServer().apply { dispatcher = this@FakeProvider }
     val url: String get() = server.url("/").toString()
 

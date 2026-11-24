@@ -59,7 +59,7 @@ class GuideFreshnessUiTest {
 
     @Test
     fun `a guide source says when its programmes end`() {
-        val now = System.currentTimeMillis()
+        val now = provider.now
         runBlocking { app.container.addHomeTv(provider, guide = true) }
         show(Screen.GuideSources)
         compose.waitForText("Programmes up to ${formatDateTime(lastStop(now))}", stepMs = 50)
@@ -82,7 +82,8 @@ class GuideFreshnessUiTest {
 
     @Test
     fun `guide matching shows what is on now in the chosen guide, and after choosing another`() {
-        val now = System.currentTimeMillis()
+        // The provider's clock, which its guide's times come from: the test's own can be in the next minute by now.
+        val now = provider.now
         val id = runBlocking { app.container.addHomeTv(provider, guide = true) }
         val range = formatRange(sec(now - 30 * 60_000L), sec(now + 30 * 60_000L))
         show(Screen.GuideMatching(id, 101))
