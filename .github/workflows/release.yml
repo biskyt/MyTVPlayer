@@ -114,10 +114,22 @@ jobs:
         run: ./gradlew ktlintCheck detekt lintDebug
 
       - name: Test
+        id: test
         run: ./gradlew :core:test :app:testDebugUnitTest
 
+      # A failed test's results and reports (with any thread dump), kept to find its cause (MyPlexPlayer's review).
+      - uses: actions/upload-artifact@v6
+        if: failure() && steps.test.outcome == 'failure'
+        with:
+          name: test-results
+          retention-days: 14
+          path: |
+            **/build/test-results/
+            **/build/reports/tests/
+
+      # From main only: a run from a tag push would save it under the tag, where pull requests cannot read it.
       - uses: actions/cache/save@v5
-        if: steps.robolectric-cache.outputs.cache-hit != 'true'
+        if: github.ref == 'refs/heads/main' && steps.robolectric-cache.outputs.cache-hit != 'true'
         with:
           path: ~/.m2/repository/org/robolectric
           key: ${{ steps.robolectric.outputs.key }}
