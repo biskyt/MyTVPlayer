@@ -70,6 +70,9 @@ android {
             providers.gradleProperty("emulatorAbi").orNull?.let { ndk { abiFilters += it } }
         }
         release {
+            // Phone spike only: its own app id, so that it installs beside the released app.
+            applicationIdSuffix = ".phonespike"
+            versionNameSuffix = "-phonespike"
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
