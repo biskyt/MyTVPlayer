@@ -63,7 +63,14 @@ See also:
      changed file is one that can't reach the app: `.md`, `docs/`, `store/`, JVM tests and screenshots, or the other
      workflows and their scripts (the list is `paths-ignore` in `emulator.yml`).
 8. Releases are built only for a tag, never for a plain merge to `main`. After each merged app change (see the standing
-   instructions), start `release.yml` for `v<versionName>` on `main`. It re-tests, signs and publishes the GitHub release with the APK and SHA256SUMS.
+   instructions), start `release.yml` for `v<versionName>` on `main`. It signs and publishes the GitHub release with the APK and SHA256SUMS.
+   - **It does not run the checks and tests again** (the owner, 2026-11-24, as MyTVLauncher): the PR's CI ran them on
+     the same code. Its first step checks that the PR merged as that commit has CI (`build`) and every other check run
+     green, and refuses a commit that came from no PR (for example, a change made on `main` in GitHub's editor: release
+     after the next merged PR instead). PR CI tests the PR merged with `main` as it was then, so merge only a PR whose
+     CI ran on the newest `main` (restart the branch from `origin/main` for each change, as below).
+   - When the Robolectric cache misses, the release runs one small test for each SDK level in the cache key ("Fill the
+     Robolectric cache"). A test with a new `@Config(sdk = ...)` level needs a test of that level added there.
    - **From a Claude session, run the workflow by hand:** tag pushes from a cloud session have failed with HTTP 403
      (with either repo name as the remote), while pushes to the working branch work. Use the GitHub MCP tool
      `actions_run_trigger` with method `run_workflow`, `workflow_id` `release.yml` and ref `main`. It tags
