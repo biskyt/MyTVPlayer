@@ -95,7 +95,8 @@ class FakeTmdb : Dispatcher() {
         const val PERSON = 1190668L
 
         private const val DUNE =
-            """{"id":438631,"imdb_id":"tt1160419","overview":"A noble family becomes embroiled in a war.","vote_average":7.8,""" +
+            """{"id":438631,"title":"Dune","imdb_id":"tt1160419",""" +
+                """"overview":"A noble family becomes embroiled in a war.","vote_average":7.8,""" +
                 """"vote_count":12000,"genres":[{"name":"Science Fiction"},{"name":"Adventure"}],"original_title":"Dune: Part One",""" +
                 """"release_date":"2021-09-15","production_companies":[{"name":"Legendary Pictures"}],""" +
                 """"production_countries":[{"name":"United States of America"}],""" +

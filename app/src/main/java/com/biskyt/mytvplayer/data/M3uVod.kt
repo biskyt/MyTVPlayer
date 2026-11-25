@@ -128,7 +128,7 @@ internal class M3uVod(private val db: AppDatabase, private val playlists: Playli
                 val id = playlists.uniqueId(if (episode) "episode|${e.name}" else "movie|${e.name}", ids)
                 if (!episode) {
                     if (group !in movieCats) return@each
-                    val clean = VodTitles.clean(e.name)
+                    val clean = VodTitles.clean(e.name, series = false)
                     movies.add(
                         MovieEntity(playlistId, id, clean.title, e.year ?: clean.year, group, e.logo, null, 0, "", position++, stamp, e.url)
                     )
@@ -142,7 +142,7 @@ internal class M3uVod(private val db: AppDatabase, private val playlists: Playli
                 val seriesId = playlists.stableId("series|${M3uCategories.oldId(group) ?: group}|${ep.show.lowercase()}")
                 val before = shows[seriesId] ?: 0
                 if (before == 0) {
-                    val clean = VodTitles.clean(ep.show)
+                    val clean = VodTitles.clean(ep.show, series = true)
                     series.add(
                         SeriesEntity(playlistId, seriesId, clean.title, e.year ?: clean.year, group, e.logo, null, 0, position++, stamp)
                     )
@@ -202,9 +202,10 @@ internal class M3uVod(private val db: AppDatabase, private val playlists: Playli
         private const val BATCH = 2_000
 
         /**
-         * How titles are filed into categories and given ids: a change to that (M3uCategories, the ids made in load)
-         * bumps it, so each playlist is loaded once more. 2: entries with no group apart from "Other" (1.1.0).
+         * How titles are filed into categories, given ids and named: a change to that (M3uCategories, the ids made in
+         * load, VodTitles.clean) bumps it, so each playlist is loaded once more. 2: entries with no group apart from
+         * "Other" (1.1.0). 3: no provider's extras in brackets after a name (1.38.1).
          */
-        private const val FILING = 2
+        private const val FILING = 3
     }
 }

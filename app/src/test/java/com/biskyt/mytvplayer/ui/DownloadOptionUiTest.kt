@@ -11,6 +11,7 @@ import com.biskyt.mytvplayer.core.net.ProxyType
 import com.biskyt.mytvplayer.core.vod.DownloadNames
 import com.biskyt.mytvplayer.data.db.withProxy
 import com.biskyt.mytvplayer.testutil.FakeProvider
+import com.biskyt.mytvplayer.testutil.FakeTmdb
 import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.addHomeTv
@@ -82,6 +83,43 @@ class DownloadOptionUiTest {
         compose.waitAdvancingClock { started.isNotEmpty() }
         assertEquals(place, started.single().second)
         assertTrue(started.single().first, started.single().first.contains("/movie/me/secret/501."))
+    }
+
+    @Test
+    fun `with TMDB on, the download is named as TMDB names the film, without the provider's extras`() {
+        val tmdb = FakeTmdb()
+        try {
+            tmdb.use(app.container)
+            runBlocking {
+                app.container.settings.update { it.copy(downloads = true) }
+                // As saved before names were cleaned of what is in brackets, and with no year.
+                val m = app.container.vod.movie(pid, 501)!!
+                app.container.db.vod().insertMovies(listOf(m.copy(title = "Dune [4K] [MULTI]", year = null)))
+            }
+            more()
+            compose.waitForText("Download")
+            // TMDB's details are in: its cast shows in the page.
+            compose.waitForText("Timothée Chalamet")
+            compose.onAllNodes(hasText("Download") and hasClickAction())[0].performSemanticsAction(SemanticsActions.OnClick)
+            compose.waitAdvancingClock { started.isNotEmpty() }
+            assertEquals(DownloadNames.Place("Movies/Dune (2021)", "Dune (2021).mkv"), started.single().second)
+        } finally {
+            tmdb.close()
+        }
+    }
+
+    @Test
+    fun `without TMDB, the download is named with the provider's name, cleaned`() {
+        runBlocking {
+            app.container.settings.update { it.copy(downloads = true) }
+            val m = app.container.vod.movie(pid, 501)!!
+            app.container.db.vod().insertMovies(listOf(m.copy(title = "Dune [4K] [MULTI]", year = null)))
+        }
+        more()
+        compose.waitForText("Download")
+        compose.onAllNodes(hasText("Download") and hasClickAction())[0].performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitAdvancingClock { started.isNotEmpty() }
+        assertEquals("Movies/Dune", started.single().second.folder)
     }
 
     @Test

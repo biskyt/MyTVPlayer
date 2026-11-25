@@ -36,6 +36,7 @@ import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.vod.CastMember
 import com.biskyt.mytvplayer.core.vod.DownloadNames
+import com.biskyt.mytvplayer.core.vod.VodTitles
 import com.biskyt.mytvplayer.core.xtream.VodDetails
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.CategoryEntity
@@ -83,7 +84,13 @@ class MovieDetailsViewModel(private val c: AppContainer, val playlistId: Long, p
     suspend fun download(): DownloadNames.Place? {
         val m = movie ?: return null
         val p = c.playlists.get(playlistId) ?: return null
-        val place = DownloadNames.movie(m.title, m.year, m.extension)
+        // TMDB's title and year when TMDB has the film: the name media servers know it by. Asked here if the page's
+        // own look-up has not answered yet, so that the name does not depend on when Download is pressed. Else the
+        // saved name, cleaned again in case it was saved before names were cleaned as they are now.
+        val t = tmdb ?: c.tmdb.movie(m.title, details)
+        val saved = VodTitles.clean(m.title, series = false)
+        val year = t?.released?.year ?: m.year ?: saved.year
+        val place = DownloadNames.movie(t?.title ?: saved.title, year, m.extension)
         c.startDownload(c.vod.movieUrl(p, m), place)
         return place
     }

@@ -174,6 +174,24 @@ class M3uPlaylistTest {
     }
 
     @Test
+    fun `what a provider adds in brackets after a name is not saved, and the ids stay as they were`() = runBlocking {
+        provider.seriesM3u = """
+            #EXTM3U
+            #EXTINF:-1 group-title="Shorts",Llama Drama (Dubbed) [HEVC] S01E01
+            http://vod.example/series/cam1.mp4
+            #EXTINF:-1 group-title="Shorts",Gran Dillama [4K] (2013)
+            http://vod.example/series/cam2.mp4
+        """.trimIndent()
+        val id = playlists.addM3u("Free", provider.url + "free.m3u", seriesUrl = provider.url + "series.m3u")
+        vod.sync(playlists.get(id)!!)
+        val shows = db.vod().searchSeries(id, "%", 10).sortedBy { it.title }
+        assertEquals(listOf("Gran Dillama", "Llama Drama"), shows.map { it.title })
+        assertEquals(2013, shows[0].year)
+        // The id comes from the name as listed, as before: favourites and progress are kept.
+        assertEquals(playlists.stableId("series|Shorts|llama drama (dubbed) [hevc]"), shows[1].id)
+    }
+
+    @Test
     fun `a series with no group keeps the id it had before 1_1_0, and with it its favourites and progress`() = runBlocking {
         provider.seriesM3u = """
             #EXTM3U

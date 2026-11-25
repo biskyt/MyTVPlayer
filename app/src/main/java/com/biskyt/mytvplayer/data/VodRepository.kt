@@ -368,7 +368,7 @@ class VodRepository(
                             onProgress(it + series.get())
                         }
                     ) { m, stamp ->
-                        val clean = VodTitles.clean(m.name)
+                        val clean = VodTitles.clean(m.name, series = false)
                         MovieEntity(
                             p.id, m.streamId, clean.title, clean.year, m.categoryId, m.posterUrl, m.rating, m.added, m.extension,
                             m.number, stamp
@@ -391,7 +391,7 @@ class VodRepository(
                             onProgress(movies.get() + it)
                         }
                     ) { s, stamp ->
-                        val clean = VodTitles.clean(s.name)
+                        val clean = VodTitles.clean(s.name, series = true)
                         SeriesEntity(
                             p.id, s.seriesId, clean.title, s.year ?: clean.year, s.categoryId, s.coverUrl, s.rating, s.lastModified,
                             s.number, stamp

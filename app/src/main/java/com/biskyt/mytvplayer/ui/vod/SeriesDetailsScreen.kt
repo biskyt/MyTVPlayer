@@ -68,6 +68,7 @@ import com.biskyt.mytvplayer.core.tmdb.TmdbEpisode
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.vod.CastMember
 import com.biskyt.mytvplayer.core.vod.DownloadNames
+import com.biskyt.mytvplayer.core.vod.VodTitles
 import com.biskyt.mytvplayer.core.xtream.EpisodeInfo
 import com.biskyt.mytvplayer.core.xtream.SeriesDetails
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
@@ -138,7 +139,13 @@ class SeriesDetailsViewModel(
     /** Starts downloading [e] (see Downloads): where it goes, or null if it can't be. */
     suspend fun download(e: EpisodeInfo): DownloadNames.Place? {
         val p = c.playlists.get(playlistId) ?: return null
-        val place = DownloadNames.episode(series?.title ?: e.title, e.season, e.number, e.extension)
+        // TMDB's name when TMDB has the series: the name media servers know it by. Asked here if the page's own look-up
+        // has not answered yet, so that every episode goes to one folder. Else the saved name, cleaned again in case it
+        // was saved before names were cleaned as they are now.
+        val saved = series?.title ?: e.title
+        val t = tmdb ?: c.tmdb.series(saved, details?.info)
+        val name = t?.title ?: VodTitles.clean(saved, series = true).title
+        val place = DownloadNames.episode(name, e.season, e.number, e.extension)
         c.startDownload(c.vod.episodeUrl(p, e.id, e.extension), place)
         return place
     }

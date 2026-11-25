@@ -33,7 +33,7 @@ class TmdbClientTest {
     @Test
     fun `a film's cast, crew, trailer, links and score`() = runBlocking {
         reply(
-            """{"id":603,"imdb_id":"tt0133093","overview":"A hacker learns the truth.","vote_average":8.2,"vote_count":26000,
+            """{"id":603,"title":"The Matrix","imdb_id":"tt0133093","overview":"A hacker learns the truth.","vote_average":8.2,"vote_count":26000,
             "poster_path":"/p.jpg","backdrop_path":"/b.jpg","genres":[{"id":1,"name":"Action"}],"original_title":"The Matrix",
             "release_date":"1999-03-31","production_companies":[{"name":"Village Roadshow"}],"production_countries":[{"name":"United States"}],
             "credits":{"cast":[{"name":"Keanu Reeves","character":"Neo","profile_path":"/k.jpg"},{"name":"Carrie-Anne Moss","character":""}],
@@ -57,6 +57,7 @@ class TmdbClientTest {
         assertEquals("trailer0002", t.trailer?.key) // the official trailer
         assertEquals(LocalDate.of(1999, 3, 31), t.released)
         assertEquals(listOf("Action"), t.genres)
+        assertEquals("The Matrix", t.title)
         val request = server.takeRequest()
         assertEquals("/3/movie/603", request.requestUrl!!.encodedPath)
         assertEquals("credits,videos,external_ids", request.requestUrl!!.queryParameter("append_to_response"))
@@ -67,11 +68,12 @@ class TmdbClientTest {
     @Test
     fun `a series' creators are its writers, and its IMDb id comes from its external ids`() = runBlocking {
         reply(
-            """{"id":1399,"vote_average":8.4,"vote_count":5,"created_by":[{"name":"David Benioff"}],"external_ids":{"imdb_id":"tt0944947"}}"""
+            """{"id":1399,"name":"Game of Thrones","vote_average":8.4,"vote_count":5,"created_by":[{"name":"David Benioff"}],"external_ids":{"imdb_id":"tt0944947"}}"""
         )
         val t = client().series(1399)!!
         assertEquals(listOf("David Benioff"), t.writers.map { it.name })
         assertEquals("tt0944947", t.imdbId)
+        assertEquals("Game of Thrones", t.title)
         assertEquals("https://www.themoviedb.org/tv/1399", t.tmdbUrl)
         assertNull(t.score) // too few votes to mean much
         assertEquals(listOf(TitleLink("IMDb", "https://www.imdb.com/title/tt0944947/"), TitleLink("TMDB", t.tmdbUrl)), t.links)

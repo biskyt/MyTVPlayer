@@ -48,6 +48,7 @@ internal data class ExternalIdsJson(@SerialName("imdb_id") val imdbId: String? =
 @Serializable
 internal data class MovieJson(
     val id: Int,
+    val title: String? = null,
     val overview: String? = null,
     @SerialName("vote_average") val voteAverage: Double = 0.0,
     @SerialName("vote_count") val voteCount: Int = 0,
@@ -66,6 +67,7 @@ internal data class MovieJson(
 @Serializable
 internal data class SeriesJson(
     val id: Int,
+    val name: String? = null,
     val overview: String? = null,
     @SerialName("vote_average") val voteAverage: Double = 0.0,
     @SerialName("vote_count") val voteCount: Int = 0,
@@ -197,7 +199,8 @@ internal fun MovieJson.toTitle(region: String? = null) = TmdbTitle(
     originalTitle = originalTitle?.ifBlank { null },
     released = dateOf(releaseDate),
     studios = companies.names(),
-    countries = countries.names()
+    countries = countries.names(),
+    title = title?.ifBlank { null }
 )
 
 internal fun SeriesJson.toTitle(region: String? = null) = TmdbTitle(
@@ -214,6 +217,7 @@ internal fun SeriesJson.toTitle(region: String? = null) = TmdbTitle(
     backdropUrl = image(backdropPath, "w1280"),
     genres = genres.names(),
     originalTitle = originalName?.ifBlank { null },
+    title = name?.ifBlank { null },
     released = dateOf(firstAirDate),
     studios = networks.names(),
     countries = countries.names(),
