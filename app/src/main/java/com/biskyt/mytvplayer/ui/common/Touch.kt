@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -16,7 +17,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.biskyt.mytvplayer.ui.phone.PhoneTouch
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 
 /** Whether this device has a touch screen (TVs don't): set once at the root (see MyTvTheme). */
 val LocalTouch = staticCompositionLocalOf { false }
@@ -76,3 +80,10 @@ fun TouchStepButtons(back: String, forward: String, onStep: (Int) -> Unit) {
         PillButton("$forward ▶", { onStep(1) })
     }
 }
+
+/**
+ * At least [min] high on a phone or an unfolded foldable, so that a finger can hit it (the owner, 2026-11-25). On a TV,
+ * as it is.
+ */
+@Composable
+internal fun Modifier.touchHeight(min: Dp = PhoneTouch): Modifier = if (LocalFormFactor.current.isTv) this else heightIn(min = min)

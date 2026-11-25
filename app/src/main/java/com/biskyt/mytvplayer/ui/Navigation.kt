@@ -259,6 +259,20 @@ fun NavHost(navigator: Navigator, content: @Composable (Screen) -> Unit) {
     }
 }
 
+/**
+ * Settings and the pages under it, and the first launch's (the owner, 2026-11-25): they draw through SettingsLayout,
+ * which has their phone layouts. Every screen is listed, so that a new one is placed on one side or the other.
+ */
+val Screen.isSettings: Boolean
+    get() = when (this) {
+        Screen.Welcome, Screen.Settings, Screen.Playlists, is Screen.PlaylistEdit, is Screen.Categories, Screen.PlaybackSettings,
+        Screen.Appearance, Screen.MiscSettings, Screen.Parental, Screen.Sync, Screen.GuideSources, is Screen.GuideMatching,
+        Screen.Backup, Screen.About, Screen.Licences -> true
+        Screen.Home, is Screen.Live, is Screen.Movies, is Screen.Series, is Screen.Search, is Screen.Catchup, is Screen.Player,
+        is Screen.VodPlayer, is Screen.CatchupPlayer, is Screen.MovieDetails, is Screen.SeriesDetails, is Screen.Person,
+        is Screen.MoreLike, is Screen.TmdbTitle -> false
+    }
+
 /** Something playing: leaving the screen would stop it. */
 val Screen.isPlayback: Boolean get() = this is Screen.Player || this is Screen.VodPlayer || this is Screen.CatchupPlayer
 

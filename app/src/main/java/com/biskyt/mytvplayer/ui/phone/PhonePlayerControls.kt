@@ -217,7 +217,7 @@ private fun TopRow(vm: PlaybackViewModel, title: String, subtitle: String?) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        PhoneIconButton(AppIcons.Back, stringResource(R.string.player_back), vm::stop, fill = Color.Transparent, iconSize = 24.dp)
+        PhoneBackButton(vm::stop)
         Column(Modifier.weight(1f)) {
             Text(
                 title,

@@ -13,8 +13,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -313,8 +313,8 @@ fun BackupScreen() {
 
     SettingsPage(stringResource(R.string.settings_backup_title)) {
         item {
-            Column(Modifier.width(760.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Muted(stringResource(R.string.settings_backup_intro), maxLines = 4)
+            Column(Modifier.widthIn(max = 760.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Muted(stringResource(R.string.settings_backup_intro), maxLines = touchLines(4, 6))
                 val last = vm.saved?.let { s ->
                     listOfNotNull(s.modifiedAt.takeIf { it > 0 }?.let(::formatDayTime), s.path).joinToString(" · ")
                 }
@@ -343,7 +343,7 @@ fun BackupScreen() {
 /** Back up to a file, and restore from this TV's backup file or from another. */
 @Composable
 private fun FileButtons(vm: BackupViewModel, backUp: () -> Unit, pick: () -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    ButtonRow {
         PillButton(stringResource(R.string.settings_backup_now), backUp, rememberFirstFocus(), primary = true)
         val s = vm.saved
         if (s != null) PillButton(stringResource(R.string.settings_backup_restore), { vm.ask(s.uri) })
@@ -357,7 +357,7 @@ private fun FileButtons(vm: BackupViewModel, backUp: () -> Unit, pick: () -> Uni
 private fun ConfirmRestore(vm: BackupViewModel, done: (Boolean) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.settings_backup_confirm), style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        ButtonRow {
             PillButton(stringResource(R.string.settings_backup_restore), { vm.restore(done) }, rememberFirstFocus(), primary = true)
             PillButton(stringResource(R.string.settings_backup_cancel), vm::cancel)
         }
@@ -368,8 +368,8 @@ private fun ConfirmRestore(vm: BackupViewModel, done: (Boolean) -> Unit) {
 @Composable
 private fun DriveBackupPart(vm: BackupViewModel) {
     val account by vm.account.collectAsState()
-    Column(Modifier.width(760.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Muted(stringResource(R.string.settings_backup_drive_intro), maxLines = 3)
+    Column(Modifier.widthIn(max = 760.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Muted(stringResource(R.string.settings_backup_drive_intro), maxLines = touchLines(3, 5))
         when (val s = vm.google.state) {
             is GoogleSignIn.State.Code -> SignInCode(s.code, vm.google::cancel)
             else -> {
@@ -380,7 +380,7 @@ private fun DriveBackupPart(vm: BackupViewModel) {
                             ?: stringResource(R.string.settings_backup_drive_none)
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ButtonRow {
                     // After a sign-in panel, the remote comes back here.
                     val focus = if (vm.google.closed > 0) rememberFirstFocus(vm.google.closed) else Modifier
                     PillButton(stringResource(R.string.settings_backup_drive), vm::backUpToDrive, focus)

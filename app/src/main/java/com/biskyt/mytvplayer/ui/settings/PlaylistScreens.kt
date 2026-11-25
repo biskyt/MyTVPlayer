@@ -5,14 +5,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
@@ -57,7 +54,9 @@ import com.biskyt.mytvplayer.ui.common.cardColor
 import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.common.formatDateTime
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
+import com.biskyt.mytvplayer.ui.common.touchHeight
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.Palette
 import java.io.IOException
 import java.time.Instant
@@ -135,11 +134,11 @@ fun PlaylistsScreen() {
         items(playlists.size) { i ->
             val p = playlists[i]
             val isActive = p.id == active
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            CardWithButtons(hasButtons = true, card = { size ->
                 TvCard(
                     onClick = { vm.activate(p) { nav.reset(Screen.Home) } },
                     selected = isActive,
-                    modifier = (if (i == 0) rememberFirstFocus(once = true) else Modifier).weight(1f),
+                    modifier = (if (i == 0) rememberFirstFocus(once = true) else Modifier).then(size),
                     fill = true
                 ) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -176,13 +175,14 @@ fun PlaylistsScreen() {
                         }
                     }
                 }
+            }) {
                 // Only the playlist in use is updated (see SyncManager).
                 if (isActive) PillButton(stringResource(R.string.settings_playlist_update_now), { vm.update(p) })
                 PillButton(stringResource(R.string.settings_playlist_edit), { nav.push(Screen.PlaylistEdit(p.id)) })
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ButtonRow {
                 PillButton(stringResource(R.string.settings_playlist_add), {
                     nav.push(Screen.PlaylistEdit(null))
                 }, if (playlists.isEmpty()) rememberFirstFocus() else Modifier, primary = playlists.isEmpty())
@@ -398,13 +398,9 @@ class PlaylistEditViewModel(private val c: AppContainer, private val id: Long?) 
 @Composable
 fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
     val vm = appViewModel(key = "edit-$id") { PlaylistEditViewModel(it, id) }
-    val nav = LocalNavigator.current
-    Column(
-        // Scrolls: with the proxy's boxes, the form can be taller than a TV screen.
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 96.dp, vertical = 40.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Text(
+    // Scrolls: with the proxy's boxes, the form can be taller than a TV screen.
+    SettingsColumn(scroll = true, spacing = 14.dp) {
+        SettingsTitle(
             stringResource(
                 when {
                     firstRun -> R.string.settings_welcome_title
@@ -412,11 +408,12 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
                     else -> R.string.settings_playlist_edit_title
                 }
             ),
-            style = MaterialTheme.typography.headlineLarge
+            // On first launch, the page took Welcome's place: nothing to go back to.
+            onBack = if (firstRun) null else PreviousPage
         )
-        if (firstRun) Muted(stringResource(R.string.settings_playlist_first_run_hint))
+        if (firstRun) Muted(stringResource(R.string.settings_playlist_first_run_hint), maxLines = touchLines(1, 3))
         if (id == null) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ButtonRow(spacing = 8.dp) {
                 PillButton(stringResource(R.string.settings_playlist_type_xtream), { vm.m3u = false }, primary = !vm.m3u)
                 PillButton(stringResource(R.string.settings_playlist_type_m3u), { vm.m3u = true }, primary = vm.m3u)
             }
@@ -431,8 +428,8 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
         val proxyHostEdit = rememberSaveable { mutableStateOf(false) }
         // With a proxy, Next on the last box moves on to its address.
         val toProxy: (() -> Unit)? = if (vm.proxyType != null) ({ proxyHostEdit.value = true }) else null
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Field(stringResource(R.string.settings_playlist_name), Modifier.weight(1f)) {
+        FormRow {
+            Field(stringResource(R.string.settings_playlist_name), Modifier.share()) {
                 TvTextField(
                     vm.name,
                     { vm.name = it },
@@ -444,7 +441,7 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
             }
             Field(
                 stringResource(if (vm.m3u) R.string.settings_playlist_address else R.string.settings_playlist_server),
-                Modifier.weight(1f),
+                Modifier.share(),
                 schemeOf = vm.server,
                 onScheme = { vm.server = withScheme(vm.server, it) }
             ) {
@@ -460,10 +457,10 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
             }
         }
         if (vm.m3u) {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            FormRow {
                 Field(
                     stringResource(R.string.settings_playlist_movies),
-                    Modifier.weight(1f),
+                    Modifier.share(),
                     schemeOf = vm.moviesUrl,
                     onScheme = { vm.moviesUrl = withScheme(vm.moviesUrl, it) }
                 ) {
@@ -479,7 +476,7 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
                 }
                 Field(
                     stringResource(R.string.settings_playlist_series),
-                    Modifier.weight(1f),
+                    Modifier.share(),
                     schemeOf = vm.seriesUrl,
                     onScheme = { vm.seriesUrl = withScheme(vm.seriesUrl, it) }
                 ) {
@@ -497,8 +494,8 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
             Muted(stringResource(R.string.settings_playlist_m3u_vod_hint), maxLines = 2)
         }
         if (!vm.m3u) {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Field(stringResource(R.string.settings_playlist_username), Modifier.weight(1f)) {
+            FormRow {
+                Field(stringResource(R.string.settings_playlist_username), Modifier.share()) {
                     TvTextField(
                         vm.username,
                         { vm.username = it },
@@ -509,7 +506,7 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
                         onNext = { passwordEdit.value = true }
                     )
                 }
-                Field(stringResource(R.string.settings_playlist_password), Modifier.weight(1f)) {
+                Field(stringResource(R.string.settings_playlist_password), Modifier.share()) {
                     TvTextField(
                         vm.password,
                         { vm.password = it },
@@ -526,32 +523,40 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
         vm.message?.let {
             Text(it.text, style = MaterialTheme.typography.bodyLarge, color = if (it.ok) LocalAccent.current.color else Palette.warning)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            PillButton(
-                stringResource(
-                    if (vm.busy) {
-                        R.string.settings_playlist_wait
-                    } else if (firstRun) {
-                        R.string.common_continue
-                    } else {
-                        R.string.settings_playlist_save
-                    }
-                ),
-                {
-                    vm.save { pid ->
-                        if (id == null) nav.replace(Screen.Categories(pid, firstRun = true)) else nav.pop()
-                    }
-                },
-                primary = true
-            )
-            PillButton(stringResource(R.string.settings_playlist_test), vm::test)
-            if (vm.proxyType != null) PillButton(stringResource(R.string.settings_proxy_check), vm::checkProxy)
-            if (id != null) {
-                Box(Modifier.width(40.dp))
-                PillButton(stringResource(R.string.settings_playlist_delete), {
-                    vm.delete { any -> nav.reset(if (any) Screen.Home else Screen.Welcome) }
-                })
-            }
+        EditButtons(vm, id, firstRun)
+    }
+}
+
+/** Save (Continue, on first launch: [firstRun]), Test, Check proxy, and Delete for a playlist that exists ([id]). */
+@Composable
+private fun EditButtons(vm: PlaylistEditViewModel, id: Long?, firstRun: Boolean) {
+    val nav = LocalNavigator.current
+    ButtonRow {
+        PillButton(
+            stringResource(
+                if (vm.busy) {
+                    R.string.settings_playlist_wait
+                } else if (firstRun) {
+                    R.string.common_continue
+                } else {
+                    R.string.settings_playlist_save
+                }
+            ),
+            {
+                vm.save { pid ->
+                    if (id == null) nav.replace(Screen.Categories(pid, firstRun = true)) else nav.pop()
+                }
+            },
+            primary = true
+        )
+        PillButton(stringResource(R.string.settings_playlist_test), vm::test)
+        if (vm.proxyType != null) PillButton(stringResource(R.string.settings_proxy_check), vm::checkProxy)
+        if (id != null) {
+            // Apart from the others on a TV. On a touch screen, where the buttons wrap, a gap could start a line.
+            if (LocalFormFactor.current.isTv) Box(Modifier.width(40.dp))
+            PillButton(stringResource(R.string.settings_playlist_delete), {
+                vm.delete { any -> nav.reset(if (any) Screen.Home else Screen.Welcome) }
+            })
         }
     }
 }
@@ -560,7 +565,7 @@ fun PlaylistEditScreen(id: Long?, firstRun: Boolean) {
 @Composable
 private fun ProxyFields(vm: PlaylistEditViewModel, hostEdit: MutableState<Boolean>) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        ButtonRow(spacing = 8.dp, verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.settings_proxy_title), style = MaterialTheme.typography.titleSmall)
             listOf(
                 null to R.string.settings_proxy_none,
@@ -575,8 +580,8 @@ private fun ProxyFields(vm: PlaylistEditViewModel, hostEdit: MutableState<Boolea
         val portEdit = rememberSaveable { mutableStateOf(false) }
         val userEdit = rememberSaveable { mutableStateOf(false) }
         val passwordEdit = rememberSaveable { mutableStateOf(false) }
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Field(stringResource(R.string.settings_proxy_host), Modifier.weight(2f)) {
+        FormRow {
+            Field(stringResource(R.string.settings_proxy_host), Modifier.share(2f)) {
                 TvTextField(
                     vm.proxyHost,
                     { vm.proxyHost = it },
@@ -587,7 +592,7 @@ private fun ProxyFields(vm: PlaylistEditViewModel, hostEdit: MutableState<Boolea
                     onNext = { portEdit.value = true }
                 )
             }
-            Field(stringResource(R.string.settings_proxy_port), Modifier.weight(1f)) {
+            Field(stringResource(R.string.settings_proxy_port), Modifier.share()) {
                 TvTextField(
                     vm.proxyPort,
                     { vm.proxyPort = it.filter(Char::isDigit).take(PORT_DIGITS) },
@@ -600,8 +605,8 @@ private fun ProxyFields(vm: PlaylistEditViewModel, hostEdit: MutableState<Boolea
                 )
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Field(stringResource(R.string.settings_proxy_username), Modifier.weight(1f)) {
+        FormRow {
+            Field(stringResource(R.string.settings_proxy_username), Modifier.share()) {
                 TvTextField(
                     vm.proxyUsername,
                     { vm.proxyUsername = it },
@@ -612,7 +617,7 @@ private fun ProxyFields(vm: PlaylistEditViewModel, hostEdit: MutableState<Boolea
                     onNext = { passwordEdit.value = true }
                 )
             }
-            Field(stringResource(R.string.settings_proxy_password), Modifier.weight(1f)) {
+            Field(stringResource(R.string.settings_proxy_password), Modifier.share()) {
                 TvTextField(
                     vm.proxyPassword,
                     { vm.proxyPassword = it },
@@ -641,7 +646,8 @@ private fun Field(
     content: @Composable () -> Unit
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // On a touch screen, every label is as high as one with the (taller) scheme buttons, so boxes side by side line up.
+        Row(Modifier.touchHeight(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = Palette.textMuted, modifier = Modifier.weight(1f))
             if (onScheme != null) {
                 for (scheme in SCHEMES) {
