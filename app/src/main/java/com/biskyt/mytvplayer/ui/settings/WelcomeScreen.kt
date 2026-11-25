@@ -1,11 +1,7 @@
 package com.biskyt.mytvplayer.ui.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,22 +54,24 @@ fun WelcomeScreen() {
         // Next: choose which countries' channels to load (the TV's own country is preselected).
         LaunchedEffect(id) { nav.replace(Screen.Categories(id, firstRun = true)) }
     }
-    Column(
-        Modifier.fillMaxSize().background(Palette.background).padding(horizontal = 96.dp, vertical = 72.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+    SettingsColumn(
+        Modifier.background(Palette.background),
+        spacing = 18.dp,
+        tvPadding = PaddingValues(horizontal = 96.dp, vertical = 72.dp)
     ) {
-        Text(stringResource(R.string.settings_welcome_title), style = MaterialTheme.typography.displaySmall)
+        // The first screen: nothing to go back to.
+        SettingsTitle(stringResource(R.string.settings_welcome_title), style = MaterialTheme.typography.displaySmall, onBack = null)
         Muted(
             stringResource(R.string.settings_welcome_intro),
             Modifier.widthIn(max = 820.dp),
-            maxLines = 3,
+            maxLines = touchLines(3, 5),
         )
         val error = vm.error
         when {
             vm.working -> Text(stringResource(R.string.settings_welcome_downloading), style = MaterialTheme.typography.titleMedium)
             error != null -> Text(error, style = MaterialTheme.typography.titleMedium, color = Palette.warning)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        ButtonRow {
             PillButton(
                 stringResource(R.string.settings_welcome_add_provider),
                 { nav.replace(Screen.PlaylistEdit(null, firstRun = true)) },

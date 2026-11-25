@@ -1,5 +1,6 @@
 package com.biskyt.mytvplayer.ui.guide
 
+import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -14,8 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -35,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.cachedIn
+import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import androidx.tv.material3.Icon
@@ -88,8 +92,15 @@ import com.biskyt.mytvplayer.ui.common.guideNowNext
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
+import com.biskyt.mytvplayer.ui.settings.ButtonRow
+import com.biskyt.mytvplayer.ui.settings.CardWithButtons
+import com.biskyt.mytvplayer.ui.settings.PreviousPage
+import com.biskyt.mytvplayer.ui.settings.SettingsColumn
+import com.biskyt.mytvplayer.ui.settings.SettingsHeader
 import com.biskyt.mytvplayer.ui.settings.SettingsPage
+import com.biskyt.mytvplayer.ui.theme.FormFactor
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.bd
 import java.util.Locale
@@ -305,7 +316,7 @@ fun GuideSourcesScreen() {
             Muted(stringResource(R.string.live_guide_sources_intro), maxLines = 2)
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ButtonRow {
                 PillButton(stringResource(R.string.live_guide_add), { adding = true }, rememberFirstFocus(once = true), primary = true)
                 PillButton(stringResource(R.string.live_guide_update_now), vm::refresh)
             }
@@ -317,8 +328,9 @@ fun GuideSourcesScreen() {
         if (sources.isEmpty()) item { Muted(stringResource(R.string.live_guide_none_yet)) }
         items(sources, key = { it.source.id }) { row ->
             val s = row.source
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                TvCard(onClick = { vm.toggle(row) }, color = Palette.surfaceLow, modifier = Modifier.weight(1f), fill = true) {
+            val moves = ordered && row.on
+            CardWithButtons(hasButtons = moves || s.playlistId == null, card = { size ->
+                TvCard(onClick = { vm.toggle(row) }, color = Palette.surfaceLow, modifier = size, fill = true) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(s.name, style = MaterialTheme.typography.titleMedium)
@@ -337,8 +349,9 @@ fun GuideSourcesScreen() {
                         Toggle(row.on)
                     }
                 }
+            }) {
                 // A guide on, of two or more: its place in the order, which decides between guides that both match.
-                if (ordered && row.on) {
+                if (moves) {
                     PillButton(stringResource(R.string.live_guide_move_up), { vm.move(row, up = true) }, compact = true)
                     PillButton(stringResource(R.string.live_guide_move_down), { vm.move(row, up = false) }, compact = true)
                 }
@@ -517,6 +530,18 @@ class GuideMatchingViewModel(private val c: AppContainer, private val playlistId
         }
     }
 
+    /** No channel chosen: on a phone, the list shows again in place of a channel's choices. */
+    fun deselect() {
+        selectJob?.cancel()
+        searchJob?.cancel()
+        onNowJob?.cancel()
+        selected = null
+        search = ""
+        // The next channel's page must not show this one's guide or choices while its own load.
+        mapping = null
+        choices = emptyList()
+    }
+
     fun select(ch: ChannelEntity) {
         selected = ch
         search = ""
@@ -612,54 +637,82 @@ class GuideMatchingViewModel(private val c: AppContainer, private val playlistId
 @Composable
 fun GuideMatchingScreen(playlistId: Long, streamId: Long?) {
     val vm = appViewModel(key = "match-$playlistId-$streamId") { GuideMatchingViewModel(it, playlistId, streamId) }
-    val tab by vm.tab.collectAsState()
     val counts by vm.counts.collectAsState()
     val filter by vm.filter.collectAsState()
     val items = vm.channels.collectAsLazyPagingItems()
     vm.nowNext.PauseWhenHidden()
 
-    Column(
-        Modifier.fillMaxSize().padding(horizontal = 56.dp, vertical = 32.dp)
-            // Something given focus first (the search box, before the channels are in): the first channel no longer
-            // takes it from there. (Its own first focus ends it too.)
-            .onFocusChanged { if (it.hasFocus) vm.firstFocusPending = false },
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+    val form = LocalFormFactor.current
+    // On a phone, the list or, once a channel is chosen, its choices: Back goes from the choices to the list.
+    val choosing = form == FormFactor.PHONE && vm.selected != null
+    val onBack = if (choosing) vm::deselect else PreviousPage
+    BackHandler(enabled = choosing, onBack = vm::deselect)
+    SettingsColumn(
+        // Something given focus first (the search box, before the channels are in): the first channel no longer
+        // takes it from there. (Its own first focus ends it too.)
+        Modifier.onFocusChanged { if (it.hasFocus) vm.firstFocusPending = false },
+        spacing = 14.dp,
+        tvPadding = PaddingValues(horizontal = 56.dp, vertical = 32.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.common_guide_matching), style = MaterialTheme.typography.headlineLarge)
-                Muted(stringResource(R.string.live_guide_matching_intro), maxLines = 2)
-            }
-            MatchTab.entries.forEach { t ->
-                PillButton(
-                    "${stringResource(t.label)} ${formatCount(t.count(counts))}",
-                    { vm.tab.value = t },
-                    Modifier.padding(start = 8.dp),
-                    primary =
-                    t == tab
-                )
-            }
-        }
-        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-            Column(Modifier.width(480.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                val hint = stringResource(R.string.live_guide_filter_hint)
-                FilterField(filter, { vm.filter.value = it }, hint, Modifier.fillMaxWidth())
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-                    items(count = items.itemCount, key = items.itemKey { it.channel.streamId }) { i ->
-                        val row = items[i] ?: return@items
-                        // The first channel takes focus, not the filter: once, and opened from a channel's menu, that
-                        // channel (once the list is filtered to it: unfiltered first, another can be first).
-                        val shown = vm.initial != null && items.itemSnapshotList.any { it?.channel?.streamId == vm.initial }
-                        val first = if (shown) row.channel.streamId == vm.initial else i == 0
-                        // Asked again as it takes focus: the search box can have taken it meanwhile.
-                        val focus = Modifier.restoreFocusIf(vm.firstFocusPending && first, { vm.firstFocusPending }) {
-                            vm.firstFocusPending = false
-                        }
-                        MatchRowCard(row, row.channel.streamId == vm.selected?.streamId, focus) { vm.select(row.channel) }
-                    }
+        MatchingHeader(vm, counts, onBack)
+        // Kept here: on a phone, the list is left for a channel's choices, and is where it was on coming back.
+        val listState = rememberLazyListState()
+        when {
+            form != FormFactor.PHONE -> {
+                val tv = form.isTv
+                Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(if (tv) 24.dp else 16.dp)) {
+                    // Unfolded, the list is a little narrower than the choices.
+                    MatchList(vm, items, filter, listState, if (tv) Modifier.width(480.dp) else Modifier.weight(UNFOLDED_LIST))
+                    ChoicePanel(vm, Modifier.weight(1f))
                 }
             }
-            ChoicePanel(vm, Modifier.weight(1f))
+            choosing -> ChoicePanel(vm, Modifier)
+            else -> MatchList(vm, items, filter, listState, Modifier.fillMaxWidth())
+        }
+    }
+}
+
+/** The list's share of an unfolded screen's width, against 1 for the choices. */
+private const val UNFOLDED_LIST = 0.8f
+
+/** The title, what the page is for, and the tabs (all channels, matched, not matched) with their counts. */
+@Composable
+private fun MatchingHeader(vm: GuideMatchingViewModel, counts: MatchCounts, onBack: () -> Unit) {
+    val tab by vm.tab.collectAsState()
+    // On a TV, the tabs are beside the title, 8 apart from it and from each other.
+    val gap = if (LocalFormFactor.current.isTv) Modifier.padding(start = 8.dp) else Modifier
+    SettingsHeader(stringResource(R.string.common_guide_matching), stringResource(R.string.live_guide_matching_intro), onBack) {
+        MatchTab.entries.forEach { t ->
+            PillButton("${stringResource(t.label)} ${formatCount(t.count(counts))}", { vm.tab.value = t }, gap, primary = t == tab)
+        }
+    }
+}
+
+/** The channels to match, with a box to filter them ([filter]); a channel picked shows its choices. */
+@Composable
+private fun MatchList(
+    vm: GuideMatchingViewModel,
+    items: LazyPagingItems<MatchRow>,
+    filter: String,
+    state: LazyListState,
+    modifier: Modifier
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        val hint = stringResource(R.string.live_guide_filter_hint)
+        FilterField(filter, { vm.filter.value = it }, hint, Modifier.fillMaxWidth())
+        LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+            items(count = items.itemCount, key = items.itemKey { it.channel.streamId }) { i ->
+                val row = items[i] ?: return@items
+                // The first channel takes focus, not the filter: once, and opened from a channel's menu, that
+                // channel (once the list is filtered to it: unfiltered first, another can be first).
+                val shown = vm.initial != null && items.itemSnapshotList.any { it?.channel?.streamId == vm.initial }
+                val first = if (shown) row.channel.streamId == vm.initial else i == 0
+                // Asked again as it takes focus: the search box can have taken it meanwhile.
+                val focus = Modifier.restoreFocusIf(vm.firstFocusPending && first, { vm.firstFocusPending }) {
+                    vm.firstFocusPending = false
+                }
+                MatchRowCard(row, row.channel.streamId == vm.selected?.streamId, focus) { vm.select(row.channel) }
+            }
         }
     }
 }
@@ -802,7 +855,7 @@ private fun ChoicePanel(vm: GuideMatchingViewModel, modifier: Modifier) {
             }
         }
         Box(Modifier.height(4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        ButtonRow(spacing = 10.dp) {
             PillButton(stringResource(R.string.live_guide_time_shift, (m?.offsetMinutes ?: 0) / 60), vm::shiftTime)
             PillButton(stringResource(R.string.live_guide_no_guide), vm::noGuide)
             PillButton(stringResource(R.string.live_guide_reset), vm::reset)

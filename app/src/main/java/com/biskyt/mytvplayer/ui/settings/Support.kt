@@ -2,7 +2,6 @@ package com.biskyt.mytvplayer.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -38,7 +37,7 @@ fun SupportSection() {
     Column(Modifier.padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(stringResource(R.string.settings_support_title), style = MaterialTheme.typography.titleLarge)
         Muted(stringResource(R.string.settings_support_help), maxLines = 2)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        ButtonRow {
             SupportLink.entries.forEach { link ->
                 PillButton(link.label, {
                     shown = link

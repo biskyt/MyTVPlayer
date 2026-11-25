@@ -12,19 +12,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -70,6 +68,7 @@ import com.biskyt.mytvplayer.ui.common.cycle
 import com.biskyt.mytvplayer.ui.common.displayLanguage
 import com.biskyt.mytvplayer.ui.common.nativeLanguageName
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.findsTv
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -86,11 +85,11 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     fun setStreamFormat(format: StreamFormat) = viewModelScope.launch { c.settings.setStreamFormat(format) }
 }
 
-/** Title + scrollable column used by every settings page. */
+/** Title + scrollable column used by every settings page. On a touch screen, the title has a back arrow. */
 @Composable
 fun SettingsPage(title: String, content: LazyListScope.() -> Unit) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 96.dp, vertical = 40.dp)) {
-        Text(title, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(bottom = 20.dp))
+    SettingsColumn {
+        SettingsTitle(title, Modifier.padding(bottom = if (LocalFormFactor.current.isTv) 20.dp else 8.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 40.dp), content = content)
     }
 }
@@ -410,43 +409,11 @@ fun AppearanceScreen() {
     val vm = appViewModel { SettingsViewModel(it) }
     val s = vm.settings.collectAsState().value ?: return
     // It scrolls: the rows under the colours can be below the screen's edge.
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 96.dp, vertical = 40.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(stringResource(R.string.settings_appearance_title), style = MaterialTheme.typography.headlineLarge)
+    SettingsColumn(scroll = true, spacing = 16.dp) {
+        SettingsTitle(stringResource(R.string.settings_appearance_title))
         Text(stringResource(R.string.settings_accent), style = MaterialTheme.typography.titleLarge)
         Muted(stringResource(R.string.settings_accent_help), maxLines = 2)
-        LazyVerticalGrid(
-            GridCells.Fixed(4),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.height(140.dp)
-        ) {
-            items(AccentPalette.presets) { (id, argb) ->
-                val selected = s.accent == argb
-                TvCard(
-                    onClick = { vm.update { it.copy(accent = argb) } },
-                    selected = selected,
-                    modifier = if (argb ==
-                        AccentPalette.presets.first().argb
-                    ) {
-                        rememberFirstFocus(once = true)
-                    } else {
-                        Modifier
-                    }
-                ) {
-                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(30.dp).clip(CircleShape).background(Color(argb)))
-                        Text(
-                            stringResource(accentName(id)),
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.padding(start = 10.dp)
-                        )
-                    }
-                }
-            }
-        }
+        AccentGrid(s.accent) { argb -> vm.update { it.copy(accent = argb) } }
         SettingRow(stringResource(R.string.settings_large_text), stringResource(R.string.settings_large_text_help), {
             vm.update { it.copy(largeText = !it.largeText) }
         }) { Toggle(s.largeText) }
@@ -459,6 +426,48 @@ fun AppearanceScreen() {
             // Round from the last to the first, as the other settings: OK and a tap only step forward.
             { d -> vm.update { it.copy(backdropLevel = BackdropLevel.CHOICES.cycle(BackdropLevel.valid(it.backdropLevel), d)) } }
         )
+    }
+}
+
+/** The accent colours to choose from, [chosen] the one in use: four a row on a TV, two on a phone. */
+@Composable
+private fun AccentGrid(chosen: Int, choose: (Int) -> Unit) {
+    val card: @Composable (AccentPalette.Preset, Modifier) -> Unit = { (id, argb), modifier ->
+        val first = argb == AccentPalette.presets.first().argb
+        TvCard(
+            onClick = { choose(argb) },
+            selected = chosen == argb,
+            modifier = if (first) modifier.then(rememberFirstFocus(once = true)) else modifier
+        ) {
+            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(30.dp).clip(CircleShape).background(Color(argb)))
+                Text(
+                    stringResource(accentName(id)),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(start = 10.dp)
+                )
+            }
+        }
+    }
+    if (LocalFormFactor.current.isTv) {
+        LazyVerticalGrid(
+            GridCells.Fixed(4),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.height(140.dp)
+        ) {
+            items(AccentPalette.presets) { card(it, Modifier) }
+        }
+        return
+    }
+    // In the page's column, which scrolls: rows of two, as a lazy grid cannot be inside it without a fixed height.
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        AccentPalette.presets.chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                pair.forEach { card(it, Modifier.weight(1f)) }
+                if (pair.size == 1) Box(Modifier.weight(1f))
+            }
+        }
     }
 }
 
@@ -487,7 +496,7 @@ fun AboutScreen() {
             )
         }
         item {
-            Column(Modifier.width(700.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(Modifier.widthIn(max = 700.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     stringResource(R.string.settings_storage),
                     style = MaterialTheme.typography.titleMedium,

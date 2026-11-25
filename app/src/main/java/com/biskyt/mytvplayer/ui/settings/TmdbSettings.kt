@@ -35,6 +35,7 @@ import com.biskyt.mytvplayer.ui.common.SettingRow
 import com.biskyt.mytvplayer.ui.common.SidePanel
 import com.biskyt.mytvplayer.ui.common.TvTextField
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
@@ -115,9 +116,12 @@ internal fun TmdbKeyPanel(saved: String, onDismiss: () -> Unit) {
                 onDone = save
             )
             vm.check?.let { Muted(stringResource(checkText(it)), maxLines = 3) }
-            PhoneKeyEntry { sent ->
-                key = sent
-                save()
+            // On a TV only: on a phone or a tablet, the key is typed or pasted in the box above.
+            if (LocalFormFactor.current.isTv) {
+                PhoneKeyEntry { sent ->
+                    key = sent
+                    save()
+                }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 PillButton(stringResource(R.string.settings_tmdb_save), save, primary = true)

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -42,7 +43,9 @@ fun PhoneSheet(onDismiss: () -> Unit, dim: Boolean = true, content: @Composable 
         BoxWithConstraints(
             Modifier.fillMaxSize().ignoreHeldButtons()
                 .background(Color.Black.copy(alpha = if (dim) DIM else DIM_LIGHT))
-                .onPlainTap(onDismiss),
+                .onPlainTap(onDismiss)
+                // Above the keyboard, when a box in the sheet is typed in.
+                .imePadding(),
             contentAlignment = Alignment.BottomCenter
         ) {
             Column(

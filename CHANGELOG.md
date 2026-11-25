@@ -3,6 +3,13 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.38.0
+- Settings and every page under it have a layout for phones and tablets.
+- On a phone, the boxes and buttons of a settings page fit the screen's width.
+- On a phone or tablet, a tap on a country in Categories opens its categories under it.
+- On a phone, a channel's guide choices in TV guide matching fill the page.
+- On a phone or tablet, a settings page no longer starts with its first row picked out.
+
 ## 1.37.1
 - Holding OK no longer picks an option in a sheet on the phone layout.
 - The phone player's live controls show Back before the channel has loaded.

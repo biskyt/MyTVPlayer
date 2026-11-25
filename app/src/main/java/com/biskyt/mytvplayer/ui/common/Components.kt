@@ -237,7 +237,7 @@ fun PillButton(
     // Filled with the accent colour while it has focus, as every button is: a primary or selected one has the in-use ring.
     TvCard(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.touchHeight(),
         selected = primary || selected,
         shape = RoundedCornerShape(50),
         color = bg,
@@ -253,7 +253,7 @@ fun PillButton(
         } else {
             Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
         }
-        Row(padding, verticalAlignment = Alignment.CenterVertically) {
+        Row(padding.then(Modifier.align(Alignment.CenterStart)), verticalAlignment = Alignment.CenterVertically) {
             if (leading != null) {
                 leading()
                 Box(Modifier.width(8.dp))

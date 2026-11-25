@@ -44,6 +44,8 @@ import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
 import com.biskyt.mytvplayer.data.programmeTitle
 import com.biskyt.mytvplayer.hideSystemBars
+import com.biskyt.mytvplayer.ui.phone.PhoneSheet
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.bd
 
@@ -159,6 +161,8 @@ fun SidePanel(
     padding: PaddingValues = PaddingValues(28.dp),
     content: @Composable () -> Unit
 ) {
+    // On a phone or an unfolded screen: a sheet from the bottom, as the other panels there (see BoardPanel).
+    if (!LocalFormFactor.current.isTv) return PhoneSheet(onDismiss, dim, content)
     PanelWindow(onDismiss, hideBars = LocalTouch.current) {
         Box(
             Modifier.fillMaxSize().ignoreHeldButtons()

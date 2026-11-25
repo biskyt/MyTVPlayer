@@ -38,6 +38,7 @@ import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.paging.compose.LazyPagingItems
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.Palette
 import kotlin.random.Random
 import kotlinx.coroutines.flow.first
@@ -52,9 +53,13 @@ import kotlinx.coroutines.flow.first
  * guide was skipped in TV guide sources). The visit it took focus in is kept in its saved state, which a lazy list
  * keeps while the item is out of view and drops when the item is really removed. Outside a NavHost (no visit), it
  * takes focus each time, as without it.
+ *
+ * On a phone or an unfolded screen, nothing takes focus: there is no remote, and an item with focus would show in the
+ * accent colour as if it were chosen.
  */
 @Composable
 fun rememberFirstFocus(key: Any? = Unit, once: Boolean = false): Modifier {
+    if (!LocalFormFactor.current.isTv) return Modifier
     val r = remember { FocusRequester() }
     val back = LocalReturnFocus.current
     val visit = LocalFocusVisit.current
@@ -170,7 +175,8 @@ fun Modifier.returnsFocus(): Modifier {
  */
 @Composable
 fun Modifier.restoreFocusIf(wanted: Boolean, still: () -> Boolean = { true }, onRestored: () -> Unit = {}): Modifier {
-    if (!wanted) return this
+    // On a phone or an unfolded screen, nothing takes focus (see rememberFirstFocus).
+    if (!wanted || !LocalFormFactor.current.isTv) return this
     val r = remember { FocusRequester() }
     val back = LocalReturnFocus.current
     LaunchedEffect(Unit) {

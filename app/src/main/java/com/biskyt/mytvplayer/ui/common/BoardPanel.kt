@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -144,7 +143,7 @@ fun BoardOption(
     AccentFillSurface(
         onClick,
         OptionShape,
-        modifier.fillMaxWidth().touchHeight(),
+        modifier.fillMaxWidth().touchHeight(BOARD_ROW_TOUCH),
         content = if (danger) Palette.danger else Palette.text,
         selected = selected
     ) {
@@ -170,11 +169,10 @@ fun BoardOption(
 /** A row of a panel's list with content of its own (a programme): [AccentFillSurface] in an option's shape. */
 @Composable
 fun BoardRow(onClick: () -> Unit, modifier: Modifier = Modifier, body: @Composable BoxScope.() -> Unit) =
-    AccentFillSurface(onClick, OptionShape, modifier.fillMaxWidth().touchHeight(), body = body)
+    AccentFillSurface(onClick, OptionShape, modifier.fillMaxWidth().touchHeight(BOARD_ROW_TOUCH), body = body)
 
-/** A row at least 56 dp high on a phone or an unfolded foldable, so that a finger can hit it (the owner, 2026-11-25). */
-@Composable
-private fun Modifier.touchHeight(): Modifier = if (LocalFormFactor.current.isTv) this else heightIn(min = 56.dp)
+/** A panel's row on a phone or an unfolded foldable: taller than the smallest touch target, as rows sit close together. */
+private val BOARD_ROW_TOUCH = 56.dp
 
 /** A heading over a group of a panel's options ("This episode"): 12, extra bold, upper case, in the accent colour. */
 @Composable

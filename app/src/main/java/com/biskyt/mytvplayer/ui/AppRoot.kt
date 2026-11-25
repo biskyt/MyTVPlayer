@@ -318,7 +318,7 @@ private val Screen.drawsOwnTopBar: Boolean
 
 /** The screens with a phone layout (the owner, 2026-11-25): the rest are drawn as on a TV, on a phone too (see TvCanvas). */
 internal val Screen.hasPhoneLayout: Boolean
-    get() = hasPhoneTabs || this is Screen.MovieDetails || this is Screen.SeriesDetails || isPlayback
+    get() = hasPhoneTabs || this is Screen.MovieDetails || this is Screen.SeriesDetails || isPlayback || isSettings
 
 /** The screens whose phone layout has the tab bar, or the rail when unfolded (see PhoneScaffold). */
 private val Screen.hasPhoneTabs: Boolean
