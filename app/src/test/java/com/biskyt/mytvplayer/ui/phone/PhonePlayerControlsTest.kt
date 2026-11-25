@@ -20,6 +20,7 @@ import com.biskyt.mytvplayer.ui.player.PlaybackViewModel
 import com.biskyt.mytvplayer.ui.player.PlayerViewModel
 import com.biskyt.mytvplayer.ui.player.VodPlayerViewModel
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
+import com.biskyt.mytvplayer.ui.theme.autoFindsTv
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -31,7 +32,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
-/** The player's touch controls on a phone held sideways (phone spike): screenshots to look at. */
+/** The player's touch controls on a phone held sideways (the owner, 2026-11-25): screenshots to look at. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "w844dp-h390dp-xxhdpi")
 class PhonePlayerControlsTest {
@@ -47,6 +48,7 @@ class PhonePlayerControlsTest {
     @Before
     fun setUp() = runBlocking {
         shadowOf(app.packageManager).setSystemFeature(PackageManager.FEATURE_TOUCHSCREEN, true)
+        autoFindsTv = { false } // the phone layout (TestApp sets the TV\'s)
         playlistId = app.container.addHomeTv(provider, vod = true)
     }
 

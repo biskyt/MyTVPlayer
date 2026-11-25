@@ -4,7 +4,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,11 +35,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.PathBuilder
-import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -61,25 +56,21 @@ import com.biskyt.mytvplayer.data.db.MovieEntity
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.common.AppIcons
-import com.biskyt.mytvplayer.ui.common.BoardPanel
-import com.biskyt.mytvplayer.ui.common.BoardPanelText
-import com.biskyt.mytvplayer.ui.common.BoardPanelTitle
 import com.biskyt.mytvplayer.ui.common.CirclePhoto
 import com.biskyt.mytvplayer.ui.common.Poster
-import com.biskyt.mytvplayer.ui.common.formatDate
-import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
-import com.biskyt.mytvplayer.ui.common.timeLeft
 import com.biskyt.mytvplayer.ui.theme.FormFactor
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.Palette
+import com.biskyt.mytvplayer.ui.vod.PlotPanel
 import com.biskyt.mytvplayer.ui.vod.TitleInfo
 import com.biskyt.mytvplayer.ui.vod.TmdbScore
-import com.biskyt.mytvplayer.ui.vod.metaLine
+import com.biskyt.mytvplayer.ui.vod.filmFacts
 import com.biskyt.mytvplayer.ui.vod.originalTitle
 import com.biskyt.mytvplayer.ui.vod.people
+import com.biskyt.mytvplayer.ui.vod.resumeLabel
 
-// The film page on a phone or an unfolded foldable (phone spike, 2026-11-25), as the mock-up "Film" draws it. The
+// The film page on a phone or an unfolded foldable (the owner, 2026-11-25), as the mock-up "Film" draws it. The
 // parts that the series page uses too are here (see PhoneSeries.kt). Sizes are in plain dp and sp: the device's own.
 
 /**
@@ -105,8 +96,7 @@ fun PhoneFilmPage(
             originalTitle(movie.title, info.tmdb)?.let {
                 PhoneSmallText(stringResource(R.string.vod_original_title_is, it), maxLines = 2)
             }
-            val released = info.tmdb?.released?.let(::formatDate) ?: (movie.year ?: info.year)?.toString()
-            val facts = metaLine(released, info.durationSec, info.genre ?: category, movie.rating ?: info.rating)
+            val facts = filmFacts(movie, info, category)
             if (facts.isNotEmpty()) PhoneFacts(facts)
             info.score?.let { TmdbScore(it) }
         }
@@ -114,9 +104,9 @@ fun PhoneFilmPage(
     val buttons = @Composable { FilmButtons(resumable, play, more, playTrailer) }
     val about = @Composable { unfolded: Boolean ->
         info.plot?.let { PhonePlot(movie.title, it, if (unfolded) UNFOLDED_PLOT_LINES else PLOT_LINES) }
-        people(info)?.let { PhoneSmallText(it, Modifier.padding(horizontal = PAGE_EDGE), maxLines = 3) }
+        people(info)?.let { PhoneSmallText(it, Modifier.padding(horizontal = PhoneGutter), maxLines = 3) }
         info.castNames?.let {
-            PhoneSmallText(stringResource(R.string.vod_cast, it), Modifier.padding(horizontal = PAGE_EDGE), maxLines = 3)
+            PhoneSmallText(stringResource(R.string.vod_cast, it), Modifier.padding(horizontal = PhoneGutter), maxLines = 3)
         }
         if (info.cast.isNotEmpty()) PhoneCastRow(info.cast, openPerson)
     }
@@ -177,9 +167,16 @@ internal fun PhoneDetailHeader(backdrop: String?, poster: String?, title: String
                 )
             )
         }
-        PhoneRoundButton(AppIcons.Back, stringResource(R.string.player_back), { nav.pop() }, Modifier.padding(14.dp))
+        PhoneIconButton(
+            AppIcons.Back,
+            stringResource(R.string.player_back),
+            { nav.pop() },
+            Modifier.padding(14.dp),
+            fill = Color.Black.copy(alpha = 0.45f),
+            iconSize = 22.dp
+        )
         Row(
-            Modifier.padding(start = PAGE_EDGE, end = PAGE_EDGE, top = BACKDROP_HEIGHT - POSTER_OVER),
+            Modifier.padding(start = PhoneGutter, end = PhoneGutter, top = BACKDROP_HEIGHT - POSTER_OVER),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.Bottom
         ) {
@@ -200,33 +197,21 @@ internal fun PhoneDetailHeader(backdrop: String?, poster: String?, title: String
     }
 }
 
-/** A round 44 dp button with [icon] over a picture: dark and see-through. */
-@Composable
-internal fun PhoneRoundButton(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(
-        modifier.size(44.dp).clip(RoundedCornerShape(22.dp)).background(Color.Black.copy(alpha = 0.45f))
-            .clickable(onClickLabel = label, role = Role.Button, onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Image(icon, label, Modifier.size(22.dp), colorFilter = ColorFilter.tint(Palette.text))
-    }
-}
-
 /** Play or Resume (with what is left, and its progress along the bottom), then Restart, Trailer and More. */
 @Composable
 private fun FilmButtons(resumable: WatchProgressEntity?, play: (Boolean) -> Unit, more: () -> Unit, playTrailer: (() -> Unit)?) {
     val resume = resumable?.takeIf { it.durationMs > 0 }
-    Column(Modifier.padding(start = PAGE_EDGE, end = PAGE_EDGE, top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.padding(start = PhoneGutter, end = PhoneGutter, top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         PhoneMainButton(
-            resume?.let { stringResource(R.string.vod_resume_left, timeLeft(it)) } ?: stringResource(R.string.common_play),
+            resumeLabel(resume),
             resume?.fraction,
             onLongClick = more
         ) { play(false) }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             val tile = Modifier.weight(1f)
-            if (resume != null) PhoneTileButton(PhoneIcons.Restart, stringResource(R.string.vod_restart), tile) { play(true) }
-            playTrailer?.let { PhoneTileButton(PhoneIcons.Trailer, stringResource(R.string.vod_trailer), tile, it) }
-            PhoneTileButton(PhoneIcons.More, stringResource(R.string.vod_more).trimEnd('…'), tile, more)
+            if (resume != null) PhoneTileButton(AppIcons.SkipBack, stringResource(R.string.vod_restart), tile) { play(true) }
+            playTrailer?.let { PhoneTileButton(AppIcons.Trailer, stringResource(R.string.vod_trailer), tile, onClick = it) }
+            PhoneTileButton(AppIcons.More, moreLabel(), tile, onClick = more)
         }
     }
 }
@@ -261,16 +246,29 @@ internal fun PhoneMainButton(text: String, progress: Float?, onLongClick: (() ->
     }
 }
 
-/** A square-ish button with [icon] over its [label], one of a row. */
+/** "More", as a tile's label: the TV's "More…" without its dots (a tile opens its panel at once, as the dots say). */
 @Composable
-internal fun PhoneTileButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun moreLabel() = stringResource(R.string.vod_more).trimEnd('…')
+
+/**
+ * A square-ish button with [icon] over its [label], one of a row. [iconDescription] is what the icon says for a screen
+ * reader, when it says more than the label (the heart: whether it is a favourite).
+ */
+@Composable
+internal fun PhoneTileButton(
+    icon: ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+    iconDescription: String? = null,
+    onClick: () -> Unit
+) {
     Column(
         modifier.heightIn(min = 58.dp).clip(RoundedCornerShape(12.dp)).background(PhoneChip)
             .clickable(role = Role.Button, onClick = onClick).padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically)
     ) {
-        Image(icon, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(Palette.text))
+        Image(icon, iconDescription, Modifier.size(20.dp), colorFilter = ColorFilter.tint(Palette.text))
         Text(
             label,
             color = Palette.text,
@@ -314,16 +312,9 @@ internal fun PhonePlot(title: String, plot: String, maxLines: Int) {
         maxLines = maxLines,
         overflow = TextOverflow.Ellipsis,
         onTextLayout = { cut = it.hasVisualOverflow },
-        modifier = Modifier.fillMaxWidth().clickable(enabled = cut, role = Role.Button) { open = true }.padding(horizontal = PAGE_EDGE)
+        modifier = Modifier.fillMaxWidth().clickable(enabled = cut, role = Role.Button) { open = true }.padding(horizontal = PhoneGutter)
     )
-    if (open) {
-        BoardPanel({ open = false }) {
-            Column(rememberFirstFocus().focusable(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                BoardPanelTitle(title)
-                BoardPanelText(plot)
-            }
-        }
-    }
+    if (open) PlotPanel(title, plot) { open = false }
 }
 
 /** "Cast", then each one's round photo, name and part in a row that scrolls sideways. A tap opens their page. */
@@ -335,9 +326,9 @@ private fun PhoneCastRow(cast: List<CastMember>, open: (CastMember) -> Unit) {
             color = Palette.text,
             fontSize = 16.sp,
             fontWeight = FontWeight.ExtraBold,
-            modifier = Modifier.padding(horizontal = PAGE_EDGE)
+            modifier = Modifier.padding(horizontal = PhoneGutter)
         )
-        LazyRow(contentPadding = PaddingValues(horizontal = PAGE_EDGE), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyRow(contentPadding = PaddingValues(horizontal = PhoneGutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             // Keyed by place and name: a name can be in the cast twice.
             itemsIndexed(cast, key = { i, person -> "$i ${person.name}" }) { _, person ->
                 Column(
@@ -375,51 +366,6 @@ private fun PhoneCastRow(cast: List<CastMember>, open: (CastMember) -> Unit) {
     }
 }
 
-/** The film page's own icons (the mock-up's): drawn here, so that AppIcons stays as it is for the spike. */
-internal object PhoneIcons {
-    private fun icon(name: String, fill: Boolean, block: PathBuilder.() -> Unit) = ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).apply {
-        if (fill) {
-            path(fill = SolidColor(Color.White), pathBuilder = block)
-        } else {
-            path(stroke = SolidColor(Color.White), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, pathBuilder = block)
-        }
-    }.build()
-
-    /** A circle that turns back on itself. */
-    val Restart = icon("restart", false) {
-        moveTo(3f, 12f)
-        arcTo(9f, 9f, 0f, true, false, 6f, 5.3f)
-        lineTo(3f, 8f)
-        moveTo(3f, 3f)
-        verticalLineTo(8f)
-        horizontalLineTo(8f)
-    }
-
-    /** A screen with a play mark in it. */
-    val Trailer = icon("trailer", false) {
-        moveTo(3f, 5f)
-        horizontalLineTo(21f)
-        verticalLineTo(19f)
-        horizontalLineTo(3f)
-        close()
-        moveTo(10f, 9f)
-        lineTo(15f, 12f)
-        lineTo(10f, 15f)
-        close()
-    }
-
-    /** Three dots. */
-    val More = icon("more", true) {
-        for (x in listOf(5f, 12f, 19f)) {
-            moveTo(x + 2f, 12f)
-            arcTo(2f, 2f, 0f, true, true, x - 2f, 12f)
-            arcTo(2f, 2f, 0f, true, true, x + 2f, 12f)
-        }
-    }
-}
-
-/** The page's side margin. */
-internal val PAGE_EDGE = 20.dp
 private val PANE_GAP = 12.dp
 private val UNFOLDED_LEFT = 380.dp
 private val BACKDROP_HEIGHT = 230.dp

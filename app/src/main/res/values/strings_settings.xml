@@ -14,6 +14,11 @@
     <string name="settings_appearance_help">Accent colour and text size</string>
     <string name="settings_misc_title">Misc</string>
     <string name="settings_misc_help">Radio stations, downloads, the TV\'s home screen, network warnings</string>
+    <string name="settings_layout">Layout</string>
+    <string name="settings_layout_help">TV for a remote, phone and tablet for a touch screen</string>
+    <string name="settings_layout_auto">Automatic</string>
+    <string name="settings_layout_tv">TV</string>
+    <string name="settings_layout_touch">Phone and tablet</string>
     <string name="settings_backup_title">Backup &amp; restore</string>
     <string name="settings_backup_help">Save your playlists and choices to a file or Google Drive, or restore them</string>
     <string name="settings_about_title">About</string>

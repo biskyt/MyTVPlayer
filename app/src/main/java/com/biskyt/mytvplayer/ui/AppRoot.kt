@@ -74,6 +74,7 @@ import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.TvCanvas
+import com.biskyt.mytvplayer.ui.theme.looksLikeTv
 import com.biskyt.mytvplayer.ui.vod.MoreLikeScreen
 import com.biskyt.mytvplayer.ui.vod.MovieDetailsScreen
 import com.biskyt.mytvplayer.ui.vod.PersonScreen
@@ -107,7 +108,7 @@ fun AppRoot() {
     }
     // Only the first settings value decides the start screen; later changes (e.g. last channel) mustn't recompose the app.
     val initial = remember { s }
-    MyTvTheme(accentArgb = s.accent, largeText = s.largeText) {
+    MyTvTheme(accentArgb = s.accent, largeText = s.largeText, layout = s.layout) {
         LaunchedEffect(Unit) {
             if (root.navigator == null) root.navigator = firstScreen(container, initial, root.safeStart)
         }
@@ -257,7 +258,7 @@ internal fun guideButtonOpensGuide(screen: Screen) = !screen.isPlayback && !scre
  */
 @Composable
 internal fun ScreenContent(screen: Screen, hasPlaylist: Boolean = true) {
-    // A phone or an unfolded foldable (phone spike): a screen with a phone layout draws its own frame; any other is
+    // A phone or an unfolded foldable (the owner, 2026-11-25): a screen with a phone layout draws its own frame; any other is
     // drawn as on a TV, on the TV's canvas.
     if (!LocalFormFactor.current.isTv) {
         return if (screen.hasPhoneLayout) ScreenBody(screen) else TvCanvas { ScreenContent(screen, hasPlaylist) }
@@ -317,7 +318,7 @@ private val Screen.drawsOwnTopBar: Boolean
         is Screen.GuideMatching, Screen.Backup, Screen.About, Screen.Licences -> false
     }
 
-/** The screens with a phone layout (phone spike): the rest are drawn as on a TV, on a phone too (see TvCanvas). */
+/** The screens with a phone layout (the owner, 2026-11-25): the rest are drawn as on a TV, on a phone too (see TvCanvas). */
 internal val Screen.hasPhoneLayout: Boolean
     get() = this == Screen.Home ||
         (this is Screen.Live && !guide) ||
@@ -328,17 +329,24 @@ internal val Screen.hasPhoneLayout: Boolean
         isPlayback
 
 /**
- * Which way up the screen is on a phone (phone spike): the phone layouts upright, and the player and the screens drawn
- * as on a TV sideways. An unfolded foldable turns freely. A TV is left as it is.
+ * Which way up the screen is on a touch screen (the owner, 2026-11-25): on a phone, the phone layouts upright, and the
+ * player and the screens drawn as on a TV sideways; unfolded, the phone layouts turn freely and the others stay
+ * sideways; the TV's layout chosen on a touch screen sideways. A real TV is left as it is.
  */
 @Composable
 private fun PhoneOrientation(screen: Screen) {
     val form = LocalFormFactor.current
     val activity = LocalActivity.current ?: return
-    LaunchedEffect(screen, form) {
+    // A real TV is never turned, whichever layout is chosen.
+    val tv = remember(activity) { activity.looksLikeTv() }
+    LaunchedEffect(screen, form, tv) {
+        if (tv) return@LaunchedEffect
         activity.requestedOrientation = when (form) {
-            FormFactor.TV -> return@LaunchedEffect
-            FormFactor.UNFOLDED -> ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+            // The TV's layout chosen on a touch screen: it is drawn for a landscape screen.
+            FormFactor.TV -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            // Unfolded, the phone layouts turn freely; a screen drawn as on a TV stays sideways, where it fits.
+            FormFactor.UNFOLDED ->
+                if (screen.hasPhoneLayout) ActivityInfo.SCREEN_ORIENTATION_FULL_USER else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             FormFactor.PHONE ->
                 if (screen.hasPhoneLayout && !screen.isPlayback) {
                     ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT

@@ -39,14 +39,15 @@ private fun CatchupControls(vm: CatchupPlayerViewModel, buttons: FocusRequester,
         line = stringResource(R.string.player_catchup_behind_live, formatRuntime(behind)),
         timeline = {
             if (p != null) {
-                fun fraction(t: Long) = ((t - p.startMs).toFloat() / (p.stopMs - p.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+                val bar = vm.catchupBar(p.startMs..p.stopMs)
                 Timeline(
                     formatTime(p.startMs),
-                    fraction(vm.at),
+                    bar.fraction,
                     formatTime(p.stopMs),
-                    scrub?.let(::fraction),
-                    handle = LocalBarSelected.current
-                ) { vm.scrubTo(p.startMs..p.stopMs, it) }
+                    bar.scrub,
+                    handle = LocalBarSelected.current,
+                    onSeek = bar.onSeek
+                )
             }
         }
     ) {

@@ -1,6 +1,5 @@
 package com.biskyt.mytvplayer.ui.theme
 
-import android.content.pm.PackageManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -10,20 +9,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Typography
 import androidx.tv.material3.darkColorScheme
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.core.ui.AccentPalette
+import com.biskyt.mytvplayer.data.LayoutMode
 import com.biskyt.mytvplayer.ui.common.LocalTouch
 import com.biskyt.mytvplayer.ui.common.hasTouchScreen
 
@@ -95,11 +93,13 @@ private fun typography(large: Boolean): Typography {
 
 internal const val DESIGN_WIDTH = 1280f
 
-/** A touch screen at least this wide both ways (an unfolded foldable, a tablet) gets the larger touch layouts. */
-private const val UNFOLDED_DP = 600
-
 @Composable
-fun MyTvTheme(accentArgb: Int = AccentPalette.DEFAULT, largeText: Boolean = false, content: @Composable () -> Unit) {
+fun MyTvTheme(
+    accentArgb: Int = AccentPalette.DEFAULT,
+    largeText: Boolean = false,
+    layout: LayoutMode = LayoutMode.AUTO,
+    content: @Composable () -> Unit
+) {
     // Derived once per accent change; nothing is recomputed while drawing.
     val accent = remember(accentArgb) {
         AccentPalette.from(accentArgb).let { Accent(Color(it.accent), Color(it.tint), Color(it.soft), Color(it.onAccent)) }
@@ -119,23 +119,14 @@ fun MyTvTheme(accentArgb: Int = AccentPalette.DEFAULT, largeText: Boolean = fals
     }
     val type = remember(largeText) { typography(largeText) }
     val onAccentType = remember(type, accent.onAccent) { type.inColor(accent.onAccent) }
-    // Layouts are designed on a 1280-unit-wide canvas (like the mockups). TVs report ~960 dp (1080p at xhdpi, 720p at
-    // tvdpi), so scale density to make 1280 units span the screen: identical look on every TV, no per-size layouts.
-    val density = LocalDensity.current
-    val widthPx = LocalWindowInfo.current.containerSize.width
     val context = LocalContext.current
     val touch = remember { context.hasTouchScreen() }
     // A phone or an unfolded foldable: its real size, and phone layouts where a screen has them (see FormFactor).
-    val leanback = remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
     val smallest = LocalConfiguration.current.smallestScreenWidthDp
-    val form = when {
-        leanback || !touch -> FormFactor.TV
-        smallest >= UNFOLDED_DP -> FormFactor.UNFOLDED
-        else -> FormFactor.PHONE
-    }
-    val scaled = remember(density, widthPx, form) {
-        if (form.isTv && widthPx > 0) Density(widthPx / DESIGN_WIDTH, density.fontScale) else density
-    }
+    val form = remember(layout, smallest) { formFactor(context, layout, smallest) }
+    // Layouts are designed on a 1280-unit-wide canvas (like the mockups). TVs report ~960 dp (1080p at xhdpi, 720p at
+    // tvdpi), so scale density to make 1280 units span the screen: identical look on every TV, no per-size layouts.
+    val scaled = rememberCanvasDensity(form.isTv)
     CompositionLocalProvider(
         LocalAccent provides accent,
         LocalDensity provides scaled,

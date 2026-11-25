@@ -26,6 +26,7 @@ import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.ScreenContent
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import com.biskyt.mytvplayer.ui.theme.Palette
+import com.biskyt.mytvplayer.ui.theme.autoFindsTv
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -36,7 +37,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
-/** Live TV on a phone and on an unfolded foldable (phone spike, 2026-11-25), recorded to look at. */
+/** Live TV on a phone and on an unfolded foldable (the owner, 2026-11-25), recorded to look at. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "w390dp-h844dp-xxhdpi")
 class PhoneLiveScreenshotTest {
@@ -53,6 +54,7 @@ class PhoneLiveScreenshotTest {
 
     private fun start() {
         shadowOf(app.packageManager).setSystemFeature(PackageManager.FEATURE_TOUCHSCREEN, true)
+        autoFindsTv = { false } // the phone layout (TestApp sets the TV\'s)
         runBlocking { app.container.addHomeTv(provider, guide = true) }
         val navigator = navigators.new(Screen.Live(ChannelFilter.All))
         compose.setContent {

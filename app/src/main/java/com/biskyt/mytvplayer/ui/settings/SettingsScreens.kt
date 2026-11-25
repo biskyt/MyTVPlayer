@@ -51,6 +51,7 @@ import com.biskyt.mytvplayer.core.player.SubtitleMode
 import com.biskyt.mytvplayer.core.ui.AccentPalette
 import com.biskyt.mytvplayer.core.ui.BackdropLevel
 import com.biskyt.mytvplayer.data.BufferSize
+import com.biskyt.mytvplayer.data.LayoutMode
 import com.biskyt.mytvplayer.data.RadioMode
 import com.biskyt.mytvplayer.data.Settings
 import com.biskyt.mytvplayer.data.StreamFormat
@@ -345,6 +346,20 @@ fun MiscSettingsScreen() {
             )
         }
         item { DownloadsRow(s.downloads) { on -> vm.update { it.copy(downloads = on) } } }
+        item {
+            // The TV's or the phone's screens, whatever the device (the owner, 2026-11-25): Automatic finds them.
+            val label = when (s.layout) {
+                LayoutMode.AUTO -> R.string.settings_layout_auto
+                LayoutMode.TV -> R.string.settings_layout_tv
+                LayoutMode.TOUCH -> R.string.settings_layout_touch
+            }
+            CycleSettingRow(
+                stringResource(R.string.settings_layout),
+                stringResource(R.string.settings_layout_help),
+                stringResource(label),
+                { d -> vm.update { it.copy(layout = LayoutMode.entries.cycle(it.layout, d)) } }
+            )
+        }
         item { LauncherRow() }
         item { NetworkWarningRows() }
     }

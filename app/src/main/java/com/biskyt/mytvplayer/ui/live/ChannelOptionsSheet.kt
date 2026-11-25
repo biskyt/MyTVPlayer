@@ -89,7 +89,7 @@ fun ChannelOptionsSheet(ch: ChannelEntity, vm: LiveViewModel, play: (ChannelEnti
         restartFilter = { vm.filter.value },
         programme = programme,
         afterWatch = listOfNotNull(find),
-        beforeHide = listOfNotNull(moveAction(vm.mover, CAT_LIVE, ch.streamId, close).takeIf { vm.canMoveFavourite }),
+        beforeHide = listOfNotNull(moveAction(vm.mover, CAT_LIVE, ch.streamId, close)?.takeIf { vm.canMoveFavourite }),
         // Last (the owner, 2026-11-15).
         last = listOf(
             ItemAction.Run(switch, switchHelp) {

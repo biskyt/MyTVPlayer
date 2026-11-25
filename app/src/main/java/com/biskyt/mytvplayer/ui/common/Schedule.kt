@@ -159,6 +159,29 @@ fun SidePanel(
     padding: PaddingValues = PaddingValues(28.dp),
     content: @Composable () -> Unit
 ) {
+    PanelWindow(onDismiss, hideBars = LocalTouch.current) {
+        Box(
+            Modifier.fillMaxSize().ignoreHeldButtons()
+                // On a touch screen, tapping beside the panel closes it.
+                .onPlainTap(onDismiss)
+                .background(if (dim) Palette.background.copy(alpha = 0.6f) else Color.Transparent),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            Box(
+                Modifier.fillMaxHeight().width(width)
+                    .onPlainTap {} // taps on the panel itself don't close it
+                    .background(Palette.surface.copy(alpha = 0.97f)).padding(padding)
+            ) { content() }
+        }
+    }
+}
+
+/**
+ * The window of a panel ([SidePanel], and a sheet on a phone): a dialog over the whole screen, so that focus stays
+ * inside it and Back closes it ([onDismiss]). [hideBars] keeps the system bars hidden (a touch screen).
+ */
+@Composable
+internal fun PanelWindow(onDismiss: () -> Unit, hideBars: Boolean, content: @Composable () -> Unit) {
     // A dialog is its own window, which resets the density to the system's and the context to the Activity's; keep
     // the app's scaling (see MyTvTheme) and language (see InAppLanguage) so panels match everything else.
     val density = LocalDensity.current
@@ -173,23 +196,11 @@ fun SidePanel(
             LocalReturnFocus provides null
         ) {
             // A dialog is its own window: on a phone its bars would come back over the app otherwise.
-            if (LocalTouch.current) {
+            if (hideBars) {
                 val dialogView = LocalView.current
                 SideEffect { (dialogView.parent as? DialogWindowProvider)?.window?.hideSystemBars() }
             }
-            Box(
-                Modifier.fillMaxSize().ignoreHeldButtons()
-                    // On a touch screen, tapping beside the panel closes it.
-                    .onPlainTap(onDismiss)
-                    .background(if (dim) Palette.background.copy(alpha = 0.6f) else Color.Transparent),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                Box(
-                    Modifier.fillMaxHeight().width(width)
-                        .onPlainTap {} // taps on the panel itself don't close it
-                        .background(Palette.surface.copy(alpha = 0.97f)).padding(padding)
-                ) { content() }
-            }
+            content()
         }
     }
 }

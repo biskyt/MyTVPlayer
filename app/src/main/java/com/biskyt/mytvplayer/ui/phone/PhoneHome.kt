@@ -1,15 +1,12 @@
 package com.biskyt.mytvplayer.ui.phone
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,12 +37,10 @@ import com.biskyt.mytvplayer.data.ChannelFilter
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.VOD_TYPES
 import com.biskyt.mytvplayer.data.db.VodCard
-import com.biskyt.mytvplayer.data.programmeTitle
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.common.AmbientSource
 import com.biskyt.mytvplayer.ui.common.AppIcons
-import com.biskyt.mytvplayer.ui.common.ChannelLogo
 import com.biskyt.mytvplayer.ui.common.LocalAmbience
 import com.biskyt.mytvplayer.ui.common.NowNextLoader
 import com.biskyt.mytvplayer.ui.common.Poster
@@ -58,17 +52,15 @@ import com.biskyt.mytvplayer.ui.home.HomeTile
 import com.biskyt.mytvplayer.ui.home.HomeViewModel
 import com.biskyt.mytvplayer.ui.home.TileOptions
 import com.biskyt.mytvplayer.ui.home.carryOnLeft
+import com.biskyt.mytvplayer.ui.home.carryOnProgress
 import com.biskyt.mytvplayer.ui.home.favouriteRowTitle
 import com.biskyt.mytvplayer.ui.theme.FormFactor
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.Palette
 
-// Home on a phone or an unfolded foldable (phone spike, 2026-11-25): the TV's rows, sized for touch. A tap plays or
+// Home on a phone or an unfolded foldable (the owner, 2026-11-25): the TV's rows, sized for touch. A tap plays or
 // opens a card, and a long press opens its options, as holding OK does on a TV.
-
-/** The space at each side of a phone page. */
-internal val PhoneGutter = 20.dp
 
 /** Home, from the TV's [HomeViewModel]: Continue watching, the favourite channels, recently watched, then favourites. */
 @Composable
@@ -99,10 +91,10 @@ fun PhoneHome(vm: HomeViewModel) {
                                 p.imageUrl,
                                 p.title,
                                 carryOnLeft(p),
-                                progress = p.fraction.takeIf { !p.finished && p.started },
+                                progress = p.carryOnProgress,
                                 onLongClick = { options = HomeTile.CarryOn(p) }
                             ) {
-                                vm.played = p
+                                // (vm.played is not set: it moves a TV's focus back to the row, and a touch screen has none.)
                                 nav.push(Screen.VodPlayer(pid, p.itemId, p.seriesId, continueSeries = true))
                             }
                         }
@@ -114,13 +106,13 @@ fun PhoneHome(vm: HomeViewModel) {
             when {
                 favs == null -> Unit
                 favs.isEmpty() -> item { EmptyFavourites { nav.reset(Screen.Live()) } }
-                else -> channelCards(favs, wide, vm.nowNext, { options = HomeTile.Channel(it, ChannelFilter.Favourites) }) {
+                else -> channelCards("fav", favs, wide, vm.nowNext, { options = HomeTile.Channel(it, ChannelFilter.Favourites) }) {
                     nav.push(Screen.Player(pid, it.streamId, ChannelFilter.Favourites))
                 }
             }
             if (recent.isNotEmpty()) {
                 item { PhoneSectionTitle(stringResource(R.string.common_recent)) }
-                channelCards(recent, wide, vm.nowNext, { options = HomeTile.Channel(it, ChannelFilter.Recent) }) {
+                channelCards("recent", recent, wide, vm.nowNext, { options = HomeTile.Channel(it, ChannelFilter.Recent) }) {
                     nav.push(Screen.Player(pid, it.streamId, ChannelFilter.Recent))
                 }
             }
@@ -185,19 +177,10 @@ internal fun PhonePoster(
     onLongClick: () -> Unit,
     onClick: () -> Unit
 ) {
-    val ambience = LocalAmbience.current
-    val ambient = AmbientSource.picture(imageUrl)
     Column(
-        Modifier.width(width).clip(RoundedCornerShape(10.dp)).combinedClickable(
-            role = Role.Button,
-            onLongClick = {
-                ambience?.source = ambient
-                onLongClick()
-            }
-        ) {
-            ambience?.source = ambient
-            onClick()
-        },
+        Modifier.width(
+            width
+        ).clip(RoundedCornerShape(10.dp)).touchCard(LocalAmbience.current, AmbientSource.picture(imageUrl), onLongClick, onClick),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Box {
@@ -232,7 +215,10 @@ private fun FavouriteMark(modifier: Modifier) {
 }
 
 /** Channel cards one under the other; on an unfolded screen, two side by side. */
+@Suppress("LongParameterList") // the row's key, its channels and layout, and what a card does
 private fun LazyListScope.channelCards(
+    /** Which row ("fav", "recent"): a channel can be in both, and keys must differ. */
+    row: String,
     channels: List<ChannelEntity>,
     wide: Boolean,
     loader: NowNextLoader,
@@ -240,49 +226,11 @@ private fun LazyListScope.channelCards(
     onPlay: (ChannelEntity) -> Unit
 ) {
     val columns = if (wide) 2 else 1
-    items(channels.chunked(columns), key = { row -> "ch-" + row.joinToString { it.streamId.toString() } }) { row ->
+    items(channels.chunked(columns), key = { cards -> "$row-" + cards.joinToString { it.streamId.toString() } }) { cards ->
+        val now by rememberMinuteClock()
         Row(Modifier.padding(horizontal = PhoneGutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            row.forEach { c -> PhoneChannelCard(c, loader, { onOptions(c) }, Modifier.weight(1f)) { onPlay(c) } }
-            repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
-        }
-    }
-}
-
-/** A channel: its logo, its name, what is on now and how far through it is. */
-@Composable
-private fun PhoneChannelCard(c: ChannelEntity, loader: NowNextLoader, onLongClick: () -> Unit, modifier: Modifier, onClick: () -> Unit) {
-    LaunchedEffect(c.streamId) { loader.request(c.streamId) }
-    val now by rememberMinuteClock()
-    val nn = loader.entries[c.streamId]
-    val ambience = LocalAmbience.current
-    val ambient = AmbientSource.logo(c.logoUrl)
-    Row(
-        modifier.heightIn(min = 64.dp).clip(RoundedCornerShape(14.dp)).background(PhoneCard)
-            .combinedClickable(role = Role.Button, onLongClick = {
-                ambience?.source = ambient
-                onLongClick()
-            }) {
-                ambience?.source = ambient
-                onClick()
-            }
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(Modifier.clip(RoundedCornerShape(9.dp)).background(Palette.background.copy(alpha = 0.4f))) {
-            ChannelLogo(c.logoUrl, c.name, 64.dp, 40.dp)
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(c.name, color = Palette.textDim, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
-                nn?.now?.let { programmeTitle(it.title) } ?: stringResource(R.string.common_no_guide),
-                color = Palette.text,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            ProgressLine(nn?.progress(now) ?: 0f, height = 3.dp)
+            cards.forEach { c -> PhoneChannelCard(c, loader, now, { onOptions(c) }, Modifier.weight(1f)) { onPlay(c) } }
+            repeat(columns - cards.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }
@@ -292,19 +240,6 @@ private fun EmptyFavourites(onBrowse: () -> Unit) {
     Column(Modifier.padding(horizontal = PhoneGutter), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.home_no_favourites), color = Palette.textDim, fontSize = 14.sp)
         PhonePill(stringResource(R.string.home_browse_channels), primary = true, onClick = onBrowse)
-    }
-}
-
-/** A rounded button, 44 dp high: the accent's colour when [primary]. */
-@Composable
-internal fun PhonePill(label: String, primary: Boolean = false, onClick: () -> Unit) {
-    val accent = LocalAccent.current
-    Box(
-        Modifier.heightIn(min = 44.dp).clip(RoundedCornerShape(22.dp)).background(if (primary) accent.color else PhoneChip)
-            .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 18.dp, vertical = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(label, color = if (primary) Palette.background else Palette.text, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
 

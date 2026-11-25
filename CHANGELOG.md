@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.37.0
+- MyTVPlayer has layouts made for phones and tablets.
+- An unfolded phone or a tablet gets wider layouts.
+- A Layout setting in Misc chooses the TV or the phone layout, or finds the right one.
+- After a restore, film and series categories show no count until their titles have loaded.
+
 ## 1.36.0
 - The background takes its colours from the film, series or channel that you select.
 - Channel logos are all the same size, on a dark tile.

@@ -25,6 +25,7 @@ import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.testutil.waitForText
 import com.biskyt.mytvplayer.ui.AppRoot
+import com.biskyt.mytvplayer.ui.theme.autoFindsTv
 import com.github.takahirom.roborazzi.captureRoboImage
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.runBlocking
@@ -37,7 +38,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
-/** The phone spike's Home and Movies on a phone held upright and on an unfolded foldable, recorded to look at. */
+/** Home and Movies on a phone held upright and on an unfolded foldable, recorded to look at. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], application = TestApp::class, qualifiers = "w390dp-h844dp-xxhdpi")
 class PhoneLayoutsScreenshotTest {
@@ -52,6 +53,7 @@ class PhoneLayoutsScreenshotTest {
     @Before
     fun setUp() = runBlocking {
         shadowOf(app.packageManager).setSystemFeature(PackageManager.FEATURE_TOUCHSCREEN, true)
+        autoFindsTv = { false } // the phone layout (TestApp sets the TV\'s)
         provider.images = { name -> poster(name.hashCode()) }
         provider.moviePoster = { provider.art("movie-$it.png") }
         provider.seriesCover = { provider.art("series-$it.png") }

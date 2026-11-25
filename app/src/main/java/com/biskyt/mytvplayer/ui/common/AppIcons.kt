@@ -3,6 +3,7 @@ package com.biskyt.mytvplayer.ui.common
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathBuilder
 import androidx.compose.ui.graphics.vector.path
@@ -13,15 +14,23 @@ import kotlin.math.sin
 
 /** The handful of icons the app needs, drawn as vectors (a full icon library would bloat the APK). */
 object AppIcons {
-    private fun icon(name: String, fill: Boolean, block: PathBuilder.() -> Unit) = ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).apply {
-        if (fill) {
-            path(fill = SolidColor(Color.White), pathBuilder = block)
-        } else {
-            path(stroke = SolidColor(Color.White), strokeLineWidth = 2.2f, strokeLineCap = StrokeCap.Round, pathBuilder = block)
-        }
-    }.build()
+    /** An icon, filled ([fill]) or drawn with a line; [round] gives a line round corners (the touch layouts' icons). */
+    private fun icon(name: String, fill: Boolean, round: Boolean = false, block: PathBuilder.() -> Unit) =
+        ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).apply {
+            if (fill) {
+                path(fill = SolidColor(Color.White), pathBuilder = block)
+            } else {
+                path(
+                    stroke = SolidColor(Color.White),
+                    strokeLineWidth = 2.2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = if (round) StrokeJoin.Round else StrokeJoin.Miter,
+                    pathBuilder = block
+                )
+            }
+        }.build()
 
-    /** The phone's tab bar (phone spike): a house. */
+    /** The phone's tab bar (the owner, 2026-11-25): a house. */
     val Home = icon("home", false) {
         moveTo(4f, 11f)
         lineTo(12f, 4f)
@@ -176,10 +185,10 @@ object AppIcons {
         curveTo(20f, 15f, 12f, 20f, 12f, 20f)
         close()
     }
-    val Heart = icon("heart", true, heart)
+    val Heart = icon("heart", true, block = heart)
 
     /** The heart's outline: not a favourite (yet). */
-    val HeartOutline = icon("heart-outline", false, heart)
+    val HeartOutline = icon("heart-outline", false, block = heart)
 
     /** A tick: watched. */
     val Tick = icon("tick", false) {
@@ -267,5 +276,76 @@ object AppIcons {
         moveTo(15f, 12f)
         arcTo(3f, 3f, 0f, true, true, 9f, 12f)
         arcTo(3f, 3f, 0f, true, true, 15f, 12f)
+    }
+
+    // The touch layouts' icons (the owner, 2026-11-25), as the mock-up draws them.
+
+    /** An arrow turning back round a circle: skip back in the player, and Restart on the film page. */
+    val SkipBack = icon("skip_back", false, round = true) {
+        moveTo(3f, 12f)
+        arcToRelative(9f, 9f, 0f, true, false, 3f, -6.7f)
+        lineTo(3f, 8f)
+        moveTo(3f, 3f)
+        verticalLineToRelative(5f)
+        horizontalLineToRelative(5f)
+    }
+
+    /** An arrow turning forward round a circle. */
+    val SkipForward = icon("skip_forward", false, round = true) {
+        moveTo(21f, 12f)
+        arcToRelative(9f, 9f, 0f, true, true, -3f, -6.7f)
+        lineTo(21f, 8f)
+        moveTo(21f, 3f)
+        verticalLineToRelative(5f)
+        horizontalLineToRelative(-5f)
+    }
+
+    /** A chevron up: the channel before. */
+    val ChannelUp = icon("channel_up", false, round = true) {
+        moveTo(6f, 15f)
+        lineTo(12f, 9f)
+        lineTo(18f, 15f)
+    }
+
+    /** A chevron down: the next channel. */
+    val ChannelDown = icon("channel_down", false, round = true) {
+        moveTo(6f, 9f)
+        lineTo(12f, 15f)
+        lineTo(18f, 9f)
+    }
+
+    /** Play, then a bar: the next episode. */
+    val NextEpisode = icon("next_episode", true) {
+        moveTo(6f, 5f)
+        verticalLineToRelative(14f)
+        lineToRelative(9f, -7f)
+        close()
+        moveTo(16f, 5f)
+        horizontalLineToRelative(3f)
+        verticalLineToRelative(14f)
+        horizontalLineToRelative(-3f)
+        close()
+    }
+
+    /** A screen with a play mark in it. */
+    val Trailer = icon("trailer", false, round = true) {
+        moveTo(3f, 5f)
+        horizontalLineTo(21f)
+        verticalLineTo(19f)
+        horizontalLineTo(3f)
+        close()
+        moveTo(10f, 9f)
+        lineTo(15f, 12f)
+        lineTo(10f, 15f)
+        close()
+    }
+
+    /** Three dots. */
+    val More = icon("more", true) {
+        for (x in listOf(5f, 12f, 19f)) {
+            moveTo(x + 2f, 12f)
+            arcTo(2f, 2f, 0f, true, true, x - 2f, 12f)
+            arcTo(2f, 2f, 0f, true, true, x + 2f, 12f)
+        }
     }
 }

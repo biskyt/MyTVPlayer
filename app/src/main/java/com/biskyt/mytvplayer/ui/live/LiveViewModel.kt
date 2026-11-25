@@ -25,6 +25,7 @@ import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.common.CategoryFilter
 import com.biskyt.mytvplayer.ui.common.FavouriteMover
 import com.biskyt.mytvplayer.ui.common.NumberEntry
+import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.guideNowNext
 import com.biskyt.mytvplayer.ui.common.openOnShown
 import com.biskyt.mytvplayer.ui.common.reveal
@@ -61,6 +62,13 @@ class LiveViewModel(
 
     /** Opened from the Catch-up tab: the categories are those with catch-up channels, and OK opens past programmes. */
     val catchupMode = initialFilter?.isCatchup == true
+
+    /** The tab this screen comes under. */
+    val tab: Tab get() = when {
+        catchupMode -> Tab.CATCHUP
+        radio -> Tab.RADIO
+        else -> Tab.LIVE
+    }
 
     /** The channels this section lists, TV, radio or both, as the setting Radio stations puts them (see ChannelKinds). */
     private val kindsFlow: Flow<ChannelKinds> = c.settings.settings

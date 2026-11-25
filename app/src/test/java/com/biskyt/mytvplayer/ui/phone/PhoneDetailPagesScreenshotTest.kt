@@ -33,6 +33,7 @@ import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.ScreenContent
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import com.biskyt.mytvplayer.ui.theme.Palette
+import com.biskyt.mytvplayer.ui.theme.autoFindsTv
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.captureScreenRoboImage
@@ -48,7 +49,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 /**
- * The film and series pages on a phone (phone spike, 2026-11-25), and on an unfolded foldable, with More open as a
+ * The film and series pages on a phone (the owner, 2026-11-25), and on an unfolded foldable, with More open as a
  * sheet, recorded to compare with the mock-ups.
  */
 @OptIn(ExperimentalRoborazziApi::class)
@@ -68,6 +69,7 @@ class PhoneDetailPagesScreenshotTest {
     @Before
     fun setUp() {
         shadowOf(app.packageManager).setSystemFeature(PackageManager.FEATURE_TOUCHSCREEN, true)
+        autoFindsTv = { false } // the phone layout (TestApp sets the TV\'s)
         provider.images = { art(it) }
         provider.moviePoster = { provider.art("poster-$it.png") }
         provider.seriesCover = { provider.art("cover-$it.png") }

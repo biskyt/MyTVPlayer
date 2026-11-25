@@ -14,71 +14,48 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
-import com.biskyt.mytvplayer.hideSystemBars
-import com.biskyt.mytvplayer.ui.common.LocalReturnFocus
+import com.biskyt.mytvplayer.ui.common.PanelWindow
 import com.biskyt.mytvplayer.ui.common.onPlainTap
 import com.biskyt.mytvplayer.ui.theme.Palette
 
 /**
- * A panel on a phone or an unfolded foldable (phone spike, 2026-11-25): a sheet that rises from the bottom, with
+ * A panel on a phone or an unfolded foldable (the owner, 2026-11-25): a sheet that rises from the bottom, with
  * rounded top corners and a grab handle, over the dimmed screen. It is 85 % of the screen's height at most, and
  * [content] decides if it scrolls. A tap above the sheet or Back closes it ([onDismiss]). [dim] false dims the screen
  * less (a panel that leaves the page in view on a TV).
  */
 @Composable
 fun PhoneSheet(onDismiss: () -> Unit, dim: Boolean = true, content: @Composable () -> Unit) {
-    // A dialog is its own window: keep the app's density, context and language, as SidePanel does.
-    val density = LocalDensity.current
-    val context = LocalContext.current
-    val configuration = LocalConfiguration.current
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        CompositionLocalProvider(
-            LocalDensity provides density,
-            LocalContext provides context,
-            LocalConfiguration provides configuration,
-            LocalReturnFocus provides null
+    PanelWindow(onDismiss, hideBars = true) {
+        // The sheet rises from the bottom as it opens.
+        val rise = remember { Animatable(1f) }
+        LaunchedEffect(Unit) { rise.animateTo(0f, tween(RISE_MS)) }
+        BoxWithConstraints(
+            Modifier.fillMaxSize()
+                .background(Color.Black.copy(alpha = if (dim) DIM else DIM_LIGHT))
+                .onPlainTap(onDismiss),
+            contentAlignment = Alignment.BottomCenter
         ) {
-            val dialogView = LocalView.current
-            SideEffect { (dialogView.parent as? DialogWindowProvider)?.window?.hideSystemBars() }
-            // The sheet rises from the bottom as it opens.
-            val rise = remember { Animatable(1f) }
-            LaunchedEffect(Unit) { rise.animateTo(0f, tween(RISE_MS)) }
-            BoxWithConstraints(
-                Modifier.fillMaxSize()
-                    .background(Color.Black.copy(alpha = if (dim) DIM else DIM_LIGHT))
-                    .onPlainTap(onDismiss),
-                contentAlignment = Alignment.BottomCenter
+            Column(
+                Modifier.widthIn(max = MAX_WIDTH).fillMaxWidth()
+                    .heightIn(max = maxHeight * MAX_HEIGHT)
+                    .graphicsLayer { translationY = size.height * rise.value }
+                    .clip(SheetShape)
+                    .background(Palette.surface)
+                    .onPlainTap {} // a tap on the sheet itself does not close it
+                    .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    Modifier.widthIn(max = MAX_WIDTH).fillMaxWidth()
-                        .heightIn(max = maxHeight * MAX_HEIGHT)
-                        .graphicsLayer { translationY = size.height * rise.value }
-                        .clip(SheetShape)
-                        .background(Palette.surface)
-                        .onPlainTap {} // a tap on the sheet itself does not close it
-                        .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 22.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(Modifier.padding(bottom = 10.dp).size(40.dp, 5.dp).clip(RoundedCornerShape(3.dp)).background(Palette.track))
-                    Box(Modifier.fillMaxWidth()) { content() }
-                }
+                Box(Modifier.padding(bottom = 10.dp).size(40.dp, 5.dp).clip(RoundedCornerShape(3.dp)).background(Palette.track))
+                Box(Modifier.fillMaxWidth()) { content() }
             }
         }
     }

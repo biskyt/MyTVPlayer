@@ -182,11 +182,13 @@ fun HomeScreen() {
     vm.nowNext.PauseWhenHidden()
     // Each time Home shows: what was watched on the user's other TVs (the sync between TVs).
     LaunchedEffect(Unit) { vm.syncProgress() }
-    // A phone or an unfolded foldable (phone spike): its own layout, from the same rows.
-    if (!LocalFormFactor.current.isTv) {
-        PhoneHome(vm)
-        return
-    }
+    // A phone or an unfolded foldable (the owner, 2026-11-25): its own layout, from the same rows.
+    if (LocalFormFactor.current.isTv) TvHome(vm) else PhoneHome(vm)
+}
+
+/** Home on a TV: Continue watching, the favourite channels, recently watched, then favourite series and movies. */
+@Composable
+private fun TvHome(vm: HomeViewModel) {
     val nav = LocalNavigator.current
     val favourites by vm.favourites.collectAsState()
     val recent by vm.recent.collectAsState()
@@ -384,7 +386,7 @@ internal fun TileOptions(tile: HomeTile, vm: HomeViewModel, pid: Long, onDismiss
                 },
                 restartFilter = { tile.list },
                 beforeHide = listOfNotNull(
-                    moveAction(vm.mover, CAT_LIVE, ch.streamId, close, CHANNEL_ROW_LIMIT).takeIf { tile.list == ChannelFilter.Favourites }
+                    moveAction(vm.mover, CAT_LIVE, ch.streamId, close, CHANNEL_ROW_LIMIT)?.takeIf { tile.list == ChannelFilter.Favourites }
                 ),
                 last = listOfNotNull(
                     ItemAction.Run(removeRecent) {
@@ -452,7 +454,7 @@ private fun FavouriteOptions(tile: HomeTile.Vod, vm: HomeViewModel, pid: Long, o
     val actions = vodActions(pid, tile.type, tile.card.id, favourite = true) { favourite ->
         vm.setVodFavourite(tile.type, tile.card.id, favourite)
         if (!favourite) onDismiss(true)
-    } + moveAction(vm.mover, tile.type, tile.card.id, close, VOD_ROW_LIMIT) +
+    } + listOfNotNull(moveAction(vm.mover, tile.type, tile.card.id, close, VOD_ROW_LIMIT)) +
         titleExtraActions(pid, tmdb, film, tile.card.title, described = null) { panel = it }
     if (panel == null) ItemActionsPanel(tile.card.title, actions, close)
     TitlePanels(panel, pid, tile.card.title, tmdb, film, close)
@@ -537,7 +539,7 @@ private fun CarryOnCard(p: WatchProgressEntity, modifier: Modifier, onLongClick:
                 // (Its initials, shown until the picture loads, are not read: the card's texts are.)
                 Poster(p.imageUrl, p.title, POSTER_WIDTH, Modifier.clearAndSetSemantics {})
                 // (Not before it has been started: an episode up next.)
-                if (!p.finished && p.started) ProgressLine(p.fraction, Modifier.align(Alignment.BottomCenter).padding(6.dp))
+                p.carryOnProgress?.let { ProgressLine(it, Modifier.align(Alignment.BottomCenter).padding(6.dp)) }
             }
         }
     ) { focused ->
@@ -545,6 +547,12 @@ private fun CarryOnCard(p: WatchProgressEntity, modifier: Modifier, onLongClick:
         Muted(left)
     }
 }
+
+/**
+ * How far a Continue watching card got, for the line along its poster: none before it starts (an episode up next) or
+ * once it is finished.
+ */
+internal val WatchProgressEntity.carryOnProgress: Float? get() = fraction.takeIf { !finished && started }
 
 /** What is left of a Continue watching card, short: "S1E3 42m", "1h 5m", or the episode up next. */
 @Composable

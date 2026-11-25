@@ -73,7 +73,7 @@ fun BoardPanel(
             content = content
         )
     }
-    // A phone or an unfolded foldable (phone spike): a sheet from the bottom in place of the side panel.
+    // A phone or an unfolded foldable (the owner, 2026-11-25): a sheet from the bottom in place of the side panel.
     if (!LocalFormFactor.current.isTv) return PhoneSheet(onDismiss, dim, column)
     SidePanel(onDismiss, width = width, dim = dim, padding = padding) { column() }
 }
@@ -172,7 +172,7 @@ fun BoardOption(
 fun BoardRow(onClick: () -> Unit, modifier: Modifier = Modifier, body: @Composable BoxScope.() -> Unit) =
     AccentFillSurface(onClick, OptionShape, modifier.fillMaxWidth().touchHeight(), body = body)
 
-/** A row at least 56 dp high on a phone or an unfolded foldable, so that a finger can hit it (phone spike). */
+/** A row at least 56 dp high on a phone or an unfolded foldable, so that a finger can hit it (the owner, 2026-11-25). */
 @Composable
 private fun Modifier.touchHeight(): Modifier = if (LocalFormFactor.current.isTv) this else heightIn(min = 56.dp)
 

@@ -2,24 +2,24 @@ package com.biskyt.mytvplayer.ui.phone
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,7 +27,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -45,22 +44,25 @@ import com.biskyt.mytvplayer.data.db.SeriesEntity
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
 import com.biskyt.mytvplayer.ui.common.AppIcons
 import com.biskyt.mytvplayer.ui.common.ProgressLine
-import com.biskyt.mytvplayer.ui.common.formatRuntime
+import com.biskyt.mytvplayer.ui.common.favouriteIcon
+import com.biskyt.mytvplayer.ui.common.favouriteLabel
 import com.biskyt.mytvplayer.ui.common.rememberTrailerOpener
 import com.biskyt.mytvplayer.ui.common.shortEpisodeLabel
-import com.biskyt.mytvplayer.ui.common.timeLeft
 import com.biskyt.mytvplayer.ui.player.episodeName
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.vod.SeriesDetailsViewModel
 import com.biskyt.mytvplayer.ui.vod.SeriesPanel
 import com.biskyt.mytvplayer.ui.vod.TmdbScore
-import com.biskyt.mytvplayer.ui.vod.metaLine
+import com.biskyt.mytvplayer.ui.vod.continueText
+import com.biskyt.mytvplayer.ui.vod.episodeLength
 import com.biskyt.mytvplayer.ui.vod.nextEpisodeLine
+import com.biskyt.mytvplayer.ui.vod.partWatched
 import com.biskyt.mytvplayer.ui.vod.seasonName
+import com.biskyt.mytvplayer.ui.vod.seriesFacts
 import com.biskyt.mytvplayer.ui.vod.seriesStatusLine
 
-// The series page on a phone or an unfolded foldable (phone spike, 2026-11-25): the film page's header (PhoneFilm.kt),
+// The series page on a phone or an unfolded foldable (the owner, 2026-11-25): the film page's header (PhoneFilm.kt),
 // then the seasons and their episodes.
 
 /**
@@ -68,6 +70,7 @@ import com.biskyt.mytvplayer.ui.vod.seriesStatusLine
  * options of the episode to carry on with); the plot; the seasons as chips that scroll sideways, and [season]'s
  * episodes. A tap on an episode plays it ([play]); a long press opens its options, as holding OK does on a TV.
  * Unfolded, the seasons and episodes are on the right. [next] is the episode to carry on with; [d] null while it loads.
+ * [target] is the episode the page was opened at (the player's Episodes button): the page scrolls to it.
  */
 @Composable
 @Suppress("LongParameterList") // the page's state, passed down rather than read again
@@ -77,124 +80,130 @@ fun PhoneSeriesPage(
     d: SeriesDetails?,
     season: Int?,
     next: EpisodeInfo?,
+    target: EpisodeInfo?,
     progress: Map<Long, WatchProgressEntity>,
     play: (EpisodeInfo) -> Unit
 ) {
     val info = vm.info
-    val favourite by vm.favourite.collectAsState()
-    val trailer = rememberTrailerOpener()
     PhoneDetailLayout(
         left = {
             PhoneDetailHeader(info.backdropUrl, show.coverUrl ?: info.posterUrl, show.title) {
-                val seasons = d?.seasons?.size?.takeIf { it > 1 && info.tmdb?.seasonCount == null }
-                    ?.let { pluralStringResource(R.plurals.vod_seasons, it, it) }
-                val year = d?.episodes?.filter { it.season == season }?.mapNotNull { it.airDate?.year }?.minOrNull()
-                val facts = metaLine((year ?: show.year ?: info.year)?.toString(), null, info.genre, show.rating ?: info.rating, seasons)
+                val facts = seriesFacts(show, d, info, season)
                 if (facts.isNotEmpty()) PhoneFacts(facts)
                 seriesStatusLine(info.tmdb)?.let { PhoneSmallText(it, maxLines = 2) }
                 nextEpisodeLine(info.tmdb)?.let { PhoneSmallText(it, maxLines = 2) }
                 info.score?.let { TmdbScore(it) }
             }
-            Column(Modifier.padding(start = PAGE_EDGE, end = PAGE_EDGE, top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                val options = next?.let { e -> { vm.open = SeriesPanel.Options(e) } }
-                if (next != null) {
-                    val started = progress[next.id].partWatched()
-                    PhoneMainButton(continueText(next, started, progress.isNotEmpty()), started?.fraction, options) { play(next) }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    val tile = Modifier.weight(1f)
-                    PhoneTileButton(
-                        if (favourite) AppIcons.Heart else AppIcons.HeartOutline,
-                        stringResource(R.string.common_favourite_mark),
-                        tile
-                    ) { vm.toggleFavourite() }
-                    info.trailer?.let { url ->
-                        PhoneTileButton(PhoneIcons.Trailer, stringResource(R.string.vod_trailer), tile) { trailer(url) }
-                    }
-                    options?.let { PhoneTileButton(PhoneIcons.More, stringResource(R.string.vod_more).trimEnd('…'), tile, it) }
-                }
-            }
+            SeriesButtons(vm, next, progress, play)
             info.plot?.let { PhonePlot(show.title, it, PLOT_LINES) }
         },
-        right = { _ ->
-            when {
-                vm.error != null -> Column(Modifier.padding(horizontal = PAGE_EDGE), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PhoneSmallText(vm.error.orEmpty(), maxLines = 3)
-                    Text(
-                        stringResource(R.string.common_retry),
-                        color = LocalAccent.current.color,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable(role = Role.Button) { vm.load() }
-                            .padding(vertical = 10.dp)
-                    )
-                }
-                d == null -> PhoneSmallText(stringResource(R.string.vod_loading_episodes), Modifier.padding(horizontal = PAGE_EDGE))
-                d.episodes.isEmpty() -> PhoneSmallText(
-                    stringResource(R.string.vod_no_episodes),
-                    Modifier.padding(horizontal = PAGE_EDGE),
-                    maxLines = 3
-                )
-                else -> {
-                    if (d.seasons.size > 1) SeasonChips(d, season) { vm.season = it }
-                    val shown = remember(d, season) { d.episodes.filter { season == null || it.season == season } }
-                    // A column, not a lazy list: the page scrolls as a whole, and a season has tens of episodes at most.
-                    Column {
-                        shown.forEach { e ->
-                            PhoneEpisodeRow(e, show.title, progress[e.id], { vm.open = SeriesPanel.Options(e) }) { play(e) }
-                        }
-                    }
-                }
-            }
-        }
+        right = { _ -> EpisodesPane(vm, show, d, season, target, progress, play) }
     )
 }
 
-/** "Continue S2 E4 · 21 min left", "Continue S2 E5" (the next one), or "Play S1 E1" when nothing is watched yet. */
+/** Continue (or Play) across the page, then Favourite, Trailer and More (the options of [next], the episode to carry on with). */
 @Composable
-private fun continueText(e: EpisodeInfo, started: WatchProgressEntity?, watchedAny: Boolean): String {
-    val label = shortEpisodeLabel(e.season, e.number)
-    return when {
-        started != null -> stringResource(R.string.vod_continue_left, label, timeLeft(started))
-        watchedAny -> stringResource(R.string.vod_continue_episode, label)
-        else -> stringResource(R.string.vod_play_episode, label)
+private fun SeriesButtons(
+    vm: SeriesDetailsViewModel,
+    next: EpisodeInfo?,
+    progress: Map<Long, WatchProgressEntity>,
+    play: (EpisodeInfo) -> Unit
+) {
+    val favourite by vm.favourite.collectAsState()
+    val trailer = rememberTrailerOpener()
+    Column(Modifier.padding(start = PhoneGutter, end = PhoneGutter, top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        val options = next?.let { e -> { vm.open = SeriesPanel.Options(e) } }
+        if (next != null) {
+            PhoneMainButton(continueText(next, progress), progress[next.id].partWatched()?.fraction, options) { play(next) }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            val tile = Modifier.weight(1f)
+            PhoneTileButton(
+                favouriteIcon(favourite),
+                stringResource(R.string.common_favourite_mark),
+                tile,
+                iconDescription = favouriteLabel(favourite)
+            ) { vm.toggleFavourite() }
+            vm.info.trailer?.let { url ->
+                PhoneTileButton(AppIcons.Trailer, stringResource(R.string.vod_trailer), tile) { trailer(url) }
+            }
+            options?.let { PhoneTileButton(AppIcons.More, moreLabel(), tile, onClick = it) }
+        }
     }
 }
 
-/** The seasons as chips in a row that scrolls sideways: the one shown in the accent colour. */
+/**
+ * The episodes, or why there are none yet: the seasons as chips (when there is more than one), then [season]'s
+ * episodes. The page scrolls to [target] once, as it opens.
+ */
 @Composable
-private fun SeasonChips(d: SeriesDetails, season: Int?, pick: (Int) -> Unit) {
-    val accent = LocalAccent.current
-    LazyRow(contentPadding = PaddingValues(horizontal = PAGE_EDGE), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(d.seasons, key = { it.number }) { s ->
-            val current = s.number == season
-            Text(
-                seasonName(s.number, s.name),
-                color = if (current) accent.onAccent else Palette.text,
-                fontSize = 14.sp,
-                fontWeight = if (current) FontWeight.ExtraBold else FontWeight.Bold,
-                maxLines = 1,
-                modifier = Modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(20.dp))
-                    .background(if (current) accent.color else PhoneChip)
-                    .clickable(role = Role.Tab) { pick(s.number) }
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
-            )
+@Suppress("LongParameterList") // the page's state, passed down rather than read again
+private fun EpisodesPane(
+    vm: SeriesDetailsViewModel,
+    show: SeriesEntity,
+    d: SeriesDetails?,
+    season: Int?,
+    target: EpisodeInfo?,
+    progress: Map<Long, WatchProgressEntity>,
+    play: (EpisodeInfo) -> Unit
+) {
+    when {
+        vm.error != null -> Column(Modifier.padding(horizontal = PhoneGutter), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            PhoneSmallText(vm.error.orEmpty(), maxLines = 3)
+            PhonePill(stringResource(R.string.common_retry)) { vm.load() }
+        }
+        d == null -> PhoneSmallText(stringResource(R.string.vod_loading_episodes), Modifier.padding(horizontal = PhoneGutter))
+        d.episodes.isEmpty() -> PhoneSmallText(
+            stringResource(R.string.vod_no_episodes),
+            Modifier.padding(horizontal = PhoneGutter),
+            maxLines = 3
+        )
+        else -> {
+            if (d.seasons.size > 1) {
+                PhoneChipRow(d.seasons, { it.number == season }, { it.number }) { s, chosen ->
+                    PhoneChoiceChip(seasonName(s.number, s.name), chosen) { vm.season = s.number }
+                }
+            }
+            val shown = remember(d, season) { d.episodes.filter { season == null || it.season == season } }
+            // A column, not a lazy list: the page scrolls as a whole, and a season has tens of episodes at most.
+            Column {
+                shown.forEach { e ->
+                    val scrollTo = if (e == target && vm.focusEpisodePending) ({ vm.focusEpisodePending = false }) else null
+                    PhoneEpisodeRow(e, show.title, progress[e.id], scrollTo, { vm.open = SeriesPanel.Options(e) }) { play(e) }
+                }
+            }
         }
     }
 }
 
 /**
  * An episode: its still (or its number when it has none), its code and name, its running time and what is left, a bar
- * when part-watched, and a tick when watched. A tap plays it ([onClick]); a long press opens [options].
+ * when part-watched, and a tick when watched. A tap plays it ([onClick]); a long press opens [options]. With
+ * [scrolledTo], the page scrolls to it once it is laid out, then calls that.
  */
 @Composable
-private fun PhoneEpisodeRow(e: EpisodeInfo, series: String, progress: WatchProgressEntity?, options: () -> Unit, onClick: () -> Unit) {
+private fun PhoneEpisodeRow(
+    e: EpisodeInfo,
+    series: String,
+    progress: WatchProgressEntity?,
+    scrolledTo: (() -> Unit)?,
+    options: () -> Unit,
+    onClick: () -> Unit
+) {
     val name = remember(e, series, LocalConfiguration.current) { episodeName(e, series) }
     val accent = LocalAccent.current.color
+    val bring = remember { BringIntoViewRequester() }
+    if (scrolledTo != null) {
+        LaunchedEffect(Unit) {
+            withFrameNanos { } // once it has its place on the page
+            bring.bringIntoView()
+            scrolledTo()
+        }
+    }
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 72.dp)
+        Modifier.fillMaxWidth().bringIntoViewRequester(bring).heightIn(min = 72.dp)
             .combinedClickable(role = Role.Button, onLongClick = options, onClick = onClick)
-            .padding(horizontal = PAGE_EDGE, vertical = 8.dp),
+            .padding(horizontal = PhoneGutter, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -228,10 +237,7 @@ private fun PhoneEpisodeRow(e: EpisodeInfo, series: String, progress: WatchProgr
                 overflow = TextOverflow.Ellipsis
             )
             val part = progress.partWatched()
-            val length = listOfNotNull(
-                e.durationSec?.let(::formatRuntime),
-                part?.let { stringResource(R.string.common_time_left, timeLeft(it)) }
-            ).joinToString(" · ")
+            val length = episodeLength(e, part)
             if (length.isNotEmpty()) Text(length, color = Palette.textDim, fontSize = 13.sp, maxLines = 1)
             if (part != null) ProgressLine(part.fraction, Modifier.padding(top = 3.dp).fillMaxWidth(), height = 3.dp)
         }
@@ -240,9 +246,6 @@ private fun PhoneEpisodeRow(e: EpisodeInfo, series: String, progress: WatchProgr
         }
     }
 }
-
-/** What is left of a part-watched episode, or null. */
-private fun WatchProgressEntity?.partWatched() = this?.takeIf { it.started && !it.finished && it.durationMs > 0 }
 
 private val STILL_WIDTH = 120.dp
 private const val STILL_PX = 320
