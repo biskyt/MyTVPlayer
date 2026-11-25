@@ -112,7 +112,10 @@ import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.common.rememberProxy
 import com.biskyt.mytvplayer.ui.common.rememberVpn
+import com.biskyt.mytvplayer.ui.phone.PhoneLiveControls
+import com.biskyt.mytvplayer.ui.phone.phoneVideoTaps
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.Palette
 
 @Composable
@@ -161,6 +164,8 @@ internal fun PlayerFrame(
     // Read only by the clock's row (as a State, so that a settings write recomposes only it, not the frame).
     val container = LocalContext.current.container
     val settings = remember { container.settings.settings }.collectAsState(initial = null)
+    // A phone or an unfolded foldable (phone spike): its own controls, with their own Back, clock and taps.
+    val tv = LocalFormFactor.current.isTv
 
     if (vm.exit) {
         LaunchedEffect(Unit) { nav.pop() }
@@ -207,7 +212,7 @@ internal fun PlayerFrame(
                 vm.wake()
                 if (vm.overlay == OverlayState.CONTROLS) vm.showControls(keepOverlay = true)
             }
-            .onPlainTap(vm::tapVideo)
+            .let { if (tv) it.onPlainTap(vm::tapVideo) else it.phoneVideoTaps(vm) }
     ) {
         vm.engine?.let { engine ->
             val presentation = rememberPresentationState(engine.player)
@@ -220,9 +225,12 @@ internal fun PlayerFrame(
             // zoomed picture doesn't push them off it.
             Subtitles(engine.player, Modifier.picture(vm.picture, presentation.videoSizeDp, onScreen = true))
         }
-        WaitingLabel(vm, Modifier.align(Alignment.Center))
+        // On a phone, under the play button in the middle of the controls.
+        WaitingLabel(vm, Modifier.align(Alignment.Center).then(if (tv) Modifier else Modifier.padding(top = 140.dp)))
         vm.error?.let { ErrorBox(it, vm) }
-        if (vm.overlay == OverlayState.CONTROLS) {
+        if (vm.overlay == OverlayState.CONTROLS && !tv) {
+            controls(buttons, root)
+        } else if (vm.overlay == OverlayState.CONTROLS) {
             // With the video focused (Up from the buttons), left and right skip: the bar shows its handle (no remote: none).
             CompositionLocalProvider(LocalBarSelected provides (videoFocused && !LocalTouch.current)) { controls(buttons, root) }
             ClockAndStatus(settings, Modifier.align(Alignment.TopEnd).padding(top = 27.dp, end = 56.dp))
@@ -413,6 +421,7 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
     LaunchedEffect(ch.streamId) { vm.nowNext.request(ch.streamId) }
     val nn = vm.nowNext.entries[ch.streamId]
     val now by rememberMinuteClock()
+    if (!LocalFormFactor.current.isTv) return PhoneLiveControls(vm, nn, now)
     val nav = LocalNavigator.current
     ChannelControls(
         vm,

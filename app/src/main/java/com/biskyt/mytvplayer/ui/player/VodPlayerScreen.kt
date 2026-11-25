@@ -21,6 +21,8 @@ import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.formatDuration
+import com.biskyt.mytvplayer.ui.phone.PhoneVodControls
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.vod.TitlePanels
 
 /** Movies and episodes. */
@@ -42,6 +44,7 @@ fun VodPlayerScreen(screen: Screen.VodPlayer) {
 
 @Composable
 private fun VodControls(vm: VodPlayerViewModel, buttons: FocusRequester, root: FocusRequester) {
+    if (!LocalFormFactor.current.isTv) return PhoneVodControls(vm)
     ControlsPanel {
         Column {
             if (vm.subtitle.isNotEmpty()) Muted(vm.subtitle)
