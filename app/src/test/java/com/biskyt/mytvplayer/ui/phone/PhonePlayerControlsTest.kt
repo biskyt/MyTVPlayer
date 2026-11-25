@@ -2,7 +2,11 @@ package com.biskyt.mytvplayer.ui.phone
 
 import android.content.pm.PackageManager
 import androidx.compose.runtime.remember
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.data.ChannelFilter
@@ -24,6 +28,7 @@ import com.biskyt.mytvplayer.ui.theme.autoFindsTv
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -76,5 +81,37 @@ class PhonePlayerControlsTest {
         play(Screen.Player(playlistId, 101, ChannelFilter.All), PlayerViewModel::class.java)
         compose.waitForText("Channel guide")
         compose.onRoot().captureRoboImage("screenshots/phone-player-live.png")
+    }
+
+    @Test
+    fun `with no channel, the live controls still have Back`() {
+        val navigator = navigators.new(Screen.Home)
+        navigator.push(Screen.Player(playlistId, NO_CHANNEL, ChannelFilter.All))
+        compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
+        val vm = ViewModelProvider(navigator.current)[PlayerViewModel::class.java]
+        compose.runOnUiThread { vm.showControls() }
+        compose.waitAdvancingClock(stepMs = 50) {
+            compose.onAllNodes(hasContentDescription("Back") and hasClickAction()).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNode(hasContentDescription("Back") and hasClickAction()).performClick()
+        compose.waitAdvancingClock(stepMs = 50) { navigator.current.screen == Screen.Home }
+    }
+
+    @Test
+    fun `a flash message shows under the controls' top row`() {
+        val vm = play(Screen.VodPlayer(playlistId, 501), VodPlayerViewModel::class.java)
+        compose.runOnUiThread {
+            vm.showControls()
+            vm.flash("Added to favourites")
+        }
+        compose.waitForText("Added to favourites")
+        val back = compose.onNode(hasContentDescription("Back") and hasClickAction()).fetchSemanticsNode().boundsInRoot
+        val flash = compose.onNode(hasText("Added to favourites")).fetchSemanticsNode().boundsInRoot
+        assertTrue("$flash over $back", flash.top >= back.bottom)
+    }
+
+    private companion object {
+        /** A channel the playlist does not have. */
+        const val NO_CHANNEL = 999_999L
     }
 }

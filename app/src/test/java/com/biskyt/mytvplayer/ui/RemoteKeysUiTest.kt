@@ -4,6 +4,7 @@ import android.view.KeyEvent.ACTION_DOWN
 import android.view.KeyEvent.ACTION_UP
 import android.view.KeyEvent.KEYCODE_DPAD_CENTER
 import android.view.KeyEvent.KEYCODE_INFO
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +18,7 @@ import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.ui.common.SidePanel
 import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
+import com.biskyt.mytvplayer.ui.phone.PhoneSheet
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -33,14 +35,25 @@ class RemoteKeysUiTest {
     private fun key(action: Int, code: Int, repeat: Int = 0) = KeyEvent(android.view.KeyEvent(0L, 0L, action, code, repeat))
 
     @Test
-    fun `info button opens the options and a held OK doesn't pick from them`() {
+    fun `info button opens the options and a held OK doesn't pick from them`() = heldOkPicksNothing { close, content ->
+        SidePanel(onDismiss = close) { content() }
+    }
+
+    /** The same in a phone's sheet (the owner, 2026-11-25), which a panel is on a touch layout. */
+    @Test
+    fun `a held OK doesn't pick from a phone's sheet either`() = heldOkPicksNothing { close, content ->
+        PhoneSheet(onDismiss = close) { content() }
+    }
+
+    /** Opens options in [panel] with Info, then checks that the rest of a held OK picks nothing and a fresh one does. */
+    private fun heldOkPicksNothing(panel: @Composable (close: () -> Unit, content: @Composable () -> Unit) -> Unit) {
         var options by mutableStateOf(false)
         var watched by mutableIntStateOf(0)
         compose.setContent {
             MyTvTheme {
                 TvCard(onClick = {}, onLongClick = { options = true }, modifier = rememberFirstFocus()) { Text("Channel") }
                 if (options) {
-                    SidePanel(onDismiss = { options = false }) {
+                    panel({ options = false }) {
                         TvCard(onClick = { watched++ }, modifier = rememberFirstFocus()) { Text("Watch") }
                     }
                 }

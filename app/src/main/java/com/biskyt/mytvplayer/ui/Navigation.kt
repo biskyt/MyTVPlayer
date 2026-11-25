@@ -193,6 +193,18 @@ class Navigator(start: Screen) {
         return true
     }
 
+    /**
+     * What Back does: goes to the screen below, or else to Home. Returns false on Home, Welcome or a playlist's set-up
+     * with nothing below it, where Back closes the app.
+     */
+    fun back(): Boolean {
+        if (pop()) return true
+        val screen = current.screen
+        if (screen == Screen.Home || screen == Screen.Welcome || screen is Screen.PlaylistEdit) return false
+        reset(Screen.Home)
+        return true
+    }
+
     /** Clears the stack and shows [screen], e.g. when switching tabs or finishing set-up. */
     fun reset(screen: Screen) {
         val old = stack.toList()

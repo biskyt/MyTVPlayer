@@ -42,6 +42,9 @@ fun Context.looksLikeTv(): Boolean = packageManager.hasSystemFeature(PackageMana
 @VisibleForTesting
 internal var autoFindsTv: (Context) -> Boolean = { it.looksLikeTv() }
 
+/** Whether the Automatic layout finds a TV here: Settings then offers no touch layout (a remote cannot use it). */
+fun Context.findsTv(): Boolean = autoFindsTv(this)
+
 /**
  * The form factor for [layout]: a TV, else (a touch screen, or the phone's layout chosen) a phone, or [FormFactor.UNFOLDED]
  * when the screen's smallest width is [UNFOLDED_DP] or more.

@@ -6,6 +6,7 @@ import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,6 +53,8 @@ import com.biskyt.mytvplayer.ui.guide.GuideSourcesScreen
 import com.biskyt.mytvplayer.ui.home.HomeScreen
 import com.biskyt.mytvplayer.ui.live.CatchupScreen
 import com.biskyt.mytvplayer.ui.live.LiveScreen
+import com.biskyt.mytvplayer.ui.phone.PhoneRailWidth
+import com.biskyt.mytvplayer.ui.phone.PhoneTabBarHeight
 import com.biskyt.mytvplayer.ui.player.CatchupPlayerScreen
 import com.biskyt.mytvplayer.ui.player.PlayerScreen
 import com.biskyt.mytvplayer.ui.player.VodPlayerScreen
@@ -144,13 +147,8 @@ fun AppRoot() {
             onDispose { nav.onLeave = null }
         }
         BackHandler {
-            when {
-                nav.pop() -> Unit
-                nav.current.screen != Screen.Home && nav.current.screen != Screen.Welcome && nav.current.screen !is Screen.PlaylistEdit ->
-                    nav.reset(Screen.Home)
-                // Closes the app, and takes it off the recent apps too: Back from Home means "close".
-                else -> activity?.finishAndRemoveTask()
-            }
+            // Closes the app, and takes it off the recent apps too: Back from Home means "close".
+            if (!nav.back()) activity?.finishAndRemoveTask()
         }
         val hasPlaylist = s.activePlaylistId != 0L
         // The browsing screens' background follows the card with focus (see AmbientBackground).
@@ -166,7 +164,7 @@ fun AppRoot() {
             CompositionLocalProvider(LocalAmbience provides ambience) {
                 NavHost(nav) { screen -> ScreenContent(screen, hasPlaylist) }
             }
-            SyncToast(nav, Modifier.align(Alignment.BottomEnd).padding(24.dp))
+            SyncToast(nav, Modifier.align(Alignment.BottomEnd).padding(toastPadding(LocalFormFactor.current, nav.current.screen)))
         }
     }
 }
@@ -320,13 +318,27 @@ private val Screen.drawsOwnTopBar: Boolean
 
 /** The screens with a phone layout (the owner, 2026-11-25): the rest are drawn as on a TV, on a phone too (see TvCanvas). */
 internal val Screen.hasPhoneLayout: Boolean
-    get() = this == Screen.Home ||
-        (this is Screen.Live && !guide) ||
-        this is Screen.Movies ||
-        this is Screen.Series ||
-        this is Screen.MovieDetails ||
-        this is Screen.SeriesDetails ||
-        isPlayback
+    get() = hasPhoneTabs || this is Screen.MovieDetails || this is Screen.SeriesDetails || isPlayback
+
+/** The screens whose phone layout has the tab bar, or the rail when unfolded (see PhoneScaffold). */
+private val Screen.hasPhoneTabs: Boolean
+    get() = this == Screen.Home || (this is Screen.Live && !guide) || this is Screen.Movies || this is Screen.Series
+
+/**
+ * The room around the corner message (SyncToast): 24 dp, and clear of a phone's tab bar at the bottom or an unfolded
+ * screen's rail at the side, on the screens that have them.
+ */
+internal fun toastPadding(form: FormFactor, screen: Screen): PaddingValues {
+    val bars = screen.hasPhoneTabs
+    return PaddingValues(
+        start = TOAST_GAP + if (bars && form == FormFactor.UNFOLDED) PhoneRailWidth else 0.dp,
+        end = TOAST_GAP,
+        top = TOAST_GAP,
+        bottom = TOAST_GAP + if (bars && form == FormFactor.PHONE) PhoneTabBarHeight else 0.dp
+    )
+}
+
+private val TOAST_GAP = 24.dp
 
 /**
  * Which way up the screen is on a touch screen (the owner, 2026-11-25): on a phone, the phone layouts upright, and the

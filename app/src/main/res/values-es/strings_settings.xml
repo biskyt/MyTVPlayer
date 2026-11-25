@@ -14,6 +14,7 @@
     <string name="settings_misc_help">Emisoras de radio, descargas, pantalla de inicio del televisor, avisos de red</string>
     <string name="settings_layout">Diseño</string>
     <string name="settings_layout_help">TV para un mando, móvil y tableta para una pantalla táctil</string>
+    <string name="settings_layout_help_tv">Un televisor solo tiene el diseño de TV: un mando no puede usar el diseño táctil</string>
     <string name="settings_layout_auto">Automático</string>
     <string name="settings_layout_tv">TV</string>
     <string name="settings_layout_touch">Móvil y tableta</string>

@@ -3,6 +3,15 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.37.1
+- Holding OK no longer picks an option in a sheet on the phone layout.
+- The phone player's live controls show Back before the channel has loaded.
+- Messages in the corner no longer cover the phone's tab bar.
+- The player's short messages no longer cover the top row of the phone controls.
+- On a TV, the Layout setting offers only Automatic and TV.
+- The phone player shows the time left in your language.
+- The back arrow on a film or series page always goes back.
+
 ## 1.37.0
 - MyTVPlayer has layouts made for phones and tablets.
 - An unfolded phone or a tablet gets wider layouts.

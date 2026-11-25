@@ -121,7 +121,7 @@ private fun PhoneTabs(tabs: List<Tab>, selected: Tab?, rail: Boolean) {
         PhoneTab(null, AppIcons.Search, stringResource(R.string.common_search)) { nav.open(Screen.Search()) }
     if (rail) {
         Column(
-            Modifier.width(88.dp).fillMaxHeight().background(Palette.surfaceLow).padding(vertical = 12.dp),
+            Modifier.width(PhoneRailWidth).fillMaxHeight().background(Palette.surfaceLow).padding(vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -134,11 +134,21 @@ private fun PhoneTabs(tabs: List<Tab>, selected: Tab?, rail: Boolean) {
             )
         }
     } else {
-        Row(Modifier.fillMaxWidth().background(Palette.surfaceLow).padding(horizontal = 4.dp, vertical = 4.dp)) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(
+                min = PhoneTabBarHeight
+            ).background(Palette.surfaceLow).padding(horizontal = 4.dp, vertical = 4.dp)
+        ) {
             items.forEach { TabItem(it, it.tab != null && it.tab == selected, Modifier.weight(1f)) }
         }
     }
 }
+
+/** The tab bar's height on a phone: a tab's 56 dp and the bar's padding. */
+internal val PhoneTabBarHeight = 64.dp
+
+/** The rail's width on an unfolded screen. */
+internal val PhoneRailWidth = 88.dp
 
 /** A tab's icon in the tab bar. */
 private val Tab.icon: ImageVector
