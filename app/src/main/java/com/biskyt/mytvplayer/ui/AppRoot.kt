@@ -147,13 +147,8 @@ fun AppRoot() {
             onDispose { nav.onLeave = null }
         }
         BackHandler {
-            when {
-                nav.pop() -> Unit
-                nav.current.screen != Screen.Home && nav.current.screen != Screen.Welcome && nav.current.screen !is Screen.PlaylistEdit ->
-                    nav.reset(Screen.Home)
-                // Closes the app, and takes it off the recent apps too: Back from Home means "close".
-                else -> activity?.finishAndRemoveTask()
-            }
+            // Closes the app, and takes it off the recent apps too: Back from Home means "close".
+            if (!nav.back()) activity?.finishAndRemoveTask()
         }
         val hasPlaylist = s.activePlaylistId != 0L
         // The browsing screens' background follows the card with focus (see AmbientBackground).

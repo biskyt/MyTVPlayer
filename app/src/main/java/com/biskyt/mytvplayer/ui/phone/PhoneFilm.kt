@@ -74,9 +74,9 @@ import com.biskyt.mytvplayer.ui.vod.resumeLabel
 // parts that the series page uses too are here (see PhoneSeries.kt). Sizes are in plain dp and sp: the device's own.
 
 /**
- * The film page on a phone: the backdrop at the top, fading into the page, with the poster beside the title and the
- * facts; Play or Resume across the page, then Restart, Trailer and More in a row; the plot, who made it, and the cast
- * in a row that scrolls sideways. The page scrolls. Unfolded, the poster, facts and buttons are on the left, and the
+ * The film page on a phone: the backdrop at the top, which fades into the page, with the poster beside the title and
+ * the facts; Play or Resume across the page, then Restart, Trailer and More in a row; the plot, who made it, and the
+ * cast in a row that scrolls sideways. The page scrolls. Unfolded, the poster, facts and buttons are on the left, and the
  * plot and cast on the right. The arguments are FilmPage's.
  */
 @Composable
@@ -146,7 +146,7 @@ internal fun PhoneDetailLayout(left: @Composable ColumnScope.() -> Unit, right: 
 }
 
 /**
- * The top of a film or series page: [backdrop] 230 high, fading into the page, with a back button on it; then the
+ * The top of a film or series page: [backdrop] 230 high, which fades into the page, with a back button on it; then the
  * [poster] over its bottom edge, and beside it the [title] and [lines] (the facts).
  */
 @Composable
@@ -170,7 +170,7 @@ internal fun PhoneDetailHeader(backdrop: String?, poster: String?, title: String
         PhoneIconButton(
             AppIcons.Back,
             stringResource(R.string.player_back),
-            { nav.pop() },
+            { nav.back() },
             Modifier.padding(14.dp),
             fill = Color.Black.copy(alpha = 0.45f),
             iconSize = 22.dp

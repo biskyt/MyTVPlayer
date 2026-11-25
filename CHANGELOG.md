@@ -10,6 +10,7 @@ English, one bullet of one sentence per change.
 - The player's short messages no longer cover the top row of the phone controls.
 - On a TV, the Layout setting offers only Automatic and TV.
 - The phone player shows the time left in your language.
+- The back arrow on a film or series page always goes back.
 
 ## 1.37.0
 - MyTVPlayer has layouts made for phones and tablets.
