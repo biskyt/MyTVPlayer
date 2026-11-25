@@ -52,7 +52,7 @@ class TmdbClient(
     suspend fun match(series: Boolean, name: String, details: VodDetails?): TmdbTitle? {
         val byId = details?.tmdbId?.let { title(series, it) }
         if (byId != null) return byId
-        val clean = VodTitles.clean(name)
+        val clean = VodTitles.clean(name, series)
         val year = clean.year ?: details?.year
         val id = if (series) findSeries(clean.title, year) else findMovie(clean.title, year)
         return id?.takeIf { it != details?.tmdbId }?.let { title(series, it) }
@@ -201,6 +201,8 @@ data class TmdbTitle(
     val nextEpisode: TmdbEpisode? = null,
     /** A series': its seasons in order, without specials (season 0). */
     val seasons: List<TmdbSeason> = emptyList(),
+    /** Its title (a series: its name) in the client's language, as TMDB writes it, with none of a provider's extras. */
+    val title: String? = null,
 ) {
     /** The best trailer (or teaser) the app can play, on YouTube or Vimeo. */
     val trailer: TmdbVideo? get() = trailers.firstOrNull()

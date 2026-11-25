@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.38.1
+- A downloaded film or episode is named as TMDB names it, when TMDB is on.
+- Film and series names no longer show what a provider adds in square brackets.
+- Series names no longer show what a provider adds in round brackets, except a country code.
+- M3U playlists load their films and series once more.
+
 ## 1.38.0
 - Settings and every page under it have a layout for phones and tablets.
 - On a phone, the boxes and buttons of a settings page fit the screen's width.
