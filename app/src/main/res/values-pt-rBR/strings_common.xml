@@ -68,9 +68,9 @@
     <string name="common_qr_description">QR code de %1$s</string>
 
     <string name="common_link_scan_hint">Leia com a câmera do celular para abrir a página nele.</string>
-    <string name="common_link_open_here">Abrir nesta TV</string>
-    <string name="common_link_no_browser">Esta TV não tem navegador. Leia o código com o celular.</string>
-    <string name="common_link_open_failed">Não foi possível abrir a página nesta TV (%1$s). Leia o código com o celular.</string>
+    <string name="common_link_open_here">Abrir neste dispositivo</string>
+    <string name="common_link_no_browser">Este dispositivo não tem navegador. Abra a página em outro dispositivo.</string>
+    <string name="common_link_open_failed">Não foi possível abrir a página neste dispositivo (%1$s). Abra em outro dispositivo.</string>
 
     <string name="common_no_guide_for_channel">Sem informações do guia para este canal.</string>
     <string name="common_on_now">AGORA</string>

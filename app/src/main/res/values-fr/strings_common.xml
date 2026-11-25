@@ -68,9 +68,9 @@
     <string name="common_qr_description">Code QR pour %1$s</string>
 
     <string name="common_link_scan_hint">Scannez avec l\'appareil photo de votre téléphone pour ouvrir la page dessus.</string>
-    <string name="common_link_open_here">Ouvrir sur cette TV</string>
-    <string name="common_link_no_browser">Ce téléviseur n\'a pas de navigateur web. Scannez plutôt le code avec votre téléphone.</string>
-    <string name="common_link_open_failed">La page n\'a pas pu s\'ouvrir sur ce téléviseur (%1$s). Scannez plutôt le code avec votre téléphone.</string>
+    <string name="common_link_open_here">Ouvrir sur cet appareil</string>
+    <string name="common_link_no_browser">Cet appareil n\'a pas de navigateur web. Ouvrez plutôt la page sur un autre appareil.</string>
+    <string name="common_link_open_failed">La page n\'a pas pu s\'ouvrir sur cet appareil (%1$s). Ouvrez-la plutôt sur un autre appareil.</string>
 
     <string name="common_no_guide_for_channel">Aucune information de programme pour cette chaîne.</string>
     <string name="common_on_now">EN COURS</string>

@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -36,6 +38,7 @@ import com.biskyt.mytvplayer.ui.common.SidePanel
 import com.biskyt.mytvplayer.ui.common.TvTextField
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
+import com.biskyt.mytvplayer.ui.theme.showsQrCodes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
@@ -102,7 +105,9 @@ internal fun TmdbKeyPanel(saved: String, onDismiss: () -> Unit) {
     LaunchedEffect(Unit) { vm.forgetCheck() }
     val save = { if (key.isNotBlank()) vm.save(key) }
     SidePanel(onDismiss, width = 520.dp) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // On a phone or tablet, a sheet with a height limit: it scrolls, so that Save stays in reach over the keyboard.
+        val scroll = if (LocalFormFactor.current.isTv) Modifier else Modifier.verticalScroll(rememberScrollState())
+        Column(scroll, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.settings_tmdb), style = MaterialTheme.typography.titleLarge)
             Muted(stringResource(R.string.settings_tmdb_explain), maxLines = 6)
             TvTextField(
@@ -117,7 +122,7 @@ internal fun TmdbKeyPanel(saved: String, onDismiss: () -> Unit) {
             )
             vm.check?.let { Muted(stringResource(checkText(it)), maxLines = 3) }
             // On a TV only: on a phone or a tablet, the key is typed or pasted in the box above.
-            if (LocalFormFactor.current.isTv) {
+            if (showsQrCodes()) {
                 PhoneKeyEntry { sent ->
                     key = sent
                     save()

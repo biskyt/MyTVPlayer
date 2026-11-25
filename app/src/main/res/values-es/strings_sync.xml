@@ -16,10 +16,10 @@
     <string name="sync_never">Aún no se ha sincronizado</string>
     <string name="sync_now">Sincronizar ahora</string>
     <string name="sync_stop">Dejar de sincronizar</string>
-    <string name="sync_stop_help">Borra la copia de este televisor en tu Google Drive. Lo que has visto en este televisor se queda aquí.</string>
+    <string name="sync_stop_help">Borra la copia de este dispositivo en tu Google Drive. Lo que has visto en este dispositivo se queda aquí.</string>
     <string name="sync_google_error">Google rechazó el inicio de sesión (%1$s).</string>
     <string name="sync_failed_code">No se pudo sincronizar: Google respondió %1$s. Inténtalo más tarde.</string>
     <string name="sync_turn_on">Activar la sincronización</string>
     <string name="sync_sign_out">Cerrar sesión de Google</string>
-    <string name="sync_sign_out_help">Desactiva la sincronización y las copias en Google Drive en este televisor. Tu copia en Google Drive se conserva.</string>
+    <string name="sync_sign_out_help">Desactiva la sincronización y las copias en Google Drive en este dispositivo. Tu copia en Google Drive se conserva.</string>
 </resources>

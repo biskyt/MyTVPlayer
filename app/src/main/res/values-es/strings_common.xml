@@ -68,9 +68,9 @@
     <string name="common_qr_description">Código QR de %1$s</string>
 
     <string name="common_link_scan_hint">Escanea con la cámara de tu teléfono para abrir la página ahí.</string>
-    <string name="common_link_open_here">Abrir en esta TV</string>
-    <string name="common_link_no_browser">Esta TV no tiene navegador web. Escanea el código con tu teléfono.</string>
-    <string name="common_link_open_failed">No se pudo abrir la página en esta TV (%1$s). Escanea el código con tu teléfono.</string>
+    <string name="common_link_open_here">Abrir en este dispositivo</string>
+    <string name="common_link_no_browser">Este dispositivo no tiene navegador web. Abre la página en otro dispositivo.</string>
+    <string name="common_link_open_failed">No se pudo abrir la página en este dispositivo (%1$s). Ábrela en otro dispositivo.</string>
 
     <string name="common_no_guide_for_channel">No hay información de guía para este canal.</string>
     <string name="common_on_now">AHORA</string>

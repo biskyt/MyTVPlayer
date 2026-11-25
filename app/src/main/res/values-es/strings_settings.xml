@@ -107,7 +107,7 @@
     <string name="settings_welcome_free">TV, películas y series gratis</string>
     <string name="settings_welcome_restore">Restaurar una copia de seguridad</string>
 
-    <string name="settings_backup_permission_denied">Sin permiso de almacenamiento no se puede guardar la copia de seguridad. Permítelo en la configuración de la TV: Configuración › Apps › MyTVPlayer › Permisos.</string>
+    <string name="settings_backup_permission_denied">Sin permiso de almacenamiento no se puede guardar la copia de seguridad. Permítelo en la configuración del dispositivo: Configuración › Apps › MyTVPlayer › Permisos.</string>
     <string name="settings_backup_saving">Guardando…</string>
     <string name="settings_backup_saved_to">Guardado en %1$s</string>
     <string name="settings_backup_find_failed">No se pudo buscar una copia de seguridad: %1$s</string>
@@ -115,10 +115,10 @@
     <string name="settings_backup_restoring">Restaurando…</string>
     <string name="settings_backup_failed">Algo salió mal: %1$s</string>
     <string name="settings_backup_choose_file">Elige el archivo de copia de seguridad</string>
-    <string name="settings_backup_no_picker">Esta TV no tiene forma de elegir un archivo. Abre la copia de seguridad con MyTVPlayer desde una app de administración de archivos como X-plore (Abrir con o Compartir), o instala una y vuelve a intentarlo.</string>
+    <string name="settings_backup_no_picker">Este dispositivo no tiene forma de elegir un archivo. Abre la copia de seguridad con MyTVPlayer desde una app de administración de archivos como X-plore (Abrir con o Compartir), o instala una y vuelve a intentarlo.</string>
     <string name="settings_backup_intro">Guarda en un archivo tus listas (con sus datos de acceso), tus preferencias de canales y categorías, favoritos, fuentes de guía de TV y configuración. Cópialo con una app de administración de archivos para guardarlo en otro lugar. El archivo no está cifrado, así que mantenlo en privado.</string>
     <string name="settings_backup_last">Última copia: %1$s</string>
-    <string name="settings_backup_none">Aún no hay copias de seguridad en esta TV.</string>
+    <string name="settings_backup_none">Aún no hay copias de seguridad en este dispositivo.</string>
     <string name="settings_backup_confirm">Esto reemplaza tus listas y configuración por las de la copia de seguridad. ¿Restaurar?</string>
     <string name="settings_backup_restore">Restaurar</string>
     <string name="settings_backup_cancel">Cancelar</string>
@@ -128,7 +128,7 @@
     <string name="settings_backup_not_a_backup">Este no es un archivo de copia de seguridad de MyTVPlayer.</string>
     <string name="settings_backup_newer">Esta copia de seguridad es de una versión más reciente de MyTVPlayer. Actualiza la app primero.</string>
     <string name="settings_backup_need_permission">MyTVPlayer necesita permiso para guardar en la carpeta Download.</string>
-    <string name="settings_backup_no_storage">El almacenamiento de esta TV no está disponible ahora, así que no se puede guardar la copia de seguridad.</string>
+    <string name="settings_backup_no_storage">El almacenamiento de este dispositivo no está disponible ahora, así que no se puede guardar la copia de seguridad.</string>
     <string name="settings_backup_no_folder">No se pudo crear la carpeta Download/MyTVPlayer para la copia de seguridad.</string>
     <string name="settings_backup_save_failed">No se pudo guardar el archivo de copia de seguridad</string>
     <string name="settings_backup_create_failed">No se pudo crear el archivo de copia de seguridad</string>

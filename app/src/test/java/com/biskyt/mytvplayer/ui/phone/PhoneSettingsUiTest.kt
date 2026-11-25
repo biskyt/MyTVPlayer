@@ -11,6 +11,7 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.testutil.FakeProvider
 import com.biskyt.mytvplayer.testutil.Navigators
@@ -23,8 +24,10 @@ import com.biskyt.mytvplayer.ui.NavHost
 import com.biskyt.mytvplayer.ui.Navigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.ScreenContent
+import com.biskyt.mytvplayer.ui.common.LinkPanel
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import com.biskyt.mytvplayer.ui.theme.Palette
+import com.biskyt.mytvplayer.ui.theme.TvCanvas
 import com.biskyt.mytvplayer.ui.theme.autoFindsTv
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -120,5 +123,22 @@ class PhoneSettingsUiTest {
         tapBack()
         compose.waitForText("Filter your channels by name", stepMs = 50)
         assertTrue(!shows("Choose a guide for") && navigator.current.screen is Screen.GuideMatching)
+    }
+
+    @Test
+    fun `a link panel has no QR code to scan with the same phone`() {
+        show(Screen.About)
+        compose.waitForText("Ko-fi", stepMs = 50)
+        compose.onNode(hasText("Ko-fi") and hasClickAction()).performScrollTo().performClick()
+        compose.waitForText("Open on this device", stepMs = 50)
+        assertTrue(compose.onAllNodes(hasContentDescription("QR code", substring = true)).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun `a link panel on a page drawn as on a TV has no QR code either`() {
+        // A screen with no phone layout is drawn as on a TV (TvCanvas), on the phone.
+        compose.setContent { MyTvTheme { TvCanvas { LinkPanel("Ko-fi", "https://ko-fi.com/biskyt") {} } } }
+        compose.waitForText("Open on this device", stepMs = 50)
+        assertTrue(compose.onAllNodes(hasContentDescription("QR code", substring = true)).fetchSemanticsNodes().isEmpty())
     }
 }

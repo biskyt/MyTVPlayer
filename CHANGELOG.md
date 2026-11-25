@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.39.1
+- Messages about opening a page, backups and the sync say "this device", not "this TV".
+- On a phone or tablet, link panels and the Google sign-in show no QR code.
+- On a phone or tablet, the crash page has a button that opens the report, in place of a QR code.
+- On a phone, the TMDB key panel scrolls, so that Save stays in reach above the keyboard.
+
 ## 1.39.0
 - A Continue watching card's options have the same choices as its film's or episode's More menu.
 - On a phone or tablet, a film's or series' page has the tabs at the bottom or the side.
