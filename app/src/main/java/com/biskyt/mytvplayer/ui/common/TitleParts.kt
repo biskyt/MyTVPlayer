@@ -34,7 +34,8 @@ import com.biskyt.mytvplayer.ui.theme.bd
 // TitleParts.kt, drawn as this app's side panels are).
 
 /**
- * Shows a title's link as a QR code to open on a phone, with "Open on this TV": what every row of links does. Unlike
+ * Shows a title's link as a QR code to open on a phone (not on a phone itself), with "Open on this device": what every
+ * row of links does. Unlike
  * MyPlexPlayer, the panel comes first, as MyTVPlayer's links always have: some TVs have a stand-in "picker" that takes
  * the browser's intent without failing and only says "no application can handle this request" (CLAUDE.md).
  */
@@ -47,7 +48,7 @@ fun rememberLinkOpener(): (TitleLink) -> Unit {
 
 /**
  * Plays a trailer by its page ([url], on YouTube or Vimeo), which the YouTube or Vimeo app (or another, such as
- * SmartTube) opens and plays; where nothing can open it, shows that address as a QR code (with "Open on this TV"). Not a
+ * SmartTube) opens and plays; where nothing can open it, shows that address as a QR code (with "Open on this device"; see LinkPanel). Not a
  * "vnd.youtube:" link: on Android TV the YouTube app then opens without the video, and SmartTube calls it a bad intent.
  */
 @Composable

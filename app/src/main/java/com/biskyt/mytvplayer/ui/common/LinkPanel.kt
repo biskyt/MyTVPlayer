@@ -18,10 +18,12 @@ import androidx.compose.ui.unit.dp
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.ui.theme.bd
+import com.biskyt.mytvplayer.ui.theme.showsQrCodes
 
 /**
  * A web page as a QR code to scan with a phone (paying or reading on a TV isn't for everyone), with its address, an
- * optional [note], and a way to open it here.
+ * optional [note], and a way to open it here. On a phone or tablet, no code (the owner, 2026-11-25): it would be
+ * scanned with the same device.
  */
 @Composable
 fun LinkPanel(title: String, url: String, note: String? = null, onDismiss: () -> Unit) {
@@ -29,8 +31,10 @@ fun LinkPanel(title: String, url: String, note: String? = null, onDismiss: () ->
     var problem by remember { mutableStateOf<String?>(null) }
     BoardPanel(onDismiss, gap = 10.bd) {
         BoardPanelTitle(title)
-        BoardPanelSubtitle(stringResource(R.string.common_link_scan_hint))
-        QrCode(url, Modifier.size(240.dp).align(Alignment.CenterHorizontally))
+        if (showsQrCodes()) {
+            BoardPanelSubtitle(stringResource(R.string.common_link_scan_hint))
+            QrCode(url, Modifier.size(240.dp).align(Alignment.CenterHorizontally))
+        }
         BoardPanelText(url.removePrefix("https://"))
         note?.let { BoardPanelSubtitle(it) }
         PillButton(stringResource(R.string.common_link_open_here), { problem = openLink(context, url) }, rememberFirstFocus())

@@ -129,7 +129,7 @@ class TmdbFilmUiTest {
         compose.onNode(hasContentDescription("IMDb") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
         // Some TVs have a stand-in picker that takes the browser's intent and does nothing: the panel comes first.
         compose.waitForText("www.imdb.com/title/tt1160419/")
-        compose.waitForText("Open on this TV")
+        compose.waitForText("Open on this device")
         assertNull(shadowOf(app).nextStartedActivity)
     }
 
@@ -142,7 +142,7 @@ class TmdbFilmUiTest {
         compose.waitForText("Trailer")
         click("Trailer")
         compose.waitForText("www.youtube.com/watch?v=${FakeTmdb.TRAILER}")
-        compose.waitForText("Open on this TV")
+        compose.waitForText("Open on this device")
     }
 
     @Test

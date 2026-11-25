@@ -31,6 +31,19 @@ enum class FormFactor {
 val LocalFormFactor = staticCompositionLocalOf { FormFactor.TV }
 
 /**
+ * What the app runs on, as [LocalFormFactor] is at the top: a screen drawn as on a TV inside [TvCanvas] (on a phone, a
+ * screen with no phone layout yet) still knows it is on a phone or tablet.
+ */
+val LocalDeviceFormFactor = staticCompositionLocalOf { FormFactor.TV }
+
+/**
+ * Whether to show QR codes to scan with a phone: on a TV only. A phone or tablet would scan them with itself (the owner,
+ * 2026-11-25), and opens the page instead.
+ */
+@Composable
+fun showsQrCodes(): Boolean = LocalDeviceFormFactor.current.isTv
+
+/**
  * Whether the Automatic layout ([LayoutMode.AUTO]) finds a TV: one has the TV feature, runs in the TV's UI mode, or has
  * no touch screen.
  */

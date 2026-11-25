@@ -2,6 +2,8 @@
 <resources>
     <string name="app_crash_title">MyTVPlayer s\'est fermé de façon inattendue la dernière fois</string>
     <string name="app_crash_help">Pour aider à corriger le problème, scannez le code avec votre téléphone : il ouvre un ticket GitHub avec les détails ci-dessous, prêt à être envoyé. Les identifiants n\'y figurent pas, et rien n\'est envoyé sans votre accord.</string>
+    <string name="app_crash_help_touch">Pour aider à corriger le problème, ouvrez le rapport : il ouvre un ticket GitHub avec les détails ci-dessous, prêt à être envoyé. Les identifiants n\'y figurent pas, et rien n\'est envoyé sans votre accord.</string>
+    <string name="app_crash_report">Ouvrir le rapport</string>
     <string name="app_crash_continue">Continuer</string>
     <string name="app_crash_continue_no_update">Continuer sans mettre à jour</string>
 </resources>

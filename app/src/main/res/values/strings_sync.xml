@@ -16,10 +16,10 @@
     <string name="sync_never">Not synced yet</string>
     <string name="sync_now">Sync now</string>
     <string name="sync_stop">Stop syncing</string>
-    <string name="sync_stop_help">Deletes this TV\'s copy in your Google Drive. What you watched on this TV stays here.</string>
+    <string name="sync_stop_help">Deletes this device\'s copy in your Google Drive. What you watched on this device stays here.</string>
     <string name="sync_google_error">Google refused the sign-in (%1$s).</string>
     <string name="sync_failed_code">Couldn\'t sync: Google said %1$s. Try again later.</string>
     <string name="sync_turn_on">Turn on sync</string>
     <string name="sync_sign_out">Sign out of Google</string>
-    <string name="sync_sign_out_help">Turns off the sync and backups in Google Drive on this TV. Your backup in Google Drive stays there.</string>
+    <string name="sync_sign_out_help">Turns off the sync and backups in Google Drive on this device. Your backup in Google Drive stays there.</string>
 </resources>

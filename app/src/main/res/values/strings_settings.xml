@@ -133,8 +133,8 @@
     <string name="settings_welcome_restore">Restore a backup</string>
 
     <!-- Backup & restore page. "MyTVPlayer" is the app's name; "Settings › Apps › MyTVPlayer › Permissions" is the
-         path through the TV's own settings menus. -->
-    <string name="settings_backup_permission_denied">Without storage permission the backup can\'t be saved. Allow it in the TV\'s Settings › Apps › MyTVPlayer › Permissions.</string>
+         path through the device's own settings menus. -->
+    <string name="settings_backup_permission_denied">Without storage permission the backup can\'t be saved. Allow it in the device\'s Settings › Apps › MyTVPlayer › Permissions.</string>
     <string name="settings_backup_saving">Saving…</string>
     <!-- %1$s: where the file is, e.g. "Download/MyTVPlayer/mytvplayer-backup.json". -->
     <string name="settings_backup_saved_to">Saved to %1$s</string>
@@ -148,11 +148,11 @@
     <!-- Title of the system's app chooser. -->
     <string name="settings_backup_choose_file">Choose the backup file</string>
     <!-- "X-plore" is an app's name; "Open with" and "Share" are Android's menu items. -->
-    <string name="settings_backup_no_picker">This TV has no way to choose a file. Open the backup with MyTVPlayer from a file manager app such as X-plore (Open with, or Share), or install one and try again.</string>
+    <string name="settings_backup_no_picker">This device has no way to choose a file. Open the backup with MyTVPlayer from a file manager app such as X-plore (Open with, or Share), or install one and try again.</string>
     <string name="settings_backup_intro">Saves your playlists (with their logins), channel and category choices, favourites, TV guide sources and settings to a file. Copy it with a file manager app to keep it somewhere else. The file isn\'t encrypted, so keep it private.</string>
     <!-- %1$s: when and where, e.g. "Mon 12 Mar 18:30 · Download/MyTVPlayer/mytvplayer-backup.json". -->
     <string name="settings_backup_last">Last backup: %1$s</string>
-    <string name="settings_backup_none">No backup on this TV yet.</string>
+    <string name="settings_backup_none">No backup on this device yet.</string>
     <string name="settings_backup_confirm">This replaces your playlists and settings with the backup\'s. Restore?</string>
     <!-- Buttons. -->
     <string name="settings_backup_restore">Restore</string>
@@ -164,7 +164,7 @@
     <string name="settings_backup_not_a_backup">This isn\'t a MyTVPlayer backup file.</string>
     <string name="settings_backup_newer">This backup is from a newer version of MyTVPlayer. Update the app first.</string>
     <string name="settings_backup_need_permission">MyTVPlayer needs permission to save to the Download folder.</string>
-    <string name="settings_backup_no_storage">This TV\'s storage isn\'t available right now, so the backup can\'t be saved.</string>
+    <string name="settings_backup_no_storage">This device\'s storage isn\'t available right now, so the backup can\'t be saved.</string>
     <!-- "Download/MyTVPlayer" is a folder's name: don't translate it. -->
     <string name="settings_backup_no_folder">Couldn\'t create the folder Download/MyTVPlayer for the backup.</string>
     <string name="settings_backup_save_failed">Couldn\'t save the backup file</string>

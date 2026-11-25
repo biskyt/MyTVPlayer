@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
@@ -20,7 +21,9 @@ import com.biskyt.mytvplayer.data.ProgressSync
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.QrCode
+import com.biskyt.mytvplayer.ui.common.openLink
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
+import com.biskyt.mytvplayer.ui.theme.showsQrCodes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -76,13 +79,22 @@ class GoogleSignIn(private val sync: ProgressSync, private val scope: CoroutineS
     }
 }
 
-/** The code to type at Google's address, and a QR code that opens the address with the code filled in. */
+/**
+ * The code to type at Google's address, and a QR code that opens the address with the code filled in: not on a phone
+ * or tablet, which would scan it with itself (the owner, 2026-11-25).
+ */
 @Composable
 fun SignInCode(code: DeviceCode, onCancel: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.sync_go_to, code.verificationUrl.removePrefix("https://")))
         Text(code.userCode, style = MaterialTheme.typography.displaySmall)
-        QrCode(code.urlWithCode, Modifier.size(200.dp))
+        if (showsQrCodes()) {
+            QrCode(code.urlWithCode, Modifier.size(200.dp))
+        } else {
+            // On a phone or tablet: Google's page with the code filled in, here.
+            val context = LocalContext.current
+            PillButton(stringResource(R.string.common_link_open_here), { openLink(context, code.urlWithCode) })
+        }
         Muted(stringResource(R.string.sync_waiting))
         PillButton(stringResource(R.string.sync_cancel), onCancel, rememberFirstFocus(code))
     }

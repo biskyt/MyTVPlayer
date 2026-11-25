@@ -106,10 +106,10 @@
     <!-- Web page panel (QR code) -->
     <string name="common_link_scan_hint">Scan with your phone\'s camera to open the page there.</string>
     <!-- Button. Keep short -->
-    <string name="common_link_open_here">Open on this TV</string>
-    <string name="common_link_no_browser">This TV has no web browser. Scan the code with your phone instead.</string>
+    <string name="common_link_open_here">Open on this device</string>
+    <string name="common_link_no_browser">This device has no web browser. Open the page on another device instead.</string>
     <!-- %1$s is a technical error name (e.g. SecurityException); leave it untranslated -->
-    <string name="common_link_open_failed">The page couldn\'t be opened on this TV (%1$s). Scan the code with your phone instead.</string>
+    <string name="common_link_open_failed">The page couldn\'t be opened on this device (%1$s). Open it on another device instead.</string>
 
     <!-- Schedule list -->
     <string name="common_no_guide_for_channel">No guide information for this channel.</string>

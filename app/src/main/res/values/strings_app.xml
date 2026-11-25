@@ -4,6 +4,8 @@
     <string name="app_crash_title">MyTVPlayer closed unexpectedly last time</string>
     <!-- Next to a QR code that opens a bug report page on GitHub (the report itself stays in English). Up to 3 lines. -->
     <string name="app_crash_help">To help fix it, scan the code with your phone: it opens a GitHub issue with the details below, ready to send. Logins are left out, and nothing is sent unless you send it.</string>
+    <string name="app_crash_help_touch">To help fix it, open the report: it opens a GitHub issue with the details below, ready to send. Logins are left out, and nothing is sent unless you send it.</string>
+    <string name="app_crash_report">Open the report</string>
     <!-- Button: carry on into the app as usual (which updates the playlist). -->
     <string name="app_crash_continue">Continue</string>
     <!-- Button: carry on into the app without updating the playlist first, in case that is what crashed. -->

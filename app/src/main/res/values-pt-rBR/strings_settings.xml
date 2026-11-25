@@ -107,7 +107,7 @@
     <string name="settings_welcome_free">TV, filmes e séries grátis</string>
     <string name="settings_welcome_restore">Restaurar um backup</string>
 
-    <string name="settings_backup_permission_denied">Sem a permissão de armazenamento, não é possível salvar o backup. Permita em Configurações › Apps › MyTVPlayer › Permissões da TV.</string>
+    <string name="settings_backup_permission_denied">Sem a permissão de armazenamento, não é possível salvar o backup. Permita em Configurações › Apps › MyTVPlayer › Permissões do dispositivo.</string>
     <string name="settings_backup_saving">Salvando…</string>
     <string name="settings_backup_saved_to">Salvo em %1$s</string>
     <string name="settings_backup_find_failed">Não foi possível procurar um backup: %1$s</string>
@@ -115,10 +115,10 @@
     <string name="settings_backup_restoring">Restaurando…</string>
     <string name="settings_backup_failed">Algo deu errado: %1$s</string>
     <string name="settings_backup_choose_file">Escolha o arquivo de backup</string>
-    <string name="settings_backup_no_picker">Esta TV não tem como escolher um arquivo. Abra o backup com o MyTVPlayer em um app gerenciador de arquivos, como o X-plore (Abrir com ou Compartilhar), ou instale um e tente de novo.</string>
+    <string name="settings_backup_no_picker">Este dispositivo não tem como escolher um arquivo. Abra o backup com o MyTVPlayer em um app gerenciador de arquivos, como o X-plore (Abrir com ou Compartilhar), ou instale um e tente de novo.</string>
     <string name="settings_backup_intro">Salva em um arquivo suas playlists (com os logins), as escolhas de canais e categorias, os favoritos, as fontes do guia de TV e as configurações. Copie o arquivo com um app gerenciador de arquivos para guardá-lo em outro lugar. O arquivo não é criptografado, então mantenha-o em sigilo.</string>
     <string name="settings_backup_last">Último backup: %1$s</string>
-    <string name="settings_backup_none">Nenhum backup nesta TV ainda.</string>
+    <string name="settings_backup_none">Nenhum backup neste dispositivo ainda.</string>
     <string name="settings_backup_confirm">Isto substitui suas playlists e configurações pelas do backup. Restaurar?</string>
     <string name="settings_backup_restore">Restaurar</string>
     <string name="settings_backup_cancel">Cancelar</string>
@@ -128,7 +128,7 @@
     <string name="settings_backup_not_a_backup">Este não é um arquivo de backup do MyTVPlayer.</string>
     <string name="settings_backup_newer">Este backup é de uma versão mais nova do MyTVPlayer. Atualize o app primeiro.</string>
     <string name="settings_backup_need_permission">O MyTVPlayer precisa de permissão para salvar na pasta Download.</string>
-    <string name="settings_backup_no_storage">O armazenamento desta TV não está disponível agora, então não é possível salvar o backup.</string>
+    <string name="settings_backup_no_storage">O armazenamento deste dispositivo não está disponível agora, então não é possível salvar o backup.</string>
     <string name="settings_backup_no_folder">Não foi possível criar a pasta Download/MyTVPlayer para o backup.</string>
     <string name="settings_backup_save_failed">Não foi possível salvar o arquivo de backup</string>
     <string name="settings_backup_create_failed">Não foi possível criar o arquivo de backup</string>
