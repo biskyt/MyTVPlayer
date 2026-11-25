@@ -499,7 +499,7 @@ class RepositoriesTest {
         db.categories().setIncluded(id, CAT_MOVIE, listOf("11"), true)
         vod.setFavourite(id, CAT_MOVIE, 501, true)
         vod.saveProgress(WatchProgressEntity(id, VOD_MOVIE, 501, 600_000, 3_600_000, 1, "Dune", null))
-        settings.update { it.copy(skipBackSec = 20, largeText = true) }
+        settings.update { it.copy(skipBackSec = 20, largeText = true, layout = LayoutMode.TV) }
 
         val file = backup.export().decodeToString()
         // A bad file is turned down and changes nothing.
@@ -520,15 +520,20 @@ class RepositoriesTest {
         assertEquals(listOf(id), playlists.allIds())
 
         playlists.delete(id)
-        settings.update { Settings() }
+        settings.update { Settings(layout = LayoutMode.TOUCH) }
         assertTrue(import(file))
 
         assertEquals(id, settings.current().activePlaylistId)
         assertEquals(20, settings.current().skipBackSec)
         assertTrue(settings.current().largeText)
+        // This device's layout stays: a backup made on a TV does not give a phone the TV's layout.
+        assertEquals(LayoutMode.TOUCH, settings.current().layout)
         assertEquals("secret", playlists.get(id)!!.password)
         assertTrue(playlists.get(id)!!.isStale())
         assertTrue(db.categories().all(id, CAT_MOVIE).single { it.categoryId == "11" }.included)
+        // The backup has no movies: their categories count none until they are loaded again. Channels keep theirs.
+        assertTrue(db.categories().all(id, CAT_MOVIE).all { it.channelCount == 0 })
+        assertTrue(db.categories().all(id, CAT_LIVE).any { it.channelCount > 0 })
         assertTrue(vod.observeFavourite(id, CAT_MOVIE, 501).first())
         assertEquals(600_000L, vod.progress(id, VOD_MOVIE, 501)!!.positionMs)
         assertEquals(source, db.epg().sourcesFor(listOf(id)).single().id)

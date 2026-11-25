@@ -6,22 +6,22 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Typography
 import androidx.tv.material3.darkColorScheme
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.core.ui.AccentPalette
+import com.biskyt.mytvplayer.data.LayoutMode
 import com.biskyt.mytvplayer.ui.common.LocalTouch
 import com.biskyt.mytvplayer.ui.common.hasTouchScreen
 
@@ -91,10 +91,15 @@ private fun typography(large: Boolean): Typography {
     )
 }
 
-private const val DESIGN_WIDTH = 1280f
+internal const val DESIGN_WIDTH = 1280f
 
 @Composable
-fun MyTvTheme(accentArgb: Int = AccentPalette.DEFAULT, largeText: Boolean = false, content: @Composable () -> Unit) {
+fun MyTvTheme(
+    accentArgb: Int = AccentPalette.DEFAULT,
+    largeText: Boolean = false,
+    layout: LayoutMode = LayoutMode.AUTO,
+    content: @Composable () -> Unit
+) {
     // Derived once per accent change; nothing is recomputed while drawing.
     val accent = remember(accentArgb) {
         AccentPalette.from(accentArgb).let { Accent(Color(it.accent), Color(it.tint), Color(it.soft), Color(it.onAccent)) }
@@ -114,19 +119,19 @@ fun MyTvTheme(accentArgb: Int = AccentPalette.DEFAULT, largeText: Boolean = fals
     }
     val type = remember(largeText) { typography(largeText) }
     val onAccentType = remember(type, accent.onAccent) { type.inColor(accent.onAccent) }
-    // Layouts are designed on a 1280-unit-wide canvas (like the mockups). TVs report ~960 dp (1080p at xhdpi, 720p at
-    // tvdpi), so scale density to make 1280 units span the screen: identical look on every TV, no per-size layouts.
-    val density = LocalDensity.current
-    val widthPx = LocalWindowInfo.current.containerSize.width
-    val scaled = remember(density, widthPx) {
-        if (widthPx > 0) Density(widthPx / DESIGN_WIDTH, density.fontScale) else density
-    }
     val context = LocalContext.current
     val touch = remember { context.hasTouchScreen() }
+    // A phone or an unfolded foldable: its real size, and phone layouts where a screen has them (see FormFactor).
+    val smallest = LocalConfiguration.current.smallestScreenWidthDp
+    val form = remember(layout, smallest) { formFactor(context, layout, smallest) }
+    // Layouts are designed on a 1280-unit-wide canvas (like the mockups). TVs report ~960 dp (1080p at xhdpi, 720p at
+    // tvdpi), so scale density to make 1280 units span the screen: identical look on every TV, no per-size layouts.
+    val scaled = rememberCanvasDensity(form.isTv)
     CompositionLocalProvider(
         LocalAccent provides accent,
         LocalDensity provides scaled,
         LocalTouch provides touch,
+        LocalFormFactor provides form,
         LocalLargeText provides largeText,
         LocalOnAccentTypography provides onAccentType
     ) {

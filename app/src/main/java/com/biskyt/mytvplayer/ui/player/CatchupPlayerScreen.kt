@@ -11,6 +11,8 @@ import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.formatRuntime
 import com.biskyt.mytvplayer.ui.common.formatTime
+import com.biskyt.mytvplayer.ui.phone.PhoneCatchupControls
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 
 /** Catch-up: a channel as it was earlier, running on to the present; live TV, only earlier. */
 @Composable
@@ -22,6 +24,7 @@ fun CatchupPlayerScreen(screen: Screen.CatchupPlayer) {
 
 @Composable
 private fun CatchupControls(vm: CatchupPlayerViewModel, buttons: FocusRequester, root: FocusRequester) {
+    if (!LocalFormFactor.current.isTv) return PhoneCatchupControls(vm)
     // While scrubbing: the programme and time playback will go to.
     val scrub = vm.scrubMs
     val at = scrub ?: vm.at
@@ -36,14 +39,15 @@ private fun CatchupControls(vm: CatchupPlayerViewModel, buttons: FocusRequester,
         line = stringResource(R.string.player_catchup_behind_live, formatRuntime(behind)),
         timeline = {
             if (p != null) {
-                fun fraction(t: Long) = ((t - p.startMs).toFloat() / (p.stopMs - p.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
+                val bar = vm.catchupBar(p.startMs..p.stopMs)
                 Timeline(
                     formatTime(p.startMs),
-                    fraction(vm.at),
+                    bar.fraction,
                     formatTime(p.stopMs),
-                    scrub?.let(::fraction),
-                    handle = LocalBarSelected.current
-                ) { vm.scrubTo(p.startMs..p.stopMs, it) }
+                    bar.scrub,
+                    handle = LocalBarSelected.current,
+                    onSeek = bar.onSeek
+                )
             }
         }
     ) {

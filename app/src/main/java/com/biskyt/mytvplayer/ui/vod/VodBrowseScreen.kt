@@ -1,5 +1,6 @@
 package com.biskyt.mytvplayer.ui.vod
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,6 +79,8 @@ import com.biskyt.mytvplayer.ui.common.reveal
 import com.biskyt.mytvplayer.ui.common.rowsInView
 import com.biskyt.mytvplayer.ui.common.vodActions
 import com.biskyt.mytvplayer.ui.common.vodDetails
+import com.biskyt.mytvplayer.ui.phone.PhoneBrowse
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
@@ -141,6 +144,9 @@ class VodBrowseViewModel(
             .flatMapLatest { (pid, f, q) -> c.vod.pageCards(type, pid, f, q) }
             .cachedIn(viewModelScope)
 
+    /** The tab this screen comes under. */
+    val tab: Tab get() = if (isMovies) Tab.MOVIES else Tab.SERIES
+
     /** A poster whose options are open. */
     var optionsFor by mutableStateOf<VodCard?>(null)
 
@@ -186,24 +192,20 @@ class VodBrowseViewModel(
 fun VodBrowseScreen(type: String, initialFilter: VodFilter?) {
     val nav = LocalNavigator.current
     val vm = appViewModel(key = "vod-$type") { VodBrowseViewModel(it, type, initialFilter, nav.picked) }
+    // A phone or an unfolded foldable (the owner, 2026-11-25): its own layout, from the same lists.
+    if (!LocalFormFactor.current.isTv) {
+        PhoneBrowse(vm)
+        return
+    }
     val filter by vm.filters.value.collectAsState()
     val categories by vm.categories.collectAsState()
     val playlist by vm.playlist.collectAsState()
-    val favourites = stringResource(R.string.common_favourites)
-    val newest = stringResource(if (vm.isMovies) R.string.vod_recently_added else R.string.vod_recently_updated)
-    val all = stringResource(if (vm.isMovies) R.string.vod_all_movies else R.string.vod_all_series)
-    val entries = remember(categories, favourites, newest, all) {
-        listOf<CategoryEntry<VodFilter>>(
-            CategoryEntry(VodFilter.Favourites, favourites),
-            CategoryEntry(VodFilter.Newest, newest),
-            CategoryEntry(VodFilter.All, all)
-        ) + categoryEntries<VodFilter>(categories) { VodFilter.Category(it.categoryId) }
-    }
+    val entries = vodEntries(vm)
     // Something on the screen given focus before the first title is shown (the remote moved, as there was none yet):
     // the first title does not take it from there when it comes. With nothing focused again ("Load now" gone once
     // the titles are in), it does. (The first title taking focus ends it too.)
     val firstTitleWaits = Modifier.onFocusChanged { if (vm.focusId == null) vm.restoreFocusPending = !it.hasFocus }
-    TabScaffold(if (vm.isMovies) Tab.MOVIES else Tab.SERIES, firstTitleWaits) {
+    TabScaffold(vm.tab, firstTitleWaits) {
         Row(Modifier.fillMaxSize().padding(horizontal = 56.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
             FilteredCategoryColumn(entries, fixed = 3, filter, vm.filters::focus, vm.filters::select, vm::hideCategory)
             Column(Modifier.weight(1f)) {
@@ -225,9 +227,45 @@ fun VodBrowseScreen(type: String, initialFilter: VodFilter?) {
     vm.optionsFor?.let { card -> PosterOptions(vm, card, filter, playlist?.id ?: 0) }
 }
 
+/** The lists to choose from, for a TV's column and a phone's chips: Favourites, the newest, all, then each category. */
+@Composable
+internal fun vodEntries(vm: VodBrowseViewModel): List<CategoryEntry<VodFilter>> {
+    val categories by vm.categories.collectAsState()
+    val favourites = stringResource(R.string.common_favourites)
+    val newest = stringResource(if (vm.isMovies) R.string.vod_recently_added else R.string.vod_recently_updated)
+    val all = stringResource(if (vm.isMovies) R.string.vod_all_movies else R.string.vod_all_series)
+    return remember(categories, favourites, newest, all) {
+        listOf<CategoryEntry<VodFilter>>(
+            CategoryEntry(VodFilter.Favourites, favourites),
+            CategoryEntry(VodFilter.Newest, newest),
+            CategoryEntry(VodFilter.All, all)
+        ) + categoryEntries<VodFilter>(categories) { VodFilter.Category(it.categoryId) }
+    }
+}
+
+/**
+ * What a list with no titles shows, on a TV and a touch screen: its [message] and its buttons ([actions], the first the
+ * main one).
+ */
+internal class EmptyTitles(@param:StringRes val message: Int, val actions: List<Pair<Int, () -> Unit>>)
+
+/** Favourites with none: how to add some. Another list with none: Load now, and Choose categories. */
+@Composable
+internal fun emptyTitles(vm: VodBrowseViewModel, pid: Long, favourites: Boolean): EmptyTitles {
+    val nav = LocalNavigator.current
+    return if (favourites) {
+        EmptyTitles(R.string.vod_no_favourites, emptyList())
+    } else {
+        EmptyTitles(
+            R.string.vod_nothing_here,
+            listOf(R.string.vod_load_now to vm::loadNow, R.string.vod_choose_categories to { nav.push(Screen.Categories(pid)) })
+        )
+    }
+}
+
 /** Holding OK on a poster: open it, favourites, and in Favourites, move it. */
 @Composable
-private fun PosterOptions(vm: VodBrowseViewModel, card: VodCard, filter: VodFilter, pid: Long) {
+internal fun PosterOptions(vm: VodBrowseViewModel, card: VodCard, filter: VodFilter, pid: Long) {
     val close = { vm.optionsFor = null }
     val favourites by vm.favouriteIds.collectAsState()
     val query by vm.query.collectAsState()
@@ -258,14 +296,14 @@ private fun PosterGrid(vm: VodBrowseViewModel, pid: Long) {
     val items = vm.items.collectAsLazyPagingItems()
     val favourites = vm.favouriteIds.collectIds()
     if (items.itemCount == 0) {
-        if (vm.filters.value.collectAsState().value == VodFilter.Favourites) {
-            Muted(stringResource(R.string.vod_no_favourites), Modifier.padding(top = 24.dp))
+        val empty = emptyTitles(vm, pid, vm.filters.value.collectAsState().value == VodFilter.Favourites)
+        if (empty.actions.isEmpty()) {
+            Muted(stringResource(empty.message), Modifier.padding(top = 24.dp))
         } else {
             Column(Modifier.padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Muted(stringResource(R.string.vod_nothing_here), maxLines = 2)
+                Muted(stringResource(empty.message), maxLines = 2)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PillButton(stringResource(R.string.vod_load_now), vm::loadNow, primary = true)
-                    PillButton(stringResource(R.string.vod_choose_categories), { nav.push(Screen.Categories(pid)) })
+                    empty.actions.forEachIndexed { i, (label, action) -> PillButton(stringResource(label), action, primary = i == 0) }
                 }
             }
         }

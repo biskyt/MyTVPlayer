@@ -100,11 +100,7 @@ fun TopBar(selected: Tab?) {
     val settings by remember { container.settings.settings }.collectAsState(initial = null)
     val active = remember { container.playlists.observeActive() }.collectAsState(initial = null).value
 
-    // Catch-up only for playlists that have some; Radio only with its own section (see RadioMode).
-    val kinds = ChannelKinds.shown(settings?.radio)
-    val hasCatchup by remember(active?.id, kinds) { active?.let { container.channels.observeHasCatchup(it.id, kinds) } ?: flowOf(false) }
-        .collectAsState(initial = false)
-    val radioSection = settings?.radio == RadioMode.SECTION
+    val tabs = rememberShownTabs(settings, active?.id)
     val screen = LocalScreenFocus.current
     Row(
         // The board's 40 and 22, less the room each item keeps around its text for its focus fill.
@@ -114,19 +110,8 @@ fun TopBar(selected: Tab?) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(BAR_GAP)
     ) {
-        Tab.entries.filter { (it != Tab.CATCHUP || hasCatchup) && (it != Tab.RADIO || radioSection) }.forEach { tab ->
-            BarItem({
-                nav.reset(
-                    when (tab) {
-                        Tab.HOME -> Screen.Home
-                        Tab.LIVE -> Screen.Live()
-                        Tab.RADIO -> Screen.Live(radio = true)
-                        Tab.MOVIES -> Screen.Movies()
-                        Tab.SERIES -> Screen.Series()
-                        Tab.CATCHUP -> Screen.Live(ChannelFilter.Catchup)
-                    }
-                )
-            }) { TabLabel(stringResource(tab.label), tab == selected) }
+        tabs.forEach { tab ->
+            BarItem({ nav.reset(tab.screen) }) { TabLabel(stringResource(tab.label), tab == selected) }
         }
         Box(Modifier.weight(1f))
         rememberVpn(settings)?.let { VpnStatus(it, StatusLook.Bar, Modifier.padding(horizontal = BAR_PAD_H, vertical = BAR_PAD_V)) }
@@ -150,6 +135,35 @@ fun TopBar(selected: Tab?) {
         }
     }
 }
+
+/**
+ * The tabs shown, in order, for the TV's top bar and the phone's tab bar: Catch-up only for a playlist ([playlistId])
+ * that has some, and Radio only with its own section (see RadioMode).
+ */
+@Composable
+fun rememberShownTabs(settings: Settings?, playlistId: Long?): List<Tab> {
+    val container = LocalContext.current.container
+    // remember: a new Room flow on each recomposition would re-run the query and briefly show nothing.
+    val kinds = ChannelKinds.shown(settings?.radio)
+    val hasCatchup by remember(playlistId, kinds) {
+        playlistId?.let { container.channels.observeHasCatchup(it, kinds) } ?: flowOf(false)
+    }.collectAsState(initial = false)
+    val radioSection = settings?.radio == RadioMode.SECTION
+    return remember(hasCatchup, radioSection) {
+        Tab.entries.filter { (it != Tab.CATCHUP || hasCatchup) && (it != Tab.RADIO || radioSection) }
+    }
+}
+
+/** The screen a tab opens. */
+val Tab.screen: Screen
+    get() = when (this) {
+        Tab.HOME -> Screen.Home
+        Tab.LIVE -> Screen.Live()
+        Tab.RADIO -> Screen.Live(radio = true)
+        Tab.MOVIES -> Screen.Movies()
+        Tab.SERIES -> Screen.Series()
+        Tab.CATCHUP -> Screen.Live(ChannelFilter.Catchup)
+    }
 
 /** The tabs' and the clock's text: 14, bold, muted. */
 private val BarText = BoardStyle(14, 700)
@@ -235,6 +249,19 @@ class StatusLook(
             gap = 4.bd,
             // A long IPv6 address is cut, not let to widen the bar.
             ipWidth = 150.dp,
+            offPill = true
+        )
+
+        /** Small, in a phone screen's title row: a warning on a pill, as in the top bar. */
+        val Phone = StatusLook(
+            label = { MaterialTheme.typography.labelMedium },
+            offLabel = { MaterialTheme.typography.labelMedium },
+            ipText = { MaterialTheme.typography.labelSmall },
+            connectedText = Palette.textDim,
+            icon = 14.dp,
+            offIcon = 14.dp,
+            gap = 4.dp,
+            ipWidth = 120.dp,
             offPill = true
         )
 

@@ -12,6 +12,11 @@
     <string name="settings_appearance_help">Couleur d\'accent et taille du texte</string>
     <string name="settings_misc_title">Divers</string>
     <string name="settings_misc_help">Stations de radio, téléchargements, écran d\'accueil du téléviseur, alertes réseau</string>
+    <string name="settings_layout">Disposition</string>
+    <string name="settings_layout_help">TV pour une télécommande, téléphone et tablette pour un écran tactile</string>
+    <string name="settings_layout_auto">Automatique</string>
+    <string name="settings_layout_tv">TV</string>
+    <string name="settings_layout_touch">Téléphone et tablette</string>
     <string name="settings_backup_title">Sauvegarde et restauration</string>
     <string name="settings_backup_help">Enregistrer vos playlists et vos choix dans un fichier ou dans Google Drive, ou les restaurer</string>
     <string name="settings_about_title">À propos</string>

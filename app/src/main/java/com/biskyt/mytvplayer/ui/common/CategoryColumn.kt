@@ -181,9 +181,6 @@ fun <F> CategoryColumn(
     onHide: ((CategoryEntity) -> Unit)? = null,
     right: FocusRequester = FocusRequester.Default
 ) {
-    val parental = LocalContext.current.container.parental
-    val gate = rememberPinGate()
-    val scope = rememberCoroutineScope()
     val selectedEntry = remember { FocusRequester() }
     var options by remember { mutableStateOf<CategoryEntity?>(null) }
     val state = rememberLazyListState()
@@ -263,13 +260,37 @@ fun <F> CategoryColumn(
             }
         }
     }
-    options?.let { cat ->
-        CategoryOptions(cat, { options = null }, hide = {
-            val next = entries.shownAfterHiding(cat)
+    // Its entry goes, and focus goes to the one now selected (none, if it was the only one).
+    CategoryOptionsHost(options, entries, { options = null }, onSelect, { onHide?.invoke(it) }, shown = { refocus = Refocus(it) })
+}
+
+/**
+ * A provider category's options, for [cat] (none: closed), on a TV's column and a phone's chips: hiding it, which first
+ * selects the entry shown in its place ([onSelect], then [shown] with it), and restricting it (parental controls) or
+ * removing that, which needs the PIN when one is set. [close] closes them. On a touch screen any chip can be held, so
+ * [selected] is the list shown: hiding another category leaves it shown. A TV's column (null) opens them on the entry
+ * with focus, which is the one shown.
+ */
+@Composable
+fun <F> CategoryOptionsHost(
+    cat: CategoryEntity?,
+    entries: List<CategoryEntry<F>>,
+    close: () -> Unit,
+    onSelect: (F) -> Unit,
+    onHide: (CategoryEntity) -> Unit,
+    selected: F? = null,
+    shown: (F) -> Unit = {}
+) {
+    val parental = LocalContext.current.container.parental
+    val gate = rememberPinGate()
+    val scope = rememberCoroutineScope()
+    cat?.let {
+        CategoryOptions(cat, close, hide = {
+            val showing = selected == null || entries.any { e -> e.filter == selected && e.category?.categoryId == cat.categoryId }
+            val next = if (showing) entries.shownAfterHiding(cat) else null
             next?.let(onSelect)
-            onHide?.invoke(cat)
-            // Its entry goes, and focus goes to the one now selected (none, if it was the only one).
-            next?.let { refocus = Refocus(it) }
+            onHide(cat)
+            next?.let(shown)
         }, restrict = { on ->
             // Removing a restriction needs the PIN, when one is set.
             gate.run(!on && parental.hasPin.value) {
@@ -277,6 +298,7 @@ fun <F> CategoryColumn(
             }
         })
     }
+    // (Always here: the PIN is asked for after the options close.)
     PinGateHost(gate)
 }
 

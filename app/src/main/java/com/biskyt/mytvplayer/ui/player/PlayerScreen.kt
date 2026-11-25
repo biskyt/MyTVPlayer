@@ -33,6 +33,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,8 +59,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -68,6 +72,7 @@ import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW
 import androidx.media3.ui.compose.state.rememberPresentationState
 import androidx.tv.material3.Icon
+import androidx.tv.material3.LocalTextStyle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.R
@@ -105,14 +110,16 @@ import com.biskyt.mytvplayer.ui.common.formatTime
 import com.biskyt.mytvplayer.ui.common.ignoreHeldSelect
 import com.biskyt.mytvplayer.ui.common.isChannelDown
 import com.biskyt.mytvplayer.ui.common.isChannelUp
-import com.biskyt.mytvplayer.ui.common.numberLabel
 import com.biskyt.mytvplayer.ui.common.onAnyTouch
 import com.biskyt.mytvplayer.ui.common.onPlainTap
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.common.rememberProxy
 import com.biskyt.mytvplayer.ui.common.rememberVpn
+import com.biskyt.mytvplayer.ui.phone.PhoneLiveControls
+import com.biskyt.mytvplayer.ui.phone.phoneVideoTaps
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.Palette
 
 @Composable
@@ -161,6 +168,8 @@ internal fun PlayerFrame(
     // Read only by the clock's row (as a State, so that a settings write recomposes only it, not the frame).
     val container = LocalContext.current.container
     val settings = remember { container.settings.settings }.collectAsState(initial = null)
+    // A phone or an unfolded foldable (the owner, 2026-11-25): its own controls, with their own Back, clock and taps.
+    val tv = LocalFormFactor.current.isTv
 
     if (vm.exit) {
         LaunchedEffect(Unit) { nav.pop() }
@@ -207,7 +216,7 @@ internal fun PlayerFrame(
                 vm.wake()
                 if (vm.overlay == OverlayState.CONTROLS) vm.showControls(keepOverlay = true)
             }
-            .onPlainTap(vm::tapVideo)
+            .videoTaps(vm, tv)
     ) {
         vm.engine?.let { engine ->
             val presentation = rememberPresentationState(engine.player)
@@ -220,22 +229,10 @@ internal fun PlayerFrame(
             // zoomed picture doesn't push them off it.
             Subtitles(engine.player, Modifier.picture(vm.picture, presentation.videoSizeDp, onScreen = true))
         }
-        WaitingLabel(vm, Modifier.align(Alignment.Center))
+        // On a phone, under the play button in the middle of the controls.
+        WaitingLabel(vm, Modifier.align(Alignment.Center).then(if (tv) Modifier else Modifier.padding(top = 140.dp)))
         vm.error?.let { ErrorBox(it, vm) }
-        if (vm.overlay == OverlayState.CONTROLS) {
-            // With the video focused (Up from the buttons), left and right skip: the bar shows its handle (no remote: none).
-            CompositionLocalProvider(LocalBarSelected provides (videoFocused && !LocalTouch.current)) { controls(buttons, root) }
-            ClockAndStatus(settings, Modifier.align(Alignment.TopEnd).padding(top = 27.dp, end = 56.dp))
-            // A touch screen has no remote with a Back button in reach: this goes back to the list.
-            if (LocalTouch.current) {
-                RoundButton(
-                    AppIcons.Back,
-                    stringResource(R.string.player_back),
-                    modifier = Modifier.align(Alignment.TopStart).padding(24.dp),
-                    onClick = vm::stop
-                )
-            }
-        }
+        if (vm.overlay == OverlayState.CONTROLS) ControlsOverlay(vm, tv, videoFocused, settings) { controls(buttons, root) }
         vm.message?.let { FlashLabel(it, Modifier.align(Alignment.TopCenter)) }
         extras()
         // Over everything, and a tap on it only lights the screen again.
@@ -244,6 +241,46 @@ internal fun PlayerFrame(
     vm.sheet?.let { PlayerSheet(it, vm) }
     FocusFollowsOverlay(vm, root)
 }
+
+/**
+ * Taps on the video: on a TV with touch, a tap shows or hides the controls; on a phone, a double tap skips too (see
+ * phoneVideoTaps).
+ */
+@Composable
+private fun Modifier.videoTaps(vm: PlaybackViewModel, tv: Boolean): Modifier = if (tv) onPlainTap(vm::tapVideo) else phoneVideoTaps(vm)
+
+/**
+ * The [controls] over the video. On a TV, the clock and statuses at the top right too, and on a TV with touch a Back
+ * button. A phone's controls draw their own Back, clock and statuses, from [settings].
+ */
+@Composable
+private fun BoxScope.ControlsOverlay(
+    vm: PlaybackViewModel,
+    tv: Boolean,
+    videoFocused: Boolean,
+    settings: State<Settings?>,
+    controls: @Composable () -> Unit
+) {
+    if (!tv) {
+        CompositionLocalProvider(LocalPlayerSettings provides settings, content = controls)
+        return
+    }
+    // With the video focused (Up from the buttons), left and right skip: the bar shows its handle (no remote: none).
+    CompositionLocalProvider(LocalBarSelected provides (videoFocused && !LocalTouch.current), content = controls)
+    ClockAndStatus(settings, Modifier.align(Alignment.TopEnd).padding(top = 27.dp, end = 56.dp))
+    // A touch screen has no remote with a Back button in reach: this goes back to the list.
+    if (LocalTouch.current) {
+        RoundButton(
+            AppIcons.Back,
+            stringResource(R.string.player_back),
+            modifier = Modifier.align(Alignment.TopStart).padding(24.dp),
+            onClick = vm::stop
+        )
+    }
+}
+
+/** The settings, for the phone's controls (their skip times, statuses and clock): read from the player's one collector. */
+internal val LocalPlayerSettings = staticCompositionLocalOf<State<Settings?>> { mutableStateOf(null) }
 
 /** "Loading…" while a stream loads; "Reconnecting…" while one that failed opens again, over its last picture. */
 @Composable
@@ -263,28 +300,36 @@ private fun WaitingLabel(vm: PlaybackViewModel, modifier: Modifier) {
  * working", whether the proxy works (2026-11-13).
  */
 @Composable
-private fun ClockAndStatus(settings: State<Settings?>, modifier: Modifier) {
+internal fun ClockAndStatus(settings: State<Settings?>, modifier: Modifier = Modifier, phone: Boolean = false) {
     // Watched only while they show, as in the top bar (VpnMonitor, ExternalIp, ProxyMonitor).
-    ClockRow(rememberVpn(settings.value), rememberProxy(settings.value), modifier)
+    ClockRow(rememberVpn(settings.value), rememberProxy(settings.value), modifier, phone)
 }
 
 /**
  * The clock's panel: the statuses smaller and dimmer than the time, so the time stands out, with a thin line between
- * them and it (the owner, 2026-11-13).
+ * them and it (the owner, 2026-11-13). On a [phone], with no panel or line: they sit in the controls' top row.
  */
 @Composable
-internal fun ClockRow(vpn: Vpn?, proxy: ProxyCheck?, modifier: Modifier = Modifier) {
+internal fun ClockRow(vpn: Vpn?, proxy: ProxyCheck?, modifier: Modifier = Modifier, phone: Boolean = false) {
+    val panel = modifier.clip(RoundedCornerShape(9.dp)).background(PanelShade).padding(horizontal = 14.dp, vertical = 6.dp)
     Row(
-        modifier.clip(RoundedCornerShape(9.dp)).background(PanelShade).padding(horizontal = 14.dp, vertical = 6.dp),
+        if (phone) modifier else panel,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(if (phone) 10.dp else 12.dp)
     ) {
         vpn?.let { VpnStatus(it, StatusLook.Player) }
         proxy?.let { ProxyStatus(it, StatusLook.Player) }
-        if (vpn != null || proxy != null) Box(Modifier.width(1.dp).height(24.dp).background(Palette.text.copy(alpha = DIVIDER_ALPHA)))
-        Clock(Modifier, MaterialTheme.typography.headlineSmall, Palette.text)
+        if (phone) {
+            Clock(Modifier, LocalTextStyle.current.merge(PhoneClock), Palette.text)
+        } else {
+            if (vpn != null || proxy != null) Box(Modifier.width(1.dp).height(24.dp).background(Palette.text.copy(alpha = DIVIDER_ALPHA)))
+            Clock(Modifier, MaterialTheme.typography.headlineSmall, Palette.text)
+        }
     }
 }
+
+/** The phone's clock: 15, extra bold. */
+private val PhoneClock = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
 
 private const val DIVIDER_ALPHA = 0.25f
 
@@ -413,6 +458,7 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
     LaunchedEffect(ch.streamId) { vm.nowNext.request(ch.streamId) }
     val nn = vm.nowNext.entries[ch.streamId]
     val now by rememberMinuteClock()
+    if (!LocalFormFactor.current.isTv) return PhoneLiveControls(vm, nn, now)
     val nav = LocalNavigator.current
     ChannelControls(
         vm,
@@ -424,14 +470,14 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
             nn?.now?.let { current ->
                 // Whole minutes, rounded up: "1 min left" until it ends (and nothing once it has, until the guide moves on).
                 val minutesLeft = (current.stopMs - now + MINUTE_MS - 1) / MINUTE_MS
-                val span = current.startMs..current.stopMs
+                val bar = vm.liveBar(current.startMs..current.stopMs, nn.progress(now))
                 // The same play bar as catch-up's and a film's (the owner, 2026-11-23): its handle on the bar, and where
                 // skipping back goes (on a channel with catch-up; not before the programme on now, on this bar).
                 Timeline(
                     formatTime(current.startMs),
-                    nn.progress(now),
+                    bar.fraction,
                     formatTime(current.stopMs),
-                    scrub = vm.scrubMs?.let { ((it - span.first).toFloat() / (span.last - span.first).coerceAtLeast(1)).coerceIn(0f, 1f) },
+                    scrub = bar.scrub,
                     handle = LocalBarSelected.current,
                     after = if (minutesLeft >
                         0
@@ -439,8 +485,9 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
                         stringResource(R.string.common_time_left, formatRuntime((minutesLeft * 60).toInt()))
                     } else {
                         null
-                    }
-                ) { vm.scrubTo(span, it) }
+                    },
+                    onSeek = bar.onSeek
+                )
             }
         }
     ) {
@@ -476,7 +523,7 @@ internal fun ChannelControls(
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(22.dp)) {
             ChannelLogo(ch.logoUrl, ch.name, 110.dp, 66.dp)
             Column(Modifier.weight(1f)) {
-                Muted(listOfNotNull(ch.numberLabel, ch.name, line).filter { it.isNotEmpty() }.joinToString(" · "))
+                Muted(ch.numberAndName(line))
                 Text(title ?: ch.name, style = MaterialTheme.typography.displaySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 details?.let { ProgrammeAbout(it, maxLines = 2) }
             }

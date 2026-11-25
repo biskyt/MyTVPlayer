@@ -68,11 +68,11 @@ import com.biskyt.mytvplayer.ui.common.MoveBackHandler
 import com.biskyt.mytvplayer.ui.common.MoveHint
 import com.biskyt.mytvplayer.ui.common.MoveLayout
 import com.biskyt.mytvplayer.ui.common.Muted
+import com.biskyt.mytvplayer.ui.common.NowLine
 import com.biskyt.mytvplayer.ui.common.NowNext
 import com.biskyt.mytvplayer.ui.common.PageFocus
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.ProgressLine
-import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TabScaffold
 import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.afterRemoval
@@ -81,11 +81,11 @@ import com.biskyt.mytvplayer.ui.common.categoryEntries
 import com.biskyt.mytvplayer.ui.common.collectIds
 import com.biskyt.mytvplayer.ui.common.digit
 import com.biskyt.mytvplayer.ui.common.distinctLabels
-import com.biskyt.mytvplayer.ui.common.formatTime
 import com.biskyt.mytvplayer.ui.common.glowRoom
 import com.biskyt.mytvplayer.ui.common.glowRoomPadding
 import com.biskyt.mytvplayer.ui.common.isGuide
 import com.biskyt.mytvplayer.ui.common.isLockedCategory
+import com.biskyt.mytvplayer.ui.common.nowLine
 import com.biskyt.mytvplayer.ui.common.numberLabel
 import com.biskyt.mytvplayer.ui.common.pageItem
 import com.biskyt.mytvplayer.ui.common.pageKeys
@@ -94,6 +94,8 @@ import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.common.reveal
 import com.biskyt.mytvplayer.ui.common.rowsInView
+import com.biskyt.mytvplayer.ui.phone.PhoneLive
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.Palette
 
 @Composable
@@ -116,6 +118,8 @@ fun LiveScreen(initialFilter: ChannelFilter?, initialGuide: Boolean, radio: Bool
             play(ch)
         }
     }
+    // A phone or an unfolded foldable (the owner, 2026-11-25): the list drawn for touch. The guide stays the TV's.
+    if (!LocalFormFactor.current.isTv && !initialGuide) return PhoneLive(vm, play, open)
 
     LaunchedEffect(Unit) { vm.restoreFocusPending = true }
     // Right from the categories enters the guide's programmes (see GuideGrid).
@@ -124,11 +128,7 @@ fun LiveScreen(initialFilter: ChannelFilter?, initialGuide: Boolean, radio: Bool
     val inContent = remember { mutableStateOf(false) }
 
     TabScaffold(
-        when {
-            vm.catchupMode -> Tab.CATCHUP
-            radio -> Tab.RADIO
-            else -> Tab.LIVE
-        },
+        vm.tab,
         // Anywhere on the screen, the tabs included (else the TV would take the Guide button for its own guide): 0–9
         // on the remote jumps straight to that channel number; the Guide button switches list/guide.
         Modifier.onPreviewKeyEvent { e ->
@@ -189,35 +189,41 @@ private fun BackToFilter(filterBox: FocusRequester, inside: MutableState<Boolean
 
 @Composable
 private fun LiveCategories(vm: LiveViewModel, selected: ChannelFilter, right: FocusRequester) {
-    if (vm.catchupMode) return CatchupCategories(vm, selected, right)
+    val entries = liveEntries(vm)
+    // The Catch-up tab's column: all catch-up channels, then each category that has some (none to hide).
+    if (vm.catchupMode) return FilteredCategoryColumn(entries, fixed = 1, selected, vm.filters::focus, vm.filters::select, right = right)
+    FilteredCategoryColumn(entries, fixed = 3, selected, vm.filters::focus, vm.filters::select, vm::hideCategory, right)
+}
+
+/**
+ * The lists to pick from, for a TV's column and a phone's chips: Favourites, Recently watched and All channels, then the
+ * categories A to Z; in the Catch-up tab, all catch-up channels, then each category that has some.
+ */
+@Composable
+internal fun liveEntries(vm: LiveViewModel): List<CategoryEntry<ChannelFilter>> {
+    if (vm.catchupMode) {
+        val categories by vm.catchupCategories.collectAsState()
+        val all = stringResource(R.string.live_all_catchup)
+        return remember(categories, all) {
+            listOf<CategoryEntry<ChannelFilter>>(CategoryEntry(ChannelFilter.Catchup, all, categories.sumOf { it.count })) +
+                distinctLabels(categories, { it.label }, { it.labelGroup }) { c, label ->
+                    CategoryEntry<ChannelFilter>(ChannelFilter.CatchupCategory(c.categoryId), label, c.count)
+                }
+        }
+    }
     val categories by vm.categories.collectAsState()
     val favourites = stringResource(R.string.common_favourites)
     val recent = stringResource(R.string.common_recent)
     val all = stringResource(R.string.live_all_channels)
     // The count the list's heading shows for All channels too.
     val total by vm.totalCount.collectAsState()
-    val entries = remember(categories, favourites, recent, all, total) {
+    return remember(categories, favourites, recent, all, total) {
         listOf<CategoryEntry<ChannelFilter>>(
             CategoryEntry(ChannelFilter.Favourites, favourites),
             CategoryEntry(ChannelFilter.Recent, recent),
             CategoryEntry(ChannelFilter.All, all, total)
         ) + categoryEntries<ChannelFilter>(categories) { ChannelFilter.Category(it.categoryId) }
     }
-    FilteredCategoryColumn(entries, fixed = 3, selected, vm.filters::focus, vm.filters::select, vm::hideCategory, right)
-}
-
-/** The Catch-up tab's column: all catch-up channels, then each category that has some. */
-@Composable
-private fun CatchupCategories(vm: LiveViewModel, selected: ChannelFilter, right: FocusRequester) {
-    val categories by vm.catchupCategories.collectAsState()
-    val all = stringResource(R.string.live_all_catchup)
-    val entries = remember(categories, all) {
-        listOf<CategoryEntry<ChannelFilter>>(CategoryEntry(ChannelFilter.Catchup, all, categories.sumOf { it.count })) +
-            distinctLabels(categories, { it.label }, { it.labelGroup }) { c, label ->
-                CategoryEntry<ChannelFilter>(ChannelFilter.CatchupCategory(c.categoryId), label, c.count)
-            }
-    }
-    FilteredCategoryColumn(entries, fixed = 1, selected, vm.filters::focus, vm.filters::select, right = right)
 }
 
 @Composable
@@ -367,8 +373,7 @@ fun ChannelRow(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            nn.next?.let { stringResource(R.string.live_next, formatTime(it.startMs), programmeTitle(it.title)) }
-                                ?: stringResource(R.string.live_until, formatTime(nn.now.stopMs)),
+                            nowLine(nn, NowLine.NEXT),
                             style = MaterialTheme.typography.bodySmall,
                             color = Palette.textDim,
                             maxLines = 1,

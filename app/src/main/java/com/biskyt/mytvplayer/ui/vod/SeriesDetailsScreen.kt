@@ -97,6 +97,7 @@ import com.biskyt.mytvplayer.ui.common.rememberTrailerOpener
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.common.shortEpisodeLabel
 import com.biskyt.mytvplayer.ui.common.timeLeft
+import com.biskyt.mytvplayer.ui.phone.PhoneSeriesPage
 import com.biskyt.mytvplayer.ui.player.EpisodeDescriptionPanel
 import com.biskyt.mytvplayer.ui.player.episodeDescriptionAction
 import com.biskyt.mytvplayer.ui.player.episodeName
@@ -104,6 +105,7 @@ import com.biskyt.mytvplayer.ui.theme.BOLD
 import com.biskyt.mytvplayer.ui.theme.BoardStyle
 import com.biskyt.mytvplayer.ui.theme.EXTRA_BOLD
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.MEDIUM
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.bd
@@ -283,6 +285,38 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
     // TMDB's episodes of the season shown, for those the provider says little about.
     LaunchedEffect(tmdb, season) { season?.let(vm::loadTmdbSeason) }
 
+    if (!LocalFormFactor.current.isTv) {
+        // A phone or an unfolded foldable (the owner, 2026-11-25): its own layout. The panels below stay.
+        PhoneSeriesPage(vm, show, d, season, next, target, progress, play)
+    } else {
+        TvSeriesPage(vm, show, d, season, next, target, progress, play)
+    }
+    val trailer = rememberTrailerOpener()
+    val openCrew: (Int, CastMember) -> Unit = { i, person ->
+        vm.castFocus = i
+        val acting = i < vm.info.cast.size
+        personScreen(screen.playlistId, person, show.title, Tab.SERIES, acting)?.let(nav::push)
+    }
+    val moreLike = { tmdbId: Int -> nav.push(Screen.MoreLike(screen.playlistId, tmdbId, series = true, show.title, Tab.SERIES)) }
+    SeriesPanels(vm, show.title, progress, vm.info.trailer?.let { url -> { trailer(url) } }, openCrew, moreLike)
+}
+
+/**
+ * The series page on a TV: the left column ([SeriesColumn]) with Continue ([next]) and the favourite's heart, and
+ * [season]'s episodes beside it. [target] is the episode asked for (from the TV guide), which has focus as it opens.
+ */
+@Composable
+@Suppress("LongParameterList") // the page's state, passed down rather than read again
+private fun TvSeriesPage(
+    vm: SeriesDetailsViewModel,
+    show: SeriesEntity,
+    d: SeriesDetails?,
+    season: Int?,
+    next: EpisodeInfo?,
+    target: EpisodeInfo?,
+    progress: Map<Long, WatchProgressEntity>,
+    play: (EpisodeInfo) -> Unit
+) {
     // Right from the left column goes into the episode list (at its first unplayed episode), not up to the top bar
     // when the list is too short to be beside the buttons. Only while the list is shown.
     val episodes = remember { FocusRequester() }
@@ -332,14 +366,6 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
             }
         }
     }
-    val trailer = rememberTrailerOpener()
-    val openCrew: (Int, CastMember) -> Unit = { i, person ->
-        vm.castFocus = i
-        val acting = i < vm.info.cast.size
-        personScreen(screen.playlistId, person, show.title, Tab.SERIES, acting)?.let(nav::push)
-    }
-    val moreLike = { tmdbId: Int -> nav.push(Screen.MoreLike(screen.playlistId, tmdbId, series = true, show.title, Tab.SERIES)) }
-    SeriesPanels(vm, show.title, progress, vm.info.trailer?.let { url -> { trailer(url) } }, openCrew, moreLike)
 }
 
 /** What is open over the series page ([SeriesDetailsViewModel.open]): its own composable, so the page does not recompose with it. */
@@ -400,16 +426,8 @@ fun SeriesColumn(
     Column(Modifier.width(300.bd).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.bd)) {
         Poster(show.coverUrl ?: info.posterUrl, show.title, 120.bd, radius = 10.bd)
         Text(show.title, style = SeriesTitle.current, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        // One season: its name says it, so not "1 season" too. TMDB's count (in the status line) says it better.
-        val seasons = d?.seasons?.size?.takeIf { it > 1 && info.tmdb?.seasonCount == null }
-            ?.let { pluralStringResource(R.plurals.vod_seasons, it, it) }
         val current = season?.let { n -> seasonName(n, d?.seasons?.firstOrNull { it.number == n }?.name) }
-        // The season's year: when its first episode was first shown.
-        val year = d?.episodes?.filter { it.season == season }?.mapNotNull { it.airDate?.year }?.minOrNull()
-        val facts = listOfNotNull(
-            current,
-            metaLine((year ?: show.year ?: info.year)?.toString(), null, info.genre, show.rating ?: info.rating, seasons).ifEmpty { null }
-        ).joinToString(" · ")
+        val facts = listOfNotNull(current, seriesFacts(show, d, info, season).ifEmpty { null }).joinToString(" · ")
         if (facts.isNotEmpty() || info.score != null) {
             // TMDB's score after the facts, on the next line when they fill this one (as MyPlexPlayer's scores).
             WrapRow(8.bd) {
@@ -432,11 +450,36 @@ fun SeriesColumn(
     }
 }
 
+/**
+ * A series' facts: "2019 · 3 seasons · Drama · ★ 7.9". The year is [season]'s (when its first episode was first
+ * shown), else the show's. One season's name says it, so there is no "1 season"; TMDB's count (in the status line)
+ * says it better.
+ */
+@Composable
+internal fun seriesFacts(show: SeriesEntity, d: SeriesDetails?, info: TitleInfo, season: Int?): String {
+    val seasons = d?.seasons?.size?.takeIf { it > 1 && info.tmdb?.seasonCount == null }
+        ?.let { pluralStringResource(R.plurals.vod_seasons, it, it) }
+    val year = d?.episodes?.filter { it.season == season }?.mapNotNull { it.airDate?.year }?.minOrNull()
+    return metaLine((year ?: show.year ?: info.year)?.toString(), null, info.genre, show.rating ?: info.rating, seasons)
+}
+
 /** A season's name: the provider's, else the app's ("Season 2"). */
 @Composable
 internal fun seasonName(number: Int, name: String?) = name ?: stringResource(R.string.vod_season, number)
 
 /** "Continue S2 E4 · 21 min left", "Continue S2 E5" (the next one), or "Play S1 E1" when nothing is watched yet. */
+@Composable
+internal fun continueText(e: EpisodeInfo, progress: Map<Long, WatchProgressEntity>): String {
+    val label = shortEpisodeLabel(e.season, e.number)
+    val started = progress[e.id].partWatched()
+    return when {
+        started != null -> stringResource(R.string.vod_continue_left, label, timeLeft(started))
+        progress.isNotEmpty() -> stringResource(R.string.vod_continue_episode, label)
+        else -> stringResource(R.string.vod_play_episode, label)
+    }
+}
+
+/** Continue (see [continueText]): it plays [e]. */
 @Composable
 private fun ContinueButton(
     e: EpisodeInfo,
@@ -445,15 +488,8 @@ private fun ContinueButton(
     options: () -> Unit,
     modifier: Modifier
 ) {
-    val label = shortEpisodeLabel(e.season, e.number)
-    val started = progress[e.id].partWatched()
-    val text = when {
-        started != null -> stringResource(R.string.vod_continue_left, label, timeLeft(started))
-        progress.isNotEmpty() -> stringResource(R.string.vod_continue_episode, label)
-        else -> stringResource(R.string.vod_play_episode, label)
-    }
     // Holding OK opens the options of the episode it plays, as on the film page's buttons.
-    DetailButton(text, { play(e) }, modifier, strong = true, horizontal = 18.bd, onLongClick = options)
+    DetailButton(continueText(e, progress), { play(e) }, modifier, strong = true, horizontal = 18.bd, onLongClick = options)
 }
 
 /**
@@ -622,7 +658,7 @@ private fun EpisodeRow(
 }
 
 /** What is left of a part-watched episode, or null. */
-private fun WatchProgressEntity?.partWatched() = this?.takeIf { it.started && !it.finished && it.durationMs > 0 }
+internal fun WatchProgressEntity?.partWatched() = this?.takeIf { it.started && !it.finished && it.durationMs > 0 }
 
 @Composable
 private fun EpisodeNumber(e: EpisodeInfo, open: Boolean) =
@@ -648,7 +684,7 @@ private fun ClosedEpisode(e: EpisodeInfo, name: String, progress: WatchProgressE
                 if (progress?.finished == true) WatchedTick()
             }
             val part = progress.partWatched()
-            val length = listOfNotNull(e.durationSec?.let(::formatRuntime), part?.let { timeLeftText(it) }).joinToString(" · ")
+            val length = episodeLength(e, part)
             if (length.isNotEmpty()) Text(length, style = EpisodeSmall.current, color = Palette.textDim, maxLines = 1)
             if (part != null) ProgressLine(part.fraction, Modifier.padding(top = 3.bd).width(160.bd), height = 3.bd)
         }
@@ -672,11 +708,7 @@ private fun OpenEpisode(e: EpisodeInfo, name: String, progress: WatchProgressEnt
                 if (progress?.finished == true) WatchedTick()
             }
             val part = progress.partWatched()
-            val info = listOfNotNull(
-                e.durationSec?.let(::formatRuntime),
-                part?.let { timeLeftText(it) },
-                e.airDate?.let { stringResource(R.string.vod_first_shown, formatDate(it)) }
-            ).joinToString(" · ")
+            val info = episodeLength(e, part, firstShown = true)
             if (info.isNotEmpty()) {
                 Text(
                     info,
@@ -694,8 +726,16 @@ private fun OpenEpisode(e: EpisodeInfo, name: String, progress: WatchProgressEnt
     }
 }
 
+/**
+ * An episode's running time, and what is left of it when [part]-watched: "45 min · 21 min left". With [firstShown],
+ * when it was first shown too.
+ */
 @Composable
-private fun timeLeftText(p: WatchProgressEntity) = stringResource(R.string.common_time_left, timeLeft(p))
+internal fun episodeLength(e: EpisodeInfo, part: WatchProgressEntity?, firstShown: Boolean = false): String = listOfNotNull(
+    e.durationSec?.let(::formatRuntime),
+    part?.let { stringResource(R.string.common_time_left, timeLeft(it)) },
+    e.airDate?.takeIf { firstShown }?.let { stringResource(R.string.vod_first_shown, formatDate(it)) }
+).joinToString(" · ")
 
 /** "✓ Watched", in the accent colour. */
 @Composable

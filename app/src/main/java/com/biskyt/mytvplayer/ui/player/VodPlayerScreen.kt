@@ -21,6 +21,8 @@ import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.appViewModel
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.formatDuration
+import com.biskyt.mytvplayer.ui.phone.PhoneVodControls
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.vod.TitlePanels
 
 /** Movies and episodes. */
@@ -42,6 +44,7 @@ fun VodPlayerScreen(screen: Screen.VodPlayer) {
 
 @Composable
 private fun VodControls(vm: VodPlayerViewModel, buttons: FocusRequester, root: FocusRequester) {
+    if (!LocalFormFactor.current.isTv) return PhoneVodControls(vm)
     ControlsPanel {
         Column {
             if (vm.subtitle.isNotEmpty()) Muted(vm.subtitle)
@@ -55,22 +58,14 @@ private fun VodControls(vm: VodPlayerViewModel, buttons: FocusRequester, root: F
 /** Its own composable, so the once-a-second time update redraws only this row. */
 @Composable
 private fun Position(vm: VodPlayerViewModel) {
-    val dur = vm.durationSec
-    val scrub = vm.scrubMs
     // While scrubbing, the time shown is where playback will go.
-    val pos = scrub?.div(1000) ?: vm.positionSec
+    val pos = vm.scrubMs?.div(1000) ?: vm.positionSec
     // Known once playback has started.
-    val totalMs = (dur * 1000).takeIf { it > 0 }
-    fun fraction(sec: Long) = totalMs?.let { sec * 1000f / it } ?: 0f
+    val totalMs = (vm.durationSec * 1000).takeIf { it > 0 }
+    val bar = vm.vodBar()
     // The bar the whole width; under it, how far in of how long, and how long is left.
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        SeekBar(
-            fraction(vm.positionSec),
-            scrub?.let { fraction(it / 1000) },
-            handle = LocalBarSelected.current,
-            onSeek = totalMs?.let { t -> { vm.scrubTo(0L..t, it) } },
-            modifier = Modifier.fillMaxWidth()
-        )
+        SeekBar(bar.fraction, bar.scrub, handle = LocalBarSelected.current, onSeek = bar.onSeek, modifier = Modifier.fillMaxWidth())
         Row {
             Muted(formatDuration(pos * 1000) + totalMs?.let { " / " + formatDuration(it) }.orEmpty())
             Spacer(Modifier.weight(1f))

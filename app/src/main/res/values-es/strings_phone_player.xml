@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The phone player's controls (phone spike). -->
+<resources>
+    <string name="phone_player_episodes">Episodios</string>
+    <string name="phone_player_next_episode">Siguiente episodio</string>
+    <string name="phone_player_previous_channel">Canal anterior</string>
+    <string name="phone_player_next_channel">Canal siguiente</string>
+</resources>

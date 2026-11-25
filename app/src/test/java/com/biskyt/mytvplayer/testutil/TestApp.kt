@@ -7,6 +7,7 @@ import com.biskyt.mytvplayer.MyTvApp
 import com.biskyt.mytvplayer.launcher.LauncherRows
 import com.biskyt.mytvplayer.launcher.LauncherWriter
 import com.biskyt.mytvplayer.launcher.Published
+import com.biskyt.mytvplayer.ui.theme.autoFindsTv
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.cancel
@@ -16,6 +17,8 @@ import org.robolectric.shadows.ShadowLooper
 class TestApp : MyTvApp() {
     override fun onCreate() {
         lookUpNioClasses() // before any image is loaded
+        // The TV's screens, as Robolectric reports a touch screen: a test of the phone's sets it otherwise.
+        autoFindsTv = { true }
         super.onCreate()
     }
 

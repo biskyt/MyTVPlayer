@@ -61,9 +61,11 @@ import com.biskyt.mytvplayer.ui.common.onOptionsKey
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberTrailerOpener
 import com.biskyt.mytvplayer.ui.common.timeLeft
+import com.biskyt.mytvplayer.ui.phone.PhoneFilmPage
 import com.biskyt.mytvplayer.ui.theme.BOLD
 import com.biskyt.mytvplayer.ui.theme.BoardStyle
 import com.biskyt.mytvplayer.ui.theme.EXTRA_BOLD
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.MEDIUM
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.bd
@@ -218,6 +220,11 @@ fun FilmPage(
     openPerson: (CastMember) -> Unit,
     playTrailer: (() -> Unit)?
 ) {
+    // A phone or an unfolded foldable (the owner, 2026-11-25): its own layout. The panels stay MovieDetailsScreen's.
+    if (!LocalFormFactor.current.isTv) {
+        PhoneFilmPage(movie, info, category, resumable, play, more, openPerson, playTrailer)
+        return
+    }
     val cast = info.cast
     Box(Modifier.fillMaxSize().onOptionsKey(more)) {
         Backdrop(info.backdropUrl)
@@ -228,10 +235,7 @@ fun FilmPage(
             Poster(movie.posterUrl ?: info.posterUrl, movie.title, 180.bd, radius = 10.bd)
             Column(Modifier.widthIn(max = 640.bd), verticalArrangement = Arrangement.spacedBy(8.bd)) {
                 Text(movie.title, style = FilmTitle.current, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                // With no genre (an M3U film), its category says what it is: "1958 · Movies: Classics". TMDB's release
-                // date, when known, in place of the year (the owner, 2026-11-24).
-                val released = info.tmdb?.released?.let(::formatDate) ?: (movie.year ?: info.year)?.toString()
-                val facts = metaLine(released, info.durationSec, info.genre ?: category, movie.rating ?: info.rating)
+                val facts = filmFacts(movie, info, category)
                 if (facts.isNotEmpty()) {
                     Text(
                         facts,
@@ -301,8 +305,7 @@ private fun FilmButtons(resumable: WatchProgressEntity?, play: (Boolean) -> Unit
     val resume = resumable?.takeIf { it.durationMs > 0 }
     // One button either way, so the focus it has stays when the progress loads after the page.
     DetailButton(
-        resume?.let { stringResource(R.string.vod_resume_left, timeLeft(it)) }
-            ?: stringResource(R.string.common_play),
+        resumeLabel(resume),
         { play(false) },
         rememberFirstFocus(),
         strong = true,
@@ -365,6 +368,20 @@ private val SmallMuted = BoardStyle(14, MEDIUM)
 private val CastHeading = BoardStyle(14, EXTRA_BOLD)
 private val CastName = BoardStyle(13, EXTRA_BOLD, 1.2f)
 private val CastRole = BoardStyle(12, MEDIUM, 1.2f)
+
+/**
+ * A film's facts: "15 Sept 2021 · 2 h 35 min · Drama · ★ 8.1". With no genre (an M3U film), its [category] says what
+ * it is: "1958 · Movies: Classics". TMDB's release date, when known, is in place of the year (the owner, 2026-11-24).
+ */
+internal fun filmFacts(movie: MovieEntity, info: TitleInfo, category: String?): String {
+    val released = info.tmdb?.released?.let(::formatDate) ?: (movie.year ?: info.year)?.toString()
+    return metaLine(released, info.durationSec, info.genre ?: category, movie.rating ?: info.rating)
+}
+
+/** The main button of a film: "Resume · 38 min left" for a film started ([resume]), else "Play". */
+@Composable
+internal fun resumeLabel(resume: WatchProgressEntity?): String =
+    resume?.let { stringResource(R.string.vod_resume_left, timeLeft(it)) } ?: stringResource(R.string.common_play)
 
 /** A film's original title, from TMDB, when it is not the [title] shown. */
 fun originalTitle(title: String, tmdb: TmdbTitle?): String? = tmdb?.originalTitle?.takeUnless { it.equals(title, ignoreCase = true) }

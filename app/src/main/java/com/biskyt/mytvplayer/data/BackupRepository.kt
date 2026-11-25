@@ -7,6 +7,7 @@ import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.core.epg.CategoryLanguageDetector
 import com.biskyt.mytvplayer.data.db.AppDatabase
+import com.biskyt.mytvplayer.data.db.CAT_LIVE
 import com.biskyt.mytvplayer.data.db.CategoryEntity
 import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.ChannelEpgMappingEntity
@@ -163,7 +164,9 @@ class BackupRepository(
                 backup.categories.map { cat ->
                     // Before 1.9.0 nothing was restricted: adult categories are, as they start.
                     val adult = !backup.restrictions && cat.lang == CategoryLanguageDetector.ADULT
-                    if (adult || cat.key() in keep) cat.copy(restricted = true) else cat
+                    val restricted = cat.copy(restricted = cat.restricted || adult || cat.key() in keep)
+                    // A backup has no movies or series: their categories count none until they are loaded here.
+                    if (cat.type == CAT_LIVE) restricted else restricted.copy(channelCount = 0)
                 },
                 backup.channels,
                 backup.favourites,
@@ -177,8 +180,14 @@ class BackupRepository(
         val ids = backup.playlists.map { it.id }
         val active = backup.settings.activePlaylistId.takeIf { it in ids } ?: ids.firstOrNull() ?: 0
         // This TV's parental controls PIN stays (backups have none), and with one set, the hide settings too. So does
-        // whether this TV shows its cards on its home screen (a phone has none, and it is off unless turned on here).
-        val restored = backup.settings.copy(activePlaylistId = active, pinHash = now.pinHash, launcherRows = now.launcherRows)
+        // whether this TV shows its cards on its home screen (a phone has none, and it is off unless turned on here), and
+        // this device's layout (a backup from a TV must not give a phone the TV's layout).
+        val restored = backup.settings.copy(
+            activePlaylistId = active,
+            pinHash = now.pinHash,
+            launcherRows = now.launcherRows,
+            layout = now.layout
+        )
         settings.update {
             if (now.pinHash.isEmpty()) {
                 restored

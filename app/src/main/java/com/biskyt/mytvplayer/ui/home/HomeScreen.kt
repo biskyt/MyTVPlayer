@@ -90,6 +90,8 @@ import com.biskyt.mytvplayer.ui.common.titledRow
 import com.biskyt.mytvplayer.ui.common.vodActions
 import com.biskyt.mytvplayer.ui.common.vodDetails
 import com.biskyt.mytvplayer.ui.live.ChannelOptionsPanel
+import com.biskyt.mytvplayer.ui.phone.PhoneHome
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.vod.TitlePanel
 import com.biskyt.mytvplayer.ui.vod.TitlePanels
 import com.biskyt.mytvplayer.ui.vod.describedEpisode
@@ -180,6 +182,13 @@ fun HomeScreen() {
     vm.nowNext.PauseWhenHidden()
     // Each time Home shows: what was watched on the user's other TVs (the sync between TVs).
     LaunchedEffect(Unit) { vm.syncProgress() }
+    // A phone or an unfolded foldable (the owner, 2026-11-25): its own layout, from the same rows.
+    if (LocalFormFactor.current.isTv) TvHome(vm) else PhoneHome(vm)
+}
+
+/** Home on a TV: Continue watching, the favourite channels, recently watched, then favourite series and movies. */
+@Composable
+private fun TvHome(vm: HomeViewModel) {
     val nav = LocalNavigator.current
     val favourites by vm.favourites.collectAsState()
     val recent by vm.recent.collectAsState()
@@ -342,7 +351,7 @@ private fun HomeTile.isIn(
  * A Home card whose options are open: a channel (from [list]: favourites or recently watched), a title carried on, or a
  * favourite movie or series.
  */
-private sealed interface HomeTile {
+internal sealed interface HomeTile {
     data class Channel(val ch: ChannelEntity, val list: ChannelFilter) : HomeTile
 
     data class CarryOn(val p: WatchProgressEntity) : HomeTile
@@ -352,7 +361,7 @@ private sealed interface HomeTile {
 
 /** Holding OK on a Home card: watch it, and favourites, catch-up and the guide source, or take it off its row. */
 @Composable
-private fun TileOptions(tile: HomeTile, vm: HomeViewModel, pid: Long, onDismiss: (removed: Boolean) -> Unit) {
+internal fun TileOptions(tile: HomeTile, vm: HomeViewModel, pid: Long, onDismiss: (removed: Boolean) -> Unit) {
     val close = { onDismiss(false) }
     when (tile) {
         is HomeTile.Channel -> {
@@ -377,7 +386,7 @@ private fun TileOptions(tile: HomeTile, vm: HomeViewModel, pid: Long, onDismiss:
                 },
                 restartFilter = { tile.list },
                 beforeHide = listOfNotNull(
-                    moveAction(vm.mover, CAT_LIVE, ch.streamId, close, CHANNEL_ROW_LIMIT).takeIf { tile.list == ChannelFilter.Favourites }
+                    moveAction(vm.mover, CAT_LIVE, ch.streamId, close, CHANNEL_ROW_LIMIT)?.takeIf { tile.list == ChannelFilter.Favourites }
                 ),
                 last = listOfNotNull(
                     ItemAction.Run(removeRecent) {
@@ -445,7 +454,7 @@ private fun FavouriteOptions(tile: HomeTile.Vod, vm: HomeViewModel, pid: Long, o
     val actions = vodActions(pid, tile.type, tile.card.id, favourite = true) { favourite ->
         vm.setVodFavourite(tile.type, tile.card.id, favourite)
         if (!favourite) onDismiss(true)
-    } + moveAction(vm.mover, tile.type, tile.card.id, close, VOD_ROW_LIMIT) +
+    } + listOfNotNull(moveAction(vm.mover, tile.type, tile.card.id, close, VOD_ROW_LIMIT)) +
         titleExtraActions(pid, tmdb, film, tile.card.title, described = null) { panel = it }
     if (panel == null) ItemActionsPanel(tile.card.title, actions, close)
     TitlePanels(panel, pid, tile.card.title, tmdb, film, close)
@@ -518,16 +527,7 @@ private fun CarryOnRow(
 /** A movie or episode carried on: its poster with how far it got, and under it its title and what's left or up next. */
 @Composable
 private fun CarryOnCard(p: WatchProgressEntity, modifier: Modifier, onLongClick: () -> Unit, onClick: () -> Unit) {
-    val left = when {
-        // A finished episode with another after it that has no card of its own (saved before 1.8.2, or
-        // watched already): the card leads on to that one.
-        p.finished -> stringResource(R.string.home_up_next_after, episodeCode(p))
-        // (The next one up, its running time not known: no time.)
-        p.season != null && p.episode != null ->
-            if (p.durationMs > 0) "${episodeCode(p)} ${shortLeft(p.remainingMs)}" else episodeCode(p)
-        p.durationMs > 0 -> shortLeft(p.remainingMs)
-        else -> ""
-    }
+    val left = carryOnLeft(p)
     PosterTile(
         onClick,
         onLongClick,
@@ -539,13 +539,32 @@ private fun CarryOnCard(p: WatchProgressEntity, modifier: Modifier, onLongClick:
                 // (Its initials, shown until the picture loads, are not read: the card's texts are.)
                 Poster(p.imageUrl, p.title, POSTER_WIDTH, Modifier.clearAndSetSemantics {})
                 // (Not before it has been started: an episode up next.)
-                if (!p.finished && p.started) ProgressLine(p.fraction, Modifier.align(Alignment.BottomCenter).padding(6.dp))
+                p.carryOnProgress?.let { ProgressLine(it, Modifier.align(Alignment.BottomCenter).padding(6.dp)) }
             }
         }
     ) { focused ->
         OneLine(p.title, MaterialTheme.typography.labelLarge, focused = focused)
         Muted(left)
     }
+}
+
+/**
+ * How far a Continue watching card got, for the line along its poster: none before it starts (an episode up next) or
+ * once it is finished.
+ */
+internal val WatchProgressEntity.carryOnProgress: Float? get() = fraction.takeIf { !finished && started }
+
+/** What is left of a Continue watching card, short: "S1E3 42m", "1h 5m", or the episode up next. */
+@Composable
+internal fun carryOnLeft(p: WatchProgressEntity): String = when {
+    // A finished episode with another after it that has no card of its own (saved before 1.8.2, or
+    // watched already): the card leads on to that one.
+    p.finished -> stringResource(R.string.home_up_next_after, episodeCode(p))
+    // (The next one up, its running time not known: no time.)
+    p.season != null && p.episode != null ->
+        if (p.durationMs > 0) "${episodeCode(p)} ${shortLeft(p.remainingMs)}" else episodeCode(p)
+    p.durationMs > 0 -> shortLeft(p.remainingMs)
+    else -> ""
 }
 
 /** An episode, short, as a card has room for: "S1E2". */
@@ -568,7 +587,7 @@ private const val MINUTES_PER_HOUR = 60
 
 /** The title of Home's row of favourite movies or series ([type]). */
 @StringRes
-private fun favouriteRowTitle(type: String) = if (type == CAT_MOVIE) R.string.home_favourite_movies else R.string.home_favourite_series
+internal fun favouriteRowTitle(type: String) = if (type == CAT_MOVIE) R.string.home_favourite_movies else R.string.home_favourite_series
 
 /**
  * Home's first focus: the first card of its first row, with the page at the top. It takes focus once the rows are read

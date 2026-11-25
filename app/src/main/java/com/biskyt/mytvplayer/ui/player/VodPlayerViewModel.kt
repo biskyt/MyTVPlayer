@@ -59,6 +59,14 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
     /** The episode after this one, if any. */
     private var nextEpisode: EpisodeInfo? = null
 
+    /** The next episode's player, for the phone player's Next episode button (the owner, 2026-11-25); null when there is none. */
+    var nextEpisodeScreen by mutableStateOf<Screen?>(null)
+        private set
+
+    /** The series page at this episode: the menu's All episodes, and the phone player's Episodes button. Null for a film. */
+    val seriesPage: Screen.SeriesDetails?
+        get() = series?.let { Screen.SeriesDetails(screen.playlistId, it, current?.episode?.season, current?.episode?.number) }
+
     override val isLive = false
     override val failureMessage = R.string.player_failure_vod
 
@@ -123,16 +131,12 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
             }
         },
         // In place of the player: playing from there starts a new player, not a second one over this.
-        if (series == null) {
-            ItemAction.Open(appString(R.string.common_about_movie), Screen.MovieDetails(screen.playlistId, screen.itemId), replace = true)
-        } else {
-            val episode = current?.episode
-            ItemAction.Open(
-                appString(R.string.common_all_episodes),
-                Screen.SeriesDetails(screen.playlistId, series, episode?.season, episode?.number),
+        seriesPage?.let { ItemAction.Open(appString(R.string.common_all_episodes), it, replace = true) }
+            ?: ItemAction.Open(
+                appString(R.string.common_about_movie),
+                Screen.MovieDetails(screen.playlistId, screen.itemId),
                 replace = true
             )
-        }
     ) + tmdbActions()
 
     /** As the title's page offers them: Cast and crew, More like this, a show's About and its links (not its trailers). */
@@ -212,6 +216,7 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         title = show?.title ?: episodeName(e, null)
         subtitle = episodeLabel(e, show?.title)
         nextEpisode = episodes.getOrNull(index + 1)
+        nextEpisodeScreen = nextEpisode?.let { Screen.VodPlayer(p.id, it.id, seriesId) }
         // Saved for Continue watching: the provider's words only, never the app's (they'd stay in today's language).
         val playing = Playing(VOD_EPISODE, e.id, show?.title ?: e.title, show?.coverUrl ?: e.imageUrl, e, show?.title)
         play(p, playing, c.vod.episodeUrl(p, e.id, e.extension), fromStart)

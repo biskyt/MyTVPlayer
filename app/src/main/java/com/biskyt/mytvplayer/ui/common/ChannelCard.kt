@@ -50,14 +50,35 @@ fun ChannelCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Muted(
-                nn?.now?.let { on ->
-                    val until = formatTime(on.stopMs)
-                    nn.next?.let { stringResource(R.string.home_until_then, until, programmeTitle(it.title)) }
-                        ?: stringResource(R.string.home_until, until)
-                } ?: stringResource(R.string.common_no_guide)
-            )
+            Muted(nn?.let { nowLine(it, NowLine.UNTIL_THEN) } ?: stringResource(R.string.common_no_guide))
             ProgressLine(nn?.progress(now) ?: 0f, Modifier.fillMaxWidth())
         }
+    }
+}
+
+/** How [nowLine] tells what is on. */
+enum class NowLine {
+    /** Until when it runs, and what comes then: "Until 21:00, then News" (Home's cards). */
+    UNTIL_THEN,
+
+    /** What comes next and when, else until when it runs: "Next 21:00 News" (the TV's channel list). */
+    NEXT,
+
+    /** Its title and until when it runs: "News · Until 21:00" (the touch layouts' channel cards). */
+    TITLE_UNTIL
+}
+
+/** The line about what is on now from [nn], in the [style] given; "No guide" with nothing on now. */
+@Composable
+fun nowLine(nn: NowNext, style: NowLine): String {
+    val on = nn.now ?: return stringResource(R.string.common_no_guide)
+    val until = formatTime(on.stopMs)
+    val next = nn.next
+    return when (style) {
+        NowLine.UNTIL_THEN -> next?.let { stringResource(R.string.home_until_then, until, programmeTitle(it.title)) }
+            ?: stringResource(R.string.home_until, until)
+        NowLine.NEXT -> next?.let { stringResource(R.string.live_next, formatTime(it.startMs), programmeTitle(it.title)) }
+            ?: stringResource(R.string.live_until, until)
+        NowLine.TITLE_UNTIL -> programmeTitle(on.title) + " · " + stringResource(R.string.live_until, until)
     }
 }

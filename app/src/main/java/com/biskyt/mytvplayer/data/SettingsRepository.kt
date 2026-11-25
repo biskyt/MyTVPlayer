@@ -29,6 +29,12 @@ enum class RadioMode { INCLUDE, SECTION, HIDE }
 
 enum class StreamFormat { TS, HLS }
 
+/**
+ * The screens' layout (the owner, 2026-11-25): found from the device (the default), or the TV's or the phone's whatever
+ * the device is (see FormFactor).
+ */
+enum class LayoutMode { AUTO, TV, TOUCH }
+
 /** Serializable for backups (see BackupRepository). */
 @Serializable
 data class Settings(
@@ -49,6 +55,7 @@ data class Settings(
     /** Up and down on the remote change channel while watching (else only the channel buttons do). */
     val zapWithUpDown: Boolean = false,
     val radio: RadioMode = RadioMode.INCLUDE,
+    val layout: LayoutMode = LayoutMode.AUTO,
     val lastChannelId: Long = 0,
     val accent: Int = AccentPalette.DEFAULT,
     val largeText: Boolean = false,
@@ -93,6 +100,7 @@ class SettingsRepository(private val context: Context) {
         val subtitleLang = stringPreferencesKey("subtitle_lang")
         val buffer = stringPreferencesKey("buffer")
         val radio = stringPreferencesKey("radio")
+        val layout = stringPreferencesKey("layout")
         val format = stringPreferencesKey("stream_format")
         val startLast = booleanPreferencesKey("start_last")
         val zapUpDown = booleanPreferencesKey("zap_up_down")
@@ -159,6 +167,7 @@ class SettingsRepository(private val context: Context) {
             subtitleLanguage = valueOr(K.subtitleLang, d.subtitleLanguage),
             bufferSize = enumOr(this[K.buffer], d.bufferSize),
             radio = enumOr(this[K.radio], d.radio),
+            layout = enumOr(this[K.layout], d.layout),
             streamFormat = enumOr(this[K.format], d.streamFormat),
             startOnLastChannel = valueOr(K.startLast, d.startOnLastChannel),
             zapWithUpDown = valueOr(K.zapUpDown, d.zapWithUpDown),
@@ -196,6 +205,7 @@ class SettingsRepository(private val context: Context) {
             prefs[K.subtitleLang] = s.subtitleLanguage
             prefs[K.buffer] = s.bufferSize.name
             prefs[K.radio] = s.radio.name
+            prefs[K.layout] = s.layout.name
             prefs[K.format] = s.streamFormat.name
             prefs[K.startLast] = s.startOnLastChannel
             prefs[K.zapUpDown] = s.zapWithUpDown
