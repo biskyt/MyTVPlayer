@@ -96,7 +96,7 @@ fun PhoneBrowse(vm: VodBrowseViewModel) {
             vm.filters.settled -> PhonePosterGrid(vm, p?.id ?: 0, filter)
         }
     }
-    vm.optionsFor?.let { card -> PhonePanel { PosterOptions(vm, card, filter, playlist?.id ?: 0) } }
+    vm.optionsFor?.let { card -> PosterOptions(vm, card, filter, playlist?.id ?: 0) }
 }
 
 /** The lists to choose from (Favourites, the newest, all, then each category), as chips in a row. */

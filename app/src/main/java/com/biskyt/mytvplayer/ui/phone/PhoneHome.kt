@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -28,14 +27,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -144,7 +140,7 @@ fun PhoneHome(vm: HomeViewModel) {
             }
         }
     }
-    options?.let { tile -> PhonePanel { TileOptions(tile, vm, pid) { options = null } } }
+    options?.let { tile -> TileOptions(tile, vm, pid) { options = null } }
 }
 
 /** A row's title over [content]. */
@@ -311,22 +307,6 @@ internal fun PhonePill(label: String, primary: Boolean = false, onClick: () -> U
         Text(label, color = if (primary) Palette.background else Palette.text, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
-
-/**
- * The TV's option panels on a phone: they are made for the TV's canvas, about 430 units wide, so on a narrow phone they
- * are drawn a little smaller, to fit in nine tenths of the width.
- */
-@Composable
-internal fun PhonePanel(content: @Composable () -> Unit) {
-    val density = LocalDensity.current
-    val widthDp = LocalConfiguration.current.screenWidthDp
-    val scale = (widthDp * PANEL_SHARE / PANEL_WIDTH).coerceAtMost(1f)
-    val scaled = remember(density, scale) { Density(density.density * scale, density.fontScale) }
-    CompositionLocalProvider(LocalDensity provides scaled, content = content)
-}
-
-private const val PANEL_SHARE = 0.9f
-private const val PANEL_WIDTH = 430f
 
 /** A poster's width in rows on a phone. */
 internal val PHONE_POSTER_WIDTH = 116.dp
