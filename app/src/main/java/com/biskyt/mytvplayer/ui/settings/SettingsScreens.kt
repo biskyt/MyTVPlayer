@@ -70,6 +70,7 @@ import com.biskyt.mytvplayer.ui.common.cycle
 import com.biskyt.mytvplayer.ui.common.displayLanguage
 import com.biskyt.mytvplayer.ui.common.nativeLanguageName
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
+import com.biskyt.mytvplayer.ui.theme.findsTv
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
@@ -346,23 +347,34 @@ fun MiscSettingsScreen() {
             )
         }
         item { DownloadsRow(s.downloads) { on -> vm.update { it.copy(downloads = on) } } }
-        item {
-            // The TV's or the phone's screens, whatever the device (the owner, 2026-11-25): Automatic finds them.
-            val label = when (s.layout) {
-                LayoutMode.AUTO -> R.string.settings_layout_auto
-                LayoutMode.TV -> R.string.settings_layout_tv
-                LayoutMode.TOUCH -> R.string.settings_layout_touch
-            }
-            CycleSettingRow(
-                stringResource(R.string.settings_layout),
-                stringResource(R.string.settings_layout_help),
-                stringResource(label),
-                { d -> vm.update { it.copy(layout = LayoutMode.entries.cycle(it.layout, d)) } }
-            )
-        }
+        item { LayoutRow() }
         item { LauncherRow() }
         item { NetworkWarningRows() }
     }
+}
+
+/**
+ * The TV's or the phone's screens, whatever the device (the owner, 2026-11-25): Automatic finds them. A TV has no
+ * touch layout to choose: with a remote, its screens could not be used to set this back.
+ */
+@Composable
+private fun LayoutRow() {
+    val vm = appViewModel { SettingsViewModel(it) }
+    val s = vm.settings.collectAsState().value ?: return
+    val context = LocalContext.current
+    val tv = remember { context.findsTv() }
+    val choices = if (tv) listOf(LayoutMode.AUTO, LayoutMode.TV) else LayoutMode.entries
+    val label = when (s.layout) {
+        LayoutMode.AUTO -> R.string.settings_layout_auto
+        LayoutMode.TV -> R.string.settings_layout_tv
+        LayoutMode.TOUCH -> R.string.settings_layout_touch
+    }
+    CycleSettingRow(
+        stringResource(R.string.settings_layout),
+        stringResource(if (tv) R.string.settings_layout_help_tv else R.string.settings_layout_help),
+        stringResource(label),
+        { d -> vm.update { it.copy(layout = choices.cycle(it.layout, d)) } }
+    )
 }
 
 /**

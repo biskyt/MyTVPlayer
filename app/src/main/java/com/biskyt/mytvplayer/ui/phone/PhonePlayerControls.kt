@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -39,11 +40,11 @@ import com.biskyt.mytvplayer.data.programmeTitle
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.common.AppIcons
-import com.biskyt.mytvplayer.ui.common.NowNext
 import com.biskyt.mytvplayer.ui.common.formatDuration
 import com.biskyt.mytvplayer.ui.common.formatRuntime
 import com.biskyt.mytvplayer.ui.common.formatTime
 import com.biskyt.mytvplayer.ui.common.onPlainTap
+import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.player.CatchupPlayerViewModel
 import com.biskyt.mytvplayer.ui.player.ClockAndStatus
 import com.biskyt.mytvplayer.ui.player.LocalPlayerSettings
@@ -110,25 +111,31 @@ private fun VodSeekRow(vm: VodPlayerViewModel) {
     val totalMs = (vm.durationSec * 1000).takeIf { it > 0 }
     // While skipping, the times shown are where playback will go.
     val posMs = vm.scrubMs ?: (vm.positionSec * 1000)
-    val left = totalMs?.let { "−" + formatDuration((it - posMs).coerceAtLeast(0)) }.orEmpty()
+    val left = totalMs?.let { stringResource(R.string.common_time_left, formatDuration((it - posMs).coerceAtLeast(0))) }.orEmpty()
     SeekRow(PhoneSeek(vm.vodBar(), formatDuration(posMs), left))
 }
 
 /**
  * A live channel: its name and the programme on now, channel buttons in place of skipping, and the programme's
- * progress (a bar to drag back in time on a channel with catch-up, as on a TV with touch).
+ * progress (a bar to drag back in time on a channel with catch-up, as on a TV with touch). With no channel (not read
+ * yet, or not found), only the rest: Back, the clock and the buttons.
  */
 @Composable
-internal fun PhoneLiveControls(vm: PlayerViewModel, nn: NowNext?, now: Long) {
-    val ch = vm.channel ?: return
+internal fun PhoneLiveControls(vm: PlayerViewModel) {
+    val ch = vm.channel
+    ch?.let { LaunchedEffect(it.streamId) { vm.nowNext.request(it.streamId) } }
+    val nn = ch?.let { vm.nowNext.entries[it.streamId] }
+    val now by rememberMinuteClock()
     val nav = LocalNavigator.current
+    val catchup = (ch?.archiveDays ?: 0) > 0
     val seek = nn?.now?.let { p ->
         val bar = vm.liveBar(p.startMs..p.stopMs, nn.progress(now))
-        PhoneSeek(if (ch.archiveDays > 0) bar else bar.copy(onSeek = null), formatTime(p.startMs), formatTime(p.stopMs))
+        PhoneSeek(if (catchup) bar else bar.copy(onSeek = null), formatTime(p.startMs), formatTime(p.stopMs))
     }
-    PhoneControls(vm, ch.numberAndName(), nn?.now?.let { programmeTitle(it.title) }, seek?.let { { SeekRow(it) } }, live = true) {
-        PhonePill(stringResource(R.string.player_channel_guide), onClick = vm::openGuide)
-        if (ch.archiveDays > 0) {
+    val title = ch?.numberAndName().orEmpty()
+    PhoneControls(vm, title, nn?.now?.let { programmeTitle(it.title) }, seek?.let { { SeekRow(it) } }, live = true) {
+        if (ch != null) PhonePill(stringResource(R.string.player_channel_guide), onClick = vm::openGuide)
+        if (ch != null && catchup) {
             PhonePill(stringResource(R.string.common_start_over)) {
                 nav.replace(Screen.CatchupPlayer(ch.playlistId, ch.streamId, filter = vm.filter, kinds = vm.kinds))
             }
@@ -136,10 +143,14 @@ internal fun PhoneLiveControls(vm: PlayerViewModel, nn: NowNext?, now: Long) {
     }
 }
 
-/** Catch-up: the channel, the programme and how far behind live it is, the skip buttons and the programme's play bar. */
+/**
+ * Catch-up: the channel, the programme and how far behind live it is, the skip buttons and the programme's play bar.
+ * With no channel (not read yet: one not found closes the player), only the rest, as for a live channel: Back, the clock
+ * and the buttons.
+ */
 @Composable
 internal fun PhoneCatchupControls(vm: CatchupPlayerViewModel) {
-    val ch = vm.channel ?: return
+    val ch = vm.channel
     // While skipping: the programme and time playback will go to.
     val scrub = vm.scrubMs
     val at = scrub ?: vm.at
@@ -150,10 +161,12 @@ internal fun PhoneCatchupControls(vm: CatchupPlayerViewModel) {
         p?.let { programmeTitle(it.title) },
         stringResource(R.string.player_catchup_behind_live, formatRuntime(behind))
     ).joinToString(" · ")
-    PhoneControls(vm, ch.numberAndName(), line, seek?.let { { SeekRow(it) } }, live = false) {
-        PhonePill(stringResource(R.string.player_channel_guide), onClick = vm::openGuide)
-        PhonePill(stringResource(R.string.common_from_start), onClick = vm::fromStart)
-        PhonePill(stringResource(R.string.player_watch_live), onClick = vm::watchLive)
+    PhoneControls(vm, ch?.numberAndName().orEmpty(), line, seek?.let { { SeekRow(it) } }, live = false) {
+        if (ch != null) {
+            PhonePill(stringResource(R.string.player_channel_guide), onClick = vm::openGuide)
+            PhonePill(stringResource(R.string.common_from_start), onClick = vm::fromStart)
+            PhonePill(stringResource(R.string.player_watch_live), onClick = vm::watchLive)
+        }
     }
 }
 

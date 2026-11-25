@@ -16,6 +16,7 @@
     <string name="settings_misc_help">Radio stations, downloads, the TV\'s home screen, network warnings</string>
     <string name="settings_layout">Layout</string>
     <string name="settings_layout_help">TV for a remote, phone and tablet for a touch screen</string>
+    <string name="settings_layout_help_tv">A TV has the TV layout only: a remote cannot use the touch layout</string>
     <string name="settings_layout_auto">Automatic</string>
     <string name="settings_layout_tv">TV</string>
     <string name="settings_layout_touch">Phone and tablet</string>

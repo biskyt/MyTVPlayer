@@ -14,6 +14,7 @@
     <string name="settings_misc_help">Stations de radio, téléchargements, écran d\'accueil du téléviseur, alertes réseau</string>
     <string name="settings_layout">Disposition</string>
     <string name="settings_layout_help">TV pour une télécommande, téléphone et tablette pour un écran tactile</string>
+    <string name="settings_layout_help_tv">Un téléviseur n\'a que la disposition TV : une télécommande ne peut pas utiliser la disposition tactile</string>
     <string name="settings_layout_auto">Automatique</string>
     <string name="settings_layout_tv">TV</string>
     <string name="settings_layout_touch">Téléphone et tablette</string>

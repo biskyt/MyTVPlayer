@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.biskyt.mytvplayer.ui.common.PanelWindow
+import com.biskyt.mytvplayer.ui.common.ignoreHeldButtons
 import com.biskyt.mytvplayer.ui.common.onPlainTap
 import com.biskyt.mytvplayer.ui.theme.Palette
 
@@ -39,7 +40,7 @@ fun PhoneSheet(onDismiss: () -> Unit, dim: Boolean = true, content: @Composable 
         val rise = remember { Animatable(1f) }
         LaunchedEffect(Unit) { rise.animateTo(0f, tween(RISE_MS)) }
         BoxWithConstraints(
-            Modifier.fillMaxSize()
+            Modifier.fillMaxSize().ignoreHeldButtons()
                 .background(Color.Black.copy(alpha = if (dim) DIM else DIM_LIGHT))
                 .onPlainTap(onDismiss),
             contentAlignment = Alignment.BottomCenter

@@ -233,7 +233,8 @@ internal fun PlayerFrame(
         WaitingLabel(vm, Modifier.align(Alignment.Center).then(if (tv) Modifier else Modifier.padding(top = 140.dp)))
         vm.error?.let { ErrorBox(it, vm) }
         if (vm.overlay == OverlayState.CONTROLS) ControlsOverlay(vm, tv, videoFocused, settings) { controls(buttons, root) }
-        vm.message?.let { FlashLabel(it, Modifier.align(Alignment.TopCenter)) }
+        // On a phone, under the controls' top row (its Back and title).
+        vm.message?.let { FlashLabel(it, Modifier.align(Alignment.TopCenter).padding(top = if (tv) 0.dp else FLASH_PHONE_TOP)) }
         extras()
         // Over everything, and a tap on it only lights the screen again.
         if (vm.dimmed) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = DIM_ALPHA)).onPlainTap {})
@@ -332,6 +333,9 @@ internal fun ClockRow(vpn: Vpn?, proxy: ProxyCheck?, modifier: Modifier = Modifi
 private val PhoneClock = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
 
 private const val DIVIDER_ALPHA = 0.25f
+
+/** A flash message's room above it on a phone: with its own 40, it starts 64 down, under the controls' top row. */
+private val FLASH_PHONE_TOP = 24.dp
 
 /** How dark the paused screen goes when it dims. */
 private const val DIM_ALPHA = 0.85f
@@ -454,11 +458,12 @@ internal fun Modifier.panelKeys(vm: PlaybackViewModel): Modifier {
 
 @Composable
 private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: FocusRequester) {
+    // A phone's controls, with their Back and clock even before the channel is known (or when it is not found).
+    if (!LocalFormFactor.current.isTv) return PhoneLiveControls(vm)
     val ch = vm.channel ?: return
     LaunchedEffect(ch.streamId) { vm.nowNext.request(ch.streamId) }
     val nn = vm.nowNext.entries[ch.streamId]
     val now by rememberMinuteClock()
-    if (!LocalFormFactor.current.isTv) return PhoneLiveControls(vm, nn, now)
     val nav = LocalNavigator.current
     ChannelControls(
         vm,
