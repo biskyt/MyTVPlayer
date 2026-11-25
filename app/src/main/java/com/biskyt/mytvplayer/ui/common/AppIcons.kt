@@ -21,6 +21,57 @@ object AppIcons {
         }
     }.build()
 
+    /** The phone's tab bar (phone spike): a house. */
+    val Home = icon("home", false) {
+        moveTo(4f, 11f)
+        lineTo(12f, 4f)
+        lineTo(20f, 11f)
+        moveTo(6f, 9.5f)
+        verticalLineTo(20f)
+        horizontalLineTo(18f)
+        verticalLineTo(9.5f)
+    }
+
+    /** The phone's tab bar: a TV set. */
+    val Tv = icon("tv", false) {
+        moveTo(3f, 7f)
+        horizontalLineTo(21f)
+        verticalLineTo(19f)
+        horizontalLineTo(3f)
+        close()
+        moveTo(8f, 3f)
+        lineTo(12f, 7f)
+        lineTo(16f, 3f)
+    }
+
+    /** The phone's tab bar: a film strip. */
+    val Film = icon("film", false) {
+        moveTo(4f, 4f)
+        horizontalLineTo(20f)
+        verticalLineTo(20f)
+        horizontalLineTo(4f)
+        close()
+        moveTo(8f, 4f)
+        verticalLineTo(20f)
+        moveTo(16f, 4f)
+        verticalLineTo(20f)
+        moveTo(4f, 12f)
+        horizontalLineTo(8f)
+        moveTo(16f, 12f)
+        horizontalLineTo(20f)
+    }
+
+    /** The phone's tab bar: a stack of screens, for series. */
+    val Stack = icon("stack", false) {
+        moveTo(3f, 8f)
+        horizontalLineTo(21f)
+        verticalLineTo(20f)
+        horizontalLineTo(3f)
+        close()
+        moveTo(6f, 4f)
+        horizontalLineTo(18f)
+    }
+
     val Shield = icon("shield", false) {
         moveTo(12f, 3f)
         lineTo(19f, 6f)

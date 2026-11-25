@@ -1,11 +1,13 @@
 package com.biskyt.mytvplayer.ui.theme
 
+import android.content.pm.PackageManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -91,7 +93,10 @@ private fun typography(large: Boolean): Typography {
     )
 }
 
-private const val DESIGN_WIDTH = 1280f
+internal const val DESIGN_WIDTH = 1280f
+
+/** A touch screen at least this wide both ways (an unfolded foldable, a tablet) gets the larger touch layouts. */
+private const val UNFOLDED_DP = 600
 
 @Composable
 fun MyTvTheme(accentArgb: Int = AccentPalette.DEFAULT, largeText: Boolean = false, content: @Composable () -> Unit) {
@@ -118,15 +123,24 @@ fun MyTvTheme(accentArgb: Int = AccentPalette.DEFAULT, largeText: Boolean = fals
     // tvdpi), so scale density to make 1280 units span the screen: identical look on every TV, no per-size layouts.
     val density = LocalDensity.current
     val widthPx = LocalWindowInfo.current.containerSize.width
-    val scaled = remember(density, widthPx) {
-        if (widthPx > 0) Density(widthPx / DESIGN_WIDTH, density.fontScale) else density
-    }
     val context = LocalContext.current
     val touch = remember { context.hasTouchScreen() }
+    // A phone or an unfolded foldable: its real size, and phone layouts where a screen has them (see FormFactor).
+    val leanback = remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
+    val smallest = LocalConfiguration.current.smallestScreenWidthDp
+    val form = when {
+        leanback || !touch -> FormFactor.TV
+        smallest >= UNFOLDED_DP -> FormFactor.UNFOLDED
+        else -> FormFactor.PHONE
+    }
+    val scaled = remember(density, widthPx, form) {
+        if (form.isTv && widthPx > 0) Density(widthPx / DESIGN_WIDTH, density.fontScale) else density
+    }
     CompositionLocalProvider(
         LocalAccent provides accent,
         LocalDensity provides scaled,
         LocalTouch provides touch,
+        LocalFormFactor provides form,
         LocalLargeText provides largeText,
         LocalOnAccentTypography provides onAccentType
     ) {

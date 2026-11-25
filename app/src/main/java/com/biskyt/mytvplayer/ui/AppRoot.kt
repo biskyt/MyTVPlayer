@@ -1,5 +1,6 @@
 package com.biskyt.mytvplayer.ui
 
+import android.content.pm.ActivityInfo
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
@@ -68,8 +69,11 @@ import com.biskyt.mytvplayer.ui.settings.PlaylistsScreen
 import com.biskyt.mytvplayer.ui.settings.SettingsScreen
 import com.biskyt.mytvplayer.ui.settings.SyncScreen
 import com.biskyt.mytvplayer.ui.settings.WelcomeScreen
+import com.biskyt.mytvplayer.ui.theme.FormFactor
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import com.biskyt.mytvplayer.ui.theme.Palette
+import com.biskyt.mytvplayer.ui.theme.TvCanvas
 import com.biskyt.mytvplayer.ui.vod.MoreLikeScreen
 import com.biskyt.mytvplayer.ui.vod.MovieDetailsScreen
 import com.biskyt.mytvplayer.ui.vod.PersonScreen
@@ -156,6 +160,7 @@ fun AppRoot() {
                 .windowInsetsPadding(WindowInsets.displayCutout)
                 .guideButton(nav, hasPlaylist)
         ) {
+            PhoneOrientation(nav.current.screen)
             AmbientBackground(ambience, s.backdropLevel, shown = nav.current.screen.hasAmbience)
             CompositionLocalProvider(LocalAmbience provides ambience) {
                 NavHost(nav) { screen -> ScreenContent(screen, hasPlaylist) }
@@ -252,6 +257,11 @@ internal fun guideButtonOpensGuide(screen: Screen) = !screen.isPlayback && !scre
  */
 @Composable
 internal fun ScreenContent(screen: Screen, hasPlaylist: Boolean = true) {
+    // A phone or an unfolded foldable (phone spike): a screen with a phone layout draws its own frame; any other is
+    // drawn as on a TV, on the TV's canvas.
+    if (!LocalFormFactor.current.isTv) {
+        return if (screen.hasPhoneLayout) ScreenBody(screen) else TvCanvas { ScreenContent(screen, hasPlaylist) }
+    }
     if (screen.drawsOwnTopBar) return ScreenBody(screen)
     // The screen stays in one place with or without the bar, so it keeps its state as the bar comes (a backup restored
     // during set-up adds the first playlist) or goes.
@@ -306,6 +316,38 @@ private val Screen.drawsOwnTopBar: Boolean
         Screen.GuideSources,
         is Screen.GuideMatching, Screen.Backup, Screen.About, Screen.Licences -> false
     }
+
+/** The screens with a phone layout (phone spike): the rest are drawn as on a TV, on a phone too (see TvCanvas). */
+internal val Screen.hasPhoneLayout: Boolean
+    get() = this == Screen.Home ||
+        (this is Screen.Live && !guide) ||
+        this is Screen.Movies ||
+        this is Screen.Series ||
+        this is Screen.MovieDetails ||
+        this is Screen.SeriesDetails ||
+        isPlayback
+
+/**
+ * Which way up the screen is on a phone (phone spike): the phone layouts upright, and the player and the screens drawn
+ * as on a TV sideways. An unfolded foldable turns freely. A TV is left as it is.
+ */
+@Composable
+private fun PhoneOrientation(screen: Screen) {
+    val form = LocalFormFactor.current
+    val activity = LocalActivity.current ?: return
+    LaunchedEffect(screen, form) {
+        activity.requestedOrientation = when (form) {
+            FormFactor.TV -> return@LaunchedEffect
+            FormFactor.UNFOLDED -> ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+            FormFactor.PHONE ->
+                if (screen.hasPhoneLayout && !screen.isPlayback) {
+                    ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                } else {
+                    ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                }
+        }
+    }
+}
 
 /** The browsing screens, which have the background that follows the card with focus (see AmbientBackground). */
 private val Screen.hasAmbience: Boolean
