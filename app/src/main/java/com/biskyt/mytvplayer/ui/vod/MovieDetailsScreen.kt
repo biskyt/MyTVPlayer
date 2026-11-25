@@ -61,9 +61,11 @@ import com.biskyt.mytvplayer.ui.common.onOptionsKey
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberTrailerOpener
 import com.biskyt.mytvplayer.ui.common.timeLeft
+import com.biskyt.mytvplayer.ui.phone.PhoneFilmPage
 import com.biskyt.mytvplayer.ui.theme.BOLD
 import com.biskyt.mytvplayer.ui.theme.BoardStyle
 import com.biskyt.mytvplayer.ui.theme.EXTRA_BOLD
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.MEDIUM
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.bd
@@ -218,6 +220,11 @@ fun FilmPage(
     openPerson: (CastMember) -> Unit,
     playTrailer: (() -> Unit)?
 ) {
+    // A phone or an unfolded foldable (phone spike): its own layout. The panels stay MovieDetailsScreen's.
+    if (!LocalFormFactor.current.isTv) {
+        PhoneFilmPage(movie, info, category, resumable, play, more, openPerson, playTrailer)
+        return
+    }
     val cast = info.cast
     Box(Modifier.fillMaxSize().onOptionsKey(more)) {
         Backdrop(info.backdropUrl)

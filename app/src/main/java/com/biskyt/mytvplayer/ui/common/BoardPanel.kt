@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,15 +27,18 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.Text
 import com.biskyt.mytvplayer.core.vod.TitleLink
+import com.biskyt.mytvplayer.ui.phone.PhoneSheet
 import com.biskyt.mytvplayer.ui.theme.BOLD
 import com.biskyt.mytvplayer.ui.theme.BoardStyle
 import com.biskyt.mytvplayer.ui.theme.EXTRA_BOLD
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.MEDIUM
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.SEMI_BOLD
@@ -61,12 +65,17 @@ fun BoardPanel(
     dim: Boolean = true,
     scroll: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
-) = SidePanel(onDismiss, width = width, dim = dim, padding = padding) {
-    Column(
-        if (scroll) Modifier.verticalScroll(rememberScrollState()) else Modifier,
-        verticalArrangement = Arrangement.spacedBy(gap),
-        content = content
-    )
+) {
+    val column = @Composable {
+        Column(
+            if (scroll) Modifier.verticalScroll(rememberScrollState()) else Modifier,
+            verticalArrangement = Arrangement.spacedBy(gap),
+            content = content
+        )
+    }
+    // A phone or an unfolded foldable (phone spike): a sheet from the bottom in place of the side panel.
+    if (!LocalFormFactor.current.isTv) return PhoneSheet(onDismiss, dim, column)
+    SidePanel(onDismiss, width = width, dim = dim, padding = padding) { column() }
 }
 
 /** A panel's title: 20, extra bold (18 for a [small] one, such as an episode's, which is longer). */
@@ -135,11 +144,14 @@ fun BoardOption(
     AccentFillSurface(
         onClick,
         OptionShape,
-        modifier.fillMaxWidth(),
+        modifier.fillMaxWidth().touchHeight(),
         content = if (danger) Palette.danger else Palette.text,
         selected = selected
     ) {
-        Column(Modifier.padding(horizontal = 14.bd, vertical = 8.bd), verticalArrangement = Arrangement.spacedBy(1.bd)) {
+        Column(
+            Modifier.align(Alignment.CenterStart).padding(horizontal = 14.bd, vertical = 8.bd),
+            verticalArrangement = Arrangement.spacedBy(1.bd)
+        ) {
             val text = @Composable { Text(label, style = BoardOptionText.current, color = LocalContentColor.current) }
             if (icon == null) {
                 text()
@@ -158,7 +170,11 @@ fun BoardOption(
 /** A row of a panel's list with content of its own (a programme): [AccentFillSurface] in an option's shape. */
 @Composable
 fun BoardRow(onClick: () -> Unit, modifier: Modifier = Modifier, body: @Composable BoxScope.() -> Unit) =
-    AccentFillSurface(onClick, OptionShape, modifier.fillMaxWidth(), body = body)
+    AccentFillSurface(onClick, OptionShape, modifier.fillMaxWidth().touchHeight(), body = body)
+
+/** A row at least 56 dp high on a phone or an unfolded foldable, so that a finger can hit it (phone spike). */
+@Composable
+private fun Modifier.touchHeight(): Modifier = if (LocalFormFactor.current.isTv) this else heightIn(min = 56.dp)
 
 /** A heading over a group of a panel's options ("This episode"): 12, extra bold, upper case, in the accent colour. */
 @Composable

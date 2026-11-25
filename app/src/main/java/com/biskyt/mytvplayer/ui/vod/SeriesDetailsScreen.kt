@@ -97,6 +97,7 @@ import com.biskyt.mytvplayer.ui.common.rememberTrailerOpener
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.common.shortEpisodeLabel
 import com.biskyt.mytvplayer.ui.common.timeLeft
+import com.biskyt.mytvplayer.ui.phone.PhoneSeriesPage
 import com.biskyt.mytvplayer.ui.player.EpisodeDescriptionPanel
 import com.biskyt.mytvplayer.ui.player.episodeDescriptionAction
 import com.biskyt.mytvplayer.ui.player.episodeName
@@ -104,6 +105,7 @@ import com.biskyt.mytvplayer.ui.theme.BOLD
 import com.biskyt.mytvplayer.ui.theme.BoardStyle
 import com.biskyt.mytvplayer.ui.theme.EXTRA_BOLD
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.MEDIUM
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.bd
@@ -287,47 +289,52 @@ fun SeriesDetailsScreen(screen: Screen.SeriesDetails) {
     // when the list is too short to be beside the buttons. Only while the list is shown.
     val episodes = remember { FocusRequester() }
     val toEpisodes = if (vm.error == null && d?.episodes?.isNotEmpty() == true) Modifier.focusProperties { right = episodes } else Modifier
-    // The remote's Menu button opens the options of the episode it is on (its row's own handler), or else, from
-    // anywhere else on the page, of the one asked for or to carry on with.
-    Box(Modifier.fillMaxSize().onOptionsKeyAfter { (target ?: next)?.let { vm.open = SeriesPanel.Options(it) } }) {
-        Backdrop(vm.info.backdropUrl)
-        Row(
-            Modifier.padding(start = 48.bd, end = 40.bd, top = LocalTopBarInset.current, bottom = 16.bd),
-            horizontalArrangement = Arrangement.spacedBy(30.bd)
-        ) {
-            val favourite by vm.favourite.collectAsState()
-            SeriesColumn(show, d, vm.info, season, moreModifier = toEpisodes) {
-                // Continue, and the favourite's heart beside it at the same height, so the column fits the screen.
-                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.bd)) {
-                    if (next != null) {
-                        ContinueButton(
-                            next,
-                            progress,
-                            play,
-                            { vm.open = SeriesPanel.Options(next) },
-                            if (target == null || !vm.focusEpisodePending) playFocus(vm, next.id) else Modifier
+    if (!LocalFormFactor.current.isTv) {
+        // A phone or an unfolded foldable (phone spike): its own layout. The panels below stay.
+        PhoneSeriesPage(vm, show, d, season, next, progress, play)
+    } else {
+        // The remote's Menu button opens the options of the episode it is on (its row's own handler), or else, from
+        // anywhere else on the page, of the one asked for or to carry on with.
+        Box(Modifier.fillMaxSize().onOptionsKeyAfter { (target ?: next)?.let { vm.open = SeriesPanel.Options(it) } }) {
+            Backdrop(vm.info.backdropUrl)
+            Row(
+                Modifier.padding(start = 48.bd, end = 40.bd, top = LocalTopBarInset.current, bottom = 16.bd),
+                horizontalArrangement = Arrangement.spacedBy(30.bd)
+            ) {
+                val favourite by vm.favourite.collectAsState()
+                SeriesColumn(show, d, vm.info, season, moreModifier = toEpisodes) {
+                    // Continue, and the favourite's heart beside it at the same height, so the column fits the screen.
+                    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.bd)) {
+                        if (next != null) {
+                            ContinueButton(
+                                next,
+                                progress,
+                                play,
+                                { vm.open = SeriesPanel.Options(next) },
+                                if (target == null || !vm.focusEpisodePending) playFocus(vm, next.id) else Modifier
+                            )
+                        }
+                        FavouriteButton(
+                            favourite,
+                            { vm.toggleFavourite() },
+                            (if (next == null && d != null) rememberFirstFocus() else Modifier).then(toEpisodes).fillMaxHeight()
                         )
                     }
-                    FavouriteButton(
-                        favourite,
-                        { vm.toggleFavourite() },
-                        (if (next == null && d != null) rememberFirstFocus() else Modifier).then(toEpisodes).fillMaxHeight()
-                    )
                 }
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.bd)) {
-                when {
-                    vm.error != null -> Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Muted(vm.error.orEmpty())
-                        val retryFocus = if (next == null) rememberFirstFocus() else Modifier
-                        PillButton(stringResource(R.string.common_retry), { vm.load() }, retryFocus)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.bd)) {
+                    when {
+                        vm.error != null -> Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Muted(vm.error.orEmpty())
+                            val retryFocus = if (next == null) rememberFirstFocus() else Modifier
+                            PillButton(stringResource(R.string.common_retry), { vm.load() }, retryFocus)
+                        }
+                        d == null -> Muted(stringResource(R.string.vod_loading_episodes))
+                        d.episodes.isEmpty() -> Muted(stringResource(R.string.vod_no_episodes))
+                        else -> Episodes(vm, d, season, progress, target, play, episodes)
                     }
-                    d == null -> Muted(stringResource(R.string.vod_loading_episodes))
-                    d.episodes.isEmpty() -> Muted(stringResource(R.string.vod_no_episodes))
-                    else -> Episodes(vm, d, season, progress, target, play, episodes)
                 }
             }
         }
