@@ -33,7 +33,9 @@ data class TitleInfo(
     val trailer: String? = null,
     /** TMDB's trailers and teasers, best first, for Other trailers. */
     val trailers: List<TmdbVideo> = emptyList(),
-    val tmdb: TmdbTitle? = null
+    val tmdb: TmdbTitle? = null,
+    /** Whether the provider's details and TMDB have both answered (or failed): what the page has is all it will have. */
+    val settled: Boolean = false
 )
 
 /**

@@ -62,13 +62,10 @@ import com.biskyt.mytvplayer.ui.theme.Palette
  */
 @Composable
 fun PhoneScaffold(tab: Tab?, title: String, actions: @Composable RowScope.() -> Unit = {}, content: @Composable ColumnScope.() -> Unit) {
-    val unfolded = LocalFormFactor.current == FormFactor.UNFOLDED
     val container = LocalContext.current.container
     // remember: a new Room flow on each recomposition would re-run the query and briefly show nothing.
     val settings by remember { container.settings.settings }.collectAsState(initial = null)
-    val active = remember { container.playlists.observeActive() }.collectAsState(initial = null).value
-    val tabs = rememberShownTabs(settings, active?.id)
-    val page: @Composable () -> Unit = {
+    PhoneTabFrame(tab) {
         Column(Modifier.fillMaxSize()) {
             PhoneHeader(title) {
                 // The statuses the TV's top bar shows, small.
@@ -79,6 +76,19 @@ fun PhoneScaffold(tab: Tab?, title: String, actions: @Composable RowScope.() -> 
             Column(Modifier.weight(1f).fillMaxWidth(), content = content)
         }
     }
+}
+
+/**
+ * [page] with the tabs, [tab] the current one: the tab bar at the bottom on a phone, or the rail at the side when
+ * unfolded. The browsing screens have it (see [PhoneScaffold]), and a film's or series' page (the owner, 2026-11-25).
+ */
+@Composable
+fun PhoneTabFrame(tab: Tab?, page: @Composable () -> Unit) {
+    val unfolded = LocalFormFactor.current == FormFactor.UNFOLDED
+    val container = LocalContext.current.container
+    val settings by remember { container.settings.settings }.collectAsState(initial = null)
+    val active = remember { container.playlists.observeActive() }.collectAsState(initial = null).value
+    val tabs = rememberShownTabs(settings, active?.id)
     if (unfolded) {
         Row(Modifier.fillMaxSize()) {
             PhoneTabs(tabs, tab, rail = true)

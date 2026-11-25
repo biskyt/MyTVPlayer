@@ -68,7 +68,6 @@ import com.biskyt.mytvplayer.core.tmdb.TmdbEpisode
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.vod.CastMember
 import com.biskyt.mytvplayer.core.vod.DownloadNames
-import com.biskyt.mytvplayer.core.vod.VodTitles
 import com.biskyt.mytvplayer.core.xtream.EpisodeInfo
 import com.biskyt.mytvplayer.core.xtream.SeriesDetails
 import com.biskyt.mytvplayer.data.db.CAT_SERIES
@@ -91,7 +90,6 @@ import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.focusGlow
 import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.common.formatRuntime
-import com.biskyt.mytvplayer.ui.common.markWatched
 import com.biskyt.mytvplayer.ui.common.onOptionsKeyAfter
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberTrailerOpener
@@ -100,7 +98,6 @@ import com.biskyt.mytvplayer.ui.common.shortEpisodeLabel
 import com.biskyt.mytvplayer.ui.common.timeLeft
 import com.biskyt.mytvplayer.ui.phone.PhoneSeriesPage
 import com.biskyt.mytvplayer.ui.player.EpisodeDescriptionPanel
-import com.biskyt.mytvplayer.ui.player.episodeDescriptionAction
 import com.biskyt.mytvplayer.ui.player.episodeName
 import com.biskyt.mytvplayer.ui.theme.BOLD
 import com.biskyt.mytvplayer.ui.theme.BoardStyle
@@ -133,23 +130,15 @@ class SeriesDetailsViewModel(
         private set
 
     /** What the column shows of the series: the provider's details first, then TMDB's. */
-    val info by derivedStateOf { merge(details?.info, tmdb) }
+    /** Whether the details and TMDB have both answered (or failed). */
+    private var settled by mutableStateOf(false)
+
+    val info by derivedStateOf { merge(details?.info, tmdb).copy(settled = settled) }
+
+    /** Starts downloading [e] (see Downloads): where it goes, or null if it can't be. */
+    suspend fun download(e: EpisodeInfo): DownloadNames.Place? = c.downloadEpisode(playlistId, series, e, tmdb, details?.info)
 
     /** TMDB's episodes of each season read so far, by season number. */
-    /** Starts downloading [e] (see Downloads): where it goes, or null if it can't be. */
-    suspend fun download(e: EpisodeInfo): DownloadNames.Place? {
-        val p = c.playlists.get(playlistId) ?: return null
-        // TMDB's name when TMDB has the series: the name media servers know it by. Asked here if the page's own look-up
-        // has not answered yet, so that every episode goes to one folder. Else the saved name, cleaned again in case it
-        // was saved before names were cleaned as they are now.
-        val saved = series?.title ?: e.title
-        val t = tmdb ?: c.tmdb.series(saved, details?.info)
-        val name = t?.title ?: VodTitles.clean(saved, series = true).title
-        val place = DownloadNames.episode(name, e.season, e.number, e.extension)
-        c.startDownload(c.vod.episodeUrl(p, e.id, e.extension), place)
-        return place
-    }
-
     private val tmdbSeasons = mutableStateMapOf<Int, List<TmdbEpisode>>()
 
     /** Seasons asked of TMDB, or being asked: each once, unless it gave nothing (then again when shown again). */
@@ -192,6 +181,7 @@ class SeriesDetailsViewModel(
         // After the details, which may give its TMDB id; without them, its name may still find it.
         val show = series
         if (tmdb == null && show != null) tmdb = c.tmdb.series(show.title, details?.info)
+        settled = true
     }
 
     /** TMDB's [e], once its season is read from TMDB. */
@@ -232,10 +222,7 @@ class SeriesDetailsViewModel(
         // Taken now, as the page may load again meanwhile.
         val show = series
         val episodes = details?.episodes.orEmpty()
-        val next = episodes.indexOfFirst { it.id == e.id }.takeIf { it >= 0 }?.let { episodes.getOrNull(it + 1) }
-        c.appScope.launch {
-            if (watched) c.vod.markEpisodeWatched(playlistId, seriesId, show, episodes, e) else c.vod.forgetEpisode(playlistId, e.id, next)
-        }
+        c.appScope.launch { c.setEpisodeWatched(playlistId, seriesId, show, episodes, e, watched) }
     }
 
     /** Whether the remote is in the episode list: changes made there (marking one watched) leave it there. */
@@ -520,15 +507,19 @@ private fun EpisodeOptions(
     val c = LocalContext.current.container
     val credits = rememberEpisodeCredits(c, vm.tmdb, e.season, e.number)
     // One partly watched can be counted as watched, or started again (its progress forgotten).
-    val episode = listOfNotNull(
-        episodeDescriptionAction(describedEpisode(vm.series?.title, e, vm.tmdbEpisode(e))) { vm.open = SeriesPanel.Describe(e) },
-        episodeCastAction(credits) {
+    val episode = episodeOwnActions(
+        vm.playlistId,
+        describedEpisode(vm.series?.title, e, vm.tmdbEpisode(e)),
+        credits,
+        finished = saved?.finished == true,
+        started = saved?.started == true,
+        describe = { vm.open = SeriesPanel.Describe(e) },
+        showCast = {
             vm.castFocus = 0
             vm.open = credits?.let { SeriesPanel.EpisodeCast(e, it) }
         },
-        downloadAction(vm.playlistId) { vm.download(e) },
-        if (saved?.finished != true) markWatched(false, set) else null,
-        if (saved?.started == true) markWatched(true, set) else null
+        download = { vm.download(e) },
+        setWatched = set
     )
     val show = titleActions(
         vm.tmdb,

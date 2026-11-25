@@ -36,7 +36,6 @@ import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.vod.CastMember
 import com.biskyt.mytvplayer.core.vod.DownloadNames
-import com.biskyt.mytvplayer.core.vod.VodTitles
 import com.biskyt.mytvplayer.core.xtream.VodDetails
 import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.CategoryEntity
@@ -81,26 +80,17 @@ class MovieDetailsViewModel(private val c: AppContainer, val playlistId: Long, p
         private set
 
     /** Starts downloading the film (see Downloads): where it goes, or null if it can't be. */
-    suspend fun download(): DownloadNames.Place? {
-        val m = movie ?: return null
-        val p = c.playlists.get(playlistId) ?: return null
-        // TMDB's title and year when TMDB has the film: the name media servers know it by. Asked here if the page's
-        // own look-up has not answered yet, so that the name does not depend on when Download is pressed. Else the
-        // saved name, cleaned again in case it was saved before names were cleaned as they are now.
-        val t = tmdb ?: c.tmdb.movie(m.title, details)
-        val saved = VodTitles.clean(m.title, series = false)
-        val year = t?.released?.year ?: m.year ?: saved.year
-        val place = DownloadNames.movie(t?.title ?: saved.title, year, m.extension)
-        c.startDownload(c.vod.movieUrl(p, m), place)
-        return place
-    }
+    suspend fun download(): DownloadNames.Place? = movie?.let { c.downloadMovie(playlistId, it, tmdb, details) }
 
     /** What TMDB knows of it: null without a TMDB key, until it is read, or when TMDB has nothing. */
     var tmdb by mutableStateOf<TmdbTitle?>(null)
         private set
 
     /** What the page shows: the provider's details first, then TMDB's. */
-    val info by derivedStateOf { merge(details, tmdb) }
+    /** Whether the details and TMDB have both answered (or failed). */
+    private var settled by mutableStateOf(false)
+
+    val info by derivedStateOf { merge(details, tmdb).copy(settled = settled) }
 
     /** The film's category, shown when the provider gives no genre (an M3U film). Named when shown. */
     var category by mutableStateOf<CategoryEntity?>(null)
@@ -119,6 +109,7 @@ class MovieDetailsViewModel(private val c: AppContainer, val playlistId: Long, p
             details = c.playlists.get(playlistId)?.let { p -> runCatching { c.vod.movieDetails(p, streamId) }.getOrNull() }
             // After the details: they may give its TMDB id.
             tmdb = c.tmdb.movie(m.title, details)
+            settled = true
         }
     }
 

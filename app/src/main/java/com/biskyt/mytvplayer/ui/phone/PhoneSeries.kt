@@ -44,6 +44,7 @@ import com.biskyt.mytvplayer.data.db.SeriesEntity
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
 import com.biskyt.mytvplayer.ui.common.AppIcons
 import com.biskyt.mytvplayer.ui.common.ProgressLine
+import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.favouriteIcon
 import com.biskyt.mytvplayer.ui.common.favouriteLabel
 import com.biskyt.mytvplayer.ui.common.rememberTrailerOpener
@@ -86,8 +87,9 @@ fun PhoneSeriesPage(
 ) {
     val info = vm.info
     PhoneDetailLayout(
+        Tab.SERIES,
         left = {
-            PhoneDetailHeader(info.backdropUrl, show.coverUrl ?: info.posterUrl, show.title) {
+            PhoneDetailHeader(info, show.coverUrl ?: info.posterUrl, show.title) {
                 val facts = seriesFacts(show, d, info, season)
                 if (facts.isNotEmpty()) PhoneFacts(facts)
                 seriesStatusLine(info.tmdb)?.let { PhoneSmallText(it, maxLines = 2) }

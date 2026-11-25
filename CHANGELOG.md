@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.39.0
+- A Continue watching card's options have the same choices as its film's or episode's More menu.
+- On a phone or tablet, a film's or series' page has the tabs at the bottom or the side.
+- On a phone or tablet, a page whose backdrop does not load has no empty space at the top.
+
 ## 1.38.1
 - A downloaded film or episode is named as TMDB names it, when TMDB is on.
 - Film and series names no longer show what a provider adds in square brackets.

@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,6 +59,7 @@ import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.common.AppIcons
 import com.biskyt.mytvplayer.ui.common.CirclePhoto
 import com.biskyt.mytvplayer.ui.common.Poster
+import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.theme.FormFactor
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
@@ -92,7 +94,7 @@ fun PhoneFilmPage(
     playTrailer: (() -> Unit)?
 ) {
     val header = @Composable {
-        PhoneDetailHeader(info.backdropUrl, movie.posterUrl ?: info.posterUrl, movie.title) {
+        PhoneDetailHeader(info, movie.posterUrl ?: info.posterUrl, movie.title) {
             originalTitle(movie.title, info.tmdb)?.let {
                 PhoneSmallText(stringResource(R.string.vod_original_title_is, it), maxLines = 2)
             }
@@ -111,6 +113,7 @@ fun PhoneFilmPage(
         if (info.cast.isNotEmpty()) PhoneCastRow(info.cast, openPerson)
     }
     PhoneDetailLayout(
+        Tab.MOVIES,
         left = {
             header()
             buttons()
@@ -121,10 +124,14 @@ fun PhoneFilmPage(
 
 /**
  * A phone page in one column that scrolls, [left] over [right]; unfolded, in two panes side by side, each scrolling on
- * its own. [right] is told which.
+ * its own. [right] is told which. The tabs are with it, [tab] the current one (see PhoneTabFrame).
  */
 @Composable
-internal fun PhoneDetailLayout(left: @Composable ColumnScope.() -> Unit, right: @Composable ColumnScope.(unfolded: Boolean) -> Unit) {
+internal fun PhoneDetailLayout(
+    tab: Tab,
+    left: @Composable ColumnScope.() -> Unit,
+    right: @Composable ColumnScope.(unfolded: Boolean) -> Unit
+) = PhoneTabFrame(tab) {
     val page = Modifier.fillMaxSize().background(Palette.background)
     if (LocalFormFactor.current == FormFactor.UNFOLDED) {
         Row(page) {
@@ -146,26 +153,39 @@ internal fun PhoneDetailLayout(left: @Composable ColumnScope.() -> Unit, right: 
 }
 
 /**
- * The top of a film or series page: [backdrop] 230 high, which fades into the page, with a back button on it; then the
- * [poster] over its bottom edge, and beside it the [title] and [lines] (the facts).
+ * The top of a film or series page: a backdrop 230 high, which fades into the page, with a back button on it; then the
+ * [poster] over its bottom edge, and beside it the [title] and [lines] (the facts). [info]'s backdrops are tried in turn,
+ * the provider's then TMDB's. When none loads, or there is none, the poster comes up under the back button, with no
+ * empty space (the owner, 2026-11-25). Until then (one loading, or the page's look-ups not finished), the space stays,
+ * so that the page does not move when a backdrop comes.
  */
 @Composable
-internal fun PhoneDetailHeader(backdrop: String?, poster: String?, title: String, lines: @Composable ColumnScope.() -> Unit) {
+internal fun PhoneDetailHeader(info: TitleInfo, poster: String?, title: String, lines: @Composable ColumnScope.() -> Unit) {
     val nav = LocalNavigator.current
+    // The addresses that failed: not tried again when TMDB's answer adds one.
+    val failed = remember { mutableStateListOf<String>() }
+    val backdrop = listOfNotNull(info.backdropUrl, info.tmdb?.backdropUrl).firstOrNull { it !in failed }
+    val height = if (backdrop != null || !info.settled) BACKDROP_HEIGHT else NO_BACKDROP_HEIGHT
     Box(Modifier.fillMaxWidth()) {
-        Box(Modifier.fillMaxWidth().height(BACKDROP_HEIGHT).background(Palette.surfaceHigh)) {
-            if (backdrop != null) {
+        if (backdrop != null) {
+            Box(Modifier.fillMaxWidth().height(BACKDROP_HEIGHT).background(Palette.surfaceHigh)) {
                 val context = LocalContext.current
                 val request = remember(backdrop) {
                     ImageRequest.Builder(context).data(backdrop).size(BACKDROP_PX, BACKDROP_PX * 9 / 16).allowRgb565(true).build()
                 }
-                AsyncImage(request, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().testTag("backdrop"))
-            }
-            Box(
-                Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(0.4f to Palette.background.copy(alpha = 0f), 1f to Palette.background)
+                AsyncImage(
+                    request,
+                    null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().testTag("backdrop"),
+                    onError = { failed += backdrop }
                 )
-            )
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.verticalGradient(0.4f to Palette.background.copy(alpha = 0f), 1f to Palette.background)
+                    )
+                )
+            }
         }
         PhoneIconButton(
             AppIcons.Back,
@@ -176,7 +196,7 @@ internal fun PhoneDetailHeader(backdrop: String?, poster: String?, title: String
             iconSize = 22.dp
         )
         Row(
-            Modifier.padding(start = PhoneGutter, end = PhoneGutter, top = BACKDROP_HEIGHT - POSTER_OVER),
+            Modifier.padding(start = PhoneGutter, end = PhoneGutter, top = height - POSTER_OVER),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.Bottom
         ) {
@@ -373,6 +393,9 @@ private val POSTER_WIDTH = 104.dp
 
 /** How far the poster comes up over the backdrop. */
 private val POSTER_OVER = 70.dp
+
+/** In place of a backdrop: the back button's room at the top (14 + 44 + 14), so the poster's top is just under it. */
+private val NO_BACKDROP_HEIGHT = 72.dp + POSTER_OVER
 private const val BACKDROP_PX = 720
 private const val PLOT_LINES = 4
 private const val UNFOLDED_PLOT_LINES = 10

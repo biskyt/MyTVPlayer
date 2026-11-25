@@ -1,5 +1,6 @@
 package com.biskyt.mytvplayer.ui.home
 
+import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -38,7 +40,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.MaterialTheme
 import com.biskyt.mytvplayer.AppContainer
 import com.biskyt.mytvplayer.R
+import com.biskyt.mytvplayer.appString
 import com.biskyt.mytvplayer.container
+import com.biskyt.mytvplayer.core.tmdb.TmdbTitle
 import com.biskyt.mytvplayer.core.xtream.EpisodeInfo
 import com.biskyt.mytvplayer.data.ChannelFilter
 import com.biskyt.mytvplayer.data.ChannelKinds
@@ -77,6 +81,7 @@ import com.biskyt.mytvplayer.ui.common.SectionTitle
 import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TabScaffold
 import com.biskyt.mytvplayer.ui.common.collectIds
+import com.biskyt.mytvplayer.ui.common.favouriteAction
 import com.biskyt.mytvplayer.ui.common.glowRoom
 import com.biskyt.mytvplayer.ui.common.glowRoomPadding
 import com.biskyt.mytvplayer.ui.common.guideNowNext
@@ -91,13 +96,23 @@ import com.biskyt.mytvplayer.ui.common.vodActions
 import com.biskyt.mytvplayer.ui.common.vodDetails
 import com.biskyt.mytvplayer.ui.live.ChannelOptionsPanel
 import com.biskyt.mytvplayer.ui.phone.PhoneHome
+import com.biskyt.mytvplayer.ui.player.episodeName
 import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.vod.TitlePanel
 import com.biskyt.mytvplayer.ui.vod.TitlePanels
 import com.biskyt.mytvplayer.ui.vod.describedEpisode
+import com.biskyt.mytvplayer.ui.vod.downloadAction
+import com.biskyt.mytvplayer.ui.vod.downloadEpisode
+import com.biskyt.mytvplayer.ui.vod.downloadMovie
+import com.biskyt.mytvplayer.ui.vod.episodeAndShowActions
+import com.biskyt.mytvplayer.ui.vod.episodeOf
+import com.biskyt.mytvplayer.ui.vod.episodeOwnActions
+import com.biskyt.mytvplayer.ui.vod.rememberEpisodeCredits
 import com.biskyt.mytvplayer.ui.vod.rememberTmdb
 import com.biskyt.mytvplayer.ui.vod.rememberTmdbEpisode
+import com.biskyt.mytvplayer.ui.vod.setEpisodeWatched
 import com.biskyt.mytvplayer.ui.vod.titleExtraActions
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -110,6 +125,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** How many favourite movies, and series, Home shows. */
@@ -402,8 +418,9 @@ internal fun TileOptions(tile: HomeTile, vm: HomeViewModel, pid: Long, onDismiss
 }
 
 /**
- * A Continue watching card's options: play it, its page, take it off the row, then what its page's More… offers from
- * TMDB (the episode's description, cast and crew, More like this…), which come in once TMDB answers.
+ * A Continue watching card's options (the owner, 2026-11-25): play it, take it off the row, its page (a series' All
+ * episodes), then what its page's More… offers for it: a film's favourites, Download and TMDB's options; an episode's
+ * own (its description, cast and crew, Download, Watched) and the show's. TMDB's come in once TMDB answers.
  */
 @Composable
 private fun CarryOnOptions(p: WatchProgressEntity, vm: HomeViewModel, onDismiss: (removed: Boolean) -> Unit) {
@@ -413,33 +430,103 @@ private fun CarryOnOptions(p: WatchProgressEntity, vm: HomeViewModel, onDismiss:
     val next = p.finished || series != null && !p.started
     val c = LocalContext.current.container
     val tmdb = rememberTmdb(c, p.playlistId, if (series == null) CAT_MOVIE else CAT_SERIES, series ?: p.itemId)
-    val tmdbEpisode = rememberTmdbEpisode(c, tmdb, p.season, p.episode)
-    val described = tmdbEpisode?.takeIf { series != null }?.let { t ->
-        val e = EpisodeInfo(p.itemId, p.season ?: 0, p.episode ?: 0, p.episodeTitle.orEmpty(), "", null, null, null)
-        describedEpisode(p.title, e, t)
-    }
     var panel by remember { mutableStateOf<TitlePanel?>(null) }
-    val actions = listOf(
+    val open: (TitlePanel) -> Unit = { panel = it }
+    val card = listOf(
         ItemAction.Open(
             stringResource(if (next) R.string.home_play_next_episode else R.string.home_resume),
             Screen.VodPlayer(p.playlistId, p.itemId, series, continueSeries = true)
         ),
-        if (series == null) {
-            ItemAction.Open(stringResource(R.string.common_about_movie), Screen.MovieDetails(p.playlistId, p.itemId))
-        } else {
-            ItemAction.Open(stringResource(R.string.common_all_episodes), Screen.SeriesDetails(p.playlistId, series, p.season, p.episode))
-        },
         ItemAction.Run(
             stringResource(R.string.home_remove_carry_on),
             stringResource(if (series == null) R.string.home_forget_movie else R.string.home_forget_series)
         ) {
             vm.forget(p)
             onDismiss(true)
+        },
+        if (series == null) {
+            ItemAction.Open(stringResource(R.string.common_about_movie), Screen.MovieDetails(p.playlistId, p.itemId))
+        } else {
+            ItemAction.Open(stringResource(R.string.common_all_episodes), Screen.SeriesDetails(p.playlistId, series, p.season, p.episode))
         }
-    ) + titleExtraActions(p.playlistId, tmdb, film = series == null, p.title, described) { panel = it }
+    )
+    val more = if (series == null) {
+        filmMore(p, tmdb, open)
+    } else {
+        episodeMore(p, series, tmdb, open, close)
+    }
     // One of TMDB's panels in place of the options; closing it closes both.
-    if (panel == null) ItemActionsPanel(p.title, actions, close)
+    if (panel == null) ItemActionsPanel(p.title, card + more, close)
     TitlePanels(panel, p.playlistId, p.title, tmdb, film = series == null, close)
+}
+
+/** What the film page's More… offers for film [p]: favourites, Download, then TMDB's options ([open] opens their panels). */
+@Composable
+private fun filmMore(p: WatchProgressEntity, tmdb: TmdbTitle?, open: (TitlePanel) -> Unit): List<ItemAction> {
+    val c = LocalContext.current.container
+    val favourite by remember(p.playlistId, p.itemId) { c.vod.observeFavourite(p.playlistId, CAT_MOVIE, p.itemId) }
+        .collectAsState(initial = null)
+    val own = listOfNotNull(
+        // The card's own playlist's.
+        favourite?.let { f ->
+            favouriteAction(f) { add -> c.appScope.launch { c.vod.setFavourite(p.playlistId, CAT_MOVIE, p.itemId, add) } }
+        },
+        // With the provider's details, as the film page has them, for TMDB's look-up if the panel's has not answered yet.
+        downloadAction(p.playlistId) {
+            val m = vod.movie(p.playlistId, p.itemId) ?: return@downloadAction null
+            val details = playlists.get(p.playlistId)?.let { pl -> runCatching { vod.movieDetails(pl, p.itemId) }.getOrNull() }
+            downloadMovie(p.playlistId, m, tmdb, details)
+        }
+    )
+    return own + titleExtraActions(p.playlistId, tmdb, film = true, p.title, described = null, open)
+}
+
+/**
+ * What the series page's More… offers for episode [p] of [series]: the episode's own options, then the show's ([open]
+ * opens their panels). Marking it watched or not closes the panel ([done]).
+ */
+@Composable
+private fun episodeMore(
+    p: WatchProgressEntity,
+    series: Long,
+    tmdb: TmdbTitle?,
+    open: (TitlePanel) -> Unit,
+    done: () -> Unit
+): List<ItemAction> {
+    val context = LocalContext.current
+    val c = context.container
+    val tmdbEpisode = rememberTmdbEpisode(c, tmdb, p.season, p.episode)
+    val credits = rememberEpisodeCredits(c, tmdb, p.season, p.episode)
+    // The provider's own details of the episode (its plot and date), as the series page has them; its progress's until
+    // they come, or when the provider cannot be reached.
+    val provided by produceState<EpisodeInfo?>(null, p.playlistId, series, p.itemId) {
+        value = runCatching { c.episodeOf(p.playlistId, series, p.itemId)?.second }.getOrNull()
+    }
+    val e = provided ?: remember(p) { EpisodeInfo(p.itemId, p.season ?: 0, p.episode ?: 0, p.episodeTitle.orEmpty(), "", null, null, null) }
+    val described = remember(e, tmdbEpisode) { describedEpisode(p.title, e, tmdbEpisode) }
+    val own = episodeOwnActions(
+        p.playlistId,
+        described,
+        credits,
+        finished = p.finished,
+        started = p.started,
+        describe = { described?.let { open(TitlePanel.Describe(it)) } },
+        showCast = { credits?.let { open(TitlePanel.EpisodeCast(episodeName(e, p.title), it)) } },
+        download = { downloadEpisode(p.playlistId, series, p.itemId, tmdb) },
+        // The panel closes, as the series page's does; the card changes once it is saved, else a message says so.
+        setWatched = { watched ->
+            done()
+            c.appScope.launch {
+                if (!c.setEpisodeWatched(p.playlistId, series, p.itemId, watched)) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, appString(R.string.vod_episodes_failed), Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    )
+    val show = titleExtraActions(p.playlistId, tmdb, film = false, p.title, described = null, open)
+    return episodeAndShowActions(own, show)
 }
 
 /** A favourite film's or series' options: open it, favourites and Move, then what its page's More… offers from TMDB. */
