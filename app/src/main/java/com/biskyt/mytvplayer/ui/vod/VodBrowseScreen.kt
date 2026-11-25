@@ -78,6 +78,8 @@ import com.biskyt.mytvplayer.ui.common.reveal
 import com.biskyt.mytvplayer.ui.common.rowsInView
 import com.biskyt.mytvplayer.ui.common.vodActions
 import com.biskyt.mytvplayer.ui.common.vodDetails
+import com.biskyt.mytvplayer.ui.phone.PhoneBrowse
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
@@ -186,6 +188,11 @@ class VodBrowseViewModel(
 fun VodBrowseScreen(type: String, initialFilter: VodFilter?) {
     val nav = LocalNavigator.current
     val vm = appViewModel(key = "vod-$type") { VodBrowseViewModel(it, type, initialFilter, nav.picked) }
+    // A phone or an unfolded foldable (phone spike): its own layout, from the same lists.
+    if (!LocalFormFactor.current.isTv) {
+        PhoneBrowse(vm)
+        return
+    }
     val filter by vm.filters.value.collectAsState()
     val categories by vm.categories.collectAsState()
     val playlist by vm.playlist.collectAsState()
@@ -227,7 +234,7 @@ fun VodBrowseScreen(type: String, initialFilter: VodFilter?) {
 
 /** Holding OK on a poster: open it, favourites, and in Favourites, move it. */
 @Composable
-private fun PosterOptions(vm: VodBrowseViewModel, card: VodCard, filter: VodFilter, pid: Long) {
+internal fun PosterOptions(vm: VodBrowseViewModel, card: VodCard, filter: VodFilter, pid: Long) {
     val close = { vm.optionsFor = null }
     val favourites by vm.favouriteIds.collectAsState()
     val query by vm.query.collectAsState()
