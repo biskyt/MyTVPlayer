@@ -7,6 +7,8 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
+import com.biskyt.mytvplayer.core.vod.DownloadNames
+import com.biskyt.mytvplayer.data.db.CAT_MOVIE
 import com.biskyt.mytvplayer.data.db.VOD_EPISODE
 import com.biskyt.mytvplayer.data.db.VOD_MOVIE
 import com.biskyt.mytvplayer.data.db.WatchProgressEntity
@@ -175,5 +177,71 @@ class HomeCarryOnUiTest {
         compose.waitAdvancingClock(50) { compose.focusedText().contains("Dune") }
         compose.settle()
         assertTrue(compose.focusedText(), compose.focusedText().contains("Dune"))
+    }
+
+    private fun home() {
+        val navigator = navigators.new(Screen.Home)
+        compose.setContent { MyTvTheme { NavHost(remember { navigator }) { ScreenContent(it) } } }
+    }
+
+    /** The options of the card titled [title], on Home. */
+    private fun options(title: String) {
+        compose.waitForText(title)
+        compose.onAllNodes(hasText(title) and hasClickAction())[0].performSemanticsAction(SemanticsActions.OnLongClick)
+        compose.waitForText("Remove from Continue watching")
+    }
+
+    private fun tap(text: String) = compose.onNode(hasText(text) and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
+
+    @Test
+    fun `a film's card offers what its page's More offers, favourites and Download (the owner, 2026-11-25)`() {
+        val started = mutableListOf<DownloadNames.Place>()
+        runBlocking { app.container.settings.update { it.copy(downloads = true) } }
+        app.container.startDownload = { _, place -> started += place }
+        home()
+        options("Dune")
+        compose.waitForText("Add to favourites")
+        assertTrue(compose.onAllNodes(hasText("About this movie")).fetchSemanticsNodes().isNotEmpty())
+        tap("Add to favourites")
+        compose.waitAdvancingClock(50) { runBlocking { app.container.vod.favouriteOrder(pid, CAT_MOVIE) } == listOf(501L) }
+        options("Dune")
+        compose.waitForText("Download")
+        tap("Download")
+        compose.waitAdvancingClock(50) { started.isNotEmpty() }
+        assertEquals("Movies/Dune (2021)", started.single().folder)
+    }
+
+    @Test
+    fun `an episode's card offers what the series page offers for it, Download and Watched`() {
+        val started = mutableListOf<DownloadNames.Place>()
+        runBlocking { app.container.settings.update { it.copy(downloads = true) } }
+        app.container.startDownload = { _, place -> started += place }
+        home()
+        options("Line of Duty")
+        // Its page is Go to series; a part-watched episode can be marked watched or unwatched.
+        listOf("Go to series", "Mark as watched", "Mark as unwatched").forEach { compose.waitForText(it) }
+        tap("Download")
+        compose.waitAdvancingClock(50) { started.isNotEmpty() }
+        assertEquals(DownloadNames.Place("TV Shows/Line of Duty/Season 01", "Line of Duty S01E02.mkv"), started.single())
+        options("Line of Duty")
+        tap("Mark as watched")
+        // Watched: the card is the episode after it.
+        compose.waitAdvancingClock(50) { compose.onAllNodes(hasText("S2E1")).fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
+    fun `an episode's card describes it from the provider's details, without TMDB`() {
+        // Episode 1, watched part way after episode 2: its card, with the provider's plot.
+        runBlocking {
+            app.container.vod.saveProgress(
+                WatchProgressEntity(
+                    pid, VOD_EPISODE, 9001, positionMs = 60_000, durationMs = 3_600_000, updatedAt = System.currentTimeMillis() + 10,
+                    title = "Line of Duty", imageUrl = null, seriesId = 77, season = 1, episode = 1, episodeTitle = "Episode 1"
+                )
+            )
+        }
+        home()
+        options("Line of Duty")
+        compose.waitForText("Episode description")
     }
 }
