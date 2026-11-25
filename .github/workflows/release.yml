@@ -69,7 +69,8 @@ jobs:
 
       # The checks and tests ran on the pull request (CI and the emulator runs) on this same code, so they do not run
       # again here (the owner, 2026-11-24, as MyTVLauncher). This step makes sure they passed: the commit's pull request
-      # must have every check run green (or skipped). A commit with no pull request is refused.
+      # must have every check run green (or skipped), and must not have been behind main when it was merged. A commit
+      # with no pull request is refused.
       - name: Pull request CI passed
         env:
           GH_TOKEN: ${{ github.token }}
@@ -80,6 +81,12 @@ jobs:
             --jq '[.[] | select(.merged_at != null and .merge_commit_sha == env.GITHUB_SHA)][0].head.sha // empty') \
             || fail "Couldn't find the pull request of $GITHUB_SHA"
           [ -n "$head" ] || fail "$GITHUB_SHA came from no merged pull request, so no CI ran on it. Release from a merged pull request."
+          # main before the merge is the merge's first parent. A pull request that was behind it was not tested with it
+          # (the owner, 2026-11-25, as MyPlexPlayer).
+          base=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA" --jq '.parents[0].sha') || fail "Couldn't read $GITHUB_SHA's parents"
+          behind=$(gh api "repos/$GITHUB_REPOSITORY/compare/$base...$head" --jq .behind_by) || fail "Couldn't compare $head with $base"
+          [ "$behind" = 0 ] ||
+            fail "The pull request was $behind commit(s) behind main when it was merged: merge main into it, and let CI pass"
           runs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$head/check-runs?per_page=100" \
             --jq '.check_runs[] | "\(.name)=\(.status)/\(.conclusion)"') || fail "Couldn't read the check runs of $head"
           echo "$runs"

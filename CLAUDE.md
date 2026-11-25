@@ -67,8 +67,8 @@ See also:
    - **It does not run the checks and tests again** (the owner, 2026-11-24, as MyTVLauncher): the PR's CI ran them on
      the same code. Its first step checks that the PR merged as that commit has CI (`build`) and every other check run
      green, and refuses a commit that came from no PR (for example, a change made on `main` in GitHub's editor: release
-     after the next merged PR instead). PR CI tests the PR merged with `main` as it was then, so merge only a PR whose
-     CI ran on the newest `main` (restart the branch from `origin/main` for each change, as below).
+     after the next merged PR instead). It also refuses a PR whose last commit was behind `main` when it was merged
+     (the owner, 2026-11-25, as MyPlexPlayer): merge `main` into a PR that is behind, and let CI pass, before the merge.
    - When the Robolectric cache misses, the release runs one small test for each SDK level in the cache key ("Fill the
      Robolectric cache"). A test with a new `@Config(sdk = ...)` level needs a test of that level added there.
    - **From a Claude session, run the workflow by hand:** tag pushes from a cloud session have failed with HTTP 403
