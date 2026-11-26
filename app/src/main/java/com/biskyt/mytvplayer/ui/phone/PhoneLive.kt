@@ -70,7 +70,8 @@ import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.Palette
 
 // Live TV, Radio and the Catch-up tab on a phone or an unfolded foldable (the owner, 2026-11-25). The same
-// ViewModel, lists and options as the TV screen (LiveScreen), drawn for touch. The guide stays the TV's screen.
+// ViewModel, lists and options as the TV screen (LiveScreen), drawn for touch. The guide is a screen of its own on top
+// (PhoneGuide).
 
 /**
  * The channel list on a touch screen. A tap calls [open] (it plays the channel, or opens its catch-up in the Catch-up
@@ -85,7 +86,7 @@ fun PhoneLive(vm: LiveViewModel, play: (ChannelEntity) -> Unit, open: (ChannelEn
     // The Catch-up tab's lists have no options (as on a TV).
     val onHide: ((CategoryEntity) -> Unit)? = if (vm.catchupMode) null else ({ vm.hideCategory(it) })
     val openGuide = { nav.push(Screen.Live(filter, guide = true, radio = vm.radio)) }
-    // The options' "Switch to grid view" asks for the guide: here it opens the TV guide's screen.
+    // The options' "Switch to grid view" asks for the guide: here it opens the guide's screen on top.
     LaunchedEffect(vm.guideMode) {
         if (vm.guideMode) {
             vm.showGuide(false, moveFocus = false)
@@ -110,7 +111,7 @@ fun PhoneLive(vm: LiveViewModel, play: (ChannelEntity) -> Unit, open: (ChannelEn
     vm.optionsFor?.let { ch -> ChannelOptionsSheet(ch, vm, play) }
 }
 
-/** The header's button that opens the TV guide (drawn as on a TV). */
+/** The header's button that opens the TV guide (see PhoneGuide). */
 @Composable
 private fun GuideButton(onClick: () -> Unit) {
     Row(

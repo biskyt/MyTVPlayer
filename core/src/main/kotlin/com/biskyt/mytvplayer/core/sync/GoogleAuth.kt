@@ -88,24 +88,41 @@ class GoogleAuth(
         return json.decodeOrFail(DeviceCode.serializer(), answer.body, "Google")
     }
 
-    /** Waits until the user signs in with [code]. It asks Google again at the interval Google gives. */
+    /**
+     * Waits until the user signs in with [code]. It asks Google again at the interval Google gives. If Google cannot be
+     * reached, it tries again at the next interval: a phone can stop the network of an app in the background while the
+     * user signs in in the browser. If Google still cannot be reached when the code runs out, that is the failure.
+     */
     suspend fun await(code: DeviceCode): GoogleTokens {
         var interval = code.intervalSec
         val deadline = clock() + code.expiresInSec * MS
+        var unreachable: SyncException? = null
         while (clock() < deadline) {
             delay(interval * MS)
-            val answer = post("token", "device_code" to code.deviceCode, "grant_type" to DEVICE_GRANT)
+            val answer = poll(code) { unreachable = it } ?: continue
+            unreachable = null
             when (answer.error) {
                 null -> return tokens(answer.body, null)
                 "authorization_pending" -> Unit
                 "slow_down" -> interval += SLOW_DOWN_SEC
                 "access_denied" -> throw SyncException("Sign-in refused", reason = SyncException.Reason.DENIED)
-                "expired_token" -> break
+                "expired_token" -> throw expired()
                 else -> throw SyncException("Sign-in failed: ${answer.error}", code = answer.error)
             }
         }
-        throw SyncException("The sign-in code expired", reason = SyncException.Reason.EXPIRED)
+        throw unreachable ?: expired()
     }
+
+    /** Google's answer for [code], or null if Google cannot be reached ([unreachable] is told why). */
+    private suspend fun poll(code: DeviceCode, unreachable: (SyncException) -> Unit): Answer? = try {
+        post("token", "device_code" to code.deviceCode, "grant_type" to DEVICE_GRANT)
+    } catch (e: SyncException) {
+        if (e.cause !is IOException) throw e
+        unreachable(e)
+        null
+    }
+
+    private fun expired() = SyncException("The sign-in code expired", reason = SyncException.Reason.EXPIRED)
 
     /** A new access token for [refreshToken]. */
     suspend fun refresh(refreshToken: String): GoogleTokens {

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,6 +68,8 @@ import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.common.titledRow
 import com.biskyt.mytvplayer.ui.common.vodActions
 import com.biskyt.mytvplayer.ui.common.vodDetails
+import com.biskyt.mytvplayer.ui.phone.PhoneSearch
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.Palette
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -130,12 +133,15 @@ class SearchViewModel(private val c: AppContainer, initialQuery: String = "") : 
     /** Set on returning to the results, until the result last opened has the focus again. */
     var restoreFocusPending by mutableStateOf(false)
 
+    /** Where the phone's list of results was scrolled to, for back from a result. */
+    val phoneList = LazyListState()
+
     /** The channel a programme is on (for catch-up in its options). */
     suspend fun channel(pid: Long, streamId: Long) = c.channels.get(pid, streamId)
 }
 
 /** A search result whose options panel is open. */
-private sealed interface Picked {
+internal sealed interface Picked {
     data class Channel(val streamId: Long, val name: String) : Picked
     data class Vod(val type: String, val card: VodCard) : Picked
 }
@@ -145,6 +151,7 @@ private sealed interface Picked {
 fun SearchScreen(initialQuery: String = "") {
     val vm = appViewModel { SearchViewModel(it, initialQuery) }
     vm.nowNext.PauseWhenHidden()
+    if (!LocalFormFactor.current.isTv) return PhoneSearch(vm)
     val nav = LocalNavigator.current
     val query by vm.query.collectAsState()
     val found = vm.found.collectAsState().value
@@ -245,7 +252,7 @@ fun SearchScreen(initialQuery: String = "") {
 
 /** What can be done with a result: watch or open it, favourites, and for channels catch-up and the guide source. */
 @Composable
-private fun ResultOptions(item: Picked, pid: Long, vm: SearchViewModel, onDismiss: () -> Unit) {
+internal fun ResultOptions(item: Picked, pid: Long, vm: SearchViewModel, onDismiss: () -> Unit) {
     val (title, actions) = when (item) {
         is Picked.Channel -> {
             val favourites by vm.favourites.channels.collectAsState()

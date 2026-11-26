@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.40.0
+- Every page has a phone and tablet layout, including Search, the TV guide and a channel's catch-up.
+- The Google sign-in no longer fails when you sign in in the browser on the same phone.
+- On a phone or tablet, a button copies the Google sign-in code.
+
 ## 1.39.1
 - Messages about opening a page, backups and the sync say "this device", not "this TV".
 - On a phone or tablet, link panels and the Google sign-in show no QR code.

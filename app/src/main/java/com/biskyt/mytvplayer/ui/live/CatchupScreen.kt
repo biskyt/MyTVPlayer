@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -52,6 +53,8 @@ import com.biskyt.mytvplayer.ui.common.formatRuntime
 import com.biskyt.mytvplayer.ui.common.formatTime
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
+import com.biskyt.mytvplayer.ui.phone.PhoneCatchup
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.Palette
 import java.time.Instant
 import java.time.LocalDate
@@ -71,6 +74,9 @@ class CatchupViewModel(private val c: AppContainer, private val screen: Screen.C
 
     /** The programme last opened (its start), for focus to return to from the player. */
     var lastOpened: Long? = null
+
+    /** Where the phone's list of programmes was scrolled to, for back from the player. */
+    val phoneList = LazyListState()
 
     init {
         load()
@@ -93,7 +99,7 @@ class CatchupViewModel(private val c: AppContainer, private val screen: Screen.C
     }
 }
 
-private fun dayLabel(daysAgo: Int): String = when (daysAgo) {
+internal fun dayLabel(daysAgo: Int): String = when (daysAgo) {
     0 -> appString(R.string.common_today)
     1 -> appString(R.string.common_yesterday)
     else -> LocalDate.now().minusDays(daysAgo.toLong()).format(dateFormat)
@@ -102,6 +108,7 @@ private fun dayLabel(daysAgo: Int): String = when (daysAgo) {
 @Composable
 fun CatchupScreen(screen: Screen.Catchup) {
     val vm = appViewModel(key = "catchup-${screen.streamId}") { CatchupViewModel(it, screen) }
+    if (!LocalFormFactor.current.isTv) return PhoneCatchup(screen, vm)
     val nav = LocalNavigator.current
     val ch = vm.channel
     val day by vm.days.value.collectAsState()

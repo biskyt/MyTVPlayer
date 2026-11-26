@@ -22,4 +22,6 @@
     <string name="sync_turn_on">Activer la synchronisation</string>
     <string name="sync_sign_out">Se déconnecter de Google</string>
     <string name="sync_sign_out_help">Désactive la synchronisation et les sauvegardes dans Google Drive sur cet appareil. Votre sauvegarde dans Google Drive y reste.</string>
+    <string name="sync_copy_code">Copier le code</string>
+    <string name="sync_code_copied">Code copié</string>
 </resources>

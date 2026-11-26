@@ -114,7 +114,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
-private const val HALF_HOUR = 30 * 60_000L
+internal const val HALF_HOUR = 30 * 60_000L
 private const val HOUR = 2 * HALF_HOUR
 
 // The window is as many half hours as the screen has room for (see [span]): on a TV, an hour and a half.
@@ -147,13 +147,13 @@ private class GuideCursor(row: Int, time: Long) {
     var moves = 0
 }
 
-/** The rows' programmes: fetched per 6-hour chunk, for rows on screen only (see [BatchLoader]). */
-private class GuideRows(
+/** The rows' programmes: fetched per 6-hour chunk, for rows on screen only (see [BatchLoader]). The phone's guide uses them too. */
+internal class GuideRows(
     private val scope: CoroutineScope,
     private val epg: EpgRepository,
     private val playlistId: () -> Long,
     private val catchup: GuideCatchup,
-    private val window: GuideWindow
+    val window: GuideWindow
 ) {
     private var chunk = Long.MIN_VALUE
     private var guide: BatchLoader<List<ChannelProgramme>>? = null
@@ -218,7 +218,7 @@ private class GuideRows(
     }
 }
 
-private fun visibleIn(programmes: List<ChannelProgramme>, windowStart: Long, windowEnd: Long): List<ChannelProgramme> =
+internal fun visibleIn(programmes: List<ChannelProgramme>, windowStart: Long, windowEnd: Long): List<ChannelProgramme> =
     programmes.filter { it.stopMs > windowStart && it.startMs < windowEnd }
 
 /** The programme on [time], else the next one after it, else the last: what a highlight on [time] shows. */
@@ -246,6 +246,24 @@ private val ChannelColumn = 288.dp
 private val arrowKeys = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight)
 
 /**
+ * The guide's rows for [vm]'s playlist, with their time window, for the TV's grid and the phone's: reloaded after a
+ * guide update (keeping the rows shown meanwhile). Catch-up (see GuideCatchup) is read only once the user scrolls back
+ * before now.
+ */
+@Composable
+internal fun rememberGuideRows(vm: LiveViewModel): GuideRows {
+    val container = LocalContext.current.container
+    val scope = rememberCoroutineScope()
+    val playlistId by vm.playlistId.collectAsState()
+    val catchup = remember(playlistId) { GuideCatchup(container, scope, playlistId) }
+    val window = remember(catchup) { GuideWindow(scope, catchup) }
+    val rows = remember(window) { GuideRows(scope, container.epg, { vm.playlistId.value }, catchup, window) }
+    val guideVersion by container.epg.changes.collectAsState()
+    LaunchedEffect(guideVersion) { rows.guide().refreshAll() }
+    return rows
+}
+
+/**
  * The full TV guide grid. Rows come from the same paged channel list; programmes are fetched only for rows on
  * screen and only around the visible time window.
  *
@@ -266,21 +284,15 @@ fun GuideGrid(
     val container = LocalContext.current.container
     val nav = LocalNavigator.current
     val scope = rememberCoroutineScope()
-    val guideVersion by container.epg.changes.collectAsState()
     val now by rememberMinuteClock()
-    // Catch-up (see GuideCatchup): only once the user scrolls back before now.
-    val playlistId by vm.playlistId.collectAsState()
     val favourites = vm.favouriteIds.collectIds()
-    val catchup = remember(playlistId) { GuideCatchup(container, scope, playlistId) }
-    val window = remember(catchup) { GuideWindow(scope, catchup) }
-    val rows = remember(window) { GuideRows(scope, container.epg, { vm.playlistId.value }, catchup, window) }
+    val rows = rememberGuideRows(vm)
+    val window = rows.window
     val cursor = remember { GuideCursor(vm.focusIndex ?: 0, System.currentTimeMillis()) }
     val open by rememberUpdatedState<(ChannelEntity, ChannelProgramme?) -> Unit> { ch, p -> openProgramme(nav, ch, p, play) }
     val highlight = remember(rows, items) { GuideHighlight(cursor, rows, window, items, vm, scope, entry, up) { ch, p -> open(ch, p) } }
     var hasFocus by remember { mutableStateOf(false) }
     val noGuide = stringResource(R.string.common_no_guide)
-    // After a guide update, reload the rows already shown (keeping them on screen meanwhile).
-    LaunchedEffect(guideVersion) { rows.guide().refreshAll() }
 
     // Arriving (from the list, the player or another tab): the highlight goes to what's on now on the channel last
     // used. Focus comes too, unless the view was switched with its buttons (they keep it).
@@ -519,16 +531,19 @@ private class GuideHighlight(
 }
 
 /** What a programme's cell says: its title (⟲ when it can be replayed), or, without one, [noGuide] (null: not loaded). */
-private fun cellTitle(ch: ChannelEntity, p: ChannelProgramme?, now: Long, noGuide: String?): String = when {
+internal fun cellTitle(ch: ChannelEntity, p: ChannelProgramme?, now: Long, noGuide: String?): String = when {
     p != null -> programmeTitle(p.title).let { if (ch.archiveDays > 0 && p.stopMs <= now) "⟲ $it" else it }
     else -> noGuide.orEmpty()
 }
 
 /** Local midnight within the window [span], if there is one. */
-private fun midnightIn(span: Span): Long? {
+private fun midnightIn(span: Span): Long? = midnightIn(span.start, span.end)
+
+/** Local midnight from [start] until [end], if there is one. */
+internal fun midnightIn(start: Long, end: Long): Long? {
     val zone = ZoneId.systemDefault()
-    val next = Instant.ofEpochMilli(span.start).atZone(zone).toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
-    return next.takeIf { it < span.end }
+    val next = Instant.ofEpochMilli(start).atZone(zone).toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+    return next.takeIf { it < end }
 }
 
 /** A line down the grid at the time [at] in the window: now, or where a day begins. */
@@ -737,7 +752,7 @@ internal class GuideWindow(
 }
 
 /** OK on a programme: a finished one on a catch-up channel is replayed; anything else plays the channel live. */
-private fun openProgramme(nav: Navigator, ch: ChannelEntity, p: ChannelProgramme?, play: (ChannelEntity) -> Unit) {
+internal fun openProgramme(nav: Navigator, ch: ChannelEntity, p: ChannelProgramme?, play: (ChannelEntity) -> Unit) {
     val start = p?.takeIf { ch.archiveDays > 0 && it.stopMs <= System.currentTimeMillis() }?.startMs
     if (start != null) nav.push(Screen.CatchupPlayer(ch.playlistId, ch.streamId, start)) else play(ch)
 }

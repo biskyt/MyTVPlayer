@@ -51,7 +51,9 @@ import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.common.quietFocus
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberTrailerOpener
+import com.biskyt.mytvplayer.ui.phone.PhoneTmdbTitle
 import com.biskyt.mytvplayer.ui.theme.BoardStyle
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.MEDIUM
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.SEMI_BOLD
@@ -115,6 +117,11 @@ class TmdbTitleViewModel(private val c: AppContainer, private val screen: Screen
 @Composable
 fun TmdbTitleScreen(screen: Screen.TmdbTitle) {
     val vm = appViewModel { TmdbTitleViewModel(it, screen) }
+    if (LocalFormFactor.current.isTv) TvTmdbTitle(screen, vm) else PhoneTmdbTitle(screen, vm)
+}
+
+@Composable
+private fun TvTmdbTitle(screen: Screen.TmdbTitle, vm: TmdbTitleViewModel) {
     val nav = LocalNavigator.current
     val info = vm.info
     val playTrailer = rememberTrailerOpener()
@@ -223,12 +230,12 @@ private fun EpisodeLine(e: TmdbEpisode) {
 }
 
 /** TMDB's original title, when a search for it can find more than one for [title]; else null. */
-private fun originalTitle(info: TitleInfo?, title: String): String? =
+internal fun originalTitle(info: TitleInfo?, title: String): String? =
     info?.tmdb?.originalTitle?.takeIf { VodTitles.key(it) != VodTitles.key(title) }
 
 /** "2023 · Drama, Crime · TMDB 78%": the parts that are known; null when none is. */
 @Composable
-private fun aboutLine(info: TitleInfo): String? = listOfNotNull(
+internal fun aboutLine(info: TitleInfo): String? = listOfNotNull(
     info.year?.toString(),
     info.genre,
     info.score?.let { stringResource(R.string.vod_score_tmdb_value, percentOf(it)) },

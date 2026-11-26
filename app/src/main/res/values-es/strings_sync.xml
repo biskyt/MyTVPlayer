@@ -22,4 +22,6 @@
     <string name="sync_turn_on">Activar la sincronización</string>
     <string name="sync_sign_out">Cerrar sesión de Google</string>
     <string name="sync_sign_out_help">Desactiva la sincronización y las copias en Google Drive en este dispositivo. Tu copia en Google Drive se conserva.</string>
+    <string name="sync_copy_code">Copiar el código</string>
+    <string name="sync_code_copied">Código copiado</string>
 </resources>
