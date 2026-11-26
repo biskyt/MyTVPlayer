@@ -81,6 +81,7 @@ import com.biskyt.mytvplayer.ui.common.CastPanel
 import com.biskyt.mytvplayer.ui.common.ItemActionsPanel
 import com.biskyt.mytvplayer.ui.common.LocalTopBarInset
 import com.biskyt.mytvplayer.ui.common.Muted
+import com.biskyt.mytvplayer.ui.common.OptionPlace
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.Poster
 import com.biskyt.mytvplayer.ui.common.ProgressLine
@@ -203,6 +204,27 @@ class SeriesDetailsViewModel(
     /** What is open over the page: an episode's options (its More… button, holding OK, or Menu), or a panel from them. */
     var open by mutableStateOf<SeriesPanel?>(null)
 
+    /** The episode options open now, or that the panel open now came from: Back from the panel goes back to them. */
+    private var options: SeriesPanel.Options? = null
+
+    /** The place of the option used last in the episode's options: back from the panel it opened, it has the focus again. */
+    val optionsUsed = mutableStateOf<OptionPlace?>(null)
+
+    /** TMDB's credits for episodes whose options were open: shown again, the options are all there at once. */
+    val episodeCredits = mutableMapOf<Triple<Int, Int, Int>, TmdbCredits>()
+
+    /** Opens [e]'s options afresh, on their first option. */
+    fun openOptions(e: EpisodeInfo) {
+        optionsUsed.value = null
+        options = SeriesPanel.Options(e)
+        open = options
+    }
+
+    /** Back on a panel: the options it came from (the owner, 2026-11-26); on the options, none. */
+    fun back() {
+        open = if (open is SeriesPanel.Options) null else options
+    }
+
     /** Who has the remote in Cast and crew: back from a person's page, the panel shows them again. */
     var castFocus by mutableIntStateOf(0)
 
@@ -317,7 +339,7 @@ private fun TvSeriesPage(
     val toEpisodes = if (vm.error == null && d?.episodes?.isNotEmpty() == true) Modifier.focusProperties { right = episodes } else Modifier
     // The remote's Menu button opens the options of the episode it is on (its row's own handler), or else, from
     // anywhere else on the page, of the one asked for or to carry on with.
-    Box(Modifier.fillMaxSize().onOptionsKeyAfter { (target ?: next)?.let { vm.open = SeriesPanel.Options(it) } }) {
+    Box(Modifier.fillMaxSize().onOptionsKeyAfter { (target ?: next)?.let { vm.openOptions(it) } }) {
         Backdrop(vm.info.backdropUrl)
         Row(
             Modifier.padding(start = 48.bd, end = 40.bd, top = LocalTopBarInset.current, bottom = 16.bd),
@@ -332,7 +354,7 @@ private fun TvSeriesPage(
                             next,
                             progress,
                             play,
-                            { vm.open = SeriesPanel.Options(next) },
+                            { vm.openOptions(next) },
                             if (target == null || !vm.focusEpisodePending) playFocus(vm, next.id) else Modifier
                         )
                     }
@@ -376,7 +398,7 @@ private fun SeriesPanels(
     moreLike: (Int) -> Unit
 ) {
     val tmdb = vm.tmdb
-    val close = { vm.open = null }
+    val back = vm::back
     // The episode as it is now: TMDB's data for it may come in after its panel opened.
     val now = { e: EpisodeInfo -> vm.shown?.episodes?.firstOrNull { it.id == e.id } ?: e }
     when (val p = vm.open) {
@@ -384,18 +406,18 @@ private fun SeriesPanels(
         is SeriesPanel.Options -> EpisodeOptions(vm, now(p.e), progress[p.e.id], playTrailer, moreLike)
         SeriesPanel.Cast -> {
             val crew = remember(tmdb) { castAndCrew(tmdb) }
-            CastPanel(title, crew, stringResource(R.string.vod_cast_crew), vm.castFocus, { openPerson(it, crew[it]) }, close)
+            CastPanel(title, crew, stringResource(R.string.vod_cast_crew), vm.castFocus, { openPerson(it, crew[it]) }, back)
         }
-        SeriesPanel.About -> tmdb?.let { AboutPanel(it, close) }
-        SeriesPanel.Trailers -> TrailersPanel(title, vm.info.trailers, close)
-        is SeriesPanel.Describe -> EpisodeDescriptionPanel(describedEpisode(title, now(p.e), vm.tmdbEpisode(p.e)), close)
+        SeriesPanel.About -> tmdb?.let { AboutPanel(it, back) }
+        SeriesPanel.Trailers -> TrailersPanel(title, vm.info.trailers, back)
+        is SeriesPanel.Describe -> EpisodeDescriptionPanel(describedEpisode(title, now(p.e), vm.tmdbEpisode(p.e)), back)
         is SeriesPanel.EpisodeCast -> EpisodeCastPanel(
             vm.playlistId,
             episodeName(p.e, title),
             p.credits,
             vm.castFocus,
             remember(vm) { { i: Int -> vm.castFocus = i } },
-            close
+            back
         )
     }
 }
@@ -505,7 +527,7 @@ private fun EpisodeOptions(
         close()
     }
     val c = LocalContext.current.container
-    val credits = rememberEpisodeCredits(c, vm.tmdb, e.season, e.number)
+    val credits = rememberEpisodeCredits(c, vm.tmdb, e.season, e.number, vm.episodeCredits)
     // One partly watched can be counted as watched, or started again (its progress forgotten).
     val episode = episodeOwnActions(
         vm.playlistId,
@@ -530,7 +552,7 @@ private fun EpisodeOptions(
         moreLike,
         showAbout = { vm.open = SeriesPanel.About }
     )
-    ItemActionsPanel(episodeName(e, vm.series?.title), episodeAndShowActions(episode, show), close)
+    ItemActionsPanel(episodeName(e, vm.series?.title), episodeAndShowActions(episode, show), close, used = vm.optionsUsed)
 }
 
 /** Focus for Play as the page opens and whenever where to carry on changes, unless the remote is in the episode list. */
@@ -592,7 +614,7 @@ private fun Episodes(
         items(shown, key = { it.id }) { e ->
             val focus = Modifier.restoreFocusIf(vm.focusEpisodePending && e == target) { vm.focusEpisodePending = false }
                 .then(if (e == firstUnplayed) Modifier.focusRequester(firstUnplayedRow) else Modifier)
-            EpisodeRow(e, vm.series?.title, progress[e.id], focus, options = { vm.open = SeriesPanel.Options(e) }) { play(e) }
+            EpisodeRow(e, vm.series?.title, progress[e.id], focus, options = { vm.openOptions(e) }) { play(e) }
         }
     }
 }

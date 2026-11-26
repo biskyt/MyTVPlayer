@@ -16,6 +16,7 @@ import com.biskyt.mytvplayer.testutil.FakeProvider
 import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.addHomeTv
+import com.biskyt.mytvplayer.testutil.backOnPanel
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
 import com.biskyt.mytvplayer.testutil.waitForText
@@ -116,5 +117,33 @@ class ParentalUiTest {
             runBlocking { com.biskyt.mytvplayer.data.Pin.matches("2468", app.container.settings.current().pinHash) }
         }
         waitFor("Change PIN")
+    }
+
+    @Test
+    fun `Back on the second step of a new PIN goes back to the first`() {
+        // The owner, 2026-11-26: Back goes back to the panel before.
+        runBlocking { app.container.parental.setPin("") }
+        show(Screen.Parental)
+        waitFor("Set PIN")
+        compose.onNode(hasText("Set PIN") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
+        typePin("2468", title = "Choose a 4-digit PIN")
+        waitFor("Enter the new PIN again")
+        compose.backOnPanel()
+        waitFor("Choose a 4-digit PIN")
+    }
+
+    @Test
+    fun `Back on the PIN for a category's restriction goes back to its options`() {
+        show(Screen.Live(ChannelFilter.All))
+        waitFor("UK | ENTERTAINMENT")
+        // Holding OK on the category (its long click) opens its options.
+        compose.onAllNodes(hasText("UK | ENTERTAINMENT", substring = true) and hasClickAction())[0]
+            .performSemanticsAction(SemanticsActions.OnLongClick)
+        waitFor("Remove restriction")
+        compose.onNode(hasText("Remove restriction") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
+        waitFor("Enter PIN")
+        compose.backOnPanel()
+        compose.waitAdvancingClock { !shown("Enter PIN") }
+        assertTrue("the options are still open", shown("Remove restriction"))
     }
 }

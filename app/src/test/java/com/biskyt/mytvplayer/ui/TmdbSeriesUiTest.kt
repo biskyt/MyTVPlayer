@@ -2,8 +2,10 @@ package com.biskyt.mytvplayer.ui
 
 import androidx.compose.runtime.remember
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.core.app.ApplicationProvider
 import com.biskyt.mytvplayer.testutil.FakeProvider
@@ -11,9 +13,11 @@ import com.biskyt.mytvplayer.testutil.FakeTmdb
 import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.addHomeTv
+import com.biskyt.mytvplayer.testutil.backOnPanel
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.settle
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
+import com.biskyt.mytvplayer.testutil.waitForFocus
 import com.biskyt.mytvplayer.testutil.waitForText
 import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
@@ -67,6 +71,18 @@ class TmdbSeriesUiTest {
         compose.waitForText("Mark as watched")
     }
 
+    /** The options' Cast and crew, from the top down: the episode's, then the show's. */
+    private fun castAndCrew(): List<SemanticsNodeInteraction> {
+        val all = compose.onAllNodes(hasText("Cast and crew") and hasClickAction())
+        return all.fetchSemanticsNodes().indices.sortedBy { all[it].fetchSemanticsNode().boundsInRoot.top }.map { all[it] }
+    }
+
+    /** Which of the options' two Cast and crew has the focus (0: the episode's, 1: the show's), or -1. */
+    private fun focusedCastAndCrew(): Int {
+        val focused = compose.onAllNodes(hasText("Cast and crew") and isFocused()).fetchSemanticsNodes().firstOrNull() ?: return -1
+        return castAndCrew().indexOfFirst { it.fetchSemanticsNode().boundsInRoot.top == focused.boundsInRoot.top }
+    }
+
     private fun shown(text: String) = compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty()
 
     private fun click(text: String) = compose.onNode(hasText(text) and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
@@ -104,6 +120,10 @@ class TmdbSeriesUiTest {
         compose.waitForText("Links")
         click("About this show")
         compose.waitForText("BBC Two")
+        // Back goes back to the episode's options, on About this show (the owner, 2026-11-26).
+        compose.backOnPanel()
+        compose.waitForFocus("About this show")
+        compose.waitForText("THIS EPISODE")
     }
 
     @Test
@@ -118,6 +138,13 @@ class TmdbSeriesUiTest {
         assertTrue(shown("Vicky McClure")) // the show's cast who are in it
         assertTrue(shown("David Caffrey"))
         assertTrue(!shown("Martin Compston")) // the show's cast who are not
+        // Back goes back to the options, on the Cast and crew used: the episode's, then the show's (by place, not name).
+        compose.backOnPanel()
+        compose.waitAdvancingClock(stepMs = 50) { focusedCastAndCrew() == 0 }
+        castAndCrew()[1].performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForText("Martin Compston")
+        compose.backOnPanel()
+        compose.waitAdvancingClock(stepMs = 50) { focusedCastAndCrew() == 1 }
     }
 
     @Test

@@ -661,9 +661,7 @@ internal fun ControlsBar(
             ButtonRow {
                 PillButton(stringResource(R.string.player_audio), { vm.sheet = PlaybackViewModel.Sheet.AUDIO })
                 PillButton(stringResource(R.string.player_subtitles), { vm.sheet = PlaybackViewModel.Sheet.SUBTITLES })
-                PillButton(stringResource(R.string.player_more), {
-                    vm.sheet = PlaybackViewModel.Sheet.MORE
-                }, Modifier.focusRequester(more))
+                PillButton(stringResource(R.string.player_more), vm::openMore, Modifier.focusRequester(more))
             }
         },
         // The OK that brought the controls up is still down: its release (and repeats) mustn't press play/pause too.

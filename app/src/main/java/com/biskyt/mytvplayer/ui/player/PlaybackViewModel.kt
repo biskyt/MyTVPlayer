@@ -36,6 +36,7 @@ import com.biskyt.mytvplayer.player.PlaybackError
 import com.biskyt.mytvplayer.player.explainFailure
 import com.biskyt.mytvplayer.player.isPassing
 import com.biskyt.mytvplayer.ui.common.ItemAction
+import com.biskyt.mytvplayer.ui.common.OptionPlace
 import com.biskyt.mytvplayer.ui.common.formatDuration
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -79,6 +80,20 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     /** Which side sheet is open over the video (null = none). */
     var sheet by mutableStateOf<Sheet?>(null)
 
+    /** The More menu's option used last: back from the panel it opened, More has it focused again. */
+    var moreUsed by mutableStateOf<OptionPlace?>(null)
+
+    /** Opens the More menu afresh, on its first option. */
+    fun openMore() {
+        moreUsed = null
+        sheet = Sheet.MORE
+    }
+
+    /** Back on a sheet: one that More opened goes back to More (the owner, 2026-11-26: as every panel does); others close. */
+    fun sheetBack() {
+        sheet = if (sheet?.fromMore == true) Sheet.MORE else null
+    }
+
     /** The programme the About sheet tells of (live TV's, on now). */
     open val about: ChannelProgramme? get() = null
 
@@ -89,7 +104,15 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     var exit by mutableStateOf(false)
         private set
 
-    enum class Sheet { AUDIO, SUBTITLES, MORE, ABOUT, STREAM_INFO, CHANNEL_INFO }
+    /** The side sheets; [fromMore]: opened from More, so Back goes back to it. */
+    enum class Sheet(val fromMore: Boolean = false) {
+        AUDIO,
+        SUBTITLES,
+        MORE,
+        ABOUT(fromMore = true),
+        STREAM_INFO(fromMore = true),
+        CHANNEL_INFO(fromMore = true)
+    }
 
     /**
      * What can be done with what's playing, at the top of the More menu; read while drawing it, so labels follow state

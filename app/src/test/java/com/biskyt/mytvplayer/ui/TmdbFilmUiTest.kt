@@ -13,9 +13,11 @@ import com.biskyt.mytvplayer.testutil.FakeTmdb
 import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.addHomeTv
+import com.biskyt.mytvplayer.testutil.backOnPanel
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.settle
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
+import com.biskyt.mytvplayer.testutil.waitForFocus
 import com.biskyt.mytvplayer.testutil.waitForText
 import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
@@ -170,6 +172,10 @@ class TmdbFilmUiTest {
         compose.waitForText("Lady Jessica")
         compose.waitForText("Director")
         compose.waitForText("Writer")
+        // Back goes back to More…, on Cast and crew (the owner, 2026-11-26).
+        compose.backOnPanel()
+        compose.waitForFocus("Cast and crew")
+        compose.waitForText("Add to favourites")
     }
 
     @Test

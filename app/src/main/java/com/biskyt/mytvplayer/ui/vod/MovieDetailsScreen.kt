@@ -50,6 +50,7 @@ import com.biskyt.mytvplayer.ui.common.CastPanel
 import com.biskyt.mytvplayer.ui.common.CirclePhoto
 import com.biskyt.mytvplayer.ui.common.ItemActionsPanel
 import com.biskyt.mytvplayer.ui.common.LocalTopBarInset
+import com.biskyt.mytvplayer.ui.common.OptionPlace
 import com.biskyt.mytvplayer.ui.common.Poster
 import com.biskyt.mytvplayer.ui.common.Tab
 import com.biskyt.mytvplayer.ui.common.TrailersPanel
@@ -76,6 +77,9 @@ import kotlinx.coroutines.launch
 class MovieDetailsViewModel(private val c: AppContainer, val playlistId: Long, private val streamId: Long) : ViewModel() {
     var movie by mutableStateOf<MovieEntity?>(null)
         private set
+
+    /** The option of More… used last: back from the panel it opened (and from a person's page), it has the focus again. */
+    val moreUsed = mutableStateOf<OptionPlace?>(null)
     var details by mutableStateOf<VodDetails?>(null)
         private set
 
@@ -175,7 +179,13 @@ private fun FilmPanels(
 ) {
     val info = vm.info
     val tmdb = info.tmdb
-    val close = { show(FilmPanel.NONE) }
+    val used = vm.moreUsed
+    val close = {
+        used.value = null
+        show(FilmPanel.NONE)
+    }
+    // Back from a panel opened from More… goes back to it (the owner, 2026-11-26).
+    val back = { show(FilmPanel.MORE) }
     when (open) {
         FilmPanel.NONE -> Unit
         FilmPanel.MORE -> {
@@ -189,13 +199,13 @@ private fun FilmPanels(
                 showCast = { show(FilmPanel.CAST) },
                 showSimilar = moreLike
             )
-            ItemActionsPanel(movie.title, actions, close, panelLine(movie.year ?: info.year, info.genre))
+            ItemActionsPanel(movie.title, actions, close, panelLine(movie.year ?: info.year, info.genre), used)
         }
         FilmPanel.CAST -> {
             val crew = remember(tmdb) { castAndCrew(tmdb) }
-            CastPanel(movie.title, crew, stringResource(R.string.vod_cast_crew), castFocus, { openPerson(it, crew[it]) }, close)
+            CastPanel(movie.title, crew, stringResource(R.string.vod_cast_crew), castFocus, { openPerson(it, crew[it]) }, back)
         }
-        FilmPanel.TRAILERS -> TrailersPanel(movie.title, info.trailers, close)
+        FilmPanel.TRAILERS -> TrailersPanel(movie.title, info.trailers, back)
     }
 }
 

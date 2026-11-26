@@ -53,7 +53,6 @@ import com.biskyt.mytvplayer.ui.player.episodeName
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.vod.SeriesDetailsViewModel
-import com.biskyt.mytvplayer.ui.vod.SeriesPanel
 import com.biskyt.mytvplayer.ui.vod.TmdbScore
 import com.biskyt.mytvplayer.ui.vod.continueText
 import com.biskyt.mytvplayer.ui.vod.episodeLength
@@ -114,7 +113,7 @@ private fun SeriesButtons(
     val favourite by vm.favourite.collectAsState()
     val trailer = rememberTrailerOpener()
     Column(Modifier.padding(start = PhoneGutter, end = PhoneGutter, top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        val options = next?.let { e -> { vm.open = SeriesPanel.Options(e) } }
+        val options = next?.let { e -> { vm.openOptions(e) } }
         if (next != null) {
             PhoneMainButton(continueText(next, progress), progress[next.id].partWatched()?.fraction, options) { play(next) }
         }
@@ -171,7 +170,7 @@ private fun EpisodesPane(
             Column {
                 shown.forEach { e ->
                     val scrollTo = if (e == target && vm.focusEpisodePending) ({ vm.focusEpisodePending = false }) else null
-                    PhoneEpisodeRow(e, show.title, progress[e.id], scrollTo, { vm.open = SeriesPanel.Options(e) }) { play(e) }
+                    PhoneEpisodeRow(e, show.title, progress[e.id], scrollTo, { vm.openOptions(e) }) { play(e) }
                 }
             }
         }

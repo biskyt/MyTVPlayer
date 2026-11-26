@@ -6,11 +6,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
@@ -36,10 +38,12 @@ import com.biskyt.mytvplayer.ui.common.ChannelLogo
 import com.biskyt.mytvplayer.ui.common.ItemAction
 import com.biskyt.mytvplayer.ui.common.ItemActionRow
 import com.biskyt.mytvplayer.ui.common.LocalTouch
+import com.biskyt.mytvplayer.ui.common.OptionPlace
 import com.biskyt.mytvplayer.ui.common.ProgrammeAbout
 import com.biskyt.mytvplayer.ui.common.ScheduleList
 import com.biskyt.mytvplayer.ui.common.TouchStepButtons
 import com.biskyt.mytvplayer.ui.common.displayLanguage
+import com.biskyt.mytvplayer.ui.common.focusedAt
 import com.biskyt.mytvplayer.ui.common.formatRange
 import com.biskyt.mytvplayer.ui.common.numberLabel
 import com.biskyt.mytvplayer.ui.common.perform
@@ -98,10 +102,21 @@ fun PlayerSheet(sheet: PlaybackViewModel.Sheet, vm: PlaybackViewModel) {
     val engine = vm.engine ?: return
     val nav = LocalNavigator.current
     val close = { vm.sheet = null }
-    BoardPanel(onDismiss = close, dim = false, scroll = false) {
+    // More's own options: Picture (what it says now) and Stream info.
+    val pictureLabel = stringResource(R.string.player_picture, stringResource(vm.picture.label))
+    val streamInfoLabel = stringResource(R.string.player_stream_info)
+    // More's options, then its own (Picture, then Stream info), and the one to focus: the one used last (back from the
+    // panel it opened), else the first.
+    val actions = if (sheet == PlaybackViewModel.Sheet.MORE) vm.menuActions() else emptyList()
+    val labels = actions.map { it.takeUnless { a -> a is ItemAction.Heading }?.label } + listOf(pictureLabel, streamInfoLabel)
+    val focused = focusedAt(labels, vm.moreUsed)
+    // The list opens on it, so that it is there to take the focus (the title, the options, then a heading before Picture).
+    val list = remember(sheet) { LazyListState(if (sheet == PlaybackViewModel.Sheet.MORE) moreRow(focused, actions.size) else 0) }
+    // Back from a sheet that More opened goes back to More.
+    BoardPanel(onDismiss = vm::sheetBack, dim = false, scroll = false) {
         // Again when More opens another sheet in its place.
         val first = rememberFirstFocus(sheet)
-        LazyColumn(Modifier.panelKeys(vm), verticalArrangement = Arrangement.spacedBy(BoardPanelGap)) {
+        LazyColumn(Modifier.panelKeys(vm), list, verticalArrangement = Arrangement.spacedBy(BoardPanelGap)) {
             when (sheet) {
                 PlaybackViewModel.Sheet.AUDIO -> {
                     item { Header(stringResource(R.string.player_audio), vm.audioLabel) }
@@ -134,25 +149,30 @@ fun PlayerSheet(sheet: PlaybackViewModel.Sheet, vm: PlaybackViewModel) {
                 PlaybackViewModel.Sheet.MORE -> {
                     item { Header(vm.menuTitle() ?: stringResource(R.string.player_more), null) }
                     // Drawn as every options panel draws them (the series page's): headings, help lines, links.
-                    val actions = vm.menuActions()
-                    val firstOption = actions.indexOfFirst { it !is ItemAction.Heading }
                     itemsIndexed(actions) { i, a ->
                         // A screen pushed over the player stops it while it's covered.
-                        ItemActionRow(a, if (i == firstOption) first else Modifier) { a.perform(nav, close, vm::beforeLeaving) }
+                        ItemActionRow(a, if (i == focused) first else Modifier) {
+                            vm.moreUsed = OptionPlace(i, a.label)
+                            a.perform(nav, close, vm::beforeLeaving)
+                        }
                     }
                     // The player's own options, under their own heading (the owner, 2026-11-24).
                     item { ItemActionRow(ItemAction.Heading(stringResource(R.string.player_playback_heading))) {} }
                     item {
-                        // What it says now, and what it flashes once pressed (the next mode).
-                        val label = stringResource(R.string.player_picture, stringResource(vm.picture.label))
+                        // What it flashes once pressed: the next mode.
                         val next = vm.picture.next
                         val nextLabel = stringResource(R.string.player_picture, stringResource(next.label))
-                        Choice(label, false, if (firstOption < 0) first else Modifier) {
+                        Choice(pictureLabel, false, if (focused == actions.size) first else Modifier) {
                             vm.picture = next
                             vm.flash(nextLabel)
                         }
                     }
-                    item { Choice(stringResource(R.string.player_stream_info), false) { vm.sheet = PlaybackViewModel.Sheet.STREAM_INFO } }
+                    item {
+                        Choice(streamInfoLabel, false, if (focused == actions.size + 1) first else Modifier) {
+                            vm.moreUsed = OptionPlace(actions.size + 1, streamInfoLabel)
+                            vm.sheet = PlaybackViewModel.Sheet.STREAM_INFO
+                        }
+                    }
                     item { BoardPanelSubtitle(stringResource(R.string.player_audio_output, vm.audioLabel), Modifier.padding(top = 6.bd)) }
                     item { BoardPanelSubtitle(videoInfo(vm.tracks)) }
                 }
@@ -186,6 +206,9 @@ fun PlayerSheet(sheet: PlaybackViewModel.Sheet, vm: PlaybackViewModel) {
         }
     }
 }
+
+/** The row of More's list that shows option [option] of [actions] options and More's own: the title, the options, then a heading. */
+private fun moreRow(option: Int, actions: Int): Int = if (option <= 0) 0 else 1 + option + if (option >= actions) 1 else 0
 
 @Composable
 private fun Header(title: String, subtitle: String?) {

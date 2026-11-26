@@ -153,9 +153,16 @@ class VodPlayerViewModel(c: AppContainer, appContext: Context, private val scree
         showAbout = if (series == null) null else ({ openPanel(TitlePanel.About) }),
     )
 
+    /** Opens [p] in More's place: Back goes back to More ([panelBack]), with the option that opened it focused. */
     private fun openPanel(p: TitlePanel) {
         sheet = null
         panel = p
+    }
+
+    /** Back on a panel from More: More again (the owner, 2026-11-26). */
+    fun panelBack() {
+        panel = null
+        sheet = Sheet.MORE
     }
 
     /** A screen an option opens over the player (More like this): the screen pushes it. */

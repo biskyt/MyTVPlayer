@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -66,11 +67,15 @@ fun BoardPanel(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val column = @Composable {
-        Column(
-            if (scroll) Modifier.verticalScroll(rememberScrollState()) else Modifier,
-            verticalArrangement = Arrangement.spacedBy(gap),
-            content = content
-        )
+        // A window of its own: the screen's return to its row (see ReturnFocus) is not this panel's. Without this, the
+        // panel's options would note themselves as the screen's row, and its first focus could wait on the screen's.
+        CompositionLocalProvider(LocalReturnFocus provides null) {
+            Column(
+                if (scroll) Modifier.verticalScroll(rememberScrollState()) else Modifier,
+                verticalArrangement = Arrangement.spacedBy(gap),
+                content = content
+            )
+        }
     }
     // A phone or an unfolded foldable (the owner, 2026-11-25): a sheet from the bottom in place of the side panel.
     if (!LocalFormFactor.current.isTv) return PhoneSheet(onDismiss, dim, column)
