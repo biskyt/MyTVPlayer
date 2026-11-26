@@ -595,15 +595,16 @@ class AppUiTest {
     @Test
     fun `the live player's More menu adds to favourites and opens catch-up and the guide source`() {
         val vm = com.biskyt.mytvplayer.ui.player.PlayerViewModel(app.container, app, Screen.Player(playlistId, 101, ChannelFilter.All))
-        compose.waitAdvancingClock { vm.menuActions().isNotEmpty() }
+        // About the programme comes first once its details are read (the owner, 2026-11-26).
+        compose.waitAdvancingClock { vm.menuActions().firstOrNull()?.label == "About this programme" }
         val labels = vm.menuActions().map { it.label }
-        assertEquals(listOf("Add to favourites", "Catch-up", "Change guide source…"), labels)
+        assertEquals(listOf("About this programme", "Add to favourites", "Catch-up", "Change guide source…"), labels)
         assertEquals(
             Screen.GuideMatching(playlistId, 101),
             (vm.menuActions().last() as com.biskyt.mytvplayer.ui.common.ItemAction.Open).screen
         )
-        (vm.menuActions().first() as com.biskyt.mytvplayer.ui.common.ItemAction.Run).run()
-        compose.waitAdvancingClock { vm.menuActions().first().label == "Remove from favourites" }
+        (vm.menuActions()[1] as com.biskyt.mytvplayer.ui.common.ItemAction.Run).run()
+        compose.waitAdvancingClock { vm.menuActions()[1].label == "Remove from favourites" }
         vm.engine?.release()
     }
 

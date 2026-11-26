@@ -130,7 +130,7 @@ private const val MAX_HALF_HOURS = ((CHUNK_MS - CHUNK_STEP + HALF_HOUR) / HALF_H
 
 private const val DAY_MS = 24 * HOUR
 private const val SHOWN_ROWS = 300
-private const val NEW_LIST_MS = 5_000L
+internal const val NEW_LIST_MS = 5_000L
 
 /**
  * The guide's highlight: a row (its position in the channel list) and a time; the programme on that time in that row
@@ -220,6 +220,29 @@ internal class GuideRows(
 
 internal fun visibleIn(programmes: List<ChannelProgramme>, windowStart: Long, windowEnd: Long): List<ChannelProgramme> =
     programmes.filter { it.stopMs > windowStart && it.startMs < windowEnd }
+
+/** The block that shows [visible]`[index]`: its own, or, for one not drawn, the one before it, which it is inside. */
+internal fun drawnCell(drawn: List<GuideBlock>, index: Int): Int? = drawn.lastOrNull { it.index <= index }?.index
+
+/** A programme drawn in a row: [visible]`[index]`, from [from] to [to]. */
+internal data class GuideBlock(val index: Int, val programme: ChannelProgramme, val from: Long, val to: Long)
+
+/**
+ * Where each of a row's [visible] programmes is drawn in the window [start] to [end], on a TV and a phone: from its start
+ * (or the window's) to its end (or the window's). One that starts before the one before it ends is drawn from where
+ * that one ends, and one left with no time is not drawn, so that an overlap moves no later programme (MyPlexPlayer's
+ * review, 2026-11-26).
+ */
+internal fun blocks(visible: List<ChannelProgramme>, start: Long, end: Long): List<GuideBlock> {
+    var at = start
+    return visible.mapIndexedNotNull { i, p ->
+        val from = maxOf(p.startMs, start, at)
+        val to = minOf(p.stopMs, end)
+        if (to <= from) return@mapIndexedNotNull null
+        at = to
+        GuideBlock(i, p, from, to)
+    }
+}
 
 /** The programme on [time], else the next one after it, else the last: what a highlight on [time] shows. */
 internal fun cellAt(visible: List<ChannelProgramme>, time: Long): Int =
@@ -636,7 +659,8 @@ private fun GuideRow(
             CatchupMark(ch, Modifier.padding(start = 4.dp))
         }
         val visible = remember(programmes, span) { visibleIn(programmes.orEmpty(), span.start, span.end) }
-        if (visible.isEmpty()) {
+        val drawn = remember(visible, span) { blocks(visible, span.start, span.end) }
+        if (drawn.isEmpty()) {
             // One cell for the whole window, so the row can still be highlighted and played.
             Cell(
                 span.width(span.length),
@@ -647,21 +671,21 @@ private fun GuideRow(
                 { onLongTap(null) }
             )
         } else {
-            val highlighted = highlight?.let { cellAt(visible, it) }
+            // A programme inside the one before it is not drawn (see blocks): the one it is inside is highlighted.
+            val highlighted = highlight?.let { drawnCell(drawn, cellAt(visible, it)) }
             var cursor = span.start
-            visible.forEachIndexed { i, p ->
-                val start = maxOf(p.startMs, span.start)
-                if (start > cursor) Spacer(Modifier.width(span.width(start - cursor)))
-                val end = minOf(p.stopMs, span.end)
+            drawn.forEach { b ->
+                val p = b.programme
+                if (b.from > cursor) Spacer(Modifier.width(span.width(b.from - cursor)))
                 Cell(
-                    span.width(end - start),
+                    span.width(b.to - b.from),
                     p.isLive(now),
-                    i == highlighted,
+                    b.index == highlighted,
                     cellTitle(ch, p, now, noGuide = null),
                     { onTap(p) },
                     { onLongTap(p) }
                 )
-                cursor = end
+                cursor = b.to
             }
         }
     }

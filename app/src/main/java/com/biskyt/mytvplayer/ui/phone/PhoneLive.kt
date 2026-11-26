@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,11 +64,17 @@ import com.biskyt.mytvplayer.ui.common.isLockedCategory
 import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.live.ChannelOptionsSheet
 import com.biskyt.mytvplayer.ui.live.LiveViewModel
+import com.biskyt.mytvplayer.ui.live.NEW_LIST_MS
 import com.biskyt.mytvplayer.ui.live.liveEntries
 import com.biskyt.mytvplayer.ui.theme.FormFactor
 import com.biskyt.mytvplayer.ui.theme.LocalAccent
 import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.Palette
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 // Live TV, Radio and the Catch-up tab on a phone or an unfolded foldable (the owner, 2026-11-25). The same
 // ViewModel, lists and options as the TV screen (LiveScreen), drawn for touch. The guide is a screen of its own on top
@@ -195,34 +202,22 @@ private fun Channels(vm: LiveViewModel, filter: ChannelFilter, open: (ChannelEnt
     val categories by vm.categories.collectAsState()
     // A channel taken off the list (from its options): a TV moves focus on from it; a touch screen has no focus to move.
     vm.removedStreamId?.let { removed -> LaunchedEffect(removed) { vm.removedStreamId = null } }
+    // Here, not in the list: it is not shown for a restricted category, and the list after it starts at the top too.
+    NewListToTop(vm, items)
     when {
         !vm.filters.settled -> Unit
         isLockedCategory(categories, (filter as? ChannelFilter.Category)?.id) ->
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) { LockedCategory() }
-        else -> ChannelList(vm, items, filter, open, padding)
+        else -> ChannelList(vm, items, open, padding)
     }
 }
 
 @Composable
-private fun ChannelList(
-    vm: LiveViewModel,
-    items: LazyPagingItems<ChannelEntity>,
-    filter: ChannelFilter,
-    open: (ChannelEntity) -> Unit,
-    padding: PaddingValues
-) {
+private fun ChannelList(vm: LiveViewModel, items: LazyPagingItems<ChannelEntity>, open: (ChannelEntity) -> Unit, padding: PaddingValues) {
     val favs = vm.favouriteIds.collectIds()
-    val query by vm.query.collectAsState()
     val now by rememberMinuteClock()
     // The TV's list state, so the list is where it was back from the player; a new list starts at the top.
     val state = vm.listState
-    var shown by remember { mutableStateOf(filter to query) }
-    LaunchedEffect(filter, query) {
-        if (shown != filter to query) {
-            shown = filter to query
-            state.scrollToItem(0)
-        }
-    }
     if (items.itemCount == 0) {
         Muted(stringResource(R.string.live_no_channels), Modifier.padding(horizontal = PhoneGutter, vertical = 24.dp))
         return
@@ -248,6 +243,24 @@ private fun ChannelList(
                     vm.focusMoved(ch.streamId, index)
                     open(ch)
                 }
+            }
+        }
+    }
+}
+
+/**
+ * A new list (a category, or a search) starts at its top, in the channel list and the guide, even after a list with no
+ * channels. When its rows arrive, it goes to the top again: a list keeps the channel on top in view, wherever it is in
+ * the new one (as the TV's guide does).
+ */
+@Composable
+internal fun NewListToTop(vm: LiveViewModel, items: LazyPagingItems<ChannelEntity>) {
+    LaunchedEffect(vm, items) {
+        combine(vm.filter, vm.query, ::Pair).drop(1).collectLatest {
+            vm.listState.scrollToItem(0)
+            withTimeoutOrNull(NEW_LIST_MS) {
+                snapshotFlow { items.itemSnapshotList }.drop(1).first()
+                vm.listState.requestScrollToItem(0)
             }
         }
     }

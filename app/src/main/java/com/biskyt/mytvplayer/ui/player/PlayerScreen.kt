@@ -507,8 +507,8 @@ private fun LiveControls(vm: PlayerViewModel, buttons: FocusRequester, root: Foc
 
 /**
  * The controls of a channel, live or catch-up, the same for both: its logo, number and name (and [line] after them),
- * the programme's [title] and about it, what is [next] (its start and title), the [timeline], then the channel guide,
- * About and [extra] before the play controls.
+ * the programme's [title] and about it, what is [next] (its start and title), the [timeline], then the channel guide
+ * and [extra] before the play controls. All about the programme is the first entry of the More menu.
  */
 @Composable
 internal fun ChannelControls(
@@ -522,7 +522,6 @@ internal fun ChannelControls(
     extra: @Composable RowScope.() -> Unit = {}
 ) {
     val ch = vm.channel ?: return
-    val details = vm.about
     val accent = LocalAccent.current
     ControlsPanel {
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(22.dp)) {
@@ -530,7 +529,7 @@ internal fun ChannelControls(
             Column(Modifier.weight(1f)) {
                 Muted(ch.numberAndName(line))
                 Text(title ?: ch.name, style = MaterialTheme.typography.displaySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                details?.let { ProgrammeAbout(it, maxLines = 2) }
+                vm.about?.let { ProgrammeAbout(it, maxLines = 2) }
             }
             next?.let { (startMs, nextTitle) ->
                 Column(Modifier.width(320.dp), horizontalAlignment = Alignment.End) {
@@ -546,9 +545,6 @@ internal fun ChannelControls(
         timeline()
         ControlsBar(vm, buttons, root) {
             PillButton(stringResource(R.string.player_channel_guide), vm::openGuide)
-            if (details?.description != null || details?.subtitle != null) {
-                PillButton(stringResource(R.string.player_about_programme), { vm.sheet = PlaybackViewModel.Sheet.ABOUT })
-            }
             extra()
         }
     }

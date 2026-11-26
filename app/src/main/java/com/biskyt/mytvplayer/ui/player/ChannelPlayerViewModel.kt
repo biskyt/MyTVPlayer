@@ -111,7 +111,11 @@ abstract class ChannelPlayerViewModel(
 
     override fun menuActions(): List<ItemAction> {
         val ch = channel ?: return emptyList()
-        return channelActions(ch, ch.streamId in favouriteIds) { favourite ->
+        // All about the programme that plays, first (the owner, 2026-11-26: not a button on the controls).
+        val about = about?.takeIf { it.description != null || it.subtitle != null }?.let {
+            ItemAction.Run(appString(R.string.player_about_programme)) { sheet = Sheet.ABOUT }
+        }
+        return listOfNotNull(about) + channelActions(ch, ch.streamId in favouriteIds) { favourite ->
             viewModelScope.launch {
                 c.channels.setFavourite(ch.playlistId, ch.streamId, favourite)
                 flash(favouriteFlash(favourite))
