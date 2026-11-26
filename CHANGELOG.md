@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.41.3
+- Back from a panel focuses the option that opened it, also when that option loads late.
+
 ## 1.41.2
 - Back from a panel focuses the option that opened it, also when a second option has the same name.
 - When the programme ends with nothing after it, About this programme goes back to the More menu.
