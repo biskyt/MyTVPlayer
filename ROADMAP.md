@@ -14,6 +14,17 @@
 - **1.1:** The app in UK and US English, Spanish, Portuguese (Brazil) and French. Also a category filter, and a new
   search order.
 
+## Next release (the owner, 2026-11-26)
+- **The player's More menu keeps the focus on its option.** When options load above it, the focus moves with the
+  option, as in the other options panels since 1.41.3 (`ItemActionsPanel` in `ui/common/ItemActions.kt`). The More
+  menu's rows are in a lazy list, so the rows that are not on screen have no focus requester yet.
+- **The Google TV 16 smoke test on the emulator.** `SmokeTest` uses the plain `createAndroidComposeRule`, whose effects
+  run on an unconfined dispatcher. Use MyPlexPlayer's fix (its PR 140): move `ComposeRules.kt` to `app/src/sharedTest`,
+  use `createUiComposeRule<MainActivity>()` in `SmokeTest`, and stop the main thread's effects after the activity closes.
+- **`HideCategoryUiTest`, "hiding the last category chooses the one before it".** It failed one time in a full local
+  run: the focus went to the channel list. Find the root cause (perhaps `RefocusEffect` in `CategoryColumn` and the
+  panel window that closes).
+
 ## Milestone 2: Movies, Series and search
 - Programme reminders.
 - Optional TMDB artwork and details for movies and series (can be turned off).
