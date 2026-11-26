@@ -94,6 +94,7 @@ import com.biskyt.mytvplayer.ui.common.rememberMinuteClock
 import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.common.reveal
 import com.biskyt.mytvplayer.ui.common.rowsInView
+import com.biskyt.mytvplayer.ui.phone.PhoneGuide
 import com.biskyt.mytvplayer.ui.phone.PhoneLive
 import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.Palette
@@ -118,8 +119,8 @@ fun LiveScreen(initialFilter: ChannelFilter?, initialGuide: Boolean, radio: Bool
             play(ch)
         }
     }
-    // A phone or an unfolded foldable (the owner, 2026-11-25): the list drawn for touch. The guide stays the TV's.
-    if (!LocalFormFactor.current.isTv && !initialGuide) return PhoneLive(vm, play, open)
+    // A phone or an unfolded foldable (the owner, 2026-11-25): the list drawn for touch, and the guide too (2026-11-26).
+    if (!LocalFormFactor.current.isTv) return if (initialGuide) PhoneGuide(vm, play) else PhoneLive(vm, play, open)
 
     LaunchedEffect(Unit) { vm.restoreFocusPending = true }
     // Right from the categories enters the guide's programmes (see GuideGrid).

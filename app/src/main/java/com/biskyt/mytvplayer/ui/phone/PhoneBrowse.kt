@@ -131,7 +131,7 @@ private fun PhoneGrid(vm: VodBrowseViewModel, pid: Long, items: LazyPagingItems<
 }
 
 /** How many posters fit across [width], and how wide each is: three on a phone, about [WIDE_POSTER] each unfolded. */
-private fun gridColumns(width: Dp, wide: Boolean): Pair<Int, Dp> {
+internal fun gridColumns(width: Dp, wide: Boolean): Pair<Int, Dp> {
     val room = width - PhoneGutter * 2
     val columns = if (wide) ((room + GRID_GAP) / (WIDE_POSTER + GRID_GAP)).toInt().coerceAtLeast(PHONE_COLUMNS) else PHONE_COLUMNS
     return columns to (room - GRID_GAP * (columns - 1)) / columns
@@ -139,7 +139,7 @@ private fun gridColumns(width: Dp, wide: Boolean): Pair<Int, Dp> {
 
 private const val PHONE_COLUMNS = 3
 private val WIDE_POSTER = 130.dp
-private val GRID_GAP = 12.dp
+internal val GRID_GAP = 12.dp
 
 /** A poster not loaded yet: about as high as a poster with its two lines of text, for its width. */
 private const val POSTER_AND_TEXT = 0.55f

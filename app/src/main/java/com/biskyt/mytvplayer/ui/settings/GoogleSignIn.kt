@@ -1,5 +1,8 @@
 package com.biskyt.mytvplayer.ui.settings
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
@@ -7,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -81,7 +85,8 @@ class GoogleSignIn(private val sync: ProgressSync, private val scope: CoroutineS
 
 /**
  * The code to type at Google's address, and a QR code that opens the address with the code filled in: not on a phone
- * or tablet, which would scan it with itself (the owner, 2026-11-25).
+ * or tablet, which would scan it with itself (the owner, 2026-11-25). There, buttons open the page on the device and copy
+ * the code.
  */
 @Composable
 fun SignInCode(code: DeviceCode, onCancel: () -> Unit) {
@@ -91,13 +96,26 @@ fun SignInCode(code: DeviceCode, onCancel: () -> Unit) {
         if (showsQrCodes()) {
             QrCode(code.urlWithCode, Modifier.size(200.dp))
         } else {
-            // On a phone or tablet: Google's page with the code filled in, here.
+            // On a phone or tablet: Google's page with the code filled in, here, and the code to paste if it is not.
             val context = LocalContext.current
+            var copied by remember(code) { mutableStateOf(false) }
             PillButton(stringResource(R.string.common_link_open_here), { openLink(context, code.urlWithCode) })
+            PillButton(
+                stringResource(if (copied) R.string.sync_code_copied else R.string.sync_copy_code),
+                {
+                    copyText(context, code.userCode)
+                    copied = true
+                },
+            )
         }
         Muted(stringResource(R.string.sync_waiting))
         PillButton(stringResource(R.string.sync_cancel), onCancel, rememberFirstFocus(code))
     }
+}
+
+/** Puts [text] on the clipboard. This needs no permission. */
+private fun copyText(context: Context, text: String) {
+    context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText(text, text))
 }
 
 /** Why the sign-in failed, for the user. */

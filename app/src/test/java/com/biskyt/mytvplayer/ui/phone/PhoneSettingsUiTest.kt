@@ -1,5 +1,6 @@
 package com.biskyt.mytvplayer.ui.phone
 
+import android.content.ClipboardManager
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
+import com.biskyt.mytvplayer.core.sync.DeviceCode
 import com.biskyt.mytvplayer.testutil.FakeProvider
 import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
@@ -25,12 +27,14 @@ import com.biskyt.mytvplayer.ui.Navigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.ScreenContent
 import com.biskyt.mytvplayer.ui.common.LinkPanel
+import com.biskyt.mytvplayer.ui.settings.SignInCode
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.TvCanvas
 import com.biskyt.mytvplayer.ui.theme.autoFindsTv
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -140,5 +144,15 @@ class PhoneSettingsUiTest {
         compose.setContent { MyTvTheme { TvCanvas { LinkPanel("Ko-fi", "https://ko-fi.com/biskyt") {} } } }
         compose.waitForText("Open on this device", stepMs = 50)
         assertTrue(compose.onAllNodes(hasContentDescription("QR code", substring = true)).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun `the sign-in code can be copied on a phone`() {
+        val code = DeviceCode("dev", "ABC-DEF", "https://www.google.com/device", 1800)
+        compose.setContent { MyTvTheme { SignInCode(code) {} } }
+        tap("Copy the code")
+        compose.waitForText("Code copied", stepMs = 50)
+        val clip = app.getSystemService(ClipboardManager::class.java).primaryClip
+        assertEquals("ABC-DEF", clip?.getItemAt(0)?.text?.toString())
     }
 }

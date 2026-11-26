@@ -236,9 +236,15 @@ private fun FilmButtons(resumable: WatchProgressEntity?, play: (Boolean) -> Unit
     }
 }
 
-/** The page's main button, across it in the accent colour: [progress] (0 to 1) runs along its bottom. */
+/** The page's main button, across it in the accent colour, with [icon]: [progress] (0 to 1) runs along its bottom. */
 @Composable
-internal fun PhoneMainButton(text: String, progress: Float?, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
+internal fun PhoneMainButton(
+    text: String,
+    progress: Float?,
+    onLongClick: (() -> Unit)? = null,
+    icon: ImageVector = AppIcons.Play,
+    onClick: () -> Unit
+) {
     val accent = LocalAccent.current
     Box(
         Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(14.dp)).background(accent.color)
@@ -246,7 +252,7 @@ internal fun PhoneMainButton(text: String, progress: Float?, onLongClick: (() ->
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Image(AppIcons.Play, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(accent.onAccent))
+            Image(icon, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(accent.onAccent))
             Text(
                 text,
                 color = accent.onAccent,
@@ -397,5 +403,7 @@ private val POSTER_OVER = 70.dp
 /** In place of a backdrop: the back button's room at the top (14 + 44 + 14), so the poster's top is just under it. */
 private val NO_BACKDROP_HEIGHT = 72.dp + POSTER_OVER
 private const val BACKDROP_PX = 720
-private const val PLOT_LINES = 4
-private const val UNFOLDED_PLOT_LINES = 10
+
+/** How many lines of a plot a page shows, on a phone and unfolded: a tap shows the rest. */
+internal const val PLOT_LINES = 4
+internal const val UNFOLDED_PLOT_LINES = 10

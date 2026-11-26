@@ -86,7 +86,7 @@ fun PhoneHome(vm: HomeViewModel) {
             if (carryOn.isNotEmpty()) {
                 item {
                     PhoneSection(stringResource(R.string.home_carry_on)) {
-                        PosterRow(carryOn, { "${it.kind}${it.itemId}" }) { p ->
+                        PhonePosterRow(carryOn, { "${it.kind}${it.itemId}" }) { p ->
                             PhonePoster(
                                 p.imageUrl,
                                 p.title,
@@ -121,7 +121,7 @@ fun PhoneHome(vm: HomeViewModel) {
                 if (cards.isNotEmpty()) {
                     item(key = "favourites-$type") {
                         PhoneSection(stringResource(favouriteRowTitle(type))) {
-                            PosterRow(cards, VodCard::id) { card ->
+                            PhonePosterRow(cards, VodCard::id) { card ->
                                 PhonePoster(card.imageUrl, card.title, card.year?.toString().orEmpty(), onLongClick = {
                                     options = HomeTile.Vod(type, card)
                                 }) { nav.push(vodDetails(pid, type, card.id)) }
@@ -137,7 +137,7 @@ fun PhoneHome(vm: HomeViewModel) {
 
 /** A row's title over [content]. */
 @Composable
-private fun PhoneSection(title: String, content: @Composable () -> Unit) {
+internal fun PhoneSection(title: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         PhoneSectionTitle(title)
         content()
@@ -159,7 +159,7 @@ internal fun PhoneSectionTitle(title: String, modifier: Modifier = Modifier) {
 
 /** A row of posters that scrolls sideways. */
 @Composable
-private fun <T : Any> PosterRow(items: List<T>, key: (T) -> Any, card: @Composable (T) -> Unit) {
+internal fun <T : Any> PhonePosterRow(items: List<T>, key: (T) -> Any, card: @Composable (T) -> Unit) {
     LazyRow(contentPadding = PaddingValues(horizontal = PhoneGutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(items, key = key) { card(it) }
     }
@@ -216,20 +216,24 @@ private fun FavouriteMark(modifier: Modifier) {
 
 /** Channel cards one under the other; on an unfolded screen, two side by side. */
 @Suppress("LongParameterList") // the row's key, its channels and layout, and what a card does
-private fun LazyListScope.channelCards(
+internal fun LazyListScope.channelCards(
     /** Which row ("fav", "recent"): a channel can be in both, and keys must differ. */
     row: String,
     channels: List<ChannelEntity>,
     wide: Boolean,
     loader: NowNextLoader,
     onOptions: (ChannelEntity) -> Unit,
+    /** The channels marked with a heart. */
+    favourites: Set<Long> = emptySet(),
     onPlay: (ChannelEntity) -> Unit
 ) {
     val columns = if (wide) 2 else 1
     items(channels.chunked(columns), key = { cards -> "$row-" + cards.joinToString { it.streamId.toString() } }) { cards ->
         val now by rememberMinuteClock()
         Row(Modifier.padding(horizontal = PhoneGutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            cards.forEach { c -> PhoneChannelCard(c, loader, now, { onOptions(c) }, Modifier.weight(1f)) { onPlay(c) } }
+            cards.forEach { c ->
+                PhoneChannelCard(c, loader, now, { onOptions(c) }, Modifier.weight(1f), favourite = c.streamId in favourites) { onPlay(c) }
+            }
             repeat(columns - cards.size) { Spacer(Modifier.weight(1f)) }
         }
     }

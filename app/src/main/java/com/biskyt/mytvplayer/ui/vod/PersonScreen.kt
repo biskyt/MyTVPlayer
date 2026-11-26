@@ -59,7 +59,9 @@ import com.biskyt.mytvplayer.ui.common.formatDate
 import com.biskyt.mytvplayer.ui.common.initials
 import com.biskyt.mytvplayer.ui.common.quietFocus
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
+import com.biskyt.mytvplayer.ui.phone.PhonePerson
 import com.biskyt.mytvplayer.ui.theme.BoardStyle
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.MEDIUM
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.SEMI_BOLD
@@ -108,6 +110,7 @@ class PersonViewModel(private val c: AppContainer, private val screen: Screen.Pe
 @Composable
 fun PersonScreen(screen: Screen.Person) {
     val vm = appViewModel { PersonViewModel(it, screen) }
+    if (!LocalFormFactor.current.isTv) return PhonePerson(screen, vm)
     val nav = LocalNavigator.current
     val page = vm.page
     var biography by rememberSaveable { mutableStateOf(false) }
@@ -120,9 +123,7 @@ fun PersonScreen(screen: Screen.Person) {
             else -> sections(
                 page,
                 first = page.biography == null,
-                open = { t ->
-                    nav.push(if (t.show) Screen.SeriesDetails(screen.playlistId, t.id) else Screen.MovieDetails(screen.playlistId, t.id))
-                },
+                open = { t -> nav.push(libraryScreen(screen.playlistId, t)) },
                 openTmdb = { c -> tmdbScreen(screen, c)?.let(nav::push) },
             )
         }
@@ -141,7 +142,7 @@ private fun LazyListScope.sections(page: PersonPage, first: Boolean, open: (Libr
         val f = takesFocus()
         item {
             PosterRow(stringResource(R.string.vod_person_library), page.library, f, top = FIRST_GAP) { t, modifier ->
-                TitleCard(t.title, t.posterUrl, cardLine(t.show, t.year, t.role, t.kind), modifier) { open(t) }
+                TitleCard(t.title, t.posterUrl, creditLine(t.show, t.year, t.role, t.kind), modifier) { open(t) }
             }
         }
     }
@@ -150,7 +151,7 @@ private fun LazyListScope.sections(page: PersonPage, first: Boolean, open: (Libr
         item {
             val top = if (page.library.isEmpty()) FIRST_GAP else GAP
             PosterRow(stringResource(R.string.vod_person_elsewhere), page.elsewhere, f, top) { c, modifier ->
-                TitleCard(c.title, c.thumb, cardLine(c.show, c.year, c.role, c.kind), modifier) { openTmdb(c) }
+                TitleCard(c.title, c.thumb, creditLine(c.show, c.year, c.role, c.kind), modifier) { openTmdb(c) }
             }
         }
     }
@@ -250,7 +251,7 @@ private fun CreditRow(c: PersonCredit, modifier: Modifier) {
  * Down scroll it.
  */
 @Composable
-private fun BiographyPanel(name: String, biography: String, onDismiss: () -> Unit) {
+internal fun BiographyPanel(name: String, biography: String, onDismiss: () -> Unit) {
     BoardPanel(onDismiss, gap = 10.bd) {
         BoardPanelTitle(name)
         remember(biography) { bioParts(biography) }.forEachIndexed { i, part ->
@@ -274,12 +275,16 @@ fun aboutLine(page: PersonPage?, role: String?, title: String): String? = listOf
     role?.let { appString(R.string.vod_person_role_in, it, title) },
 ).joinToString(" · ").ifEmpty { null }
 
+/** A title of the person's that the playlist has: its page there. */
+internal fun libraryScreen(playlistId: Long, t: LibraryTitle): Screen =
+    if (t.show) Screen.SeriesDetails(playlistId, t.id) else Screen.MovieDetails(playlistId, t.id)
+
 /** Credit [c]'s TMDB page, from the person's page [screen]; null when its key has no TMDB id ("movie/603", "tv/1399"). */
-private fun tmdbScreen(screen: Screen.Person, c: PersonCredit): Screen.TmdbTitle? =
+internal fun tmdbScreen(screen: Screen.Person, c: PersonCredit): Screen.TmdbTitle? =
     c.ratingKey.substringAfter('/').toIntOrNull()?.let { Screen.TmdbTitle(screen.playlistId, it, c.show, c.title, c.thumb, screen.tab) }
 
 /** Under a card: "TV show · Mara" or "2019 · Director". */
-private fun cardLine(show: Boolean, year: Int?, role: String?, kind: String?): String? = listOfNotNull(
+internal fun creditLine(show: Boolean, year: Int?, role: String?, kind: String?): String? = listOfNotNull(
     if (show) appString(R.string.vod_person_tv_show) else year?.toString(),
     role ?: kind?.let(::creditKind),
 ).joinToString(" · ").ifEmpty { null }

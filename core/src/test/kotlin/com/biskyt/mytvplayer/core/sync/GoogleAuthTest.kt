@@ -6,6 +6,7 @@ import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -67,6 +68,28 @@ class GoogleAuthTest {
         // 5 s, 5 s, then 10 s after the slow down.
         assertEquals(20_000L, testScheduler.currentTime)
         assertTrue(server.takeRequest().body.readUtf8().contains("device_code=dev"))
+    }
+
+    @Test
+    fun `await asks again when Google cannot be reached`() = runTest {
+        // A phone can stop the app's network while it is in the background, while the user signs in in the browser.
+        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START))
+        server.enqueue(MockResponse().setBody("""{"access_token":"at","expires_in":3600}"""))
+        assertEquals("at", auth { testScheduler.currentTime }.await(code).accessToken)
+        assertEquals(10_000L, testScheduler.currentTime)
+    }
+
+    @Test
+    fun `await says Google could not be reached when it still cannot at the end`() = runTest {
+        val short = code.copy(expiresInSec = 10)
+        repeat(2) { server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START)) }
+        try {
+            auth { testScheduler.currentTime }.await(short)
+            fail("No exception")
+        } catch (e: SyncException) {
+            assertEquals(SyncException.Reason.OTHER, e.reason)
+            assertTrue(e.message, e.message!!.startsWith("Couldn't reach Google"))
+        }
     }
 
     @Test

@@ -316,9 +316,12 @@ private val Screen.drawsOwnTopBar: Boolean
         is Screen.GuideMatching, Screen.Backup, Screen.About, Screen.Licences -> false
     }
 
-/** The screens with a phone layout (the owner, 2026-11-25): the rest are drawn as on a TV, on a phone too (see TvCanvas). */
+/**
+ * The screens with a phone layout: every one (the owner, 2026-11-26). [TvCanvas] stays for a screen added without one.
+ * The TV guide's has no tab bar, as it is opened on top of a list.
+ */
 internal val Screen.hasPhoneLayout: Boolean
-    get() = hasPhoneTabs || isPlayback || isSettings
+    get() = hasPhoneTabs || isPlayback || isSettings || this is Screen.Live
 
 /** The screens whose phone layout has the tab bar, or the rail when unfolded (see PhoneScaffold). */
 private val Screen.hasPhoneTabs: Boolean
@@ -326,8 +329,13 @@ private val Screen.hasPhoneTabs: Boolean
         (this is Screen.Live && !guide) ||
         this is Screen.Movies ||
         this is Screen.Series ||
+        this is Screen.Search ||
         this is Screen.MovieDetails ||
-        this is Screen.SeriesDetails
+        this is Screen.SeriesDetails ||
+        this is Screen.Person ||
+        this is Screen.MoreLike ||
+        this is Screen.TmdbTitle ||
+        this is Screen.Catchup
 
 /**
  * The room around the corner message (SyncToast): 24 dp, and clear of a phone's tab bar at the bottom or an unfolded
