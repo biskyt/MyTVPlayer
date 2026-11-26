@@ -71,8 +71,8 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
             combine(snapshotFlow { channel?.let { nowNext.entries[it.streamId]?.now } }, c.epg.changes) { p, _ -> p }.collectLatest { p ->
                 // In one step, so About in the More menu doesn't go and come back meanwhile.
                 nowDetails = p?.let { details(it) }
-                // Nothing on (a gap in the guide): nothing to tell of.
-                if (p == null && sheet == Sheet.ABOUT) sheet = null
+                // Nothing on (a gap in the guide): nothing to tell of, so back to More, which opened About.
+                if (p == null && sheet == Sheet.ABOUT) sheetBack()
             }
         }
     }

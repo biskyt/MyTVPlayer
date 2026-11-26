@@ -38,7 +38,6 @@ import com.biskyt.mytvplayer.ui.common.ChannelLogo
 import com.biskyt.mytvplayer.ui.common.ItemAction
 import com.biskyt.mytvplayer.ui.common.ItemActionRow
 import com.biskyt.mytvplayer.ui.common.LocalTouch
-import com.biskyt.mytvplayer.ui.common.OptionPlace
 import com.biskyt.mytvplayer.ui.common.ProgrammeAbout
 import com.biskyt.mytvplayer.ui.common.ScheduleList
 import com.biskyt.mytvplayer.ui.common.TouchStepButtons
@@ -46,6 +45,7 @@ import com.biskyt.mytvplayer.ui.common.displayLanguage
 import com.biskyt.mytvplayer.ui.common.focusedAt
 import com.biskyt.mytvplayer.ui.common.formatRange
 import com.biskyt.mytvplayer.ui.common.numberLabel
+import com.biskyt.mytvplayer.ui.common.optionPlace
 import com.biskyt.mytvplayer.ui.common.perform
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberScheduleWithPast
@@ -152,7 +152,7 @@ fun PlayerSheet(sheet: PlaybackViewModel.Sheet, vm: PlaybackViewModel) {
                     itemsIndexed(actions) { i, a ->
                         // A screen pushed over the player stops it while it's covered.
                         ItemActionRow(a, if (i == focused) first else Modifier) {
-                            vm.moreUsed = OptionPlace(i, a.label)
+                            vm.moreUsed = optionPlace(labels, i)
                             a.perform(nav, close, vm::beforeLeaving)
                         }
                     }
@@ -169,7 +169,7 @@ fun PlayerSheet(sheet: PlaybackViewModel.Sheet, vm: PlaybackViewModel) {
                     }
                     item {
                         Choice(streamInfoLabel, false, if (focused == actions.size + 1) first else Modifier) {
-                            vm.moreUsed = OptionPlace(actions.size + 1, streamInfoLabel)
+                            vm.moreUsed = optionPlace(labels, actions.size + 1)
                             vm.sheet = PlaybackViewModel.Sheet.STREAM_INFO
                         }
                     }

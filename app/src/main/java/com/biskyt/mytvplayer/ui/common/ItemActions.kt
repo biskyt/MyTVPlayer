@@ -3,7 +3,13 @@ package com.biskyt.mytvplayer.ui.common
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.biskyt.mytvplayer.R
 import com.biskyt.mytvplayer.appPlural
@@ -15,6 +21,7 @@ import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Navigator
 import com.biskyt.mytvplayer.ui.Screen
 import com.biskyt.mytvplayer.ui.theme.bd
+import kotlin.math.abs
 
 /** Something an options menu offers for an item: open a screen, or do something there and then. */
 sealed interface ItemAction {
@@ -133,35 +140,60 @@ fun ItemActionsPanel(
     BoardPanel(onDismiss) {
         BoardPanelTitle(title, Modifier.padding(bottom = if (subtitle == null) 6.bd else 2.bd))
         subtitle?.let { BoardPanelSubtitle(it, Modifier.padding(bottom = 8.bd)) }
-        val focused = focusedAt(actions.map { it.takeUnless { a -> a is ItemAction.Heading }?.label }, used?.value)
+        val labels = actions.map { it.takeUnless { a -> a is ItemAction.Heading }?.label }
+        // The option to focus: the one used (back from the panel it opened), then the one the user moves to. Options read
+        // later can come in above it: its new row then takes the focus, so the focus stays on it (its own row can come in
+        // late too). A row that only changes its label (Add to favourites) keeps the focus.
+        var on by remember { mutableStateOf(used?.value) }
+        val focused = focusedAt(labels, on)
+        // Renamed in its place (the same entries next to it): followed by its new label from now on.
+        val now = labels.getOrNull(focused)?.let { optionPlace(labels, focused) }
+        if (now != null && on.let { it != null && it.label != now.label && it.before == now.before && it.after == now.after }) {
+            SideEffect { on = now }
+        }
         actions.forEachIndexed { i, a ->
-            ItemActionRow(a, if (i == focused) rememberFirstFocus() else Modifier) {
-                used?.value = OptionPlace(i, a.label)
+            val follow = Modifier.onFocusChanged { if (it.isFocused) on = optionPlace(labels, i) }
+            ItemActionRow(a, follow.then(if (i == focused) rememberFirstFocus() else Modifier)) {
+                used?.value = optionPlace(labels, i)
                 a.perform(nav, onDismiss)
             }
         }
     }
 }
 
-/** An option of a panel, by its place in the panel and its label (see [focusedAt]). */
-data class OptionPlace(val index: Int, val label: String)
+/**
+ * An option of a panel: its place in the panel, its label, and the labels of the entries next to it ([before] and
+ * [after]). A heading, or no entry at the end, is null. See [focusedAt].
+ */
+data class OptionPlace(val index: Int, val label: String, val before: String?, val after: String?)
+
+/** The option at [index] of a panel's [labels] (null for a heading), for [focusedAt]. */
+fun optionPlace(labels: List<String?>, index: Int) =
+    OptionPlace(index, labels[index].orEmpty(), labels.getOrNull(index - 1), labels.getOrNull(index + 1))
 
 /**
- * Which of a panel's options ([labels]; null for a heading) takes the focus as it opens: the one [used] (the option that
- * opened the panel that was in its place: Back from that panel returns to it, the owner, 2026-11-26), else the first.
- * By place while the label there is the same (an episode's options have two Cast and crew), else by label (an option
- * read later, such as TMDB's, can come in above it), else by place again (its label changed); -1 with no options.
+ * Which of a panel's options ([labels], null for a heading) takes the focus: the option [used], else the first. -1 means
+ * no options. (Back from a panel returns to the option that opened it, the owner, 2026-11-26.)
+ * - Options read later, such as TMDB's, can come in above or below it. An episode's options have two Cast and crew.
+ *   So the first choice is an option with its label, with the same entries next to it, else the nearest its place.
+ * - If no option has its label, its label can have changed (Add to favourites became Remove from favourites). Then the
+ *   option between the same two entries takes the focus.
+ * - Else the option in its place takes the focus.
  */
 fun focusedAt(labels: List<String?>, used: OptionPlace?): Int {
     val first = labels.indexOfFirst { it != null }
-    return when {
-        used == null -> first
-        labels.getOrNull(used.index) == used.label -> used.index
-        used.label in labels -> labels.indexOf(used.label)
-        // Its own label changed, the panel still open (Add to favourites became Remove from favourites): it stays.
-        labels.getOrNull(used.index) != null -> used.index
-        else -> first
+    if (used == null) return first
+    fun neighbours(i: Int) = (if (labels.getOrNull(i - 1) == used.before) 1 else 0) +
+        (if (labels.getOrNull(i + 1) == used.after) 1 else 0)
+    fun nearest(places: List<Int>) = places.maxWithOrNull(compareBy<Int> { neighbours(it) }.thenByDescending { abs(it - used.index) })
+    val byLabel = nearest(labels.indices.filter { labels[it] == used.label })
+    // Two headings or ends next to it say nothing of where it is.
+    val between = if (byLabel != null || used.before == null && used.after == null) {
+        null
+    } else {
+        nearest(labels.indices.filter { labels[it] != null && neighbours(it) == 2 })
     }
+    return byLabel ?: between ?: used.index.takeIf { labels.getOrNull(it) != null } ?: first
 }
 
 /**

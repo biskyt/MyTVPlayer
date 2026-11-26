@@ -107,6 +107,22 @@ class ProgrammeInfoUiTest {
     }
 
     @Test
+    fun `while watching, About goes back to More when the guide has nothing on`() {
+        show(Screen.Player(playlistId, 101, ChannelFilter.All))
+        waitFor("Spring Planting · S2 E5")
+        tap("More")
+        waitFor("About this programme")
+        tap("About this programme")
+        compose.waitAdvancingClock(stepMs = 50) { count("Two neighbours turn a bare yard") >= 2 }
+        // A gap in the guide: its programmes now start in half an hour.
+        provider.guideShiftMin = mapOf("one.uk" to 60)
+        runBlocking { app.container.epg.importAll(listOf(playlistId)) }
+        // More again, which opened About, not the player on its own.
+        compose.waitForFocus("Channel info")
+        assertEquals(0, count("About this programme"))
+    }
+
+    @Test
     fun `in the TV guide, a programme's description shows above the grid and in full in its options`() {
         show(Screen.Live(ChannelFilter.All, guide = true))
         waitFor("The Garden Planners")
