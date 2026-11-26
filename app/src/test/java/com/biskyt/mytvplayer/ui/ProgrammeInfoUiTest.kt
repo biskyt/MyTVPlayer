@@ -65,14 +65,21 @@ class ProgrammeInfoUiTest {
 
     private fun waitFor(text: String) = compose.waitForText(text, stepMs = 50)
 
+    private fun tap(text: String) =
+        compose.onAllNodes(hasText(text) and hasClickAction())[0].performSemanticsAction(SemanticsActions.OnClick)
+
     private fun count(text: String) = compose.onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().size
 
     @Test
-    fun `while watching, the controls tell of the programme, and About tells all of it`() {
+    fun `while watching, the controls tell of the programme, and About, first in More, tells all of it`() {
         show(Screen.Player(playlistId, 101, ChannelFilter.All))
         waitFor("Spring Planting · S2 E5")
         waitFor("Two neighbours turn a bare yard")
-        compose.onAllNodes(hasText("About this programme") and hasClickAction())[0].performSemanticsAction(SemanticsActions.OnClick)
+        // Not a button on the controls (the owner, 2026-11-26), but the More menu's first entry, with the focus.
+        assertEquals(0, count("About this programme"))
+        tap("More")
+        compose.waitAdvancingClock { compose.focusedText().contains("About this programme") }
+        tap("About this programme")
         // The panel too: the episode and description a second time.
         compose.waitAdvancingClock(stepMs = 50) { count("Two neighbours turn a bare yard") >= 2 && count("Spring Planting") >= 2 }
     }

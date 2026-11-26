@@ -69,7 +69,7 @@ class PlayerViewModel(c: AppContainer, appContext: Context, private val screen: 
         viewModelScope.launch {
             // Read again after a guide update too (a description may be new).
             combine(snapshotFlow { channel?.let { nowNext.entries[it.streamId]?.now } }, c.epg.changes) { p, _ -> p }.collectLatest { p ->
-                // In one step, so the About button doesn't go and come back meanwhile.
+                // In one step, so About in the More menu doesn't go and come back meanwhile.
                 nowDetails = p?.let { details(it) }
                 // Nothing on (a gap in the guide): nothing to tell of.
                 if (p == null && sheet == Sheet.ABOUT) sheet = null

@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.40.1
+- "About this programme" is now the first entry in the player's More menu for live TV and catch-up.
+- The TV guide shows programmes that overlap without moving the later ones.
+- On a phone, a new list in the TV guide starts at the top.
+- On a phone, quick taps on Earlier or Later in the TV guide each scroll a full step.
+
 ## 1.40.0
 - Every page has a phone and tablet layout, including Search, the TV guide and a channel's catch-up.
 - The Google sign-in no longer fails when you sign in in the browser on the same phone.
