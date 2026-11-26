@@ -16,9 +16,11 @@ import com.biskyt.mytvplayer.testutil.FakeProvider
 import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.addHomeTv
+import com.biskyt.mytvplayer.testutil.backOnPanel
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.focusedText
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
+import com.biskyt.mytvplayer.testutil.waitForFocus
 import com.biskyt.mytvplayer.testutil.waitForText
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import kotlinx.coroutines.runBlocking
@@ -94,6 +96,14 @@ class ProgrammeInfoUiTest {
         tap("Channel info")
         waitFor("UK | ENTERTAINMENT")
         waitFor("Programmes from the last 3 days")
+        // Back goes back to More, on Channel info (the owner, 2026-11-26), as it does from About.
+        compose.backOnPanel()
+        compose.waitForFocus("Channel info")
+        waitFor("Add to favourites")
+        tap("About this programme")
+        compose.waitAdvancingClock(stepMs = 50) { count("Two neighbours turn a bare yard") >= 2 }
+        compose.backOnPanel()
+        compose.waitForFocus("About this programme")
     }
 
     @Test

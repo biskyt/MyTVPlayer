@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.41.1
+- Back in a panel that another panel opened goes back to that panel, with the same option selected.
+- Back on "Enter the new PIN again" goes back to the first PIN step.
+
 ## 1.41.0
 - Channels found in search show their category.
 - A channel's options in search have the same entries as in Live TV and on Home.

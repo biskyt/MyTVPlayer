@@ -200,7 +200,7 @@ private fun PhoneControls(
                     PhonePill(stringResource(R.string.player_audio)) { vm.sheet = PlaybackViewModel.Sheet.AUDIO }
                     PhonePill(stringResource(R.string.player_subtitles)) { vm.sheet = PlaybackViewModel.Sheet.SUBTITLES }
                     pills()
-                    PhonePill(stringResource(R.string.player_more)) { vm.sheet = PlaybackViewModel.Sheet.MORE }
+                    PhonePill(stringResource(R.string.player_more)) { vm.openMore() }
                     Spacer(Modifier.weight(1f))
                     trailing()
                 }

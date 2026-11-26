@@ -3,6 +3,8 @@ package com.biskyt.mytvplayer.ui.settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -82,15 +84,28 @@ fun ParentalScreen() {
 private fun NewPinPanels(onDismiss: () -> Unit, onChosen: (String) -> Unit) {
     var first by remember { mutableStateOf<String?>(null) }
     val title = stringResource(if (first == null) R.string.parental_pin_new else R.string.parental_pin_confirm)
-    PinPanel(title, onDismiss, wrong = stringResource(R.string.parental_pin_mismatch)) { pin ->
-        val chosen = first
-        when {
-            chosen == null -> true.also { first = pin }
-            pin == chosen -> true.also {
-                onChosen(pin)
+    val wrong = stringResource(R.string.parental_pin_mismatch)
+    // Back on Confirm goes back to the first step (the owner, 2026-11-26: Back goes back to the panel before), with no
+    // digits typed.
+    var backs by remember { mutableIntStateOf(0) }
+    key(backs) {
+        PinPanel(title, {
+            if (first != null) {
+                first = null
+                backs++
+            } else {
                 onDismiss()
             }
-            else -> false.also { first = null }
+        }, wrong = wrong) { pin ->
+            val chosen = first
+            when {
+                chosen == null -> true.also { first = pin }
+                pin == chosen -> true.also {
+                    onChosen(pin)
+                    onDismiss()
+                }
+                else -> false.also { first = null }
+            }
         }
     }
 }

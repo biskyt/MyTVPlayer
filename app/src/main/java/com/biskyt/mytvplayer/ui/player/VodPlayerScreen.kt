@@ -31,8 +31,8 @@ fun VodPlayerScreen(screen: Screen.VodPlayer) {
     val appContext = LocalContext.current.applicationContext
     val vm = appViewModel { VodPlayerViewModel(it, appContext, screen) }
     PlayerFrame(vm, controls = { buttons, root -> VodControls(vm, buttons, root) })
-    // TMDB's panels from the menu, as the title's page opens them.
-    TitlePanels(vm.panel, screen.playlistId, vm.title, vm.tmdb, film = screen.seriesId == null) { vm.panel = null }
+    // TMDB's panels from the menu, as the title's page opens them; Back goes back to the menu.
+    TitlePanels(vm.panel, screen.playlistId, vm.title, vm.tmdb, film = screen.seriesId == null, vm::panelBack)
     val nav = LocalNavigator.current
     vm.pendingScreen?.let { s ->
         LaunchedEffect(s) {

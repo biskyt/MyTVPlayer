@@ -11,8 +11,10 @@ import com.biskyt.mytvplayer.testutil.FakeProvider
 import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.addHomeTv
+import com.biskyt.mytvplayer.testutil.backOnPanel
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
+import com.biskyt.mytvplayer.testutil.waitForFocus
 import com.biskyt.mytvplayer.testutil.waitForText
 import com.biskyt.mytvplayer.ui.player.PlaybackViewModel
 import com.biskyt.mytvplayer.ui.player.VodPlayerViewModel
@@ -83,5 +85,9 @@ class StreamDiagnosticsUiTest {
         compose.waitForText(appString(R.string.player_stream_info))
         compose.onAllNodes(hasText(appString(R.string.player_stream_info)))[0].performClick()
         compose.waitForText(appString(R.string.player_info_address, provider.url + "movie/•••/•••/501.mkv"))
+        // Back goes back to More, on Stream info (the owner, 2026-11-26).
+        compose.backOnPanel()
+        compose.waitAdvancingClock { vm.sheet == PlaybackViewModel.Sheet.MORE }
+        compose.waitForFocus(appString(R.string.player_stream_info))
     }
 }

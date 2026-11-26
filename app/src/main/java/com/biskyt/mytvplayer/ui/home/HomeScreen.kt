@@ -71,6 +71,7 @@ import com.biskyt.mytvplayer.ui.common.MoveLayout
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.NowNextLoader
 import com.biskyt.mytvplayer.ui.common.OneLine
+import com.biskyt.mytvplayer.ui.common.OptionPlace
 import com.biskyt.mytvplayer.ui.common.POSTER_WIDTH
 import com.biskyt.mytvplayer.ui.common.PillButton
 import com.biskyt.mytvplayer.ui.common.Poster
@@ -455,9 +456,10 @@ private fun CarryOnOptions(p: WatchProgressEntity, vm: HomeViewModel, onDismiss:
     } else {
         episodeMore(p, series, tmdb, open, close)
     }
-    // One of TMDB's panels in place of the options; closing it closes both.
-    if (panel == null) ItemActionsPanel(p.title, card + more, close)
-    TitlePanels(panel, p.playlistId, p.title, tmdb, film = series == null, close)
+    // One of TMDB's panels in place of the options; Back goes back to them, on the option that opened it.
+    val used = remember { mutableStateOf<OptionPlace?>(null) }
+    if (panel == null) ItemActionsPanel(p.title, card + more, close, used = used)
+    TitlePanels(panel, p.playlistId, p.title, tmdb, film = series == null) { panel = null }
 }
 
 /** What the film page's More… offers for film [p]: favourites, Download, then TMDB's options ([open] opens their panels). */
@@ -543,8 +545,10 @@ private fun FavouriteOptions(tile: HomeTile.Vod, vm: HomeViewModel, pid: Long, o
         if (!favourite) onDismiss(true)
     } + listOfNotNull(moveAction(vm.mover, tile.type, tile.card.id, close, VOD_ROW_LIMIT)) +
         titleExtraActions(pid, tmdb, film, tile.card.title, described = null) { panel = it }
-    if (panel == null) ItemActionsPanel(tile.card.title, actions, close)
-    TitlePanels(panel, pid, tile.card.title, tmdb, film, close)
+    // Back from one of TMDB's panels goes back to the options, on the option that opened it.
+    val used = remember { mutableStateOf<OptionPlace?>(null) }
+    if (panel == null) ItemActionsPanel(tile.card.title, actions, close, used = used)
+    TitlePanels(panel, pid, tile.card.title, tmdb, film) { panel = null }
 }
 
 @Composable

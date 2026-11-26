@@ -292,13 +292,14 @@ fun <F> CategoryOptionsHost(
             onHide(cat)
             next?.let(shown)
         }, restrict = { on ->
-            // Removing a restriction needs the PIN, when one is set.
+            // Removing a restriction needs the PIN, when one is set. It is asked for over the options: Back on it goes
+            // back to them (the owner, 2026-11-26), and they close once it is right.
             gate.run(!on && parental.hasPin.value) {
+                close()
                 scope.launch { parental.setRestricted(cat.playlistId, cat.type, cat.categoryId, on) }
             }
         })
     }
-    // (Always here: the PIN is asked for after the options close.)
     PinGateHost(gate)
 }
 
@@ -349,11 +350,10 @@ private fun CategoryOptions(cat: CategoryEntity, close: () -> Unit, hide: () -> 
     } else {
         R.string.parental_restrict to R.string.parental_restrict_help
     }
-    val restrictAction = ItemAction.Run(stringResource(label), stringResource(help)) {
-        close()
-        restrict(!cat.restricted)
-    }
-    ItemActionsPanel(cat.label, listOf(hideAction, restrictAction), close)
+    val restrictAction = ItemAction.Run(stringResource(label), stringResource(help)) { restrict(!cat.restricted) }
+    // The option used last has the focus again when the PIN panel over them goes (Back on it).
+    val used = remember { mutableStateOf<OptionPlace?>(null) }
+    ItemActionsPanel(cat.label, listOf(hideAction, restrictAction), close, used = used)
 }
 
 /**

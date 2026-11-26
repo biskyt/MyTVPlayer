@@ -93,9 +93,22 @@ fun rememberTmdbEpisode(c: AppContainer, tmdb: TmdbTitle?, season: Int?, number:
 
 /** TMDB's cast and crew of episode [number] of [season] of series [tmdb], read once for a panel: null until known. */
 @Composable
-fun rememberEpisodeCredits(c: AppContainer, tmdb: TmdbTitle?, season: Int?, number: Int?): TmdbCredits? {
-    val credits by produceState<TmdbCredits?>(null, tmdb?.id, season, number) {
-        if (tmdb != null && tmdb.series && season != null && number != null) value = c.tmdb.episodeCredits(tmdb.id, season, number)
+fun rememberEpisodeCredits(
+    c: AppContainer,
+    tmdb: TmdbTitle?,
+    season: Int?,
+    number: Int?,
+    /** Credits read before, by TMDB id, season and number: the options shown again have them at once. */
+    kept: MutableMap<Triple<Int, Int, Int>, TmdbCredits>? = null
+): TmdbCredits? {
+    val key = if (tmdb != null && tmdb.series && season != null && number != null) Triple(tmdb.id, season, number) else null
+    val credits by produceState(key?.let { kept?.get(it) }, key) {
+        if (key == null) return@produceState
+        // Kept if TMDB cannot be reached now.
+        c.tmdb.episodeCredits(key.first, key.second, key.third)?.let {
+            kept?.put(key, it)
+            value = it
+        }
     }
     return credits
 }

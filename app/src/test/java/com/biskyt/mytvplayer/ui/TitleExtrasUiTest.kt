@@ -15,10 +15,12 @@ import com.biskyt.mytvplayer.testutil.FakeTmdb
 import com.biskyt.mytvplayer.testutil.Navigators
 import com.biskyt.mytvplayer.testutil.TestApp
 import com.biskyt.mytvplayer.testutil.addHomeTv
+import com.biskyt.mytvplayer.testutil.backOnPanel
 import com.biskyt.mytvplayer.testutil.createUiComposeRule
 import com.biskyt.mytvplayer.testutil.waitAdvancingClock
+import com.biskyt.mytvplayer.testutil.waitForFocus
 import com.biskyt.mytvplayer.testutil.waitForText
-import com.biskyt.mytvplayer.ui.common.ItemAction
+import com.biskyt.mytvplayer.ui.player.PlaybackViewModel
 import com.biskyt.mytvplayer.ui.player.VodPlayerViewModel
 import com.biskyt.mytvplayer.ui.theme.MyTvTheme
 import kotlinx.coroutines.runBlocking
@@ -99,6 +101,10 @@ class TitleExtrasUiTest {
         compose.waitForText("More like this", stepMs = 50)
         click("Cast and crew")
         compose.waitForText("Timothée Chalamet", stepMs = 50)
+        // Back goes back to the card's options, on Cast and crew (the owner, 2026-11-26).
+        compose.backOnPanel()
+        compose.waitForFocus("Cast and crew")
+        compose.waitForText("Resume", stepMs = 50)
     }
 
     @Test
@@ -120,7 +126,13 @@ class TitleExtrasUiTest {
         val labels = vm.menuActions().map { it.label }
         assertTrue(labels.toString(), "More like this" in labels && "About this film" !in labels)
         // Cast and crew opens its panel over the player.
-        compose.runOnUiThread { (vm.menuActions().first { it.label == "Cast and crew" } as ItemAction.Run).run() }
+        compose.runOnUiThread { vm.sheet = PlaybackViewModel.Sheet.MORE }
+        compose.waitForText("Cast and crew", stepMs = 50)
+        click("Cast and crew")
         compose.waitForText("Timothée Chalamet", stepMs = 50)
+        // Back goes back to More, on Cast and crew (the owner, 2026-11-26).
+        compose.backOnPanel()
+        compose.waitAdvancingClock { vm.sheet == PlaybackViewModel.Sheet.MORE && vm.panel == null }
+        compose.waitForFocus("Cast and crew")
     }
 }
