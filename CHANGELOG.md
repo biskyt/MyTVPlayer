@@ -3,6 +3,11 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.41.2
+- Back from a panel focuses the option that opened it, also when a second option has the same name.
+- When the programme ends with nothing after it, About this programme goes back to the More menu.
+- The focus in an options panel stays on its option when more options load above it.
+
 ## 1.41.1
 - Back in a panel that another panel opened goes back to that panel, with the same option selected.
 - Back on "Enter the new PIN again" goes back to the first PIN step.
