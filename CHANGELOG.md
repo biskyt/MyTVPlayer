@@ -3,6 +3,10 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.40.2
+- In the TV guide, OK opens the highlighted programme when a short programme is inside a longer one.
+- On a phone, extra taps on Earlier or Later during a scroll to the edge no longer move the guide's window.
+
 ## 1.40.1
 - "About this programme" is now the first entry in the player's More menu for live TV and catch-up.
 - The TV guide shows programmes that overlap without moving the later ones.

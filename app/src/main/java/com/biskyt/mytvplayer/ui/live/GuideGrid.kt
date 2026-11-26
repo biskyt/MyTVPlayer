@@ -244,9 +244,13 @@ internal fun blocks(visible: List<ChannelProgramme>, start: Long, end: Long): Li
     }
 }
 
-/** The programme on [time], else the next one after it, else the last: what a highlight on [time] shows. */
+/**
+ * The programme on [time], else the next one after it, else the one that ends last: what a highlight on [time] shows.
+ * The one that ends last is drawn, where the last in the list can be inside the one before it, and not drawn
+ * (MyPlexPlayer's review of 1.40.1).
+ */
 internal fun cellAt(visible: List<ChannelProgramme>, time: Long): Int =
-    visible.indexOfFirst { it.stopMs > time }.takeIf { it >= 0 } ?: visible.lastIndex
+    visible.indexOfFirst { it.stopMs > time }.takeIf { it >= 0 } ?: visible.indices.maxByOrNull { visible[it].stopMs } ?: -1
 
 /**
  * A time for the highlight on the programme after ([dir] 1) or before (-1) [visible]`[i]`: the first that a time can

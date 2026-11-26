@@ -36,6 +36,16 @@ class GuideBlocksTest {
         assertEquals(listOf(0, 0, 2), (0..2).map { drawnCell(drawn, it) })
     }
 
+    @Test
+    fun `after the last programme, the highlight is on the drawn block, not one inside it`() {
+        // 0:00 to 2:00, with 0:30 to 1:00 inside it and last: at 2:30, after both, the highlight is on the one that ends
+        // last, which is drawn, not on the last in the list, which is not (MyPlexPlayer's review of 1.40.1).
+        val visible = listOf(p(0, 120), p(30, 60))
+        assertEquals(0, cellAt(visible, 150 * MIN))
+        // Programmes in turn: still the last one.
+        assertEquals(1, cellAt(listOf(p(0, 60), p(60, 90)), 150 * MIN))
+    }
+
     private companion object {
         const val MIN = 60_000L
     }
