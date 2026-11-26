@@ -21,7 +21,8 @@ import com.biskyt.mytvplayer.data.programmeTitle
 
 /**
  * A channel as a card (on Home and in Search): its logo and name, what's on now and until when, what's next, and how
- * far through it is ([now]: the minute clock). [loader] fetches what's on once the card is shown.
+ * far through it is ([now]: the minute clock). [loader] fetches what's on once the card is shown. [detail] (search's
+ * category) takes the name's second line, so that the card keeps its height.
  */
 @Composable
 fun ChannelCard(
@@ -31,6 +32,7 @@ fun ChannelCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
     favourite: Boolean = false,
+    detail: String? = null,
     onClick: () -> Unit
 ) {
     LaunchedEffect(c.streamId) { loader.request(c.streamId) }
@@ -41,7 +43,10 @@ fun ChannelCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ChannelLogo(c.logoUrl, c.name, 64.dp, 38.dp, favourite)
                 // Two lines fit beside the logo, so cards keep one height whatever their names.
-                Muted(c.name, Modifier.padding(start = 10.dp).weight(1f, fill = false), maxLines = 2)
+                Column(Modifier.padding(start = 10.dp).weight(1f, fill = false)) {
+                    Muted(c.name, maxLines = if (detail == null) 2 else 1)
+                    detail?.let { Muted(it) }
+                }
                 CatchupMark(c, Modifier.padding(start = 6.dp))
             }
             Text(

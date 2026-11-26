@@ -48,7 +48,6 @@ import com.biskyt.mytvplayer.ui.common.AppIcons
 import com.biskyt.mytvplayer.ui.common.ChannelCard
 import com.biskyt.mytvplayer.ui.common.ChannelLogo
 import com.biskyt.mytvplayer.ui.common.GLOW_GAP
-import com.biskyt.mytvplayer.ui.common.ItemAction
 import com.biskyt.mytvplayer.ui.common.ItemActionsPanel
 import com.biskyt.mytvplayer.ui.common.Muted
 import com.biskyt.mytvplayer.ui.common.OnNowLabel
@@ -58,7 +57,6 @@ import com.biskyt.mytvplayer.ui.common.SectionTitle
 import com.biskyt.mytvplayer.ui.common.TabScaffold
 import com.biskyt.mytvplayer.ui.common.TvCard
 import com.biskyt.mytvplayer.ui.common.TvTextField
-import com.biskyt.mytvplayer.ui.common.channelActions
 import com.biskyt.mytvplayer.ui.common.collectIds
 import com.biskyt.mytvplayer.ui.common.formatDayTime
 import com.biskyt.mytvplayer.ui.common.guideNowNext
@@ -68,6 +66,7 @@ import com.biskyt.mytvplayer.ui.common.restoreFocusIf
 import com.biskyt.mytvplayer.ui.common.titledRow
 import com.biskyt.mytvplayer.ui.common.vodActions
 import com.biskyt.mytvplayer.ui.common.vodDetails
+import com.biskyt.mytvplayer.ui.live.ChannelOptionsPanel
 import com.biskyt.mytvplayer.ui.phone.PhoneSearch
 import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.Palette
@@ -123,6 +122,9 @@ class SearchViewModel(private val c: AppContainer, initialQuery: String = "") : 
 
     fun setChannelFavourite(pid: Long, streamId: Long, favourite: Boolean) =
         viewModelScope.launch { c.channels.setFavourite(pid, streamId, favourite) }
+
+    /** Hides [ch] from the channel lists and from later searches (the results shown now keep it). */
+    fun hide(ch: ChannelEntity) = viewModelScope.launch { c.channels.setHidden(ch.playlistId, ch.streamId, true) }
 
     fun setVodFavourite(pid: Long, type: String, id: Long, favourite: Boolean) =
         viewModelScope.launch { c.vod.setFavourite(pid, type, id, favourite) }
@@ -208,7 +210,8 @@ fun SearchScreen(initialQuery: String = "") {
                             now,
                             { picked = Picked.Channel(it.streamId, it.name) },
                             returnFocus(key),
-                            favourite = it.streamId in favouriteChannels
+                            favourite = it.streamId in favouriteChannels,
+                            detail = results.channelCategories[it.categoryId]
                         ) {
                             open(key, Screen.Player(pid, it.streamId, ChannelFilter.All))
                         }
@@ -250,28 +253,46 @@ fun SearchScreen(initialQuery: String = "") {
     picked?.let { ResultOptions(it, pid, vm) { picked = null } }
 }
 
-/** What can be done with a result: watch or open it, favourites, and for channels catch-up and the guide source. */
+/**
+ * What can be done with a result: for a channel, the options that Live TV and Home give it, Channel info among them
+ * (the owner, 2026-11-26); for a film or series, open it and favourites.
+ */
 @Composable
 internal fun ResultOptions(item: Picked, pid: Long, vm: SearchViewModel, onDismiss: () -> Unit) {
-    val (title, actions) = when (item) {
+    when (item) {
         is Picked.Channel -> {
             val favourites by vm.favourites.channels.collectAsState()
-            val channel by produceState<ChannelEntity?>(null, item) { value = vm.channel(pid, item.streamId) }
-            item.name to
-                listOf(ItemAction.Open(stringResource(R.string.common_watch), Screen.Player(pid, item.streamId, ChannelFilter.All))) +
-                // Once both are read: a label saying "Add" for a favourite would undo it.
-                channel?.let { ch ->
-                    favourites?.let { f -> channelActions(ch, ch.streamId in f) { vm.setChannelFavourite(pid, ch.streamId, it) } }
-                }.orEmpty()
+            // Read, and the channel (null if a playlist update took it away meanwhile).
+            val channel by produceState<Pair<Boolean, ChannelEntity?>>(false to null, item) {
+                value = true to vm.channel(pid, item.streamId)
+            }
+            val nav = LocalNavigator.current
+            val (read, found) = channel
+            if (read && found == null) LaunchedEffect(item) { onDismiss() }
+            // Once both are read: a label saying "Add" for a favourite would undo it.
+            val ch = found ?: return
+            val f = favourites ?: return
+            ChannelOptionsPanel(
+                ch,
+                favourite = ch.streamId in f,
+                onDismiss = onDismiss,
+                play = { nav.push(Screen.Player(pid, ch.streamId, ChannelFilter.All)) },
+                setFavourite = { vm.setChannelFavourite(pid, ch.streamId, it) },
+                hide = {
+                    vm.hide(ch)
+                    onDismiss()
+                },
+                restartFilter = { ChannelFilter.All },
+            )
         }
         is Picked.Vod -> {
             val favourites by vm.favourites.of(item.type).collectAsState()
-            item.card.title to vodActions(pid, item.type, item.card.id, favourites?.let { item.card.id in it }) {
+            val actions = vodActions(pid, item.type, item.card.id, favourites?.let { item.card.id in it }) {
                 vm.setVodFavourite(pid, item.type, item.card.id, it)
             }
+            ItemActionsPanel(item.card.title, actions, onDismiss)
         }
     }
-    ItemActionsPanel(title, actions, onDismiss)
 }
 
 @Composable

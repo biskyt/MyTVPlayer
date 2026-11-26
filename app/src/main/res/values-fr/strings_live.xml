@@ -109,9 +109,9 @@
     <!-- Channel options: starts the programme on now again from its beginning (catch-up) -->
     <string name="live_option_restart">Recommencer l\'émission en cours</string>
     <!-- Channel options: opens what is known about the channel -->
-    <string name="live_option_more_info">Plus d\'infos</string>
+    <string name="live_option_more_info">Infos sur la chaîne</string>
     <string name="live_option_more_info_help">Catégorie, guide TV et plus</string>
-    <!-- More info about a channel: labels, each followed by its value -->
+    <!-- Channel info: labels, each followed by its value -->
     <string name="live_info_category">Catégorie</string>
     <string name="live_info_playlist">Playlist</string>
     <!-- The channel's own id for the TV guide, from the playlist (tvg-id) -->

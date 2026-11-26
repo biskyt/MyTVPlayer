@@ -69,7 +69,7 @@ class HomeChannelOptionsUiTest {
         val card = compose.onNode(hasText("UK: CHANNEL ONE HD", substring = true) and hasClickAction())
         card.performSemanticsAction(SemanticsActions.RequestFocus)
         card.performSemanticsAction(SemanticsActions.OnLongClick)
-        compose.waitForText("More info", stepMs = 50)
+        compose.waitForText("Channel info", stepMs = 50)
     }
 
     @Test
@@ -82,7 +82,7 @@ class HomeChannelOptionsUiTest {
                 "Restart current show",
                 "Remove from favourites",
                 "What's on",
-                "More info",
+                "Channel info",
                 "Change guide source…",
                 "Move",
                 "Hide channel"

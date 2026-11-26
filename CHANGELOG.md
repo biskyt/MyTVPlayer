@@ -3,6 +3,12 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.41.0
+- Channels found in search show their category.
+- A channel's options in search have the same entries as in Live TV and on Home.
+- The player's More menu for live TV and catch-up has Channel info.
+- "More info" in a channel's options is now called "Channel info".
+
 ## 1.40.2
 - In the TV guide, OK opens the highlighted programme when a short programme is inside a longer one.
 - On a phone, extra taps on Earlier or Later during a scroll to the edge no longer move the guide's window.

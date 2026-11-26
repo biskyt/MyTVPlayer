@@ -755,7 +755,7 @@ private fun StatusChip(row: MatchRow) {
     )
 }
 
-/** "Currently: " the guide channel [m] and the guide it comes from, with its time shift (also in a channel's More info). */
+/** "Currently: " the guide channel [m] and the guide it comes from, with its time shift (also in a channel's Channel info). */
 @Composable
 fun currentGuideText(m: MappingInfo): String {
     val name = (m.displayName ?: m.xmlId).toString()

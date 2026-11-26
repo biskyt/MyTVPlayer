@@ -37,6 +37,8 @@ abstract class ChannelPlayerViewModel(
     var channel by mutableStateOf<ChannelEntity?>(null)
         protected set
 
+    override val infoChannel: ChannelEntity? get() = channel
+
     /** The kinds of channels zapped through: the list's, or, from a list of both, those shown (see ChannelKinds). */
     val kinds: ChannelKinds get() = if (screenKinds == ChannelKinds.ALL) shownKinds else screenKinds
 
@@ -115,7 +117,11 @@ abstract class ChannelPlayerViewModel(
         val about = about?.takeIf { it.description != null || it.subtitle != null }?.let {
             ItemAction.Run(appString(R.string.player_about_programme)) { sheet = Sheet.ABOUT }
         }
-        return listOfNotNull(about) + channelActions(ch, ch.streamId in favouriteIds) { favourite ->
+        // The channel's category, guide and more, as Live TV's options show them (the owner, 2026-11-26).
+        val info = ItemAction.Run(appString(R.string.live_option_more_info), appString(R.string.live_option_more_info_help)) {
+            sheet = Sheet.CHANNEL_INFO
+        }
+        return listOfNotNull(about, info) + channelActions(ch, ch.streamId in favouriteIds) { favourite ->
             viewModelScope.launch {
                 c.channels.setFavourite(ch.playlistId, ch.streamId, favourite)
                 flash(favouriteFlash(favourite))

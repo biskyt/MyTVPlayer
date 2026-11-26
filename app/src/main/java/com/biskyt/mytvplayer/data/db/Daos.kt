@@ -92,6 +92,10 @@ interface CategoryDao {
     @Query("SELECT * FROM category WHERE playlistId = :pid AND type = :type AND categoryId = :id")
     suspend fun get(pid: Long, type: String, id: String): CategoryEntity?
 
+    /** The categories [ids] (a search's few, far below SQLite's limit on arguments). */
+    @Query("SELECT * FROM category WHERE playlistId = :pid AND type = :type AND categoryId IN (:ids)")
+    suspend fun byIds(pid: Long, type: String, ids: Collection<String>): List<CategoryEntity>
+
     @Query("SELECT * FROM category WHERE playlistId = :pid AND type = :type AND included = 1 ORDER BY sortOrder")
     fun observeIncluded(pid: Long, type: String): Flow<List<CategoryEntity>>
 

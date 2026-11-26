@@ -152,9 +152,9 @@
     <!-- Channel options: starts the programme on now again from its beginning (catch-up) -->
     <string name="live_option_restart">Restart current show</string>
     <!-- Channel options: opens what is known about the channel -->
-    <string name="live_option_more_info">More info</string>
+    <string name="live_option_more_info">Channel info</string>
     <string name="live_option_more_info_help">Category, TV guide and more</string>
-    <!-- More info about a channel: labels, each followed by its value -->
+    <!-- Channel info: labels, each followed by its value -->
     <string name="live_info_category">Category</string>
     <string name="live_info_playlist">Playlist</string>
     <!-- The channel's own id for the TV guide, from the playlist (tvg-id) -->

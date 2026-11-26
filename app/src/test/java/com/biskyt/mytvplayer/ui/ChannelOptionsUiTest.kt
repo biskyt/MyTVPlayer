@@ -39,8 +39,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowDialog
 
 /**
- * A channel's options in Live TV (the owner, 2026-11-15): the options in their order, and More info, which Back leaves
- * for the options again, on More info.
+ * A channel's options in Live TV (the owner, 2026-11-15): the options in their order, and Channel info, which Back leaves
+ * for the options again, on Channel info.
  */
 @OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -66,7 +66,7 @@ class ChannelOptionsUiTest {
             advanceEventTime(1_500)
             keyUp(Key.DirectionCenter)
         }
-        compose.waitForText("More info", stepMs = 50)
+        compose.waitForText("Channel info", stepMs = 50)
     }
 
     @After
@@ -86,7 +86,7 @@ class ChannelOptionsUiTest {
                 "Restart current show",
                 "Add to favourites",
                 "What's on",
-                "More info",
+                "Channel info",
                 "Change guide source…",
                 "Hide channel",
                 "Switch to grid view"
@@ -96,19 +96,19 @@ class ChannelOptionsUiTest {
     }
 
     @Test
-    fun `More info shows the channel's category, and Back returns to the options on More info`() {
-        // As with the remote: focus on More info, then OK.
-        val moreInfo = compose.onAllNodes(hasText("More info") and hasClickAction()).onLast()
-        moreInfo.performSemanticsAction(SemanticsActions.RequestFocus)
-        compose.waitAdvancingClock(50) { compose.focusedText().contains("More info") }
-        moreInfo.performSemanticsAction(SemanticsActions.OnClick)
+    fun `Channel info shows the channel's category, and Back returns to the options on Channel info`() {
+        // As with the remote: focus on Channel info, then OK.
+        val channelInfo = compose.onAllNodes(hasText("Channel info") and hasClickAction()).onLast()
+        channelInfo.performSemanticsAction(SemanticsActions.RequestFocus)
+        compose.waitAdvancingClock(50) { compose.focusedText().contains("Channel info") }
+        channelInfo.performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForText("UK | ENTERTAINMENT", stepMs = 50)
         compose.waitForText("Programmes from the last 3 days", stepMs = 50)
         assertTrue("its guide id", compose.onAllNodes(hasText("one.uk")).fetchSemanticsNodes().isNotEmpty())
 
         // The remote's Back, as the panel's window gets it.
         compose.runOnUiThread { (ShadowDialog.getLatestDialog() as ComponentDialog).onBackPressedDispatcher.onBackPressed() }
-        compose.waitAdvancingClock(50) { compose.focusedText().contains("More info") }
+        compose.waitAdvancingClock(50) { compose.focusedText().contains("Channel info") }
         assertTrue("the panel is still open", options().contains("Watch"))
     }
 }

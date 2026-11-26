@@ -41,9 +41,11 @@ import com.biskyt.mytvplayer.ui.common.ScheduleList
 import com.biskyt.mytvplayer.ui.common.TouchStepButtons
 import com.biskyt.mytvplayer.ui.common.displayLanguage
 import com.biskyt.mytvplayer.ui.common.formatRange
+import com.biskyt.mytvplayer.ui.common.numberLabel
 import com.biskyt.mytvplayer.ui.common.perform
 import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.common.rememberScheduleWithPast
+import com.biskyt.mytvplayer.ui.live.ChannelInfoView
 import com.biskyt.mytvplayer.ui.theme.Palette
 import com.biskyt.mytvplayer.ui.theme.bd
 import kotlinx.coroutines.delay
@@ -169,6 +171,11 @@ fun PlayerSheet(sheet: PlaybackViewModel.Sheet, vm: PlaybackViewModel) {
                             lines.forEach { BoardPanelText(it, maxLines = 6, color = Palette.textDim) }
                         }
                     }
+                }
+                // Its facts take the focus themselves (see ChannelInfoView).
+                PlaybackViewModel.Sheet.CHANNEL_INFO -> vm.infoChannel?.let { ch ->
+                    item { Header(ch.name, ch.numberLabel) }
+                    item { ChannelInfoView(ch) }
                 }
                 PlaybackViewModel.Sheet.ABOUT -> vm.about?.let { p ->
                     item { Header(programmeTitle(p.title), formatRange(p.startMs, p.stopMs)) }

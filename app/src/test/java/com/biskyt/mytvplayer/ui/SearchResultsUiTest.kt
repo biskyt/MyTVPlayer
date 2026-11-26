@@ -61,6 +61,21 @@ class SearchResultsUiTest {
     }
 
     @Test
+    fun `channels show their category, and their options have Channel info`() {
+        // The owner, 2026-11-26: a channel found says where it is from, on its card and in Channel info.
+        show(Screen.Search("CHANNEL ONE"))
+        compose.waitForText("UK: CHANNEL ONE HD")
+        compose.waitForText("UK | ENTERTAINMENT")
+        // Holding OK on the card (its long click) opens the options that Live TV and Home give a channel.
+        compose.onAllNodes(hasText("UK: CHANNEL ONE HD", substring = true) and hasClickAction())[0]
+            .performSemanticsAction(SemanticsActions.OnLongClick)
+        compose.waitForText("Channel info")
+        compose.onNode(hasText("Channel info") and hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForText("Category")
+        compose.waitForText("Programmes from the last 3 days")
+    }
+
+    @Test
     fun `back from a film, the focus is on it again`() {
         show(Screen.Search("du"))
         compose.waitForText("Dune")

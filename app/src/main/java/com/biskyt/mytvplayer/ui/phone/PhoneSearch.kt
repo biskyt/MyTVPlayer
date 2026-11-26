@@ -122,7 +122,8 @@ internal fun PhoneSearch(vm: SearchViewModel) {
                     wide,
                     vm.nowNext,
                     { picked = Picked.Channel(it.streamId, it.name) },
-                    favouriteChannels
+                    favouriteChannels,
+                    { results.channelCategories[it.categoryId] }
                 ) { play(it.streamId) }
             }
             vodResults(R.string.common_tab_series, CAT_SERIES, results.series, favouriteSeries, pid) { picked = it }

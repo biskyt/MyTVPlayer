@@ -29,6 +29,7 @@ import com.biskyt.mytvplayer.core.player.RemoteKey
 import com.biskyt.mytvplayer.core.player.scrubTarget
 import com.biskyt.mytvplayer.data.ChannelKinds
 import com.biskyt.mytvplayer.data.Settings
+import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.data.db.ChannelProgramme
 import com.biskyt.mytvplayer.player.PlaybackEngine
 import com.biskyt.mytvplayer.player.PlaybackError
@@ -81,11 +82,14 @@ abstract class PlaybackViewModel(protected val c: AppContainer, private val appC
     /** The programme the About sheet tells of (live TV's, on now). */
     open val about: ChannelProgramme? get() = null
 
+    /** The channel that Channel info in More tells of: live TV's and catch-up's. */
+    open val infoChannel: ChannelEntity? get() = null
+
     /** Set when playback should end and the screen close. */
     var exit by mutableStateOf(false)
         private set
 
-    enum class Sheet { AUDIO, SUBTITLES, MORE, ABOUT, STREAM_INFO }
+    enum class Sheet { AUDIO, SUBTITLES, MORE, ABOUT, STREAM_INFO, CHANNEL_INFO }
 
     /**
      * What can be done with what's playing, at the top of the More menu; read while drawing it, so labels follow state
