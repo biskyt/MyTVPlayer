@@ -2,13 +2,13 @@ package com.biskyt.mytvplayer.ui.common
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.biskyt.mytvplayer.R
@@ -20,6 +20,7 @@ import com.biskyt.mytvplayer.data.db.ChannelEntity
 import com.biskyt.mytvplayer.ui.LocalNavigator
 import com.biskyt.mytvplayer.ui.Navigator
 import com.biskyt.mytvplayer.ui.Screen
+import com.biskyt.mytvplayer.ui.theme.LocalFormFactor
 import com.biskyt.mytvplayer.ui.theme.bd
 import kotlin.math.abs
 
@@ -141,25 +142,91 @@ fun ItemActionsPanel(
         BoardPanelTitle(title, Modifier.padding(bottom = if (subtitle == null) 6.bd else 2.bd))
         subtitle?.let { BoardPanelSubtitle(it, Modifier.padding(bottom = 8.bd)) }
         val labels = actions.map { it.takeUnless { a -> a is ItemAction.Heading }?.label }
-        // The option to focus: the one used (back from the panel it opened), then the one the user moves to. Options read
-        // later can come in above it: its new row then takes the focus, so the focus stays on it (its own row can come in
-        // late too). A row that only changes its label (Add to favourites) keeps the focus.
-        var on by remember { mutableStateOf(used?.value) }
-        val focused = focusedAt(labels, on)
-        // Renamed in its place (the same entries next to it): followed by its new label from now on.
-        val now = labels.getOrNull(focused)?.let { optionPlace(labels, focused) }
-        if (now != null && on.let { it != null && it.label != now.label && it.before == now.before && it.after == now.after }) {
-            SideEffect { on = now }
-        }
+        // The option to focus: the one used (back from the panel it opened), then the one the user moves to. Each time the
+        // options change (some are read later, such as TMDB's), its row takes the focus: the focus stays on it, and a
+        // late option does not take it. Not state: a move of the focus needs no new composition.
+        // Not rememberFirstFocus: the panel must know which focus moves are its own.
+        val on = remember { FollowedOption(used?.value) }
+        val rows = remember { mutableListOf<FocusRequester>() }
+        while (rows.size < actions.size) rows += FocusRequester()
+        val tv = LocalFormFactor.current.isTv
+        LaunchedEffect(labels, tv) { if (tv) on.focus(labels, rows) else on.moving = false }
         actions.forEachIndexed { i, a ->
-            val follow = Modifier.onFocusChanged { if (it.isFocused) on = optionPlace(labels, i) }
-            ItemActionRow(a, follow.then(if (i == focused) rememberFirstFocus() else Modifier)) {
+            val follow = Modifier.focusRequester(rows[i]).onFocusChanged {
+                if (it.isFocused && !on.moving) {
+                    on.place = optionPlace(labels, i)
+                    on.at = i
+                }
+            }
+            ItemActionRow(a, follow) {
                 used?.value = optionPlace(labels, i)
                 a.perform(nav, onDismiss)
             }
         }
     }
 }
+
+/**
+ * The option a panel follows, and whether the focus moves now are the panel's own, not the user's (see
+ * [ItemActionsPanel]). So they are until its first move: the window's own first focus, as it opens, is not the user's.
+ */
+private class FollowedOption(place: OptionPlace?) {
+    var place = place
+        set(value) {
+            field = value
+            seen = true // only the user's moves and renames set it, to an option that is there
+        }
+    var moving = true
+
+    /** Whether the option followed was in the panel: the option used can load late, after the panel opens. */
+    var seen = false
+
+    /** The row with the focus, as far as the panel knows (-1: none yet). */
+    var at = -1
+
+    /** Focuses the row of the option followed in [labels] ([rows]: each row's requester), once the options change. */
+    suspend fun focus(labels: List<String?>, rows: List<FocusRequester>) {
+        val i = focusedAt(labels, place)
+        try {
+            if (i < 0) return
+            val now = optionPlace(labels, i)
+            val followed = place
+            when {
+                // None used: it follows the first option from now on, not an option read later above it.
+                followed == null -> place = now
+                followed.label in labels -> seen = true
+                // Renamed in its place (Add to favourites became Remove from favourites): followed by its new label.
+                // Not before it was there: until the option used loads, the row it focuses only stands in for it.
+                seen && renamed(labels, followed, now) -> place = now
+            }
+            // Still in its row: the focus stays where it is (on a row of links, perhaps not on the first).
+            if (i == at) return
+            // The panel's own move. The window may not be ready for it yet as the panel opens.
+            moving = true
+            repeat(FOCUS_TRIES) {
+                if (rows[i].tryFocus()) {
+                    at = i
+                    return
+                }
+                withFrameNanos { }
+            }
+        } finally {
+            moving = false
+        }
+    }
+}
+
+/** Frames to try for the first focus in a panel, while its window gets ready. */
+private const val FOCUS_TRIES = 10
+
+/**
+ * Whether [now] is [followed] renamed: its label is gone, and [now] has the same entries next to it (not two headings or
+ * ends, which say nothing of where it is).
+ */
+private fun renamed(labels: List<String?>, followed: OptionPlace, now: OptionPlace) = followed.label !in labels &&
+    (followed.before != null || followed.after != null) &&
+    now.before == followed.before &&
+    now.after == followed.after
 
 /**
  * An option of a panel: its place in the panel, its label, and the labels of the entries next to it ([before] and
