@@ -225,6 +225,8 @@ internal fun LazyListScope.channelCards(
     onOptions: (ChannelEntity) -> Unit,
     /** The channels marked with a heart. */
     favourites: Set<Long> = emptySet(),
+    /** A line under a channel's name (search's category). */
+    detail: (ChannelEntity) -> String? = { null },
     onPlay: (ChannelEntity) -> Unit
 ) {
     val columns = if (wide) 2 else 1
@@ -232,7 +234,15 @@ internal fun LazyListScope.channelCards(
         val now by rememberMinuteClock()
         Row(Modifier.padding(horizontal = PhoneGutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             cards.forEach { c ->
-                PhoneChannelCard(c, loader, now, { onOptions(c) }, Modifier.weight(1f), favourite = c.streamId in favourites) { onPlay(c) }
+                PhoneChannelCard(
+                    c,
+                    loader,
+                    now,
+                    onLongClick = { onOptions(c) },
+                    modifier = Modifier.weight(1f),
+                    favourite = c.streamId in favourites,
+                    detail = detail(c)
+                ) { onPlay(c) }
             }
             repeat(columns - cards.size) { Spacer(Modifier.weight(1f)) }
         }

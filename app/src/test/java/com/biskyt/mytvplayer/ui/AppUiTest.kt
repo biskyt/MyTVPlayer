@@ -598,13 +598,13 @@ class AppUiTest {
         // About the programme comes first once its details are read (the owner, 2026-11-26).
         compose.waitAdvancingClock { vm.menuActions().firstOrNull()?.label == "About this programme" }
         val labels = vm.menuActions().map { it.label }
-        assertEquals(listOf("About this programme", "Add to favourites", "Catch-up", "Change guide source…"), labels)
+        assertEquals(listOf("About this programme", "Channel info", "Add to favourites", "Catch-up", "Change guide source…"), labels)
         assertEquals(
             Screen.GuideMatching(playlistId, 101),
             (vm.menuActions().last() as com.biskyt.mytvplayer.ui.common.ItemAction.Open).screen
         )
-        (vm.menuActions()[1] as com.biskyt.mytvplayer.ui.common.ItemAction.Run).run()
-        compose.waitAdvancingClock { vm.menuActions()[1].label == "Remove from favourites" }
+        (vm.menuActions()[2] as com.biskyt.mytvplayer.ui.common.ItemAction.Run).run()
+        compose.waitAdvancingClock { vm.menuActions()[2].label == "Remove from favourites" }
         vm.engine?.release()
     }
 

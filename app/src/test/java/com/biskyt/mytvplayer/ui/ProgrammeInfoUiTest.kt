@@ -85,6 +85,18 @@ class ProgrammeInfoUiTest {
     }
 
     @Test
+    fun `while watching, Channel info in More tells the channel's category`() {
+        // The owner, 2026-11-26: during live TV and catch-up too.
+        show(Screen.Player(playlistId, 101, ChannelFilter.All))
+        waitFor("Spring Planting · S2 E5")
+        tap("More")
+        waitFor("Channel info")
+        tap("Channel info")
+        waitFor("UK | ENTERTAINMENT")
+        waitFor("Programmes from the last 3 days")
+    }
+
+    @Test
     fun `in the TV guide, a programme's description shows above the grid and in full in its options`() {
         show(Screen.Live(ChannelFilter.All, guide = true))
         waitFor("The Garden Planners")

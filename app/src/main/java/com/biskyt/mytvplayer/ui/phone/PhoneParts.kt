@@ -269,6 +269,8 @@ internal fun PhoneChannelCard(
     modifier: Modifier = Modifier,
     number: Boolean = false,
     favourite: Boolean = false,
+    /** A line under the name (search's category). */
+    detail: String? = null,
     onClick: () -> Unit
 ) {
     LaunchedEffect(ch.streamId) { loader.request(ch.streamId) }
@@ -306,6 +308,7 @@ internal fun PhoneChannelCard(
                 )
                 CatchupMark(ch, Modifier.padding(start = 6.dp))
             }
+            detail?.let { Text(it, color = Palette.textDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             if (nn == null) {
                 Box(Modifier.fillMaxWidth(0.6f).height(12.dp).clip(RoundedCornerShape(6.dp)).background(Palette.surfaceHigh))
             } else {

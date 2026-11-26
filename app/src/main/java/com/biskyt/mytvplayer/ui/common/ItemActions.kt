@@ -81,7 +81,7 @@ fun markWatched(watched: Boolean, set: (Boolean) -> Unit): ItemAction =
 
 fun favouriteFlash(added: Boolean) = appString(if (added) R.string.common_favourite_added else R.string.common_favourite_removed)
 
-/** What every channel menu offers (search, the player): favourites, catch-up where the provider has it, its guide. */
+/** What the player's More menu offers for a channel: favourites, catch-up where the provider has it, its guide. */
 fun channelActions(ch: ChannelEntity, favourite: Boolean, setFavourite: (Boolean) -> Unit): List<ItemAction> = buildList {
     add(favouriteAction(favourite, setFavourite))
     if (ch.archiveDays > 0) {

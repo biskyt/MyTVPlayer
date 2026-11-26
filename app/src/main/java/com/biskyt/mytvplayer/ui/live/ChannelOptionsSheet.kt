@@ -48,7 +48,7 @@ import com.biskyt.mytvplayer.ui.common.rememberSchedule
 import com.biskyt.mytvplayer.ui.common.returnsFocus
 import com.biskyt.mytvplayer.ui.theme.bd
 
-/** The options panel's views: the options, the channel's guide (What's on), More info. */
+/** The options panel's views: the options, the channel's guide (What's on), Channel info. */
 private enum class View { OPTIONS, GUIDE, INFO }
 
 /** Live TV's options for a channel (agreed "LiveMenu" design): [ChannelOptionsPanel], with Live TV's own options. */
@@ -102,8 +102,8 @@ fun ChannelOptionsSheet(ch: ChannelEntity, vm: LiveViewModel, play: (ChannelEnti
 
 /**
  * A channel's options, in Live TV and on Home (the owner, 2026-11-15): Watch, catch-up, Restart current show, the
- * favourite with its heart, What's on, More info, Change guide source and Hide channel, with a place's own options
- * ([afterWatch], [beforeHide] and [last]). What's on and More info show in the same panel: Back returns from them to the
+ * favourite with its heart, What's on, Channel info, Change guide source and Hide channel, with a place's own options
+ * ([afterWatch], [beforeHide] and [last]). What's on and Channel info show in the same panel: Back returns from them to the
  * options, on the option that opened them. [programme]: the TV guide programme the options were opened on, shown at the
  * top. [restartFilter]: the list that Restart current show goes back to (read as it is chosen).
  */

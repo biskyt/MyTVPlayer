@@ -118,6 +118,7 @@ class PhoneScreensUiTest {
     fun `a search finds channels, and a tap plays one`() {
         show(Screen.Search("channel one"))
         compose.waitForText("UK: CHANNEL ONE HD", stepMs = 50)
+        compose.waitForText("UK | ENTERTAINMENT", stepMs = 50) // its category (the owner, 2026-11-26)
         tap("UK: CHANNEL ONE HD")
         compose.waitAdvancingClock { navigator.current.screen is Screen.Player }
     }

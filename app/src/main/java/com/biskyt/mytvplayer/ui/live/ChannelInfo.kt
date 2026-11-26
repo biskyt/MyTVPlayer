@@ -22,13 +22,13 @@ import com.biskyt.mytvplayer.ui.common.rememberFirstFocus
 import com.biskyt.mytvplayer.ui.theme.bd
 
 /**
- * What More info shows about a channel (the owner, 2026-11-15). The rest is on the channel itself: its number and
+ * What Channel info shows about a channel (the owner, 2026-11-15). The rest is on the channel itself: its number and
  * catch-up days.
  */
 data class ChannelInfo(val category: String, val playlist: String?, val guide: MappingInfo?, val lastWatched: Long?)
 
 /**
- * The channel options' More info: its category, playlist, TV guide, guide ID, catch-up and when it was last watched.
+ * The channel options' Channel info: its category, playlist, TV guide, guide ID, catch-up and when it was last watched.
  * Read only when it opens (nothing is read for the channel list or the options themselves).
  */
 @Composable
@@ -59,7 +59,7 @@ fun ChannelInfoView(ch: ChannelEntity) {
     }
 }
 
-/** What More info shows about [ch]: read only when it opens (see ChannelInfoView). */
+/** What Channel info shows about [ch]: read only when it opens (see ChannelInfoView). */
 private suspend fun AppContainer.channelInfo(ch: ChannelEntity) = ChannelInfo(
     category = db.categories().get(ch.playlistId, CAT_LIVE, ch.categoryId)?.label ?: categoryLabel("", null),
     playlist = playlists.get(ch.playlistId)?.name,
