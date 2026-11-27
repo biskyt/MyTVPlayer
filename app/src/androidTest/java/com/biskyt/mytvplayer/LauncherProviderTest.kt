@@ -44,6 +44,8 @@ class LauncherProviderTest {
     @Test
     fun the_tv_takes_the_cards_and_clear_takes_them_off() {
         assumeTrue("a TV with the TV provider", context.packageManager.resolveContentProvider(TvContractCompat.AUTHORITY, 0) != null)
+        // Android 7.1 (Fire OS 6) has no rows or Play Next for apps: TvLauncher writes nothing there (see HOME_ROWS).
+        assumeTrue("Android 8.0 or later", TvLauncher.HOME_ROWS)
         val film = PlayNextCard("test:1", "A film", null, false, 60_000, 6_000_000, System.currentTimeMillis(), null, open)
         val episode = PlayNextCard("test:2", "A series", PlayNextCard.Episode(1, 2, "Second"), true, 0, 1_440_000, 1, null, open)
         val channels = LauncherChannel("favourites", "Favourite channels", listOf(RowCard("test:c", "A channel", null, open)), open)
@@ -78,5 +80,14 @@ class LauncherProviderTest {
         assertEquals(emptyList<String>(), playNext())
         assertEquals(emptyList<String>(), channels())
         assertFalse("the launcher's parts are off", launcher.isOn())
+    }
+
+    @Test
+    fun before_android_8_the_launcher_writes_nothing_and_clear_does_not_fail() {
+        assumeTrue("Android 7.1 (Fire OS 6)", !TvLauncher.HOME_ROWS)
+        val card = PlayNextCard("test:1", "A film", null, false, 60_000, 6_000_000, System.currentTimeMillis(), null, open)
+        assertEquals(emptySet<Long>(), launcher.publish(LauncherRows(listOf(card), emptyList())).channels)
+        assertFalse("the launcher's parts stay off", launcher.isOn())
+        launcher.clear()
     }
 }

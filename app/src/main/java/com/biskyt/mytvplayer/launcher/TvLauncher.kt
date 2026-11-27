@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.provider.BaseColumns
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
@@ -56,6 +57,7 @@ class TvLauncher(private val context: Context) : LauncherWriter {
     /** (The app can ask the TV to show the rows made now: see [askToShow].) One write at a time. */
     @Synchronized
     override fun publish(rows: LauncherRows): Published {
+        if (!HOME_ROWS) return Published(emptySet(), emptySet())
         if (!isOn()) setEnabled(true)
         val images = rows.channels.flatMap { ch -> ch.cards.mapNotNull { it.imageUrl } }
         val pictures = LauncherImages.publish(context, rows.playNext.mapNotNull { it.posterUrl } + images)
@@ -95,6 +97,7 @@ class TvLauncher(private val context: Context) : LauncherWriter {
     /** Its pictures are no longer served either, and the parts the launcher calls are off again. */
     @Synchronized
     override fun clear() {
+        if (!HOME_ROWS) return
         stored(TvContractCompat.WatchNextPrograms.CONTENT_URI, WATCH_NEXT).forEach {
             resolver.delete(TvContractCompat.buildWatchNextProgramUri(it.id), null, null)
         }
@@ -180,6 +183,9 @@ class TvLauncher(private val context: Context) : LauncherWriter {
     private fun setEnabled(on: Boolean) = context.setComponentsEnabled(on, LauncherImageProvider::class.java, LauncherReceiver::class.java)
 
     companion object {
+        /** Whether the TV can have the app's rows and Play Next at all: Android 8.0 or later (not Fire OS 6). */
+        val HOME_ROWS = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+
         private val WATCH_NEXT = Columns(
             TvContractCompat.WatchNextPrograms.COLUMN_INTERNAL_PROVIDER_ID,
             TvContractCompat.WatchNextPrograms.COLUMN_BROWSABLE,

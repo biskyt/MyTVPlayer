@@ -160,7 +160,7 @@ fun SettingsScreen() {
 private fun hasHomeRows(): Boolean {
     val context = LocalContext.current
     return remember {
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+        TvLauncher.HOME_ROWS && context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
     }
 }
 
