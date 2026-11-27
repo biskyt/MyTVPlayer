@@ -43,7 +43,6 @@ jobs:
             api-level: 25
             target: android-tv
             arch: x86
-            gpu: guest
           # Fire OS 7 and many older TV boxes.
           - name: Android TV 9
             api-level: 28
@@ -80,7 +79,7 @@ jobs:
         run: ./gradlew -PemulatorAbi=${{ matrix.arch }} :app:assembleDebug :app:assembleDebugAndroidTest
 
       - name: Start ${{ matrix.name }}
-        run: .github/scripts/start-emulator.sh ${{ matrix.api-level }} ${{ matrix.target }} ${{ matrix.arch }} ${{ matrix.gpu }}
+        run: .github/scripts/start-emulator.sh ${{ matrix.api-level }} ${{ matrix.target }} ${{ matrix.arch }}
 
       - name: Run the smoke tests on ${{ matrix.name }}
         run: ./gradlew -PemulatorAbi=${{ matrix.arch }} :app:connectedDebugAndroidTest
