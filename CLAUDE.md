@@ -140,7 +140,7 @@ See also:
   desugaring (`desugar_jdk_libs`), as Android has it only from 8.0. `java.util.Base64` is not desugared: use Kotlin's
   `kotlin.io.encoding.Base64`. Lint and Animal Sniffer report other APIs that are too new.
 - **Robolectric UI tests:**
-  - **Compose rules:** use `createUiComposeRule()` / `createUiComposeRule<Activity>()` from `testutil/ComposeRules.kt`, not `createComposeRule()`.
+  - **Compose rules:** use `createUiComposeRule()` / `createUiComposeRule<Activity>()` from `testutil/ComposeRules.kt` (in `app/src/sharedTest`, which the emulator tests use too), not `createComposeRule()` or `createAndroidComposeRule()`.
     - The plain rule runs effects on an unconfined dispatcher. Room flows collected with `collectAsState` then resume on Room's `arch_disk_io` threads and race the main thread's recomposition, so updates get lost now and then.
     - That was the cause of the long-running Catch-up tab / category flakes. The real app is unaffected.
   - Clear each test's `Navigator` (its ViewModelStores) at teardown with the `Navigators` rule

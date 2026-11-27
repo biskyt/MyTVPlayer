@@ -12,7 +12,6 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.isRoot
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
@@ -20,6 +19,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.biskyt.mytvplayer.data.ChannelKinds
 import com.biskyt.mytvplayer.data.db.ChannelEntity
+import com.biskyt.mytvplayer.testutil.createUiComposeRule
+import com.biskyt.mytvplayer.testutil.stopMainThreadEffects
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
@@ -29,6 +30,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.ExternalResource
 import org.junit.runner.RunWith
 
 /**
@@ -37,7 +39,17 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class SmokeTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    // The composition on the main thread only, as in the app (see ComposeRules.kt). With the plain rule, a recomposition
+    // ran on another thread now and then: "The current thread must have a looper!", or a broken slot table
+    // (ArrayIndexOutOfBounds in CompositionImpl.dispose) as the activity closed.
+    @get:Rule(order = 1)
+    val compose = createUiComposeRule<MainActivity>()
+
+    /** Stops the composition's queue once the activity has closed (the compose rule's own end), not before. */
+    @get:Rule(order = 0)
+    val stopEffects = object : ExternalResource() {
+        override fun after() = stopMainThreadEffects()
+    }
 
     /** Serves the playlist from the device itself, so the test needs no outside network. */
     private val server = MockWebServer().apply {

@@ -24,9 +24,6 @@
   Skip the request only while that row still has the focus (MyPlexPlayer's review of 1.41.3).
 - **Focus inside a row of links.** A link that is not the first does not update the option followed, so an option that
   loads above takes the focus back to the row's first link (MyPlexPlayer's review of 1.41.3).
-- **The Google TV 16 smoke test on the emulator.** `SmokeTest` uses the plain `createAndroidComposeRule`, whose effects
-  run on an unconfined dispatcher. Use MyPlexPlayer's fix (its PR 140): move `ComposeRules.kt` to `app/src/sharedTest`,
-  use `createUiComposeRule<MainActivity>()` in `SmokeTest`, and stop the main thread's effects after the activity closes.
 - **`HideCategoryUiTest`, "hiding the last category chooses the one before it".** It failed one time in a full local
   run: the focus went to the channel list. Find the root cause (perhaps `RefocusEffect` in `CategoryColumn` and the
   panel window that closes).

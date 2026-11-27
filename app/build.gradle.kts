@@ -91,6 +91,9 @@ android {
 
     // Room's exported schemas, so migration tests can open old database versions.
     sourceSets["debug"].assets.srcDir("$projectDir/schemas")
+    // Test code that both the JVM tests and the emulator tests use: the Compose rules (testutil/ComposeRules.kt).
+    sourceSets["test"].kotlin.srcDir("src/sharedTest/java")
+    sourceSets["androidTest"].kotlin.srcDir("src/sharedTest/java")
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
@@ -190,4 +193,5 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.okhttp.mockwebserver)
+    androidTestImplementation(libs.coroutines.test)
 }
