@@ -1,7 +1,7 @@
 package com.biskyt.mytvplayer.core.sync
 
+import com.biskyt.mytvplayer.core.UrlBase64
 import java.io.IOException
-import java.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -192,7 +192,7 @@ class GoogleAuth(
 
         /** The email address in an ID token (a JWT). It came straight from Google over HTTPS, so it is not checked. */
         internal fun email(idToken: String): String? = try {
-            val payload = String(Base64.getUrlDecoder().decode(idToken.split('.')[1]))
+            val payload = String(UrlBase64.decode(idToken.split('.')[1]))
             Json.parseToJsonElement(payload).jsonObject["email"]?.jsonPrimitive?.content
         } catch (_: IllegalArgumentException) {
             null

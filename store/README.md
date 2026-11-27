@@ -119,7 +119,7 @@ Live TV, movies, series and catch-up TV in one app
   - Amazon also accepts the `.aab`, but the `.aab` is only a run artifact, and only the owner can download it.
   - Amazon removes the developer's signature and signs the app with its own key.
 - **Apply Amazon DRM:** No. The app is free and open source.
-- **Supported devices:** Fire TV devices only. Untick the Fire tablets. Fire OS 7 and 8 devices can run the app (Android 9 and later). Vega OS devices cannot run Android apps.
+- **Supported devices:** Fire TV devices only. Untick the Fire tablets. Fire OS 6, 7 and 8 devices can run the app (Android 7.1 and later). Vega OS devices cannot run Android apps.
 - **Pricing and availability:** free, in all countries that the console offers.
 - **In-app items and ads:** none.
 - **Content rating:** "None" for each subject.

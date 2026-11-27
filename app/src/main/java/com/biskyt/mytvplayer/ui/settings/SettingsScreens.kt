@@ -155,11 +155,13 @@ fun SettingsScreen() {
     }
 }
 
-/** Whether the app runs on a TV: only there can its rows show on the home screen. */
+/** Whether the TV's home screen can show the app's rows: on a TV with Android 8.0 or later (not Fire OS 6). */
 @Composable
-private fun onTv(): Boolean {
+private fun hasHomeRows(): Boolean {
     val context = LocalContext.current
-    return remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) }
+    return remember {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+    }
 }
 
 /**
@@ -168,7 +170,7 @@ private fun onTv(): Boolean {
  */
 @Composable
 private fun AskToShowLauncherRows() {
-    if (!onTv()) return
+    if (!hasHomeRows()) return
     val context = LocalContext.current
     val activity = LocalActivity.current
     LaunchedEffect(activity) {
@@ -182,10 +184,10 @@ private fun AskToShowLauncherRows() {
     }
 }
 
-/** "Show on the TV's home screen" (see LauncherSync), off by default: only on a TV. */
+/** "Show on the TV's home screen" (see LauncherSync), off by default: only where it can show them (see hasHomeRows). */
 @Composable
 private fun LauncherRow() {
-    if (!onTv()) return
+    if (!hasHomeRows()) return
     val vm = appViewModel { SettingsViewModel(it) }
     val s = vm.settings.collectAsState().value ?: return
     SettingRow(stringResource(R.string.settings_launcher), stringResource(R.string.settings_launcher_help), {

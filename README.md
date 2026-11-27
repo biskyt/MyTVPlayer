@@ -15,7 +15,7 @@ MyTVPlayer is currently in closed testing on Google Play. You need to join the g
 
 # MyTVPlayer
 
-A fast, free and open-source IPTV player for Android TV and Fire TV (Android 9 and later), that also works by touch
+A fast, free and open-source IPTV player for Android TV and Fire TV (Android 7.1 and later, so Fire OS 6 too), that also works by touch
 on phones and tablets in landscape. It's built to feel quick on low-powered TV boxes and sticks, and to make it easy
 to find something to watch and press play.
 

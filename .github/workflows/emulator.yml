@@ -38,7 +38,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The oldest the app supports (as on Fire OS 7 and older TV boxes); Android TV images are x86 only.
+          # The oldest Android the app supports (Fire TV with Fire OS 6); Android TV images are x86 only.
+          - name: Android TV 7.1
+            api-level: 25
+            target: android-tv
+            arch: x86
+          # Fire OS 7 and many older TV boxes.
           - name: Android TV 9
             api-level: 28
             target: android-tv

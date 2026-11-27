@@ -3,6 +3,9 @@
 Each version's section becomes its GitHub release notes, so it is written for the people using the app: plain
 English, one bullet of one sentence per change.
 
+## 1.42.0
+- The app installs on Android 7.1 and later, so also on Fire TV with Fire OS 6.
+
 ## 1.41.3
 - Back from a panel focuses the option that opened it, also when that option loads late.
 

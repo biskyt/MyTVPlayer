@@ -1,6 +1,7 @@
 [versions]
-# The app's minSdk. Core's Animal Sniffer signature (gummy-bears-api-<minSdk>) uses it too.
-minSdk = "28"
+# The app's minSdk: Android 7.1, for Fire TV with Fire OS 6 (the owner, 2026-11-27). Core's Animal Sniffer signature
+# (gummy-bears-api-<minSdk>, with desugaring) uses it too.
+minSdk = "25"
 agp = "8.13.2"
 kotlin = "2.3.21"
 ksp = "2.3.14"
@@ -35,7 +36,10 @@ kxml = "2.3.0"
 animalsniffer = "2.0.1"
 # Android API signatures for Animal Sniffer (core's check against minSdk).
 gummyBears = "0.16.0"
+# java.time and other Java APIs for Android before 8.0 (core library desugaring).
+desugar = "2.1.5"
 [libraries]
+desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar" }
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
