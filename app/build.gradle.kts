@@ -17,8 +17,8 @@ android {
         applicationId = "com.biskyt.mytvplayer"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = 36
-        versionCode = 167
-        versionName = "1.41.3"
+        versionCode = 168
+        versionName = "1.42.0"
         ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a") }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -80,6 +80,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // java.time (dates and times) on Android 7 (Fire OS 6), which has it only from Android 8.0.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     buildFeatures {
@@ -89,6 +91,9 @@ android {
 
     // Room's exported schemas, so migration tests can open old database versions.
     sourceSets["debug"].assets.srcDir("$projectDir/schemas")
+    // Test code that both the JVM tests and the emulator tests use: the Compose rules (testutil/ComposeRules.kt).
+    sourceSets["test"].kotlin.srcDir("src/sharedTest/java")
+    sourceSets["androidTest"].kotlin.srcDir("src/sharedTest/java")
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
@@ -128,6 +133,7 @@ ksp {
 }
 
 dependencies {
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(project(":core"))
 
     implementation(platform(libs.compose.bom))
@@ -187,4 +193,5 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.okhttp.mockwebserver)
+    androidTestImplementation(libs.coroutines.test)
 }

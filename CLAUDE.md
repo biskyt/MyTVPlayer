@@ -133,10 +133,14 @@ See also:
 - **`core` is checked against the app's minSdk by Animal Sniffer, not by lint.** Lint does not check API levels in a
   plain JVM module. So a Java API newer than minSdk compiles and passes the JVM tests, then crashes older devices
   (`LocalDate.EPOCH` needs Android 14; issue 94). `:core:animalsnifferMain` checks core's classes against the
-  `gummy-bears-api-<minSdk>` signature, and `:core:test` runs it. `minSdk` is in `gradle/libs.versions.toml`, for the
-  app and the check. The check does not cover core's libraries (OkHttp, coroutines, serialization).
+  `gummy-bears-api-<minSdk>` signature (its `coreLib2` form, which adds what desugaring gives), and `:core:test` runs
+  it. `minSdk` is in `gradle/libs.versions.toml`, for the app and the check. The check does not cover core's libraries
+  (OkHttp, coroutines, serialization).
+- **minSdk is 25 (Android 7.1), for Fire TV with Fire OS 6** (the owner, 2026-11-27). `java.time` comes from core library
+  desugaring (`desugar_jdk_libs`), as Android has it only from 8.0. `java.util.Base64` is not desugared: use Kotlin's
+  `kotlin.io.encoding.Base64`. Lint and Animal Sniffer report other APIs that are too new.
 - **Robolectric UI tests:**
-  - **Compose rules:** use `createUiComposeRule()` / `createUiComposeRule<Activity>()` from `testutil/ComposeRules.kt`, not `createComposeRule()`.
+  - **Compose rules:** use `createUiComposeRule()` / `createUiComposeRule<Activity>()` from `testutil/ComposeRules.kt` (in `app/src/sharedTest`, which the emulator tests use too), not `createComposeRule()` or `createAndroidComposeRule()`.
     - The plain rule runs effects on an unconfined dispatcher. Room flows collected with `collectAsState` then resume on Room's `arch_disk_io` threads and race the main thread's recomposition, so updates get lost now and then.
     - That was the cause of the long-running Catch-up tab / category flakes. The real app is unaffected.
   - Clear each test's `Navigator` (its ViewModelStores) at teardown with the `Navigators` rule
@@ -222,7 +226,7 @@ These are built in already. Keep them when changing the areas they cover.
 ## Open items (as of 1.1.0, released)
 - **Google Play:** each release uploads the `.aab` to closed testing (`alpha`); set-up is in RELEASING.md. Production is
   promoted by hand in Play Console.
-- **Done:** emulator smoke tests on CI for pull requests (`.github/workflows/emulator.yml`: Android TV 9 and Google TV
+- **Done:** emulator smoke tests on CI for pull requests (`.github/workflows/emulator.yml`: Android TV 7.1, Android TV 9 and Google TV
   16, free on GitHub's standard runners for a public repo). Tests live in `app/src/androidTest`; the debug build adds an
   x86/x86_64 ABI only with `-PemulatorAbi=<arch>`. `.github/scripts/start-emulator.sh` boots the emulator itself:
   Google TV 16 drops off adb for a second or two after boot, which the usual runner action doesn't wait out.

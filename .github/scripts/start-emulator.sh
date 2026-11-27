@@ -26,16 +26,22 @@ nohup "$ANDROID_HOME/emulator/emulator" -avd tv -no-window -gpu swiftshader_indi
 emulator=$!
 
 deadline=$((SECONDS + 600))
+# What the emulator said, without its repeated GL fence messages (Android 7.1 logs thousands), and what adb sees.
+report() {
+    grep -v -e "internal_glFenceSync" -e "Failed to create EGL fence sync" emulator.log | tail -n 80 >&2
+    "$adb" devices >&2 || true
+    echo "sys.boot_completed: $("$adb" shell getprop sys.boot_completed 2> /dev/null || true)" >&2
+}
 waitFor() {
     until "$@"; do
         if ! kill -0 "$emulator" 2> /dev/null; then
             echo "The emulator stopped." >&2
-            tail -n 50 emulator.log >&2
+            report
             exit 1
         fi
         if ((SECONDS > deadline)); then
             echo "The emulator wasn't ready within 10 minutes." >&2
-            tail -n 50 emulator.log >&2
+            report
             exit 1
         fi
         sleep 2
@@ -50,7 +56,12 @@ steady() {
     done
 }
 
-waitFor grep -q "Boot completed" emulator.log
+# The emulator's own "Boot completed", or Android's: older images can boot without the emulator's line.
+booted() {
+    grep -q "Boot completed" emulator.log ||
+        [[ "$("$adb" shell getprop sys.boot_completed 2> /dev/null | tr -d '\r')" == 1 ]]
+}
+waitFor booted
 waitFor steady
 
 for scale in window_animation_scale transition_animation_scale animator_duration_scale; do

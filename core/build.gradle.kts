@@ -17,7 +17,7 @@ kotlin {
 
 dependencies {
     // The Java APIs of Android at the app's minSdk, for Animal Sniffer (below).
-    signature("com.toasttab.android:gummy-bears-api-${libs.versions.minSdk.get()}:${libs.versions.gummyBears.get()}@signature")
+    signature("com.toasttab.android:gummy-bears-api-${libs.versions.minSdk.get()}:${libs.versions.gummyBears.get()}:coreLib2@signature")
     api(libs.coroutines.core)
     api(libs.serialization.json)
     api(libs.okhttp)

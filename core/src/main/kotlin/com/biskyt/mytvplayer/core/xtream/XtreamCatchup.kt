@@ -1,10 +1,10 @@
 package com.biskyt.mytvplayer.core.xtream
 
+import com.biskyt.mytvplayer.core.PlainBase64
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.util.Base64
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -68,7 +68,7 @@ private fun serverLocalMs(local: String): Long? =
     runCatching { LocalDateTime.parse(local.trim(), serverTime).toInstant(ZoneOffset.UTC).toEpochMilli() }.getOrNull()
 
 /** [s] decoded from base64, or null when it isn't base64 of text. */
-private fun decodeOrNull(s: String): String? = runCatching { String(Base64.getDecoder().decode(s.trim()), Charsets.UTF_8) }
+private fun decodeOrNull(s: String): String? = runCatching { String(PlainBase64.decode(s.trim()), Charsets.UTF_8) }
     .getOrNull()?.takeIf { decoded -> decoded.none { it == '\uFFFD' || (it.isISOControl() && it != '\n' && it != '\r' && it != '\t') } }
 
 /** The server-local "yyyy-MM-dd:HH-mm" a timeshift address starts at, for the moment [startMs]. */

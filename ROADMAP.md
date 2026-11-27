@@ -14,6 +14,20 @@
 - **1.1:** The app in UK and US English, Spanish, Portuguese (Brazil) and French. Also a category filter, and a new
   search order.
 
+## Next release (the owner, 2026-11-26)
+- **The player's More menu keeps the focus on its option.** When options load above it, the focus moves with the
+  option, as in the other options panels since 1.41.3 (`ItemActionsPanel` in `ui/common/ItemActions.kt`). The More
+  menu's rows are in a lazy list, so the rows that are not on screen have no focus requester yet.
+- **Options panels keep the focus when a row changes its kind.** `FollowedOption.focus` skips its request when the
+  option followed is still at the row `at`. But when an option used loads late into the row of its stand-in, and the
+  two are of different kinds (an option and a row of links), the focused row is replaced, and nothing has the focus.
+  Skip the request only while that row still has the focus (MyPlexPlayer's review of 1.41.3).
+- **Focus inside a row of links.** A link that is not the first does not update the option followed, so an option that
+  loads above takes the focus back to the row's first link (MyPlexPlayer's review of 1.41.3).
+- **`HideCategoryUiTest`, "hiding the last category chooses the one before it".** It failed one time in a full local
+  run: the focus went to the channel list. Find the root cause (perhaps `RefocusEffect` in `CategoryColumn` and the
+  panel window that closes).
+
 ## Milestone 2: Movies, Series and search
 - Programme reminders.
 - Optional TMDB artwork and details for movies and series (can be turned off).
